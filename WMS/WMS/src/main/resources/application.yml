@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: mt-wms
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${WMS_DB_URL:jdbc:postgresql://127.0.0.1:5432/mt_wms?currentSchema=public}
+    username: ${WMS_DB_USERNAME:wms_app}
+    password: ${WMS_DB_PASSWORD:change-me}
+    hikari:
+      maximum-pool-size: ${WMS_DB_POOL_SIZE:10}
+      connection-timeout: 3000
+      initialization-fail-timeout: -1
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: UTC
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  structured:
+    format:
+      console: logstash
+
+wms:
+  timezone: Asia/Shanghai

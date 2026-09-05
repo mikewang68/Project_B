@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+  <!-- B-Demo 能源管控 · 方向 A logo -->
+  <!-- 轻边框 + 闪电（能量）+ 绿光点（信号 / 采集正常） -->
+  <rect x="1.75" y="1.75" width="28.5" height="28.5" rx="4"
+        fill="none" stroke="#38BDF8" stroke-width="1.4" opacity="0.85"/>
+  <path d="M17.5 5.5 L9.5 17.5 H14.5 L11.5 26.5 L22.5 13.5 H17.5 Z"
+        fill="#38BDF8"/>
+  <circle cx="24.6" cy="7.2" r="1.7" fill="#4ADE80"/>
+</svg>

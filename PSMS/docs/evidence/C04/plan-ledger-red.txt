@@ -1,0 +1,4098 @@
+
+ RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+ ❯ src/pages/__tests__/PlanLedgerPage.render.test.tsx (3 tests | 3 failed) 2478ms
+     × 呈现精确烟测标记、接口健康条和五组 URL 筛选 1156ms
+     × 呈现九项业务列、受控操作列和三条严格 Store 计划 206ms
+     × 详情抽屉使用固定五段流程并呈现 selector 的详情分区 1111ms
+ ❯ src/pages/__tests__/PlanLedgerPage.permission.test.tsx (5 tests | 4 failed) 3007ms
+     × 允许 DISPATCHER 读取台账 1050ms
+     × 允许 INTERFACE_OPS 读取台账 197ms
+     × INTERFACE_OPS 可读详情但不渲染补录工作区 1087ms
+     × 恢复入口仅对精确 INTERFACE_OPS 显示并继续经过 PermissionGate 531ms
+ ❯ src/pages/__tests__/PlanLedgerPage.action.test.tsx (3 tests | 3 failed) 3551ms
+     × SCN-02 打开 PLAN-002 写入 planId 并保留严格 Store 投影 1446ms
+     × 批次、车次和状态只通过完整 PlanEntryQuery 更新 URL，重挂载后恢复 1042ms
+     × 无命令服务时不伪造同步、补录或确认成功 1058ms
+node_modules\.bin\vitest.CMD :
+所在位置 行:2 字符: 188
++ ... +$env:PATH; node_modules\.bin\vitest.CMD run src/pages/__tests__/Plan ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.action.test.tsx > UI-002 URL、详情与只读命令边界 > SCN-02 打开 PLAN-002 写入 planId 并保留严格 S
+tore 投影
+TestingLibraryElementError: Unable to find role="button" and name "PLAN-002"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-_r_0_"
+[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-card-body"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_0_"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-var-_r_
+0_"[39m
+            [36m>[39m
+              [0mUI-002[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-var-_r
+_0_"[39m
+            [36m>[39m
+              [0m计划接收台账[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-var-_r_0
+_"[39m
+            [36m>[39m
+              [0m当前路由：[0m
+              [0m/dispatch/plans[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var-_r_0_
+"[39m
+            [36m>[39m
+              [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-_r_0_"
+[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-card-body"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_0_"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-var-_r_
+0_"[39m
+            [36m>[39m
+              [0mUI-002[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-var-_r
+_0_"[39m
+            [36m>[39m
+              [0m计划接收台账[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-var-_r_0
+_"[39m
+            [36m>[39m
+              [0m当前路由：[0m
+              [0m/dispatch/plans[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var-_r_0_
+"[39m
+            [36m>[39m
+              [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163
+:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/__tests__/PlanLedgerPage.action.test.tsx:84:35
+     82|     );
+     83|
+     84|     await user.click(await screen.findByRole('button', { name: 'PLAN-0…
+       |                                   ^
+     85|     await waitFor(() => expect(router.state.location.search).toContain…
+     86|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.action.test.tsx > UI-002 URL、详情与只读命令边界 > 批次、车次和状态只通过完整 PlanEntryQuery 更新 URL，
+重挂载后恢复
+TestingLibraryElementError: Unable to find a label with the text of: 计划筛选
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-_r_1_"
+[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-card-body"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_1_"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-var-_r_
+1_"[39m
+            [36m>[39m
+              [0mUI-002[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-var-_r
+_1_"[39m
+            [36m>[39m
+              [0m计划接收台账[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-var-_r_1
+_"[39m
+            [36m>[39m
+              [0m当前路由：[0m
+              [0m/dispatch/plans[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var-_r_1_
+"[39m
+            [36m>[39m
+              [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-_r_1_"
+[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-card-body"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_1_"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-var-_r_
+1_"[39m
+            [36m>[39m
+              [0mUI-002[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-var-_r
+_1_"[39m
+            [36m>[39m
+              [0m计划接收台账[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-var-_r_1
+_"[39m
+            [36m>[39m
+              [0m当前路由：[0m
+              [0m/dispatch/plans[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var-_r_1_
+"[39m
+            [36m>[39m
+              [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163
+:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/__tests__/PlanLedgerPage.action.test.tsx:106:34
+    104|     const { router, runtime, view } = renderLedgerRoute(initialEntry);
+    105|
+    106|     const filters = await screen.findByLabelText('计划筛选');
+       |                                  ^
+    107|     await user.type(within(filters).getByRole('textbox', { name: '计划批次…
+    108|     await user.type(within(filters).getByRole('textbox', { name: '车次' …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.action.test.tsx > UI-002 URL、详情与只读命令边界 > 无命令服务时不伪造同步、补录或确认成功
+TestingLibraryElementError: Unable to find role="button" and name "同步计划"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-_r_2_"
+[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-card-body"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_2_"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-var-_r_
+2_"[39m
+            [36m>[39m
+              [0mUI-002[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-var-_r
+_2_"[39m
+            [36m>[39m
+              [0m计划接收台账[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-var-_r_2
+_"[39m
+            [36m>[39m
+              [0m当前路由：[0m
+              [0m/dispatch/plans[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var-_r_2_
+"[39m
+            [36m>[39m
+              [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-_r_2_"
+[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-card-body"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_2_"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-var-_r_
+2_"[39m
+            [36m>[39m
+              [0mUI-002[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-var-_r
+_2_"[39m
+            [36m>[39m
+              [0m计划接收台账[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-var-_r_2
+_"[39m
+            [36m>[39m
+              [0m当前路由：[0m
+              [0m/dispatch/plans[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var-_r_2_
+"[39m
+            [36m>[39m
+              [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163
+:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/__tests__/PlanLedgerPage.action.test.tsx:137:25
+    135|     );
+    136|
+    137|     expect(await screen.findByRole('button', { name: '同步计划' })).toBeDi…
+       |                         ^
+    138|     const drawer = screen.getByRole('dialog', { name: 'PLAN-002 计划详情' …
+    139|     expect(within(drawer).getByLabelText('计划字段补录')).toBeVisible();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.permission.test.tsx > UI-002 路由和动作权限 > 允许 DISPATCHER 读取台账
+TestingLibraryElementError: Unable to find a label with the text of: 计划台账
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-layout ant-layout-has-sider skeleton-shell css-dev-only-do-not-override-ry7cab css-var-
+_r_0_"[39m
+    [36m>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"ant-layout-sider ant-layout-sider-dark skeleton-sider css-dev-only-do-not-override-ry7cab
+ css-var-_r_0_"[39m
+        [33mstyle[39m=[32m"flex: 0 0 244px; max-width: 244px; min-width: 244px; width: 244px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-layout-sider-children"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"skeleton-brand"[39m
+          [36m>[39m
+            [0m生产调度 Demo[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"页面导航"[39m
+            [33mclass[39m=[32m"skeleton-navigation"[39m
+          [36m>[39m
+            [36m<ul[39m
+              [33mclass[39m=[32m"ant-menu ant-menu-root ant-menu-inline ant-menu-dark skeleton-menu css-dev-only-do-
+not-override-ry7cab css-var-_r_0_ ant-menu-css-var"[39m
+              [33mdata-menu-list[39m=[32m"true"[39m
+              [33mrole[39m=[32m"menu"[39m
+              [33mtabindex[39m=[32m"0"[39m
+            [36m>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"调度"[39m
+                [36m>[39m
+                  [0m调度[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-001"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-001 调度总览"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/overview"[39m
+                      [36m>[39m
+                        [0mUI-001[0m
+                        [0m [0m
+                        [0m调度总览[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-selected ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-002"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-002 计划接收台账"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans"[39m
+                      [36m>[39m
+                        [0mUI-002[0m
+                        [0m [0m
+                        [0m计划接收台账[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-003"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-003 接车计划推荐"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans/PLAN-DEMO-001/recommendation"[39m
+                      [36m>[39m
+                        [0mUI-003[0m
+                        [0m [0m
+                        [0m接车计划推荐[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-004"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-004 任务拆解"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans/PLAN-DEMO-001/tasks"[39m
+                      [36m>[39m
+                        [0mUI-004[0m
+                        [0m [0m
+                        [0m任务拆解[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"执行"[39m
+                [36m>[39m
+                  [0m执行[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-005"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-005 派工看板"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/work-orders"[39m
+                      [36m>[39m
+                        [0mUI-005[0m
+                        [0m [0m
+                        [0m派工看板[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-006"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-006 公路预约与叫号"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/yard/appointments"[39m
+                      [36m>[39m
+                        [0mUI-006[0m
+                        [0m [0m
+                        [0m公路预约与叫号[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-007"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-007 全流程监控"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/monitor/operations"[39m
+                      [36m>[39m
+                        [0mUI-007[0m
+                        [0m [0m
+                        [0m全流程监控[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"安全"[39m
+                [36m>[39m
+                  [0m安全[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-008"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-008 异常处置"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/monitor/exceptions"[39m
+                      [36m>[39m
+                        [0mUI-008[0m
+                        [0m [0m
+                        [0m异常处置[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-009"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-009 安全联锁"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/safety/interlocks"[39m
+                      [36m>[39m
+                        [0mUI-009[0m
+                        [0m [0m
+                        [0m安全联锁[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-010"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-010 离线同步"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/operations/offline-sync"[39m
+                      [36m>[39m
+                        [0mUI-010[0m
+                        [0m [0m
+                        [0m离线同步[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"治理"[39m
+                [36m>[39m
+                  [0m治理[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-011"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-011 统计报表"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/reports/operations"[39m
+                      [36m>[39m
+                        [0mUI-011[0m
+                        [0m [0m
+                        [0m统计报表[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+            [36m</ul>[39m
+            [36m<div[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+            [36m/>[39m
+          [36m</nav>[39m
+        [36m</div>[39m
+      [36m</aside>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-layout skeleton-main css-dev-only-do-not-override-ry7cab css-var-_r_0_"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"ant-layout-header skeleton-header css-dev-only-do-not-override-ry7cab css-var-_r_0_"[3
+9m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"ant-typography skeleton-header-title css-dev-only-do-not-override-ry7cab css-var-_r_0
+_"[39m
+          [36m>[39m
+            [0mB项目生产调度管理模块[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_0_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css
+-var-_r_0_"[39m
+              [36m>[39m
+                [0m工程骨架[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography skeleton-version css-dev-only-do-not-override-ry7cab css-var-_r_0_
+"[39m
+              [36m>[39m
+                [0mC01 · v0.1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"ant-layout-content skeleton-content css-dev-only-do-not-override-ry7cab css-var-_r_0_"
+[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-
+_r_0_"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_0_"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-v
+ar-_r_0_"[39m
+                  [36m>[39m
+                    [0mUI-002[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-
+var-_r_0_"[39m
+                  [36m>[39m
+                    [0m计划接收台账[0m
+                  [36m</h2>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_0_"[39m
+                  [36m>[39m
+                    [0m当前路由：[0m
+                    [0m/dispatch/plans[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var
+-_r_0_"[39m
+                  [36m>[39m
+                    [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.
+js:37:19
+ ❯ getAllByLabelText node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/queries/labe
+l-text.js:111:38
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/__tests__/PlanLedgerPage.permission.test.tsx:63:19
+     61|
+     62|     expect(await screen.findByRole('heading', { name: '计划接收台账' })).toB…
+     63|     expect(screen.getByLabelText('计划台账')).toBeVisible();
+       |                   ^
+     64|     expect(screen.getByRole('dialog', { name: 'PLAN-001 计划详情' })).toBe…
+     65|     expect(screen.queryByText('403 无权访问')).not.toBeInTheDocument();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.permission.test.tsx > UI-002 路由和动作权限 > 允许 INTERFACE_OPS 读取台账
+TestingLibraryElementError: Unable to find a label with the text of: 计划台账
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-layout ant-layout-has-sider skeleton-shell css-dev-only-do-not-override-ry7cab css-var-
+_r_o_"[39m
+    [36m>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"ant-layout-sider ant-layout-sider-dark skeleton-sider css-dev-only-do-not-override-ry7cab
+ css-var-_r_o_"[39m
+        [33mstyle[39m=[32m"flex: 0 0 244px; max-width: 244px; min-width: 244px; width: 244px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-layout-sider-children"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"skeleton-brand"[39m
+          [36m>[39m
+            [0m生产调度 Demo[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"页面导航"[39m
+            [33mclass[39m=[32m"skeleton-navigation"[39m
+          [36m>[39m
+            [36m<ul[39m
+              [33mclass[39m=[32m"ant-menu ant-menu-root ant-menu-inline ant-menu-dark skeleton-menu css-dev-only-do-
+not-override-ry7cab css-var-_r_o_ ant-menu-css-var"[39m
+              [33mdata-menu-list[39m=[32m"true"[39m
+              [33mrole[39m=[32m"menu"[39m
+              [33mtabindex[39m=[32m"0"[39m
+            [36m>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"调度"[39m
+                [36m>[39m
+                  [0m调度[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-selected ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-002"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-002 计划接收台账"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans"[39m
+                      [36m>[39m
+                        [0mUI-002[0m
+                        [0m [0m
+                        [0m计划接收台账[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"执行"[39m
+                [36m>[39m
+                  [0m执行[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m/>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"安全"[39m
+                [36m>[39m
+                  [0m安全[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-010"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-010 离线同步"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/operations/offline-sync"[39m
+                      [36m>[39m
+                        [0mUI-010[0m
+                        [0m [0m
+                        [0m离线同步[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"治理"[39m
+                [36m>[39m
+                  [0m治理[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-012"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-012 系统配置"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/settings/system"[39m
+                      [36m>[39m
+                        [0mUI-012[0m
+                        [0m [0m
+                        [0m系统配置[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+            [36m</ul>[39m
+            [36m<div[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+            [36m/>[39m
+          [36m</nav>[39m
+        [36m</div>[39m
+      [36m</aside>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-layout skeleton-main css-dev-only-do-not-override-ry7cab css-var-_r_o_"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"ant-layout-header skeleton-header css-dev-only-do-not-override-ry7cab css-var-_r_o_"[3
+9m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"ant-typography skeleton-header-title css-dev-only-do-not-override-ry7cab css-var-_r_o
+_"[39m
+          [36m>[39m
+            [0mB项目生产调度管理模块[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_o_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css
+-var-_r_o_"[39m
+              [36m>[39m
+                [0m工程骨架[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography skeleton-version css-dev-only-do-not-override-ry7cab css-var-_r_o_
+"[39m
+              [36m>[39m
+                [0mC01 · v0.1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"ant-layout-content skeleton-content css-dev-only-do-not-override-ry7cab css-var-_r_o_"
+[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-
+_r_o_"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_o_"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-v
+ar-_r_o_"[39m
+                  [36m>[39m
+                    [0mUI-002[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-
+var-_r_o_"[39m
+                  [36m>[39m
+                    [0m计划接收台账[0m
+                  [36m</h2>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_o_"[39m
+                  [36m>[39m
+                    [0m当前路由：[0m
+                    [0m/dispatch/plans[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var
+-_r_o_"[39m
+                  [36m>[39m
+                    [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.
+js:37:19
+ ❯ getAllByLabelText node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/queries/labe
+l-text.js:111:38
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/__tests__/PlanLedgerPage.permission.test.tsx:63:19
+     61|
+     62|     expect(await screen.findByRole('heading', { name: '计划接收台账' })).toB…
+     63|     expect(screen.getByLabelText('计划台账')).toBeVisible();
+       |                   ^
+     64|     expect(screen.getByRole('dialog', { name: 'PLAN-001 计划详情' })).toBe…
+     65|     expect(screen.queryByText('403 无权访问')).not.toBeInTheDocument();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.permission.test.tsx > UI-002 路由和动作权限 > INTERFACE_OPS 可读详情但不渲染补录工作区
+TestingLibraryElementError: Unable to find role="dialog" and name "PLAN-002 计划详情"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-layout ant-layout-has-sider skeleton-shell css-dev-only-do-not-override-ry7cab css-var-
+_r_1a_"[39m
+    [36m>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"ant-layout-sider ant-layout-sider-dark skeleton-sider css-dev-only-do-not-override-ry7cab
+ css-var-_r_1a_"[39m
+        [33mstyle[39m=[32m"flex: 0 0 244px; max-width: 244px; min-width: 244px; width: 244px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-layout-sider-children"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"skeleton-brand"[39m
+          [36m>[39m
+            [0m生产调度 Demo[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"页面导航"[39m
+            [33mclass[39m=[32m"skeleton-navigation"[39m
+          [36m>[39m
+            [36m<ul[39m
+              [33mclass[39m=[32m"ant-menu ant-menu-root ant-menu-inline ant-menu-dark skeleton-menu css-dev-only-do-
+not-override-ry7cab css-var-_r_1a_ ant-menu-css-var"[39m
+              [33mdata-menu-list[39m=[32m"true"[39m
+              [33mrole[39m=[32m"menu"[39m
+              [33mtabindex[39m=[32m"0"[39m
+            [36m>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"调度"[39m
+                [36m>[39m
+                  [0m调度[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-selected ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-002"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-002 计划接收台账"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans"[39m
+                      [36m>[39m
+                        [0mUI-002[0m
+                        [0m [0m
+                        [0m计划接收台账[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"执行"[39m
+                [36m>[39m
+                  [0m执行[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m/>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"安全"[39m
+                [36m>[39m
+                  [0m安全[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-010"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-010 离线同步"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/operations/offline-sync"[39m
+                      [36m>[39m
+                        [0mUI-010[0m
+                        [0m [0m
+                        [0m离线同步[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"治理"[39m
+                [36m>[39m
+                  [0m治理[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-012"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-012 系统配置"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/settings/system"[39m
+                      [36m>[39m
+                        [0mUI-012[0m
+                        [0m [0m
+                        [0m系统配置[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+            [36m</ul>[39m
+            [36m<div[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+            [36m/>[39m
+          [36m</nav>[39m
+        [36m</div>[39m
+      [36m</aside>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-layout skeleton-main css-dev-only-do-not-override-ry7cab css-var-_r_1a_"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"ant-layout-header skeleton-header css-dev-only-do-not-override-ry7cab css-var-_r_1a_"[
+39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"ant-typography skeleton-header-title css-dev-only-do-not-override-ry7cab css-var-_r_1
+a_"[39m
+          [36m>[39m
+            [0mB项目生产调度管理模块[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_1a_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css
+-var-_r_1a_"[39m
+              [36m>[39m
+                [0m工程骨架[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography skeleton-version css-dev-only-do-not-override-ry7cab css-var-_r_1a
+_"[39m
+              [36m>[39m
+                [0mC01 · v0.1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"ant-layout-content skeleton-content css-dev-only-do-not-override-ry7cab css-var-_r_1a_"
+[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-
+_r_1a_"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_1a_"
+[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-v
+ar-_r_1a_"[39m
+                  [36m>[39m
+                    [0mUI-002[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-
+var-_r_1a_"[39m
+                  [36m>[39m
+                    [0m计划接收台账[0m
+                  [36m</h2>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_1a_"[39m
+                  [36m>[39m
+                    [0m当前路由：[0m
+                    [0m/dispatch/plans[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var
+-_r_1a_"[39m
+                  [36m>[39m
+                    [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-layout ant-layout-has-sider skeleton-shell css-dev-only-do-not-override-ry7cab css-var-
+_r_1a_"[39m
+    [36m>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"ant-layout-sider ant-layout-sider-dark skeleton-sider css-dev-only-do-not-override-ry7cab
+ css-var-_r_1a_"[39m
+        [33mstyle[39m=[32m"flex: 0 0 244px; max-width: 244px; min-width: 244px; width: 244px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-layout-sider-children"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"skeleton-brand"[39m
+          [36m>[39m
+            [0m生产调度 Demo[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"页面导航"[39m
+            [33mclass[39m=[32m"skeleton-navigation"[39m
+          [36m>[39m
+            [36m<ul[39m
+              [33mclass[39m=[32m"ant-menu ant-menu-root ant-menu-inline ant-menu-dark skeleton-menu css-dev-only-do-
+not-override-ry7cab css-var-_r_1a_ ant-menu-css-var"[39m
+              [33mdata-menu-list[39m=[32m"true"[39m
+              [33mrole[39m=[32m"menu"[39m
+              [33mtabindex[39m=[32m"0"[39m
+            [36m>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"调度"[39m
+                [36m>[39m
+                  [0m调度[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-selected ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-002"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-002 计划接收台账"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans"[39m
+                      [36m>[39m
+                        [0mUI-002[0m
+                        [0m [0m
+                        [0m计划接收台账[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"执行"[39m
+                [36m>[39m
+                  [0m执行[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m/>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"安全"[39m
+                [36m>[39m
+                  [0m安全[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-010"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-010 离线同步"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/operations/offline-sync"[39m
+                      [36m>[39m
+                        [0mUI-010[0m
+                        [0m [0m
+                        [0m离线同步[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"治理"[39m
+                [36m>[39m
+                  [0m治理[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-012"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-012 系统配置"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/settings/system"[39m
+                      [36m>[39m
+                        [0mUI-012[0m
+                        [0m [0m
+                        [0m系统配置[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+            [36m</ul>[39m
+            [36m<div[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+            [36m/>[39m
+          [36m</nav>[39m
+        [36m</div>[39m
+      [36m</aside>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-layout skeleton-main css-dev-only-do-not-override-ry7cab css-var-_r_1a_"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"ant-layout-header skeleton-header css-dev-only-do-not-override-ry7cab css-var-_r_1a_"[
+39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"ant-typography skeleton-header-title css-dev-only-do-not-override-ry7cab css-var-_r_1
+a_"[39m
+          [36m>[39m
+            [0mB项目生产调度管理模块[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_1a_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css
+-var-_r_1a_"[39m
+              [36m>[39m
+                [0m工程骨架[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography skeleton-version css-dev-only-do-not-override-ry7cab css-var-_r_1a
+_"[39m
+              [36m>[39m
+                [0mC01 · v0.1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"ant-layout-content skeleton-content css-dev-only-do-not-override-ry7cab css-var-_r_1a_"
+[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-
+_r_1a_"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_1a_"
+[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-v
+ar-_r_1a_"[39m
+                  [36m>[39m
+                    [0mUI-002[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-
+var-_r_1a_"[39m
+                  [36m>[39m
+                    [0m计划接收台账[0m
+                  [36m</h2>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_1a_"[39m
+                  [36m>[39m
+                    [0m当前路由：[0m
+                    [0m/dispatch/plans[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var
+-_r_1a_"[39m
+                  [36m>[39m
+                    [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163
+:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/__tests__/PlanLedgerPage.permission.test.tsx:81:33
+     79|     renderForRole('INTERFACE_OPS', 'SCN-02', 'PLAN-002');
+     80|
+     81|     const drawer = await screen.findByRole('dialog', { name: 'PLAN-002…
+       |                                 ^
+     82|     expect(within(drawer).getByText('TOS-EXT-002')).toBeVisible();
+     83|     expect(within(drawer).queryByLabelText('计划字段补录')).not.toBeInTheDoc…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/10]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.permission.test.tsx > UI-002 路由和动作权限 > 恢复入口仅对精确 INTERFACE_OPS 显示并继续经过 Permiss
+ionGate
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "恢复接口"
+
+Here are the accessible roles:
+
+  complementary:
+
+  Name "":
+  [36m<aside[39m
+    [33mclass[39m=[32m"ant-layout-sider ant-layout-sider-dark skeleton-sider css-dev-only-do-not-override-ry7cab css
+-var-_r_2a_"[39m
+    [33mstyle[39m=[32m"flex: 0 0 244px; max-width: 244px; min-width: 244px; width: 244px;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  navigation:
+
+  Name "页面导航":
+  [36m<nav[39m
+    [33maria-label[39m=[32m"页面导航"[39m
+    [33mclass[39m=[32m"skeleton-navigation"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  menu:
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"ant-menu ant-menu-root ant-menu-inline ant-menu-dark skeleton-menu css-dev-only-do-not-overri
+de-ry7cab css-var-_r_2a_ ant-menu-css-var"[39m
+    [33mdata-menu-list[39m=[32m"true"[39m
+    [33mrole[39m=[32m"menu"[39m
+    [33mtabindex[39m=[32m"0"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  presentation:
+
+  Name "":
+  [36m<li[39m
+    [33mclass[39m=[32m"ant-menu-item-group"[39m
+    [33mrole[39m=[32m"presentation"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<div[39m
+    [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+    [33mrole[39m=[32m"presentation"[39m
+    [33mtitle[39m=[32m"调度"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<li[39m
+    [33mclass[39m=[32m"ant-menu-item-group"[39m
+    [33mrole[39m=[32m"presentation"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<div[39m
+    [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+    [33mrole[39m=[32m"presentation"[39m
+    [33mtitle[39m=[32m"执行"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<li[39m
+    [33mclass[39m=[32m"ant-menu-item-group"[39m
+    [33mrole[39m=[32m"presentation"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<div[39m
+    [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+    [33mrole[39m=[32m"presentation"[39m
+    [33mtitle[39m=[32m"安全"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<li[39m
+    [33mclass[39m=[32m"ant-menu-item-group"[39m
+    [33mrole[39m=[32m"presentation"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<div[39m
+    [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+    [33mrole[39m=[32m"presentation"[39m
+    [33mtitle[39m=[32m"治理"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  group:
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+    [33mrole[39m=[32m"group"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+    [33mrole[39m=[32m"group"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+    [33mrole[39m=[32m"group"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+    [33mrole[39m=[32m"group"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  menuitem:
+
+  Name "UI-002 计划接收台账":
+  [36m<li[39m
+    [33mclass[39m=[32m"ant-menu-item ant-menu-item-selected ant-menu-item-only-child"[39m
+    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-002"[39m
+    [33mrole[39m=[32m"menuitem"[39m
+    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+    [33mtabindex[39m=[32m"-1"[39m
+  [36m/>[39m
+
+  Name "UI-010 离线同步":
+  [36m<li[39m
+    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-010"[39m
+    [33mrole[39m=[32m"menuitem"[39m
+    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+    [33mtabindex[39m=[32m"-1"[39m
+  [36m/>[39m
+
+  Name "UI-012 系统配置":
+  [36m<li[39m
+    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-012"[39m
+    [33mrole[39m=[32m"menuitem"[39m
+    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+    [33mtabindex[39m=[32m"-1"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  link:
+
+  Name "UI-002 计划接收台账":
+  [36m<a[39m
+    [33maria-label[39m=[32m"UI-002 计划接收台账"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/dispatch/plans"[39m
+  [36m/>[39m
+
+  Name "UI-010 离线同步":
+  [36m<a[39m
+    [33maria-label[39m=[32m"UI-010 离线同步"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/operations/offline-sync"[39m
+  [36m/>[39m
+
+  Name "UI-012 系统配置":
+  [36m<a[39m
+    [33maria-label[39m=[32m"UI-012 系统配置"[39m
+    [33mdata-discover[39m=[32m"true"[39m
+    [33mhref[39m=[32m"/settings/system"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"ant-layout-header skeleton-header css-dev-only-do-not-override-ry7cab css-var-_r_2a_"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "B项目生产调度管理模块":
+  [36m<h1[39m
+    [33mclass[39m=[32m"ant-typography skeleton-header-title css-dev-only-do-not-override-ry7cab css-var-_r_2a_"[39m
+  [36m/>[39m
+
+  Name "计划接收台账":
+  [36m<h2[39m
+    [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-var-_r_2a_"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  main:
+
+  Name "":
+  [36m<main[39m
+    [33mclass[39m=[32m"ant-layout-content skeleton-content css-dev-only-do-not-override-ry7cab css-var-_r_2a_"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-layout ant-layout-has-sider skeleton-shell css-dev-only-do-not-override-ry7cab css-var-
+_r_2a_"[39m
+    [36m>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"ant-layout-sider ant-layout-sider-dark skeleton-sider css-dev-only-do-not-override-ry7cab
+ css-var-_r_2a_"[39m
+        [33mstyle[39m=[32m"flex: 0 0 244px; max-width: 244px; min-width: 244px; width: 244px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-layout-sider-children"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"skeleton-brand"[39m
+          [36m>[39m
+            [0m生产调度 Demo[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"页面导航"[39m
+            [33mclass[39m=[32m"skeleton-navigation"[39m
+          [36m>[39m
+            [36m<ul[39m
+              [33mclass[39m=[32m"ant-menu ant-menu-root ant-menu-inline ant-menu-dark skeleton-menu css-dev-only-do-
+not-override-ry7cab css-var-_r_2a_ ant-menu-css-var"[39m
+              [33mdata-menu-list[39m=[32m"true"[39m
+              [33mrole[39m=[32m"menu"[39m
+              [33mtabindex[39m=[32m"0"[39m
+            [36m>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"调度"[39m
+                [36m>[39m
+                  [0m调度[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-selected ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-002"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-002 计划接收台账"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans"[39m
+                      [36m>[39m
+                        [0mUI-002[0m
+                        [0m [0m
+                        [0m计划接收台账[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"执行"[39m
+                [36m>[39m
+                  [0m执行[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m/>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"安全"[39m
+                [36m>[39m
+                  [0m安全[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-010"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-010 离线同步"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/operations/offline-sync"[39m
+                      [36m>[39m
+                        [0mUI-010[0m
+                        [0m [0m
+                        [0m离线同步[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"治理"[39m
+                [36m>[39m
+                  [0m治理[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-012"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-012 系统配置"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/settings/system"[39m
+                      [36m>[39m
+                        [0mUI-012[0m
+                        [0m [0m
+                        [0m系统配置[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+            [36m</ul>[39m
+            [36m<div[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+            [36m/>[39m
+          [36m</nav>[39m
+        [36m</div>[39m
+      [36m</aside>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-layout skeleton-main css-dev-only-do-not-override-ry7cab css-var-_r_2a_"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"ant-layout-header skeleton-header css-dev-only-do-not-override-ry7cab css-var-_r_2a_"[
+39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"ant-typography skeleton-header-title css-dev-only-do-not-override-ry7cab css-var-_r_2
+a_"[39m
+          [36m>[39m
+            [0mB项目生产调度管理模块[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_2a_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css
+-var-_r_2a_"[39m
+              [36m>[39m
+                [0m工程骨架[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography skeleton-version css-dev-only-do-not-override-ry7cab css-var-_r_2a
+_"[39m
+              [36m>[39m
+                [0mC01 · v0.1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"ant-layout-content skeleton-content css-dev-only-do-not-override-ry7cab css-var-_r_2a_"
+[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-
+_r_2a_"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_2a_"
+[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-v
+ar-_r_2a_"[39m
+                  [36m>[39m
+                    [0mUI-002[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-
+var-_r_2a_"[39m
+                  [36m>[39m
+                    [0m计划接收台账[0m
+                  [36m</h2>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_2a_"[39m
+                  [36m>[39m
+                    [0m当前路由：[0m
+                    [0m/dispatch/plans[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var
+-_r_2a_"[39m
+                  [36m>[39m
+                    [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.
+js:37:19
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/__tests__/PlanLedgerPage.permission.test.tsx:95:19
+     93|     renderForRole('INTERFACE_OPS', 'SCN-03');
+     94|     await screen.findByRole('heading', { name: '计划接收台账' });
+     95|     expect(screen.getByRole('button', { name: '恢复接口' })).toBeDisabled(…
+       |                   ^
+     96|   });
+     97| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/10]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.render.test.tsx > UI-002 计划接收台账内容 > 呈现精确烟测标记、接口健康条和五组 URL 筛选
+TestingLibraryElementError: Unable to find a label with the text of: 计划接口健康
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-layout ant-layout-has-sider skeleton-shell css-dev-only-do-not-override-ry7cab css-var-
+_r_0_"[39m
+    [36m>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"ant-layout-sider ant-layout-sider-dark skeleton-sider css-dev-only-do-not-override-ry7cab
+ css-var-_r_0_"[39m
+        [33mstyle[39m=[32m"flex: 0 0 244px; max-width: 244px; min-width: 244px; width: 244px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-layout-sider-children"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"skeleton-brand"[39m
+          [36m>[39m
+            [0m生产调度 Demo[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"页面导航"[39m
+            [33mclass[39m=[32m"skeleton-navigation"[39m
+          [36m>[39m
+            [36m<ul[39m
+              [33mclass[39m=[32m"ant-menu ant-menu-root ant-menu-inline ant-menu-dark skeleton-menu css-dev-only-do-
+not-override-ry7cab css-var-_r_0_ ant-menu-css-var"[39m
+              [33mdata-menu-list[39m=[32m"true"[39m
+              [33mrole[39m=[32m"menu"[39m
+              [33mtabindex[39m=[32m"0"[39m
+            [36m>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"调度"[39m
+                [36m>[39m
+                  [0m调度[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-001"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-001 调度总览"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/overview"[39m
+                      [36m>[39m
+                        [0mUI-001[0m
+                        [0m [0m
+                        [0m调度总览[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-selected ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-002"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-002 计划接收台账"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans"[39m
+                      [36m>[39m
+                        [0mUI-002[0m
+                        [0m [0m
+                        [0m计划接收台账[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-003"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-003 接车计划推荐"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans/PLAN-DEMO-001/recommendation"[39m
+                      [36m>[39m
+                        [0mUI-003[0m
+                        [0m [0m
+                        [0m接车计划推荐[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-004"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-004 任务拆解"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans/PLAN-DEMO-001/tasks"[39m
+                      [36m>[39m
+                        [0mUI-004[0m
+                        [0m [0m
+                        [0m任务拆解[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"执行"[39m
+                [36m>[39m
+                  [0m执行[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-005"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-005 派工看板"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/work-orders"[39m
+                      [36m>[39m
+                        [0mUI-005[0m
+                        [0m [0m
+                        [0m派工看板[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-006"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-006 公路预约与叫号"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/yard/appointments"[39m
+                      [36m>[39m
+                        [0mUI-006[0m
+                        [0m [0m
+                        [0m公路预约与叫号[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-007"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-007 全流程监控"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/monitor/operations"[39m
+                      [36m>[39m
+                        [0mUI-007[0m
+                        [0m [0m
+                        [0m全流程监控[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"安全"[39m
+                [36m>[39m
+                  [0m安全[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-008"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-008 异常处置"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/monitor/exceptions"[39m
+                      [36m>[39m
+                        [0mUI-008[0m
+                        [0m [0m
+                        [0m异常处置[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-009"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-009 安全联锁"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/safety/interlocks"[39m
+                      [36m>[39m
+                        [0mUI-009[0m
+                        [0m [0m
+                        [0m安全联锁[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-010"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-010 离线同步"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/operations/offline-sync"[39m
+                      [36m>[39m
+                        [0mUI-010[0m
+                        [0m [0m
+                        [0m离线同步[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"治理"[39m
+                [36m>[39m
+                  [0m治理[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-011"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-011 统计报表"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/reports/operations"[39m
+                      [36m>[39m
+                        [0mUI-011[0m
+                        [0m [0m
+                        [0m统计报表[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+            [36m</ul>[39m
+            [36m<div[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+            [36m/>[39m
+          [36m</nav>[39m
+        [36m</div>[39m
+      [36m</aside>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-layout skeleton-main css-dev-only-do-not-override-ry7cab css-var-_r_0_"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"ant-layout-header skeleton-header css-dev-only-do-not-override-ry7cab css-var-_r_0_"[3
+9m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"ant-typography skeleton-header-title css-dev-only-do-not-override-ry7cab css-var-_r_0
+_"[39m
+          [36m>[39m
+            [0mB项目生产调度管理模块[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_0_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css
+-var-_r_0_"[39m
+              [36m>[39m
+                [0m工程骨架[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography skeleton-version css-dev-only-do-not-override-ry7cab css-var-_r_0_
+"[39m
+              [36m>[39m
+                [0mC01 · v0.1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"ant-layout-content skeleton-content css-dev-only-do-not-override-ry7cab css-var-_r_0_"
+[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-
+_r_0_"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_0_"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-v
+ar-_r_0_"[39m
+                  [36m>[39m
+                    [0mUI-002[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-
+var-_r_0_"[39m
+                  [36m>[39m
+                    [0m计划接收台账[0m
+                  [36m</h2>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_0_"[39m
+                  [36m>[39m
+                    [0m当前路由：[0m
+                    [0m/dispatch/plans[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var
+-_r_0_"[39m
+                  [36m>[39m
+                    [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.
+js:37:19
+ ❯ getAllByLabelText node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/queries/labe
+l-text.js:111:38
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/__tests__/PlanLedgerPage.render.test.tsx:64:36
+     62|     expect(screen.getByText('当前路由：/dispatch/plans')).toBeVisible();
+     63|
+     64|     const interfaceHealth = screen.getByLabelText('计划接口健康');
+       |                                    ^
+     65|     expect(within(interfaceHealth).getByText('95306 / 铁路计划接入通道')).toBe…
+     66|     expect(within(interfaceHealth).getByText('正常')).toBeVisible();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/10]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.render.test.tsx > UI-002 计划接收台账内容 > 呈现九项业务列、受控操作列和三条严格 Store 计划
+TestingLibraryElementError: Unable to find a label with the text of: 计划台账
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-layout ant-layout-has-sider skeleton-shell css-dev-only-do-not-override-ry7cab css-var-
+_r_o_"[39m
+    [36m>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"ant-layout-sider ant-layout-sider-dark skeleton-sider css-dev-only-do-not-override-ry7cab
+ css-var-_r_o_"[39m
+        [33mstyle[39m=[32m"flex: 0 0 244px; max-width: 244px; min-width: 244px; width: 244px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-layout-sider-children"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"skeleton-brand"[39m
+          [36m>[39m
+            [0m生产调度 Demo[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"页面导航"[39m
+            [33mclass[39m=[32m"skeleton-navigation"[39m
+          [36m>[39m
+            [36m<ul[39m
+              [33mclass[39m=[32m"ant-menu ant-menu-root ant-menu-inline ant-menu-dark skeleton-menu css-dev-only-do-
+not-override-ry7cab css-var-_r_o_ ant-menu-css-var"[39m
+              [33mdata-menu-list[39m=[32m"true"[39m
+              [33mrole[39m=[32m"menu"[39m
+              [33mtabindex[39m=[32m"0"[39m
+            [36m>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"调度"[39m
+                [36m>[39m
+                  [0m调度[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-001"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-001 调度总览"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/overview"[39m
+                      [36m>[39m
+                        [0mUI-001[0m
+                        [0m [0m
+                        [0m调度总览[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-selected ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-002"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-002 计划接收台账"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans"[39m
+                      [36m>[39m
+                        [0mUI-002[0m
+                        [0m [0m
+                        [0m计划接收台账[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-003"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-003 接车计划推荐"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans/PLAN-DEMO-001/recommendation"[39m
+                      [36m>[39m
+                        [0mUI-003[0m
+                        [0m [0m
+                        [0m接车计划推荐[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-004"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-004 任务拆解"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans/PLAN-DEMO-001/tasks"[39m
+                      [36m>[39m
+                        [0mUI-004[0m
+                        [0m [0m
+                        [0m任务拆解[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"执行"[39m
+                [36m>[39m
+                  [0m执行[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-005"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-005 派工看板"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/work-orders"[39m
+                      [36m>[39m
+                        [0mUI-005[0m
+                        [0m [0m
+                        [0m派工看板[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-006"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-006 公路预约与叫号"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/yard/appointments"[39m
+                      [36m>[39m
+                        [0mUI-006[0m
+                        [0m [0m
+                        [0m公路预约与叫号[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-007"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-007 全流程监控"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/monitor/operations"[39m
+                      [36m>[39m
+                        [0mUI-007[0m
+                        [0m [0m
+                        [0m全流程监控[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"安全"[39m
+                [36m>[39m
+                  [0m安全[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-008"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-008 异常处置"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/monitor/exceptions"[39m
+                      [36m>[39m
+                        [0mUI-008[0m
+                        [0m [0m
+                        [0m异常处置[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-009"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-009 安全联锁"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/safety/interlocks"[39m
+                      [36m>[39m
+                        [0mUI-009[0m
+                        [0m [0m
+                        [0m安全联锁[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-010"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-010 离线同步"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/operations/offline-sync"[39m
+                      [36m>[39m
+                        [0mUI-010[0m
+                        [0m [0m
+                        [0m离线同步[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"治理"[39m
+                [36m>[39m
+                  [0m治理[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-011"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-011 统计报表"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/reports/operations"[39m
+                      [36m>[39m
+                        [0mUI-011[0m
+                        [0m [0m
+                        [0m统计报表[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+            [36m</ul>[39m
+            [36m<div[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+            [36m/>[39m
+          [36m</nav>[39m
+        [36m</div>[39m
+      [36m</aside>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-layout skeleton-main css-dev-only-do-not-override-ry7cab css-var-_r_o_"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"ant-layout-header skeleton-header css-dev-only-do-not-override-ry7cab css-var-_r_o_"[3
+9m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"ant-typography skeleton-header-title css-dev-only-do-not-override-ry7cab css-var-_r_o
+_"[39m
+          [36m>[39m
+            [0mB项目生产调度管理模块[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_o_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css
+-var-_r_o_"[39m
+              [36m>[39m
+                [0m工程骨架[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography skeleton-version css-dev-only-do-not-override-ry7cab css-var-_r_o_
+"[39m
+              [36m>[39m
+                [0mC01 · v0.1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"ant-layout-content skeleton-content css-dev-only-do-not-override-ry7cab css-var-_r_o_"
+[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-
+_r_o_"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_o_"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-v
+ar-_r_o_"[39m
+                  [36m>[39m
+                    [0mUI-002[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-
+var-_r_o_"[39m
+                  [36m>[39m
+                    [0m计划接收台账[0m
+                  [36m</h2>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_o_"[39m
+                  [36m>[39m
+                    [0m当前路由：[0m
+                    [0m/dispatch/plans[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var
+-_r_o_"[39m
+                  [36m>[39m
+                    [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.
+js:37:19
+ ❯ getAllByLabelText node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/queries/labe
+l-text.js:111:38
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/__tests__/PlanLedgerPage.render.test.tsx:85:27
+     83|     await screen.findByRole('heading', { name: '计划接收台账' });
+     84|
+     85|     const ledger = screen.getByLabelText('计划台账');
+       |                           ^
+     86|     expect(within(ledger).getAllByRole('columnheader').map(({ textCont…
+     87|       '来源',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/10]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.render.test.tsx > UI-002 计划接收台账内容 > 详情抽屉使用固定五段流程并呈现 selector 的详情分区
+TestingLibraryElementError: Unable to find role="button" and name "PLAN-001"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-layout ant-layout-has-sider skeleton-shell css-dev-only-do-not-override-ry7cab css-var-
+_r_1g_"[39m
+    [36m>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"ant-layout-sider ant-layout-sider-dark skeleton-sider css-dev-only-do-not-override-ry7cab
+ css-var-_r_1g_"[39m
+        [33mstyle[39m=[32m"flex: 0 0 244px; max-width: 244px; min-width: 244px; width: 244px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-layout-sider-children"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"skeleton-brand"[39m
+          [36m>[39m
+            [0m生产调度 Demo[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"页面导航"[39m
+            [33mclass[39m=[32m"skeleton-navigation"[39m
+          [36m>[39m
+            [36m<ul[39m
+              [33mclass[39m=[32m"ant-menu ant-menu-root ant-menu-inline ant-menu-dark skeleton-menu css-dev-only-do-
+not-override-ry7cab css-var-_r_1g_ ant-menu-css-var"[39m
+              [33mdata-menu-list[39m=[32m"true"[39m
+              [33mrole[39m=[32m"menu"[39m
+              [33mtabindex[39m=[32m"0"[39m
+            [36m>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"调度"[39m
+                [36m>[39m
+                  [0m调度[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-001"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-001 调度总览"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/overview"[39m
+                      [36m>[39m
+                        [0mUI-001[0m
+                        [0m [0m
+                        [0m调度总览[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-selected ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-002"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-002 计划接收台账"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans"[39m
+                      [36m>[39m
+                        [0mUI-002[0m
+                        [0m [0m
+                        [0m计划接收台账[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-003"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-003 接车计划推荐"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans/PLAN-DEMO-001/recommendation"[39m
+                      [36m>[39m
+                        [0mUI-003[0m
+                        [0m [0m
+                        [0m接车计划推荐[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-004"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-004 任务拆解"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans/PLAN-DEMO-001/tasks"[39m
+                      [36m>[39m
+                        [0mUI-004[0m
+                        [0m [0m
+                        [0m任务拆解[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"执行"[39m
+                [36m>[39m
+                  [0m执行[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-005"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-005 派工看板"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/work-orders"[39m
+                      [36m>[39m
+                        [0mUI-005[0m
+                        [0m [0m
+                        [0m派工看板[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-006"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-006 公路预约与叫号"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/yard/appointments"[39m
+                      [36m>[39m
+                        [0mUI-006[0m
+                        [0m [0m
+                        [0m公路预约与叫号[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-007"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-007 全流程监控"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/monitor/operations"[39m
+                      [36m>[39m
+                        [0mUI-007[0m
+                        [0m [0m
+                        [0m全流程监控[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"安全"[39m
+                [36m>[39m
+                  [0m安全[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-008"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-008 异常处置"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/monitor/exceptions"[39m
+                      [36m>[39m
+                        [0mUI-008[0m
+                        [0m [0m
+                        [0m异常处置[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-009"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-009 安全联锁"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/safety/interlocks"[39m
+                      [36m>[39m
+                        [0mUI-009[0m
+                        [0m [0m
+                        [0m安全联锁[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-010"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-010 离线同步"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/operations/offline-sync"[39m
+                      [36m>[39m
+                        [0mUI-010[0m
+                        [0m [0m
+                        [0m离线同步[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"治理"[39m
+                [36m>[39m
+                  [0m治理[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-011"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-011 统计报表"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/reports/operations"[39m
+                      [36m>[39m
+                        [0mUI-011[0m
+                        [0m [0m
+                        [0m统计报表[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+            [36m</ul>[39m
+            [36m<div[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+            [36m/>[39m
+          [36m</nav>[39m
+        [36m</div>[39m
+      [36m</aside>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-layout skeleton-main css-dev-only-do-not-override-ry7cab css-var-_r_1g_"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"ant-layout-header skeleton-header css-dev-only-do-not-override-ry7cab css-var-_r_1g_"[
+39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"ant-typography skeleton-header-title css-dev-only-do-not-override-ry7cab css-var-_r_1
+g_"[39m
+          [36m>[39m
+            [0mB项目生产调度管理模块[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_1g_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css
+-var-_r_1g_"[39m
+              [36m>[39m
+                [0m工程骨架[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography skeleton-version css-dev-only-do-not-override-ry7cab css-var-_r_1g
+_"[39m
+              [36m>[39m
+                [0mC01 · v0.1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"ant-layout-content skeleton-content css-dev-only-do-not-override-ry7cab css-var-_r_1g_"
+[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-
+_r_1g_"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_1g_"
+[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-v
+ar-_r_1g_"[39m
+                  [36m>[39m
+                    [0mUI-002[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-
+var-_r_1g_"[39m
+                  [36m>[39m
+                    [0m计划接收台账[0m
+                  [36m</h2>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_1g_"[39m
+                  [36m>[39m
+                    [0m当前路由：[0m
+                    [0m/dispatch/plans[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var
+-_r_1g_"[39m
+                  [36m>[39m
+                    [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"ant-layout ant-layout-has-sider skeleton-shell css-dev-only-do-not-override-ry7cab css-var-
+_r_1g_"[39m
+    [36m>[39m
+      [36m<aside[39m
+        [33mclass[39m=[32m"ant-layout-sider ant-layout-sider-dark skeleton-sider css-dev-only-do-not-override-ry7cab
+ css-var-_r_1g_"[39m
+        [33mstyle[39m=[32m"flex: 0 0 244px; max-width: 244px; min-width: 244px; width: 244px;"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-layout-sider-children"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"skeleton-brand"[39m
+          [36m>[39m
+            [0m生产调度 Demo[0m
+          [36m</div>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"页面导航"[39m
+            [33mclass[39m=[32m"skeleton-navigation"[39m
+          [36m>[39m
+            [36m<ul[39m
+              [33mclass[39m=[32m"ant-menu ant-menu-root ant-menu-inline ant-menu-dark skeleton-menu css-dev-only-do-
+not-override-ry7cab css-var-_r_1g_ ant-menu-css-var"[39m
+              [33mdata-menu-list[39m=[32m"true"[39m
+              [33mrole[39m=[32m"menu"[39m
+              [33mtabindex[39m=[32m"0"[39m
+            [36m>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"调度"[39m
+                [36m>[39m
+                  [0m调度[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-001"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-001 调度总览"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/overview"[39m
+                      [36m>[39m
+                        [0mUI-001[0m
+                        [0m [0m
+                        [0m调度总览[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-selected ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-002"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-002 计划接收台账"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans"[39m
+                      [36m>[39m
+                        [0mUI-002[0m
+                        [0m [0m
+                        [0m计划接收台账[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-003"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-003 接车计划推荐"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans/PLAN-DEMO-001/recommendation"[39m
+                      [36m>[39m
+                        [0mUI-003[0m
+                        [0m [0m
+                        [0m接车计划推荐[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-004"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-004 任务拆解"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/plans/PLAN-DEMO-001/tasks"[39m
+                      [36m>[39m
+                        [0mUI-004[0m
+                        [0m [0m
+                        [0m任务拆解[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"执行"[39m
+                [36m>[39m
+                  [0m执行[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-005"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-005 派工看板"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/dispatch/work-orders"[39m
+                      [36m>[39m
+                        [0mUI-005[0m
+                        [0m [0m
+                        [0m派工看板[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-006"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-006 公路预约与叫号"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/yard/appointments"[39m
+                      [36m>[39m
+                        [0mUI-006[0m
+                        [0m [0m
+                        [0m公路预约与叫号[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-007"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-007 全流程监控"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/monitor/operations"[39m
+                      [36m>[39m
+                        [0mUI-007[0m
+                        [0m [0m
+                        [0m全流程监控[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"安全"[39m
+                [36m>[39m
+                  [0m安全[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-008"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-008 异常处置"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/monitor/exceptions"[39m
+                      [36m>[39m
+                        [0mUI-008[0m
+                        [0m [0m
+                        [0m异常处置[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-009"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-009 安全联锁"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/safety/interlocks"[39m
+                      [36m>[39m
+                        [0mUI-009[0m
+                        [0m [0m
+                        [0m安全联锁[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-010"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-010 离线同步"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/operations/offline-sync"[39m
+                      [36m>[39m
+                        [0mUI-010[0m
+                        [0m [0m
+                        [0m离线同步[0m
+                      [36m</a>[39m
+
+ Test Files  3 failed (3)
+      Tests  10 failed | 1 passed (11)
+   Start at  20:55:56
+   Duration  10.22s (transform 841ms, setup 470ms, import 14.10s, tests 9.04s, environment 4.41s)
+
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"ant-menu-item-group"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-title"[39m
+                  [33mrole[39m=[32m"presentation"[39m
+                  [33mtitle[39m=[32m"治理"[39m
+                [36m>[39m
+                  [0m治理[0m
+                [36m</div>[39m
+                [36m<ul[39m
+                  [33mclass[39m=[32m"ant-menu-item-group-list"[39m
+                  [33mrole[39m=[32m"group"[39m
+                [36m>[39m
+                  [36m<li[39m
+                    [33mclass[39m=[32m"ant-menu-item ant-menu-item-only-child"[39m
+                    [33mdata-menu-id[39m=[32m"rc-menu-uuid-UI-011"[39m
+                    [33mrole[39m=[32m"menuitem"[39m
+                    [33mstyle[39m=[32m"padding-left: 24px;"[39m
+                    [33mtabindex[39m=[32m"-1"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-menu-title-content"[39m
+                    [36m>[39m
+                      [36m<a[39m
+                        [33maria-label[39m=[32m"UI-011 统计报表"[39m
+                        [33mdata-discover[39m=[32m"true"[39m
+                        [33mhref[39m=[32m"/reports/operations"[39m
+                      [36m>[39m
+                        [0mUI-011[0m
+                        [0m [0m
+                        [0m统计报表[0m
+                      [36m</a>[39m
+                    [36m</span>[39m
+                  [36m</li>[39m
+                [36m</ul>[39m
+              [36m</li>[39m
+            [36m</ul>[39m
+            [36m<div[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+            [36m/>[39m
+          [36m</nav>[39m
+        [36m</div>[39m
+      [36m</aside>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"ant-layout skeleton-main css-dev-only-do-not-override-ry7cab css-var-_r_1g_"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"ant-layout-header skeleton-header css-dev-only-do-not-override-ry7cab css-var-_r_1g_"[
+39m
+        [36m>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"ant-typography skeleton-header-title css-dev-only-do-not-override-ry7cab css-var-_r_1
+g_"[39m
+          [36m>[39m
+            [0mB项目生产调度管理模块[0m
+          [36m</h1>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_1g_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css
+-var-_r_1g_"[39m
+              [36m>[39m
+                [0m工程骨架[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography skeleton-version css-dev-only-do-not-override-ry7cab css-var-_r_1g
+_"[39m
+              [36m>[39m
+                [0mC01 · v0.1[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"ant-layout-content skeleton-content css-dev-only-do-not-override-ry7cab css-var-_r_1g_"
+[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-card ant-card-bordered page-scaffold css-dev-only-do-not-override-ry7cab css-var-
+_r_1g_"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-vertical css-var-_r_1g_"
+[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-blue css-dev-only-do-not-override-ry7cab css-v
+ar-_r_1g_"[39m
+                  [36m>[39m
+                    [0mUI-002[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-heading css-dev-only-do-not-override-ry7cab css-
+var-_r_1g_"[39m
+                  [36m>[39m
+                    [0m计划接收台账[0m
+                  [36m</h2>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_1g_"[39m
+                  [36m>[39m
+                    [0m当前路由：[0m
+                    [0m/dispatch/plans[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-space-item"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-typography page-scaffold-note css-dev-only-do-not-override-ry7cab css-var
+-_r_1g_"[39m
+                  [36m>[39m
+                    [0m后续页面任务负责实现业务功能；当前 C01 仅提供可验证的工程骨架，不包含业务字段、数据、接口或操作。[0m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163
+:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/__tests__/PlanLedgerPage.render.test.tsx:115:35
+    113|     renderLedger();
+    114|
+    115|     await user.click(await screen.findByRole('button', { name: 'PLAN-0…
+       |                                   ^
+    116|     const drawer = await screen.findByRole('dialog', { name: 'PLAN-001…
+    117|     expect(within(drawer).getAllByRole('listitem').map(({ textContent …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/10]⎯
+ RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+ ? src/features/plan-entry/__tests__/commands.test.ts (0 test)
+System.Management.Automation.RemoteException
+?????? Failed Suites 1 ???????
+System.Management.Automation.RemoteException
+ FAIL  src/features/plan-entry/__tests__/commands.test.ts [ src/features/plan-entry/__tests__/commands.test.ts ]
+Error: Failed to resolve import "../commands" from "src/features/plan-entry/__tests__/commands.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/features/plan-entry/__tests__/commands.test.ts:7:46
+  3  |  import { createFixtureSnapshot } from "../../../mocks/fixtures";
+  4  |  import { createDemoStore } from "../../../stores";
+  5  |  import { createPlanEntryCommandService } from "../commands";
+     |                                                 ^
+  6  |  import { createPlanEntryGateway } from "../gateway";
+  7  |  import { createPlanEntryWorkflowStore } from "../workflow";
+ ? TransformPluginContext._formatLog ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30366:39
+ ? TransformPluginContext.error ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30363:14
+ ? normalizeUrl ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27393:18
+ ? ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27456:30
+ ? TransformPluginContext.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27424:4
+ ? EnvironmentPluginContainer.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30151:14
+ ? loadAndTransform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:20098:26
+System.Management.Automation.RemoteException
+????????????????????????[1/1]?
+System.Management.Automation.RemoteException
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  21 passed (21)
+   Start at  22:59:02
+   Duration  23.58s (transform 947ms, setup 741ms, import 12.88s, tests 26.45s, environment 7.02s)

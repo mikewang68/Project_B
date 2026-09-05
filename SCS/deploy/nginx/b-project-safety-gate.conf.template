@@ -1,0 +1,75 @@
+# Install as /etc/nginx/conf.d/b-project-safety-gate.conf on bpoc-node6 after
+# replacing __PUBLIC_SERVER_NAME__, __NODE4_EASEGRESS_HOST__,
+# __NODE5_EASEGRESS_HOST__ and __EASEGRESS_LISTEN_PORT__.
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+upstream b_project_safety_gateway {
+    least_conn;
+    server __NODE4_EASEGRESS_HOST__:__EASEGRESS_LISTEN_PORT__ max_fails=3 fail_timeout=10s;
+    server __NODE5_EASEGRESS_HOST__:__EASEGRESS_LISTEN_PORT__ max_fails=3 fail_timeout=10s;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    server_name __PUBLIC_SERVER_NAME__;
+
+    root /opt/b-project/frontend;
+    index index.html;
+    charset utf-8;
+
+    location = /health/frontend {
+        access_log off;
+        default_type application/json;
+        return 200 '{"status":"UP","service":"b-project-safety-web"}';
+    }
+
+    location /api/ {
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://b_project_safety_gateway;
+    }
+
+    location /health/ {
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://b_project_safety_gateway;
+    }
+
+    location /ws/ {
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 75s;
+        proxy_send_timeout 75s;
+        proxy_pass http://b_project_safety_gateway;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(?:js|css|png|jpg|jpeg|gif|svg|ico|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+}

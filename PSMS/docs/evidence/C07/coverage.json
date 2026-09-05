@@ -1,0 +1,309 @@
+{
+  "module": "C07",
+  "pages": ["UI-005"],
+  "selectors": ["selectDispatchBoard", "selectAssignableResources", "selectDispatchKpis"],
+  "apis": ["API-008", "API-009"],
+  "actions": ["DB-01", "DB-02", "DB-03", "DB-04", "DB-05"],
+  "scenarios": ["SCN-01", "SCN-05"],
+  "permissions": ["dispatch:view", "dispatch:assign", "dispatch:reassign", "dispatch:send", "dispatch:pause"],
+  "uiStates": ["loading", "empty", "business-error", "network-error", "forbidden", "not-found"],
+  "progressStates": ["READY_QUEUE", "ASSIGNED", "DISPATCHED", "EXECUTING"],
+  "e2eExpected": 4,
+  "screenshotsExpected": 8,
+  "checks": [
+    {
+      "requirement": "selector / strict C06 READY+ ownership",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/selectors.test.ts",
+      "name": "projects only C06-owned READY-or-later pairs with plan and resource requirements",
+      "status": "PASS"
+    },
+    {
+      "requirement": "selector / excludes drafts and historical records",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/selectors.test.ts",
+      "name": "excludes C06 drafts and historical WO-001..012/NODE-001..012 records",
+      "status": "PASS"
+    },
+    {
+      "requirement": "selectAssignableResources / scope, type, availability reason",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/selectors.test.ts",
+      "name": "filters visibility before candidate counts and keeps unavailable matching resources with reasons",
+      "status": "PASS"
+    },
+    {
+      "requirement": "selectDispatchKpis / four progress states",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/selectors.test.ts",
+      "name": "derives the four dispatch progress states and KPI counts from owned records only",
+      "status": "PASS"
+    },
+    {
+      "requirement": "data scope / AREA-A, GLOBAL, wildcard",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/ownership.test.ts",
+      "name": "exposes only AREA-A/GLOBAL/* resources to an AREA-A-visible session",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API-008 and API-009 exact method, path, and body",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/gateway.test.ts",
+      "name": "posts the exact frozen API-008 and API-009 paths and transport bodies",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API-008 and API-009 strict response identity",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/gateway.test.ts",
+      "name": "returns strict transport identity without mutating the C03 Store",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API failure envelope",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/gateway.test.ts",
+      "name": "returns a strict failure envelope unchanged",
+      "status": "PASS"
+    },
+    {
+      "requirement": "network failure",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/gateway.test.ts",
+      "name": "passes a network failure through to the command boundary",
+      "status": "PASS"
+    },
+    {
+      "requirement": "DB-01 / exact SM-007 snapshot",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/commands.test.ts",
+      "name": "accepts the exact DB-01 SM-007 snapshot and rejects extra context",
+      "status": "PASS"
+    },
+    {
+      "requirement": "DB-01 / resource binding keeps READY and WAITING",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/commands.test.ts",
+      "name": "binds a matching AVAILABLE resource without changing READY/WAITING or domain sources",
+      "status": "PASS"
+    },
+    {
+      "requirement": "DB-02 / READY to DISPATCHED and node READY",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/commands.test.ts",
+      "name": "dispatches only an assigned READY order and advances its WAITING node atomically",
+      "status": "PASS"
+    },
+    {
+      "requirement": "DB-03 and DB-04 / local execution feedback",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/commands.test.ts",
+      "name": "acknowledges, starts, pauses, resumes, and completes with frozen transitions and node sync",
+      "status": "PASS"
+    },
+    {
+      "requirement": "DB-05 / read-only scoped exception entry",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/selectors.test.ts",
+      "name": "projects DB-05 as a read-only, scoped exception entry",
+      "status": "PASS"
+    },
+    {
+      "requirement": "permission / DISPATCHER dispatch:view",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/DispatchBoardPage.permission.test.tsx",
+      "name": "DISPATCHER sees the frozen dispatch:view workspace",
+      "status": "PASS"
+    },
+    {
+      "requirement": "permission / SHIFT_LEADER dispatch:view",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/DispatchBoardPage.permission.test.tsx",
+      "name": "SHIFT_LEADER sees the frozen dispatch:view workspace",
+      "status": "PASS"
+    },
+    {
+      "requirement": "permission / BUSINESS forbidden",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/DispatchBoardPage.permission.test.tsx",
+      "name": "renders route forbidden before page data or API calls for BUSINESS",
+      "status": "PASS"
+    },
+    {
+      "requirement": "permission / assign, reassign, send, pause",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/commands.test.ts",
+      "name": "rejects invalid feedback state and pause permission without any partial write",
+      "status": "PASS"
+    },
+    {
+      "requirement": "version drift / WorkOrder and Resource",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/commands.test.ts",
+      "name": "maps post-API WorkOrder or Resource drift to DEMO-VERSION-001 without assignment",
+      "status": "PASS"
+    },
+    {
+      "requirement": "version drift / local feedback second check",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/commands.test.ts",
+      "name": "performs a second version check after the local boundary",
+      "status": "PASS"
+    },
+    {
+      "requirement": "idempotency / gateway command replay",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/commands.test.ts",
+      "name": "replays one frozen command result without repeating API, commit, workflow, or audit",
+      "status": "PASS"
+    },
+    {
+      "requirement": "idempotency / local feedback replay",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/commands.test.ts",
+      "name": "replays local feedback once and blocks SCN-05 before the local boundary",
+      "status": "PASS"
+    },
+    {
+      "requirement": "SCN-05 / DB-01 through DB-04 blocked before boundary",
+      "kind": "vitest",
+      "file": "src/features/dispatch-board/__tests__/commands.test.ts",
+      "name": "blocks SCN-05 before API and preserves workflow selections for recovery",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API-025 reset / C07 domain, workflow, and command IDs",
+      "kind": "vitest",
+      "file": "src/runtime/__tests__/runtime.test.tsx",
+      "name": "exposes one C07 runtime, reactive workflow, DB-01/DB-02 truth, and API-025 cleanup",
+      "status": "PASS"
+    },
+    {
+      "requirement": "UI state / loading and network-error",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/DispatchBoardPage.action.test.tsx",
+      "name": "shows loading, preserves selection on API-008 failure, and retries the same action",
+      "status": "PASS"
+    },
+    {
+      "requirement": "UI states / empty and business-error",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/DispatchBoardPage.permission.test.tsx",
+      "name": "renders empty and business-error states without inventing work orders",
+      "status": "PASS"
+    },
+    {
+      "requirement": "UI state / forbidden",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/DispatchBoardPage.permission.test.tsx",
+      "name": "renders route forbidden before page data or API calls for BUSINESS",
+      "status": "PASS"
+    },
+    {
+      "requirement": "UI state / not-found",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/DispatchBoardPage.permission.test.tsx",
+      "name": "uses safe not-found for AREA-B and unknown Plan",
+      "status": "PASS"
+    },
+    {
+      "requirement": "progress / READY_QUEUE",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/DispatchBoardPage.render.test.tsx",
+      "name": "shows exact identity, C06 context, KPI, queue, detail, resource pool, and Demo disclosure",
+      "status": "PASS"
+    },
+    {
+      "requirement": "progress / ASSIGNED, DISPATCHED, EXECUTING",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/DispatchBoardPage.render.test.tsx",
+      "name": "reactively renders ASSIGNED, DISPATCHED, and EXECUTING progress without horizontal-only content",
+      "status": "PASS"
+    },
+    {
+      "requirement": "E2E 1 / SCN-01 bind and dispatch",
+      "kind": "playwright",
+      "file": "e2e/ui-005-dispatch-board.spec.ts",
+      "name": "UI-005 SCN-01 binds an AREA-A resource and dispatches a C06 READY work order",
+      "status": "PASS"
+    },
+    {
+      "requirement": "E2E 2 / local execution feedback",
+      "kind": "playwright",
+      "file": "e2e/ui-005-dispatch-board.spec.ts",
+      "name": "UI-005 advances local execution feedback through pause, resume, and completion",
+      "status": "PASS"
+    },
+    {
+      "requirement": "E2E 3 / permission, scope, resource, version, idempotency",
+      "kind": "playwright",
+      "file": "e2e/ui-005-dispatch-board.spec.ts",
+      "name": "UI-005 enforces permission, data scope, resource, version, and double-submit guards",
+      "status": "PASS"
+    },
+    {
+      "requirement": "E2E 4 / recovery and SCN-05",
+      "kind": "playwright",
+      "file": "e2e/ui-005-dispatch-board.spec.ts",
+      "name": "UI-005 recovers network and malformed envelopes, then blocks SCN-05 before API",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / READY_QUEUE 1440",
+      "kind": "screenshot",
+      "file": "docs/evidence/C07/C07-UI005-SCN01-READY_QUEUE-1440x900.png",
+      "name": "READY_QUEUE original-resolution inspection (1440x1267)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / READY_QUEUE 1280",
+      "kind": "screenshot",
+      "file": "docs/evidence/C07/C07-UI005-SCN01-READY_QUEUE-1280x720.png",
+      "name": "READY_QUEUE original-resolution inspection (1280x1750)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / ASSIGNED 1440",
+      "kind": "screenshot",
+      "file": "docs/evidence/C07/C07-UI005-SCN01-ASSIGNED-1440x900.png",
+      "name": "ASSIGNED original-resolution inspection (1440x1350)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / ASSIGNED 1280",
+      "kind": "screenshot",
+      "file": "docs/evidence/C07/C07-UI005-SCN01-ASSIGNED-1280x720.png",
+      "name": "ASSIGNED original-resolution inspection (1280x1806)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / DISPATCHED 1440",
+      "kind": "screenshot",
+      "file": "docs/evidence/C07/C07-UI005-SCN01-DISPATCHED-1440x900.png",
+      "name": "DISPATCHED original-resolution inspection (1440x1350)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / DISPATCHED 1280",
+      "kind": "screenshot",
+      "file": "docs/evidence/C07/C07-UI005-SCN01-DISPATCHED-1280x720.png",
+      "name": "DISPATCHED original-resolution inspection (1280x1806)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / EXECUTING 1440",
+      "kind": "screenshot",
+      "file": "docs/evidence/C07/C07-UI005-SCN01-EXECUTING-1440x900.png",
+      "name": "EXECUTING original-resolution inspection (1440x1364)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / EXECUTING 1280",
+      "kind": "screenshot",
+      "file": "docs/evidence/C07/C07-UI005-SCN01-EXECUTING-1280x720.png",
+      "name": "EXECUTING original-resolution inspection (1280x1817)",
+      "status": "PASS"
+    }
+  ]
+}

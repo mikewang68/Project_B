@@ -1,0 +1,73 @@
+# Node / 前端
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+*.local
+
+# Java / Maven
+target/
+**/target/
+*.jar
+*.war
+*.class
+.gradle/
+**/.gradle/
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 环境与密钥（只提交 .env.example）
+.env
+.env.*
+!**/.env.example
+.mcp.json
+
+# 数据与产物
+datagen/output/
+**/datagen/output/
+*.sql.gz
+*.xlsx
+!datagen/seeds/*.csv
+
+# 大型 CAD 与构建产物
+DTS/assets/cad/train.dxf
+**/deploy/**/*.zip
+**/deploy/**/*.tar.gz
+
+# Docker 卷
+mysql-data/
+redis-data/
+
+# IDE / 系统
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+
+# 日志
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 临时文件
+tmp/
+**/tmp/
+*.tmp
+
+# Claude Code 本地态
+.claude/settings.local.json

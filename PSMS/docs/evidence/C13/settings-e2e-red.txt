@@ -1,0 +1,11 @@
+C13 UI-012 browser TDD RED evidence
+date: 2026-07-23
+command: node_modules\.bin\playwright.CMD test e2e/ui-012-settings-system.spec.ts
+exitCode: 1
+tests: 2 failed, 3 passed (5)
+duration: 33.5s
+
+Expected failures:
+- `UI-012 validates, discards, saves all whitelist field types, and emits strict API-023` failed because the fixed in-page summary displayed form errors but omitted field errors belonging to a different selected group;
+- `UI-012 maps read faults and enforces route/offline permission boundaries` failed because React development effect replay issued two API-022 reads while the E2E fault controller consumed the fault after one read, allowing the second success to replace it;
+- the first failure requires a page behavior fix; the second requires a deterministic E2E controller fix, not a public contract or runtime change.

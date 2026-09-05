@@ -1,0 +1,214 @@
+COMMAND: node_modules\.bin\tsc.CMD --noEmit
+EXIT_CODE: 1
+src/app/App.tsx(14,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/app/__tests__/appRender.test.tsx(21,12): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/app/__tests__/routeRender.test.tsx(38,27): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/app/routeCatalog.ts(8,8): error TS7016: Could not find a declaration file for module 'react'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react';`
+src/app/router.tsx(40,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/app/router.tsx(54,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/app/router.tsx(56,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/components/skeleton/PageScaffold.tsx(16,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/components/skeleton/PageScaffold.tsx(16,6): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/dispatch-board/components/DispatchContextHeader.tsx(19,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/DispatchContextHeader.tsx(19,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/dispatch-board/components/DispatchContextHeader.tsx(20,8): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/dispatch-board/components/DispatchContextHeader.tsx(39,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/DispatchKpiStrip.tsx(16,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/DispatchKpiStrip.tsx(16,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/dispatch-board/components/DispatchKpiStrip.tsx(18,10): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/dispatch-board/components/DispatchKpiStrip.tsx(22,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/ExecutionFeedbackPanel.tsx(34,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/ExecutionFeedbackPanel.tsx(34,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/dispatch-board/components/ExecutionFeedbackPanel.tsx(35,8): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/dispatch-board/components/ExecutionFeedbackPanel.tsx(85,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/ResourceAssignmentPanel.tsx(23,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/ResourceAssignmentPanel.tsx(23,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/dispatch-board/components/ResourceAssignmentPanel.tsx(24,8): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/dispatch-board/components/ResourceAssignmentPanel.tsx(44,17): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/ResourceAssignmentPanel.tsx(56,17): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/ResourceAssignmentPanel.tsx(71,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderDetailPanel.tsx(17,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderDetailPanel.tsx(17,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/dispatch-board/components/WorkOrderDetailPanel.tsx(18,8): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/dispatch-board/components/WorkOrderDetailPanel.tsx(20,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderDetailPanel.tsx(46,13): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderDetailPanel.tsx(57,13): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderDetailPanel.tsx(58,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderDetailPanel.tsx(61,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderQueue.tsx(22,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderQueue.tsx(22,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/dispatch-board/components/WorkOrderQueue.tsx(23,8): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/dispatch-board/components/WorkOrderQueue.tsx(25,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderQueue.tsx(36,19): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderQueue.tsx(36,85): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderQueue.tsx(37,19): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderQueue.tsx(53,19): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderQueue.tsx(57,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/dispatch-board/components/WorkOrderQueue.tsx(60,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionActionPanel.tsx(42,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/exception-handling/components/ExceptionActionPanel.tsx(42,6): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/exception-handling/components/ExceptionActionPanel.tsx(44,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionActionPanel.tsx(52,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionActionPanel.tsx(53,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionActionPanel.tsx(60,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionActionPanel.tsx(61,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionActionPanel.tsx(71,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionActionPanel.tsx(72,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionActionPanel.tsx(79,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionContextHeader.tsx(14,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/exception-handling/components/ExceptionContextHeader.tsx(14,6): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/exception-handling/components/ExceptionDetailPanel.tsx(15,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionDetailPanel.tsx(15,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/exception-handling/components/ExceptionDetailPanel.tsx(16,8): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/exception-handling/components/ExceptionDetailPanel.tsx(29,13): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionDetailPanel.tsx(33,13): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionDetailPanel.tsx(38,8): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/exception-handling/components/ExceptionDetailPanel.tsx(42,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionDetailPanel.tsx(48,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionDetailPanel.tsx(51,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionEvidencePanel.tsx(7,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/exception-handling/components/ExceptionEvidencePanel.tsx(7,6): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/exception-handling/components/ExceptionKpiStrip.tsx(16,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionKpiStrip.tsx(16,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/exception-handling/components/ExceptionKpiStrip.tsx(18,10): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/exception-handling/components/ExceptionKpiStrip.tsx(22,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionLedger.tsx(16,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/exception-handling/components/ExceptionLedger.tsx(16,6): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/features/exception-handling/components/ExceptionLedger.tsx(17,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionLedger.tsx(21,13): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionLedger.tsx(29,17): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionLedger.tsx(41,17): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionLedger.tsx(46,13): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/exception-handling/components/ExceptionLedger.tsx(49,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/plan-entry/components/DemoScenarioBar.tsx(49,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/features/plan-entry/components/DemoScenarioBar.tsx(60,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/features/plan-entry/components/DemoScenarioBar.tsx(61,7): error TS7026: JSX element implicitly has type 'any' becau…20587 tokens truncated…erface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(285,27): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(287,27): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(288,27): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(290,27): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(291,25): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(294,19): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(295,17): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(296,15): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(298,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(302,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/OverviewPage.tsx(307,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/PlanLedgerPage.tsx(2,37): error TS7016: Could not find a declaration file for module 'react'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react';`
+src/pages/dispatch/PlanLedgerPage.tsx(222,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/PlanLedgerPage.tsx(222,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/dispatch/PlanLedgerPage.tsx(224,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/PlanLedgerPage.tsx(243,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/PlanLedgerPage.tsx(259,8): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/pages/dispatch/PlanLedgerPage.tsx(263,8): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/pages/dispatch/PlanLedgerPage.tsx(322,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(2,54): error TS7016: Could not find a declaration file for module 'react'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react';`
+src/pages/dispatch/ReceptionRecommendationPage.tsx(186,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(187,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(189,14): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(196,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(197,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(199,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(200,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(214,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(215,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(223,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(224,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(227,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(228,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(229,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(260,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(267,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(267,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/dispatch/ReceptionRecommendationPage.tsx(268,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(278,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/ReceptionRecommendationPage.tsx(304,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(2,34): error TS7016: Could not find a declaration file for module 'react'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react';`
+src/pages/dispatch/TaskDecompositionPage.tsx(195,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(205,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(223,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(224,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(238,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(239,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(246,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(247,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(249,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(254,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(262,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(262,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/dispatch/TaskDecompositionPage.tsx(263,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(273,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/TaskDecompositionPage.tsx(334,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/governance/AuditLogPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/monitor/ExceptionHandlingPage.tsx(2,45): error TS7016: Could not find a declaration file for module 'react'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react';`
+src/pages/monitor/ExceptionHandlingPage.tsx(211,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/monitor/ExceptionHandlingPage.tsx(218,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/monitor/ExceptionHandlingPage.tsx(262,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/monitor/ExceptionHandlingPage.tsx(263,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/monitor/ExceptionHandlingPage.tsx(269,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/monitor/ExceptionHandlingPage.tsx(269,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/monitor/ExceptionHandlingPage.tsx(270,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/monitor/ExceptionHandlingPage.tsx(277,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/monitor/ExceptionHandlingPage.tsx(285,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/monitor/OperationMonitorPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/operations/OfflineSyncPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/reports/OperationReportPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/safety/SafetyInterlockPage.tsx(2,45): error TS7016: Could not find a declaration file for module 'react'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react';`
+src/pages/safety/SafetyInterlockPage.tsx(219,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/safety/SafetyInterlockPage.tsx(226,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/safety/SafetyInterlockPage.tsx(273,11): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/safety/SafetyInterlockPage.tsx(274,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/safety/SafetyInterlockPage.tsx(280,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/safety/SafetyInterlockPage.tsx(280,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/safety/SafetyInterlockPage.tsx(281,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/safety/SafetyInterlockPage.tsx(288,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/safety/SafetyInterlockPage.tsx(296,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/settings/SystemSettingsPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/yard/RoadAppointmentPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/runtime/DemoRuntimeContext.tsx(7,8): error TS7016: Could not find a declaration file for module 'react'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react';`
+src/runtime/DemoRuntimeContext.tsx(247,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/runtime/__tests__/runtime.test.tsx(172,14): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/runtime/__tests__/runtime.test.tsx(172,14): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/runtime/__tests__/runtime.test.tsx(172,55): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/runtime/__tests__/runtime.test.tsx(206,14): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/runtime/__tests__/runtime.test.tsx(206,76): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/runtime/__tests__/runtime.test.tsx(240,14): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/runtime/__tests__/runtime.test.tsx(240,81): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.

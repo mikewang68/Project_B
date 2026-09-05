@@ -1,0 +1,2616 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 228.5
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3505.211,
+            1746.685
+          ],
+          [
+            3303.46,
+            1639.426
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 120.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3293.931,
+            1623.545
+          ],
+          [
+            3293.931,
+            1503.337
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 1240.4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3311.889,
+            1485.318
+          ],
+          [
+            4552.263,
+            1485.318
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 965.4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3323.922,
+            1497.29
+          ],
+          [
+            4289.309,
+            1497.29
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 965.4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3323.922,
+            1603.571
+          ],
+          [
+            4289.309,
+            1603.571
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 131.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3469.173,
+            1713.945
+          ],
+          [
+            3353.547,
+            1652.436
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 235.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4313.314,
+            1555.317
+          ],
+          [
+            4548.293,
+            1555.317
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 1224.1
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4542.063,
+            1491.304
+          ],
+          [
+            3317.936,
+            1491.304
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 110.6
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3299.917,
+            1509.323
+          ],
+          [
+            3299.917,
+            1619.941
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 219.4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3309.446,
+            1635.822
+          ],
+          [
+            3458.178,
+            1714.861
+          ],
+          [
+            3503.195,
+            1738.805
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 120.9
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3518.588,
+            1751.021
+          ],
+          [
+            3524.268,
+            1757.374
+          ],
+          [
+            3599.032,
+            1841.299
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 143.4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3612.469,
+            1847.285
+          ],
+          [
+            3755.827,
+            1847.285
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 129.5
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3596.344,
+            1847.285
+          ],
+          [
+            3510.22,
+            1750.594
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 139.1
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3609.782,
+            1853.271
+          ],
+          [
+            3748.925,
+            1853.271
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 123.7
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3613.813,
+            1847.285
+          ],
+          [
+            3737.502,
+            1847.285
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 133.6
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3959.96,
+            1736.85
+          ],
+          [
+            4073.387,
+            1666.241
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 138.9
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3961.487,
+            1742.959
+          ],
+          [
+            4079.373,
+            1669.539
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 499.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3976.879,
+            1716.083
+          ],
+          [
+            3477.663,
+            1716.083
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 452.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3498.37,
+            1723.046
+          ],
+          [
+            3950.553,
+            1723.046
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 519.3
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3466.974,
+            1719.564
+          ],
+          [
+            3986.225,
+            1719.564
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 443.5
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3506.921,
+            1739.538
+          ],
+          [
+            3950.431,
+            1739.538
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 130.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3745.321,
+            1841.299
+          ],
+          [
+            3615.157,
+            1841.299
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 342.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3561.955,
+            1745.524
+          ],
+          [
+            3904.193,
+            1745.524
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 695.9
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3361.976,
+            1618.536
+          ],
+          [
+            4057.873,
+            1618.536
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 401.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4105.883,
+            1618.536
+          ],
+          [
+            4506.88,
+            1618.536
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 439.5
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3510.586,
+            1733.552
+          ],
+          [
+            3950.126,
+            1733.552
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 144.4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4337.319,
+            1500.283
+          ],
+          [
+            4481.715,
+            1500.283
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 162.4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4490.694,
+            1553.302
+          ],
+          [
+            4328.34,
+            1553.302
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 162.4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4490.694,
+            1557.333
+          ],
+          [
+            4328.34,
+            1557.333
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 128.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4336.708,
+            1507.491
+          ],
+          [
+            4464.734,
+            1507.491
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 128.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4336.708,
+            1546.216
+          ],
+          [
+            4464.734,
+            1546.216
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 128.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4336.708,
+            1527.037
+          ],
+          [
+            4464.734,
+            1527.037
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 393.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3543.936,
+            1661.049
+          ],
+          [
+            3937.115,
+            1661.049
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 393.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3543.936,
+            1728.543
+          ],
+          [
+            3937.115,
+            1728.543
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 393.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3543.936,
+            1668.562
+          ],
+          [
+            3937.115,
+            1668.562
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 393.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3543.936,
+            1677.541
+          ],
+          [
+            3937.115,
+            1677.541
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 393.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3543.936,
+            1686.581
+          ],
+          [
+            3937.115,
+            1686.581
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 393.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3543.936,
+            1695.56
+          ],
+          [
+            3937.115,
+            1695.56
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 393.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3543.936,
+            1704.539
+          ],
+          [
+            3937.115,
+            1704.539
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_DOTE",
+        "length_m": 393.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3543.936,
+            1713.579
+          ],
+          [
+            3937.115,
+            1713.579
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_转运站初步方案",
+        "length_m": 576.1
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3498.858,
+            1633.074
+          ],
+          [
+            3502.89,
+            1633.074
+          ],
+          [
+            3500.874,
+            1633.074
+          ],
+          [
+            3500.874,
+            1631.058
+          ],
+          [
+            4068.867,
+            1631.058
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_转运站初步方案",
+        "length_m": 563.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3500.874,
+            1627.576
+          ],
+          [
+            4063.859,
+            1627.576
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_转运站初步方案",
+        "length_m": 563.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3500.874,
+            1657.567
+          ],
+          [
+            4063.859,
+            1657.567
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_转运站初步方案",
+        "length_m": 580.8
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3494.094,
+            1638.082
+          ],
+          [
+            3498.064,
+            1638.082
+          ],
+          [
+            3496.049,
+            1638.082
+          ],
+          [
+            3496.049,
+            1636.067
+          ],
+          [
+            4068.867,
+            1636.067
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 119.8
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4507.186,
+            1611.084
+          ],
+          [
+            4507.186,
+            1491.304
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 144.4
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4337.319,
+            1603.571
+          ],
+          [
+            4481.715,
+            1603.571
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_站场道路",
+        "length_m": 119.8
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            4313.314,
+            1491.304
+          ],
+          [
+            4313.314,
+            1611.084
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_转运站初步方案",
+        "length_m": 343.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3689.859,
+            1503.948
+          ],
+          [
+            4033.013,
+            1503.948
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_3中心线层",
+        "length_m": 343.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3689.859,
+            1507.43
+          ],
+          [
+            4033.013,
+            1507.43
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_3中心线层",
+        "length_m": 343.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3689.859,
+            1505.964
+          ],
+          [
+            4033.013,
+            1505.964
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_3中心线层",
+        "length_m": 343.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3689.859,
+            1504.192
+          ],
+          [
+            4033.013,
+            1504.192
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_3中心线层",
+        "length_m": 343.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3689.859,
+            1512.377
+          ],
+          [
+            4033.013,
+            1512.377
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_3中心线层",
+        "length_m": 343.2
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3689.859,
+            1510.972
+          ],
+          [
+            4033.013,
+            1510.972
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_中心线层",
+        "length_m": 194.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3703.053,
+            1534.672
+          ],
+          [
+            3773.052,
+            1534.672
+          ],
+          [
+            3773.052,
+            1561.67
+          ],
+          [
+            3703.053,
+            1561.67
+          ],
+          [
+            3703.053,
+            1534.672
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_中心线层",
+        "length_m": 194.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3773.052,
+            1534.672
+          ],
+          [
+            3843.051,
+            1534.672
+          ],
+          [
+            3843.051,
+            1561.67
+          ],
+          [
+            3773.052,
+            1561.67
+          ],
+          [
+            3773.052,
+            1534.672
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_中心线层",
+        "length_m": 194.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3843.051,
+            1534.672
+          ],
+          [
+            3913.05,
+            1534.672
+          ],
+          [
+            3913.05,
+            1561.67
+          ],
+          [
+            3843.051,
+            1561.67
+          ],
+          [
+            3843.051,
+            1534.672
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_中心线层",
+        "length_m": 194.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3913.05,
+            1534.672
+          ],
+          [
+            3983.048,
+            1534.672
+          ],
+          [
+            3983.048,
+            1561.67
+          ],
+          [
+            3913.05,
+            1561.67
+          ],
+          [
+            3913.05,
+            1534.672
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_转运站初步方案",
+        "length_m": 790.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3419.942,
+            1504.192
+          ],
+          [
+            4209.904,
+            1504.192
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "track",
+        "layer": "PDF_转运站初步方案",
+        "length_m": 790.0
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3419.942,
+            1530.213
+          ],
+          [
+            4209.904,
+            1530.213
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 387.4
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4334.876,
+              1557.303
+            ],
+            [
+              4482.326,
+              1557.303
+            ],
+            [
+              4482.326,
+              1603.571
+            ],
+            [
+              4334.876,
+              1603.571
+            ],
+            [
+              4334.876,
+              1557.303
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 334.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4336.769,
+              1546.4
+            ],
+            [
+              4464.673,
+              1546.4
+            ],
+            [
+              4464.673,
+              1507.308
+            ],
+            [
+              4336.769,
+              1507.308
+            ],
+            [
+              4336.769,
+              1546.4
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 588.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4336.952,
+              1546.216
+            ],
+            [
+              4336.952,
+              1545.605
+            ],
+            [
+              4464.49,
+              1545.605
+            ],
+            [
+              4464.49,
+              1546.216
+            ],
+            [
+              4336.952,
+              1546.216
+            ],
+            [
+              4464.49,
+              1546.216
+            ],
+            [
+              4464.49,
+              1507.491
+            ],
+            [
+              4336.952,
+              1507.491
+            ],
+            [
+              4336.952,
+              1546.216
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 256.3
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4336.952,
+              1508.102
+            ],
+            [
+              4464.49,
+              1508.102
+            ],
+            [
+              4464.49,
+              1507.491
+            ],
+            [
+              4336.952,
+              1507.491
+            ],
+            [
+              4336.952,
+              1508.102
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 256.9
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4336.952,
+              1527.464
+            ],
+            [
+              4464.49,
+              1527.464
+            ],
+            [
+              4464.49,
+              1526.548
+            ],
+            [
+              4336.952,
+              1526.548
+            ],
+            [
+              4336.952,
+              1527.464
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 192.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4355.704,
+              1533.634
+            ],
+            [
+              4355.704,
+              1539.62
+            ],
+            [
+              4445.738,
+              1539.62
+            ],
+            [
+              4445.738,
+              1533.634
+            ],
+            [
+              4355.704,
+              1533.634
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 188.1
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4356.193,
+              1534.122
+            ],
+            [
+              4356.193,
+              1539.131
+            ],
+            [
+              4445.249,
+              1539.131
+            ],
+            [
+              4445.249,
+              1534.122
+            ],
+            [
+              4356.193,
+              1534.122
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 192.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4355.704,
+              1514.271
+            ],
+            [
+              4355.704,
+              1520.257
+            ],
+            [
+              4445.738,
+              1520.257
+            ],
+            [
+              4445.738,
+              1514.271
+            ],
+            [
+              4355.704,
+              1514.271
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 188.1
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4356.193,
+              1514.76
+            ],
+            [
+              4356.193,
+              1519.768
+            ],
+            [
+              4445.249,
+              1519.768
+            ],
+            [
+              4445.249,
+              1514.76
+            ],
+            [
+              4356.193,
+              1514.76
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 906.3
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3936.81,
+              1668.379
+            ],
+            [
+              3544.242,
+              1668.379
+            ],
+            [
+              3544.242,
+              1728.971
+            ],
+            [
+              3936.81,
+              1728.971
+            ],
+            [
+              3936.81,
+              1668.379
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 904.7
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3936.627,
+              1668.562
+            ],
+            [
+              3544.425,
+              1668.562
+            ],
+            [
+              3544.425,
+              1728.727
+            ],
+            [
+              3936.627,
+              1728.727
+            ],
+            [
+              3936.627,
+              1668.562
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.6
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3544.425,
+              1728.727
+            ],
+            [
+              3545.036,
+              1728.727
+            ],
+            [
+              3545.036,
+              1668.562
+            ],
+            [
+              3544.425,
+              1668.562
+            ],
+            [
+              3544.425,
+              1728.727
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3574.477,
+              1668.745
+            ],
+            [
+              3575.393,
+              1668.745
+            ],
+            [
+              3575.393,
+              1728.727
+            ],
+            [
+              3574.477,
+              1728.727
+            ],
+            [
+              3574.477,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3604.468,
+              1668.745
+            ],
+            [
+              3605.384,
+              1668.745
+            ],
+            [
+              3605.384,
+              1728.727
+            ],
+            [
+              3604.468,
+              1728.727
+            ],
+            [
+              3604.468,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3634.459,
+              1668.745
+            ],
+            [
+              3635.375,
+              1668.745
+            ],
+            [
+              3635.375,
+              1728.727
+            ],
+            [
+              3634.459,
+              1728.727
+            ],
+            [
+              3634.459,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3664.449,
+              1668.745
+            ],
+            [
+              3665.366,
+              1668.745
+            ],
+            [
+              3665.366,
+              1728.727
+            ],
+            [
+              3664.449,
+              1728.727
+            ],
+            [
+              3664.449,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.7
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3694.501,
+              1668.745
+            ],
+            [
+              3695.356,
+              1668.745
+            ],
+            [
+              3695.356,
+              1728.727
+            ],
+            [
+              3694.501,
+              1728.727
+            ],
+            [
+              3694.501,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.7
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3724.492,
+              1668.745
+            ],
+            [
+              3725.347,
+              1668.745
+            ],
+            [
+              3725.347,
+              1728.727
+            ],
+            [
+              3724.492,
+              1728.727
+            ],
+            [
+              3724.492,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3725.653,
+              1668.745
+            ],
+            [
+              3726.569,
+              1668.745
+            ],
+            [
+              3726.569,
+              1728.727
+            ],
+            [
+              3725.653,
+              1728.727
+            ],
+            [
+              3725.653,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.7
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3755.705,
+              1668.745
+            ],
+            [
+              3756.56,
+              1668.745
+            ],
+            [
+              3756.56,
+              1728.727
+            ],
+            [
+              3755.705,
+              1728.727
+            ],
+            [
+              3755.705,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.7
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3785.695,
+              1668.745
+            ],
+            [
+              3786.551,
+              1668.745
+            ],
+            [
+              3786.551,
+              1728.727
+            ],
+            [
+              3785.695,
+              1728.727
+            ],
+            [
+              3785.695,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3815.686,
+              1668.745
+            ],
+            [
+              3816.602,
+              1668.745
+            ],
+            [
+              3816.602,
+              1728.727
+            ],
+            [
+              3815.686,
+              1728.727
+            ],
+            [
+              3815.686,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3845.677,
+              1668.745
+            ],
+            [
+              3846.593,
+              1668.745
+            ],
+            [
+              3846.593,
+              1728.727
+            ],
+            [
+              3845.677,
+              1728.727
+            ],
+            [
+              3845.677,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3875.668,
+              1668.745
+            ],
+            [
+              3876.584,
+              1668.745
+            ],
+            [
+              3876.584,
+              1728.727
+            ],
+            [
+              3875.668,
+              1728.727
+            ],
+            [
+              3875.668,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_0",
+        "perimeter_m": 121.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3905.659,
+              1668.745
+            ],
+            [
+              3906.575,
+              1668.745
+            ],
+            [
+              3906.575,
+              1728.727
+            ],
+            [
+              3905.659,
+              1728.727
+            ],
+            [
+              3905.659,
+              1668.745
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 120.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4554.34,
+              1560.754
+            ],
+            [
+              4519.341,
+              1560.754
+            ],
+            [
+              4519.341,
+              1585.766
+            ],
+            [
+              4554.34,
+              1585.766
+            ],
+            [
+              4554.34,
+              1560.754
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 139.9
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4526.243,
+              1503.307
+            ],
+            [
+              4526.243,
+              1548.293
+            ],
+            [
+              4551.225,
+              1548.293
+            ],
+            [
+              4551.225,
+              1503.307
+            ],
+            [
+              4526.243,
+              1503.307
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 270.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3708.489,
+              1790.541
+            ],
+            [
+              3708.489,
+              1755.541
+            ],
+            [
+              3808.509,
+              1755.541
+            ],
+            [
+              3808.509,
+              1790.541
+            ],
+            [
+              3708.489,
+              1790.541
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 310.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3578.508,
+              1790.541
+            ],
+            [
+              3578.508,
+              1755.541
+            ],
+            [
+              3698.502,
+              1755.541
+            ],
+            [
+              3698.502,
+              1790.541
+            ],
+            [
+              3578.508,
+              1790.541
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 422.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3612.469,
+              1834.519
+            ],
+            [
+              3588.006,
+              1807.033
+            ],
+            [
+              3788.719,
+              1807.033
+            ],
+            [
+              3747.123,
+              1834.519
+            ],
+            [
+              3612.469,
+              1834.519
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 415.2
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3896.68,
+              1768.613
+            ],
+            [
+              3896.68,
+              1785.41
+            ],
+            [
+              3818.496,
+              1784.952
+            ],
+            [
+              3818.496,
+              1750.533
+            ],
+            [
+              3896.68,
+              1750.533
+            ],
+            [
+              3818.496,
+              1750.533
+            ],
+            [
+              3818.496,
+              1784.952
+            ],
+            [
+              3896.68,
+              1785.41
+            ],
+            [
+              3896.68,
+              1768.613
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 906.4
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3544.242,
+              1728.971
+            ],
+            [
+              3936.81,
+              1728.971
+            ],
+            [
+              3936.81,
+              1668.379
+            ],
+            [
+              3544.242,
+              1668.348
+            ],
+            [
+              3544.242,
+              1728.971
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 334.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4336.769,
+              1546.4
+            ],
+            [
+              4464.673,
+              1546.4
+            ],
+            [
+              4464.704,
+              1507.308
+            ],
+            [
+              4336.769,
+              1507.308
+            ],
+            [
+              4336.769,
+              1546.4
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 210.6
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3665.854,
+              1667.218
+            ],
+            [
+              3670.863,
+              1614.688
+            ],
+            [
+              3670.863,
+              1667.218
+            ],
+            [
+              3665.854,
+              1614.688
+            ],
+            [
+              3665.854,
+              1667.218
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 299.6
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              4222.242,
+              1598.563
+            ],
+            [
+              4290.195,
+              1598.563
+            ],
+            [
+              4290.164,
+              1516.684
+            ],
+            [
+              4222.242,
+              1516.684
+            ],
+            [
+              4222.242,
+              1598.563
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "category": "area",
+        "layer": "PDF_转运站初步方案",
+        "perimeter_m": 170.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3347.072,
+              1577.978
+            ],
+            [
+              3397.097,
+              1577.978
+            ],
+            [
+              3397.097,
+              1542.979
+            ],
+            [
+              3347.072,
+              1542.979
+            ],
+            [
+              3347.072,
+              1577.978
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

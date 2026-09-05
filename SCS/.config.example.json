@@ -1,0 +1,25 @@
+{
+  "server": {
+    "address": "127.0.0.1",
+    "port": 8080,
+    "allowedOriginPatterns": "http://127.0.0.1:*,http://localhost:*"
+  },
+  "database": {
+    "url": "jdbc:mysql://127.0.0.1:3306/b_project?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai",
+    "username": "b_project",
+    "password": "change-me",
+    "driverClassName": "com.mysql.cj.jdbc.Driver",
+    "maximumPoolSize": 10
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "password": "",
+    "database": 0
+  },
+  "frontend": {
+    "devPort": 5173,
+    "apiProxyTarget": "http://127.0.0.1:8080",
+    "websocketProxyTarget": "ws://127.0.0.1:8080"
+  }
+}

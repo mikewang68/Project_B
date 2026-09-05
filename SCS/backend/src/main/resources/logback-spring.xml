@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 适配 systemd / journalctl：只输出控制台，由 journald 收集，不额外落文件 -->
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [traceId=%X{traceId:-}] %logger{36} - %msg%n"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 访问日志（method/path/status/durationMs 由 TraceIdFilter 输出） -->
+    <logger name="ACCESS" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- RocketMQ/Netty 客户端自身日志降噪 -->
+    <logger name="org.apache.rocketmq" level="WARN"/>
+    <logger name="io.netty" level="WARN"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

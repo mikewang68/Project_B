@@ -1,0 +1,62 @@
+# Replace __NODE4_BACKEND_HOST__, __BACKEND_PORT__, __EASEGRESS_LISTEN_PORT__
+# and __PUBLIC_SERVER_NAME__ before applying with egctl.
+name: b-project-safety-http-pipeline
+kind: Pipeline
+flow:
+- filter: backend-proxy
+filters:
+- name: backend-proxy
+  kind: Proxy
+  pools:
+  - servers:
+    - url: http://__NODE4_BACKEND_HOST__:__BACKEND_PORT__
+      keepHost: true
+    loadBalance:
+      policy: roundRobin
+    healthCheck:
+      interval: 10s
+      timeout: 2s
+      fails: 3
+      pass: 2
+      uri: /health/ready
+      method: GET
+      match:
+        statusCodes:
+        - [200, 299]
+  timeout: 10s
+  serverMaxBodySize: 4194304
+---
+name: b-project-safety-websocket-pipeline
+kind: Pipeline
+flow:
+- filter: websocket-proxy
+filters:
+- name: websocket-proxy
+  kind: WebSocketProxy
+  pools:
+  - servers:
+    - url: ws://__NODE4_BACKEND_HOST__:__BACKEND_PORT__
+      keepHost: true
+    loadBalance:
+      policy: roundRobin
+    clientMaxMsgSize: 1048576
+    serverMaxMsgSize: 1048576
+    originPatterns:
+    - __PUBLIC_SERVER_NAME__
+---
+name: b-project-safety-http-server
+kind: HTTPServer
+port: __EASEGRESS_LISTEN_PORT__
+https: false
+keepAlive: true
+keepAliveTimeout: 75s
+maxConnection: 4096
+rules:
+- paths:
+  - pathPrefix: /api
+    backend: b-project-safety-http-pipeline
+  - pathPrefix: /health
+    backend: b-project-safety-http-pipeline
+  - pathPrefix: /ws
+    clientMaxBodySize: -1
+    backend: b-project-safety-websocket-pipeline

@@ -1,0 +1,1 @@
+- [curl-auth 配方](curl-auth-recipe.md) — dev 环境 curl 拿 Bearer token 全流程（transport crypto 关、captcha Redis 直取）

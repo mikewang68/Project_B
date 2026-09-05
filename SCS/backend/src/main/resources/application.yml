@@ -1,0 +1,127 @@
+server:
+  address: ${SERVER_ADDRESS:0.0.0.0}
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force-response: true
+  compression:
+    enabled: true
+
+spring:
+  application:
+    name: b-project-safety-gate
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  mvc:
+    # 找不到 handler 时抛 NoHandlerFoundException，由 GlobalExceptionHandler 统一返回 404 结构
+    throw-exception-if-no-handler-found: true
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: Asia/Shanghai
+  # ---- openGauss（HikariCP + JdbcTemplate；本阶段不建业务表、不引入 ORM）----
+  # 注意：官方 org.opengauss:opengauss-jdbc 6.0.0 的驱动类为 org.postgresql.Driver，
+  # URL 前缀为 jdbc:postgresql://（openGauss 6.0 驱动与 PostgreSQL 线协议对齐）。
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${OPENGAUSS_JDBC_URL:jdbc:postgresql://${OPENGAUSS_HOST:127.0.0.1}:${OPENGAUSS_PORT:5432}/${OPENGAUSS_DATABASE:b_project}}
+    username: ${OPENGAUSS_USERNAME:b_project}
+    password: ${OPENGAUSS_PASSWORD:}
+    hikari:
+      pool-name: SafetyGateHikariPool
+      maximum-pool-size: ${OPENGAUSS_POOL_MAX:10}
+      minimum-idle: 2
+      connection-timeout: 3000
+      validation-timeout: 2000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+  # ---- Kvrocks（Redis 协议，Lettuce）----
+  data:
+    redis:
+      host: ${KVROCKS_HOST:127.0.0.1}
+      port: ${KVROCKS_PORT:6666}
+      password: ${KVROCKS_PASSWORD:}
+      database: ${KVROCKS_DATABASE:0}
+      timeout: 2s
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      show-components: always
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  info:
+    env:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
+
+info:
+  app:
+    name: ${spring.application.name}
+    version: "@project.version@"
+
+app:
+  cors:
+    # 环境变量 CORS_ALLOWED_ORIGINS，逗号分隔；生产同源时可只填实际域名
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173}
+  idempotency:
+    ttl-seconds: ${IDEMPOTENCY_TTL_SECONDS:600}
+  demo:
+    user:
+      id: ${DEMO_USER_ID:USR-001}
+      name: ${DEMO_USER_NAME:李娜}
+      role: ${DEMO_USER_ROLE:安全员}
+      team: ${DEMO_USER_TEAM:安全管理组}
+      shift: ${DEMO_USER_SHIFT:夜班}
+      online: ${DEMO_USER_ONLINE:true}
+  rocketmq:
+    enabled: ${ROCKETMQ_ENABLED:false}
+    name-server: ${ROCKETMQ_NAMESRV_ADDR:127.0.0.1:9876}
+    producer-group: ${ROCKETMQ_PRODUCER_GROUP:safety-control-demo-producer}
+    timeout-ms: ${ROCKETMQ_TIMEOUT_MS:3000}
+  opengemini:
+    enabled: ${OPENGEMINI_ENABLED:false}
+    base-url: ${OPENGEMINI_URL:http://127.0.0.1:8086}
+    timeout-ms: ${OPENGEMINI_TIMEOUT_MS:2000}
+
+logging:
+  level:
+    root: INFO
+    com.bproject.safety: ${APP_LOG_LEVEL:INFO}

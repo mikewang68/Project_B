@@ -1,0 +1,200 @@
+{
+  "verifiedAt": "2026-07-16",
+  "node": "24.18.0",
+  "packageManager": "pnpm@11.10.0",
+  "saveExact": true,
+  "packages": [
+    {
+      "package": "node",
+      "version": "24.18.0",
+      "scope": "tool",
+      "license": "Node.js",
+      "purpose": "LTS runtime",
+      "officialUrl": "https://nodejs.org/en/blog/release/v24.18.0"
+    },
+    {
+      "package": "pnpm",
+      "version": "11.10.0",
+      "scope": "tool",
+      "license": "MIT",
+      "purpose": "exact installs and lockfile",
+      "officialUrl": "https://www.npmjs.com/package/pnpm"
+    },
+    {
+      "package": "react",
+      "version": "19.2.7",
+      "scope": "runtime",
+      "license": "MIT",
+      "purpose": "component runtime",
+      "officialUrl": "https://www.npmjs.com/package/react"
+    },
+    {
+      "package": "react-dom",
+      "version": "19.2.7",
+      "scope": "runtime",
+      "license": "MIT",
+      "purpose": "browser renderer",
+      "officialUrl": "https://www.npmjs.com/package/react-dom"
+    },
+    {
+      "package": "typescript",
+      "version": "7.0.2",
+      "scope": "development",
+      "license": "Apache-2.0",
+      "purpose": "strict types",
+      "officialUrl": "https://www.npmjs.com/package/typescript"
+    },
+    {
+      "package": "vite",
+      "version": "8.1.4",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "development/build",
+      "officialUrl": "https://www.npmjs.com/package/vite"
+    },
+    {
+      "package": "@vitejs/plugin-react",
+      "version": "6.0.3",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "React Fast Refresh",
+      "officialUrl": "https://www.npmjs.com/package/%40vitejs%2Fplugin-react"
+    },
+    {
+      "package": "antd",
+      "version": "6.5.1",
+      "scope": "runtime",
+      "license": "MIT",
+      "purpose": "enterprise UI components",
+      "officialUrl": "https://www.npmjs.com/package/antd"
+    },
+    {
+      "package": "react-router-dom",
+      "version": "7.18.0",
+      "scope": "runtime",
+      "license": "MIT",
+      "purpose": "routing and guards",
+      "officialUrl": "https://www.npmjs.com/package/react-router-dom"
+    },
+    {
+      "package": "zustand",
+      "version": "5.0.14",
+      "scope": "runtime",
+      "license": "MIT",
+      "purpose": "cross-page state",
+      "officialUrl": "https://www.npmjs.com/package/zustand"
+    },
+    {
+      "package": "echarts",
+      "version": "6.1.0",
+      "scope": "runtime",
+      "license": "Apache-2.0",
+      "purpose": "charts",
+      "officialUrl": "https://www.npmjs.com/package/echarts"
+    },
+    {
+      "package": "maplibre-gl",
+      "version": "5.24.0",
+      "scope": "runtime",
+      "license": "BSD-3-Clause",
+      "purpose": "local yard map",
+      "officialUrl": "https://www.npmjs.com/package/maplibre-gl"
+    },
+    {
+      "package": "@dnd-kit/core",
+      "version": "6.3.1",
+      "scope": "runtime",
+      "license": "MIT",
+      "purpose": "accessible drag and drop",
+      "officialUrl": "https://www.npmjs.com/package/%40dnd-kit%2Fcore"
+    },
+    {
+      "package": "@dnd-kit/sortable",
+      "version": "10.0.0",
+      "scope": "runtime",
+      "license": "MIT",
+      "purpose": "Kanban sorting",
+      "officialUrl": "https://www.npmjs.com/package/%40dnd-kit%2Fsortable"
+    },
+    {
+      "package": "dayjs",
+      "version": "1.11.21",
+      "scope": "runtime",
+      "license": "MIT",
+      "purpose": "date and time",
+      "officialUrl": "https://www.npmjs.com/package/dayjs"
+    },
+    {
+      "package": "zod",
+      "version": "4.4.3",
+      "scope": "runtime",
+      "license": "MIT",
+      "purpose": "runtime validation",
+      "officialUrl": "https://www.npmjs.com/package/zod"
+    },
+    {
+      "package": "msw",
+      "version": "2.15.0",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "browser Mock API",
+      "officialUrl": "https://www.npmjs.com/package/msw"
+    },
+    {
+      "package": "vitest",
+      "version": "4.1.10",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "unit tests",
+      "officialUrl": "https://www.npmjs.com/package/vitest"
+    },
+    {
+      "package": "@playwright/test",
+      "version": "1.61.1",
+      "scope": "development",
+      "license": "Apache-2.0",
+      "purpose": "end-to-end tests",
+      "officialUrl": "https://www.npmjs.com/package/%40playwright%2Ftest"
+    },
+    {
+      "package": "@testing-library/react",
+      "version": "16.3.2",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "component tests",
+      "officialUrl": "https://www.npmjs.com/package/%40testing-library%2Freact"
+    },
+    {
+      "package": "@testing-library/dom",
+      "version": "10.4.1",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "DOM queries",
+      "officialUrl": "https://www.npmjs.com/package/%40testing-library%2Fdom"
+    },
+    {
+      "package": "@testing-library/user-event",
+      "version": "14.6.1",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "user interaction tests",
+      "officialUrl": "https://www.npmjs.com/package/%40testing-library%2Fuser-event"
+    },
+    {
+      "package": "@testing-library/jest-dom",
+      "version": "6.9.1",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "DOM assertions",
+      "officialUrl": "https://www.npmjs.com/package/%40testing-library%2Fjest-dom"
+    },
+    {
+      "package": "jsdom",
+      "version": "29.1.1",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "DOM test runtime",
+      "officialUrl": "https://www.npmjs.com/package/jsdom"
+    }
+  ]
+}

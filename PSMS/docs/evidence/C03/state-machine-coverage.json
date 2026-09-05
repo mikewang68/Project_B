@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "suite": "src/commands/__tests__/stateMachines.test.ts",
+  "result": {
+    "testFiles": 1,
+    "tests": 69,
+    "passed": 69
+  },
+  "machines": [
+    {
+      "id": "DO-001",
+      "stateCount": 8,
+      "commandCount": 5,
+      "allowedTransitionCount": 7,
+      "catalogTest": "DO-001 exposes every frozen state, command, and explicit transition",
+      "allowedTransitionTests": [
+        "DO-001 allows RECEIVED + sync -> VALIDATING",
+        "DO-001 allows VALIDATING + validate -> PENDING_CONFIRM",
+        "DO-001 allows PENDING_CONFIRM + confirm -> CONFIRMED",
+        "DO-001 allows CONFIRMED + adjust -> ADJUSTED",
+        "DO-001 allows BLOCKED + adjust -> ADJUSTED",
+        "DO-001 allows CONFIRMED + decompose -> DECOMPOSED",
+        "DO-001 allows ADJUSTED + decompose -> DECOMPOSED"
+      ],
+      "representativeDeniedTest": "DO-001 rejects the forbidden BLOCKED + decompose path"
+    },
+    {
+      "id": "DO-005",
+      "stateCount": 10,
+      "commandCount": 6,
+      "allowedTransitionCount": 7,
+      "catalogTest": "DO-005 exposes every frozen state, command, and explicit transition",
+      "allowedTransitionTests": [
+        "DO-005 allows DRAFT + assign -> READY",
+        "DO-005 allows READY + dispatch -> DISPATCHED",
+        "DO-005 allows DISPATCHED + ack -> ACKNOWLEDGED",
+        "DO-005 allows ACKNOWLEDGED + start -> IN_PROGRESS",
+        "DO-005 allows PAUSED + start -> IN_PROGRESS",
+        "DO-005 allows IN_PROGRESS + pause -> PAUSED",
+        "DO-005 allows IN_PROGRESS + complete -> COMPLETED"
+      ],
+      "representativeDeniedTest": "DO-005 rejects the forbidden DISPATCHED + start path"
+    },
+    {
+      "id": "DO-008",
+      "stateCount": 12,
+      "commandCount": 6,
+      "allowedTransitionCount": 8,
+      "catalogTest": "DO-008 exposes every frozen state, command, and explicit transition",
+      "allowedTransitionTests": [
+        "DO-008 allows DRAFT + submit -> SUBMITTED",
+        "DO-008 allows NEED_FIX + submit -> SUBMITTED",
+        "DO-008 allows SUBMITTED + approve -> APPROVED",
+        "DO-008 allows APPROVED + call -> CALLED",
+        "DO-008 allows QUEUED + call -> CALLED",
+        "DO-008 allows CALLED + gateIn -> ENTERED",
+        "DO-008 allows OPERATING + release -> RELEASED",
+        "DO-008 allows RELEASED + gateOut -> EXITED"
+      ],
+      "representativeDeniedTest": "DO-008 rejects the forbidden DRAFT + approve path"
+    },
+    {
+      "id": "DO-009",
+      "stateCount": 7,
+      "commandCount": 6,
+      "allowedTransitionCount": 7,
+      "catalogTest": "DO-009 exposes every frozen state, command, and explicit transition",
+      "allowedTransitionTests": [
+        "DO-009 allows OPEN + ack -> ACKNOWLEDGED",
+        "DO-009 allows REOPENED + ack -> ACKNOWLEDGED",
+        "DO-009 allows ACKNOWLEDGED + assign -> HANDLING",
+        "DO-009 allows HANDLING + handle -> PENDING_REVIEW",
+        "DO-009 allows PENDING_REVIEW + review -> HANDLING",
+        "DO-009 allows PENDING_REVIEW + close -> CLOSED",
+        "DO-009 allows CLOSED + reopen -> REOPENED"
+      ],
+      "representativeDeniedTest": "DO-009 rejects the forbidden OPEN + close path"
+    },
+    {
+      "id": "DO-010",
+      "stateCount": 10,
+      "commandCount": 6,
+      "allowedTransitionCount": 8,
+      "catalogTest": "DO-010 exposes every frozen state, command, and explicit transition",
+      "allowedTransitionTests": [
+        "DO-010 allows TRIGGERED + trigger -> ACTION_ISSUED",
+        "DO-010 allows ACTION_ISSUED + receipt -> WAITING_RECEIPT",
+        "DO-010 allows WAITING_RECEIPT + receipt -> LOCKED",
+        "DO-010 allows LOCKED + requestReset -> RESET_REQUESTED",
+        "DO-010 allows RESET_REQUESTED + approve -> APPROVED",
+        "DO-010 allows APPROVED + restore -> RESTORED",
+        "DO-010 allows LOCKED + requestOverride -> OVERRIDE_PENDING",
+        "DO-010 allows OVERRIDE_PENDING + approve -> OVERRIDDEN"
+      ],
+      "representativeDeniedTest": "DO-010 rejects the forbidden RESET_REQUESTED + restore path"
+    },
+    {
+      "id": "DO-011",
+      "stateCount": 7,
+      "commandCount": 5,
+      "allowedTransitionCount": 8,
+      "catalogTest": "DO-011 exposes every frozen state, command, and explicit transition",
+      "allowedTransitionTests": [
+        "DO-011 allows CACHED + upload -> PENDING_UPLOAD",
+        "DO-011 allows RETRY + upload -> PENDING_UPLOAD",
+        "DO-011 allows PENDING_UPLOAD + validate -> VALIDATING",
+        "DO-011 allows VALIDATING + merge -> MERGED",
+        "DO-011 allows VALIDATING + reject -> REJECTED",
+        "DO-011 allows CONFLICT + reject -> REJECTED",
+        "DO-011 allows CONFLICT + retry -> RETRY",
+        "DO-011 allows REJECTED + retry -> RETRY"
+      ],
+      "representativeDeniedTest": "DO-011 rejects the forbidden CACHED + merge path"
+    },
+    {
+      "id": "SM-007",
+      "stateCount": 5,
+      "commandCount": 6,
+      "allowedTransitionCount": 7,
+      "catalogTest": "SM-007 exposes every frozen state, command, and explicit transition",
+      "allowedTransitionTests": [
+        "SM-007 allows ACCEPTED + accept -> ACCEPTED",
+        "SM-007 allows ACCEPTED + execute -> EXECUTING",
+        "SM-007 allows EXECUTING + succeed -> SUCCESS",
+        "SM-007 allows EXECUTING + fail -> FAILED",
+        "SM-007 allows EXECUTING + timeout -> TIMEOUT",
+        "SM-007 allows FAILED + retry -> EXECUTING",
+        "SM-007 allows TIMEOUT + retry -> EXECUTING"
+      ],
+      "representativeDeniedTest": "SM-007 rejects the forbidden SUCCESS + retry path"
+    }
+  ],
+  "sharedRejectionTests": [
+    "rejects an unknown state before attempting a transition",
+    "rejects an unknown command for a known state"
+  ]
+}

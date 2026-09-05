@@ -1,0 +1,34 @@
+C13A TypeScript preflight
+date: 2026-07-22
+command: node_modules\.bin\tsc.CMD --noEmit --pretty false
+exitCode: 1
+
+Complete in-process counts
+--------------------------
+outputLines: 909
+primaryDiagnostics: 783
+TS7016: 126
+TS7026: 592
+TS2604: 65
+otherDiagnosticCodes: 0
+
+Classification
+--------------
+All primary diagnostics belong to the frozen React/JSX declaration chain:
+- TS7016: missing declarations for react or react/jsx-runtime.
+- TS7026: JSX.IntrinsicElements unavailable because React declarations are absent.
+- TS2604: Ant Design JSX components lack construct/call signatures through the same chain.
+
+Two diagnostics are emitted from .ts files, but both are TS7016 imports of React types:
+- src/app/routeCatalog.ts(8,8)
+- src/features/plan-entry/readState.ts(1,58)
+
+There are no non-React diagnostic codes and no C13A source files yet. The counts and
+three diagnostic classes exactly match the checked-in C12 final evidence. Dependencies
+are frozen, so C13A records this environmental baseline without attempting a repair.
+
+Representative first diagnostics
+--------------------------------
+src/app/App.tsx(14,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'.
+src/app/router.tsx(54,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/components/skeleton/PageScaffold.tsx(16,6): error TS2604: JSX element type 'Card' does not have any construct or call signatures.

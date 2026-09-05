@@ -1,0 +1,8 @@
+COMMAND: pnpm exec tsc --noEmit
+ENV_NOTE: project node_modules/.bin prepended because portable pnpm does not add the Unicode workspace shim path on this host
+STARTED_AT: 2026-07-19T17:17:17.332+08:00
+ENDED_AT: 2026-07-19T17:17:18.675+08:00
+EXIT_CODE: 1
+TOTAL_PRIMARY_DIAGNOSTICS: 38
+C02_PRIMARY_DIAGNOSTICS: 0
+BASELINE_COMPARISON: The remaining diagnostics are the same pre-existing React, ReactDOM and JSX declaration limitations recorded in tsc-before.txt. No diagnostic originates from src/contracts/** or src/mocks/**.

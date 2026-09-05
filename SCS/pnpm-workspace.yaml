@@ -1,0 +1,6 @@
+packages:
+  - frontend
+
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true

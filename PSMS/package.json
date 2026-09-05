@@ -1,0 +1,43 @@
+{
+  "name": "production-dispatch-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.18.0"
+  },
+  "packageManager": "pnpm@11.10.0",
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "6.3.1",
+    "@dnd-kit/sortable": "10.0.0",
+    "antd": "6.5.1",
+    "dayjs": "1.11.21",
+    "echarts": "6.1.0",
+    "maplibre-gl": "5.24.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-router-dom": "7.18.0",
+    "zod": "4.4.3",
+    "zustand": "5.0.14"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
+    "@vitejs/plugin-react": "6.0.3",
+    "jsdom": "29.1.1",
+    "msw": "2.15.0",
+    "typescript": "7.0.2",
+    "vite": "8.1.4",
+    "vitest": "4.1.10"
+  }
+}

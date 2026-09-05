@@ -1,0 +1,12 @@
+COMMAND: node_modules\.bin\vitest.CMD run src/features/audit-trail/__tests__/auditProjection.test.ts src/features/audit-trail/__tests__/auditQueries.test.ts
+RUN_AT: 2026-07-22 before C12 audit projection/query production modules existed
+EXIT_CODE: 1
+TEST_FILES: 2 failed
+TESTS: no tests executed
+
+EXPECTED_FAILURE:
+- auditProjection.test.ts failed to resolve `../auditProjection`.
+- auditQueries.test.ts failed to resolve `../auditProjection`.
+- Failure is caused by the missing C12 production feature, not a syntax error or an existing regression.
+
+TDD_GATE: RED confirmed before creating auditTypes.ts, auditProjection.ts, auditQueries.ts, or index.ts.

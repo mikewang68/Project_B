@@ -1,0 +1,29 @@
+COMMAND: node_modules\.bin\tsc.CMD --noEmit
+RUN_AT: 2026-07-22 before C12 production-code changes
+EXIT_CODE: 1
+RAW_OUTPUT_LINES: 810
+PRIMARY_DIAGNOSTICS: 693
+TS7016: 117
+TS7026: 518
+TS2604: 58
+OTHER_CODES: 0
+NON_REACT_OR_JSX_PRIMARY_DIAGNOSTICS: 0
+C12_NON_REACT_PRIMARY_DIAGNOSTICS: 0
+
+CLASSIFICATION:
+- TS7016: missing declaration files for react and react/jsx-runtime.
+- TS7026: JSX.IntrinsicElements is unavailable because React declarations are absent.
+- TS2604: Ant Design JSX components have no construct/call signatures through the same missing React declaration chain.
+- Every primary diagnostic is in a .tsx file or directly names the missing React/JSX declaration chain.
+- No .ts production file reports a primary diagnostic.
+
+REPRESENTATIVE FIRST DIAGNOSTICS:
+src/app/App.tsx(14,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'.
+src/app/__tests__/appRender.test.tsx(21,12): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'.
+src/app/__tests__/routeRender.test.tsx(38,27): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'.
+src/app/routeCatalog.ts(8,8): error TS7016: Could not find a declaration file for module 'react'.
+src/app/router.tsx(54,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/components/skeleton/PageScaffold.tsx(16,6): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+
+BASELINE NOTE:
+The checked-in C11 evidence records the same three React/JSX diagnostic classes and zero non-React diagnostics. The current compiler process emits more occurrences than the C11 preflight run, but no new diagnostic class and no non-React primary diagnostic. Dependency changes are forbidden, so C12 records and preserves this environmental declaration baseline.

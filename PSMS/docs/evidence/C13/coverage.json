@@ -1,0 +1,11 @@
+{
+  "date": "2026-07-23",
+  "command": "node_modules\\.bin\\vitest.CMD run --coverage src/features/system-settings src/pages/__tests__/SystemSettingsPage.render.test.tsx src/pages/__tests__/SystemSettingsPage.permission.test.tsx src/pages/__tests__/SystemSettingsPage.action.test.tsx",
+  "exitCode": 1,
+  "status": "not-generated",
+  "provider": "@vitest/coverage-v8",
+  "error": "MISSING DEPENDENCY Cannot find dependency '@vitest/coverage-v8'",
+  "percentages": null,
+  "truthfulCoverageAvailable": false,
+  "decision": "The frozen dependency set does not include the official Vitest V8 coverage provider. No dependency was installed and no coverage percentage was fabricated. Focused, full-suite, and browser behavior results are recorded in verification.md."
+}

@@ -1,0 +1,15 @@
+C13A Store ownership RED gate
+date: 2026-07-22
+command: node_modules\.bin\vitest.CMD run src/stores/__tests__/store.test.ts --reporter=verbose
+exitCode: 1
+testFiles: 1 failed
+tests: 3 failed, 12 passed, 15 total
+duration: 2.60s
+
+Expected missing-slice failures
+-------------------------------
+1. `composes exactly 13 named slices and maps DO-001 through DO-015 once` failed because `systemConfig` was absent from the root keys.
+2. `owns one deeply frozen DO-015 record outside configAudit` failed while reading missing `systemConfig.configVersions`.
+3. `atomically validates and resets DO-015 without touching upstream slices` failed while mutating missing `systemConfig.configVersions`.
+
+The pre-existing 12 Store tests remained green. No Store production file had been changed when this red gate was captured.

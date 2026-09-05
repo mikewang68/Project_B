@@ -1,0 +1,26 @@
+COMMAND: pnpm test -- --run src/contracts/__tests__/schemas.test.ts src/contracts/__tests__/openapi-consistency.test.ts
+STARTED_AT: 2026-07-19T16:45:39.625+08:00
+ENDED_AT: 2026-07-19T16:45:52.235+08:00
+EXIT_CODE: 1
+EXPECTED_RED: true
+OUTPUT_BEGIN
+$ vitest run "--" "--run" "src/contracts/__tests__/schemas.test.ts" "src/contracts/__tests__/openapi-consistency.test.ts"
+
+RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+FAIL  src/contracts/__tests__/openapi-consistency.test.ts
+Error: Failed to resolve import "../index" from "src/contracts/__tests__/openapi-consistency.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: src/contracts/__tests__/openapi-consistency.test.ts:4:77
+
+FAIL  src/contracts/__tests__/schemas.test.ts
+Error: Failed to resolve import "../index" from "src/contracts/__tests__/schemas.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: src/contracts/__tests__/schemas.test.ts:13:7
+
+Test Files  2 failed | 5 passed (7)
+Tests       9 passed (9)
+Duration    10.95s
+
+[ELIFECYCLE] Test failed. See above for more details.
+OUTPUT_END

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-07-22",
+  "scope": "C11 reporting focused unit and page tests",
+  "status": "unavailable-with-frozen-dependencies",
+  "requestedCoverage": {
+    "provider": "@vitest/coverage-v8",
+    "command": "vitest run <C11 focused tests> --coverage.enabled --coverage.reporter=json --coverage.reporter=text",
+    "exitCode": 1,
+    "failure": "MISSING DEPENDENCY Cannot find dependency '@vitest/coverage-v8'"
+  },
+  "fallbackEvidence": {
+    "method": "NODE_V8_COVERAGE",
+    "focusedTestResult": {
+      "filesPassed": 10,
+      "testsPassed": 55
+    },
+    "rawCoverageFiles": 1,
+    "c11ApplicationSourceMatches": 0,
+    "conclusion": "Vitest worker application modules were absent from the coordinator process coverage. Line, function, branch, and statement percentages cannot be reported faithfully from this fallback."
+  },
+  "reportedPercentages": null,
+  "dependencyPolicy": {
+    "packageManifestChanged": false,
+    "lockfileChanged": false,
+    "reason": "The authoritative baseline freezes dependency manifests; no coverage provider was installed."
+  }
+}

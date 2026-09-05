@@ -1,0 +1,193 @@
+{
+  "feature": "C09",
+  "pageId": "UI-009",
+  "generatedAt": "2026-07-21T23:30:31+08:00",
+  "focusedVerification": {
+    "status": "passed",
+    "testFiles": 8,
+    "tests": 55
+  },
+  "coverage": [
+    {
+      "requirement": "strict selectors and query context",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/selectors.test.ts :: projects strict DO-010 records and keeps C08 context display-only",
+        "src/features/safety-interlock/__tests__/selectors.test.ts :: applies data scope before status, action level, risk type, and receipt filters",
+        "src/features/safety-interlock/__tests__/selectors.test.ts :: derives progress, state flow, safety flags, reset and approval summaries, and actions",
+        "src/features/safety-interlock/__tests__/selectors.test.ts :: derives KPI counts from visible strict records",
+        "src/features/safety-interlock/__tests__/selectors.test.ts :: returns deeply frozen projections and disables actions without frozen permissions",
+        "src/features/safety-interlock/__tests__/queryContext.test.ts :: parses C08 source context and supported interlock filters",
+        "src/features/safety-interlock/__tests__/queryContext.test.ts :: never resolves source context or invents a DO-010 foreign key"
+      ]
+    },
+    {
+      "requirement": "API-016",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/gateway.test.ts :: uses exact API-016/API-017 paths, identities, and the frozen C09 command body",
+        "src/features/safety-interlock/__tests__/gateway.test.ts :: returns strict transport facts without writing the C03 Store",
+        "src/mocks/__tests__/handlers.test.ts :: API-016 lists strict DO-010 records and API-017 returns only the path interlock",
+        "src/mocks/__tests__/handlers.test.ts :: offers deterministic C09 network and malformed-response controls through an internal header"
+      ]
+    },
+    {
+      "requirement": "API-017",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/gateway.test.ts :: uses exact API-016/API-017 paths, identities, and the frozen C09 command body",
+        "src/features/safety-interlock/__tests__/gateway.test.ts :: returns a strict error envelope unchanged",
+        "src/mocks/__tests__/handlers.test.ts :: API-017 rejects legacy, broadened, and fabricated foreign-key request shapes",
+        "src/pages/__tests__/SafetyInterlockPage.action.test.tsx :: shows loading, preserves drafts on API-017 failure, and retries the action"
+      ]
+    },
+    {
+      "requirement": "SI-01 trigger and receipt",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/commands.test.ts :: executes the frozen SI-01 trigger and two-step receipt transitions",
+        "src/features/safety-interlock/__tests__/selectors.test.ts :: uses frozen DO-010 transitions for SI-01 and override projections"
+      ]
+    },
+    {
+      "requirement": "SI-02 request reset",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/commands.test.ts :: runs API before one DO-010 commit for request-reset, approve, and restore",
+        "src/pages/__tests__/SafetyInterlockPage.action.test.tsx :: requests reset, approves, and records Demo restoration",
+        "src/features/safety-interlock/__tests__/integration.test.ts :: executes SI-02 without mutating any DispatchException record"
+      ]
+    },
+    {
+      "requirement": "SI-03 approve",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/commands.test.ts :: runs API before one DO-010 commit for request-reset, approve, and restore",
+        "src/pages/__tests__/SafetyInterlockPage.action.test.tsx :: requests reset, approves, and records Demo restoration"
+      ]
+    },
+    {
+      "requirement": "SI-04 restore",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/commands.test.ts :: runs API before one DO-010 commit for request-reset, approve, and restore",
+        "src/features/safety-interlock/__tests__/commands.test.ts :: records FORCE_STOP restore only inside strict DO-010 and preserves the safety disclosure",
+        "src/pages/__tests__/SafetyInterlockPage.action.test.tsx :: requests reset, approves, and records Demo restoration"
+      ]
+    },
+    {
+      "requirement": "SI-05 request and approve override",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/commands.test.ts :: executes the SI-05 override request and approval without touching DO-009",
+        "src/pages/__tests__/SafetyInterlockPage.action.test.tsx :: requests and approves an override as an independent safety path"
+      ]
+    },
+    {
+      "requirement": "permissions and data scope",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/commands.test.ts :: rejects permission, scope, reason, approval user, reset request, and illegal state before API",
+        "src/pages/__tests__/SafetyInterlockPage.permission.test.tsx :: renders route forbidden before API for BUSINESS",
+        "src/pages/__tests__/SafetyInterlockPage.permission.test.tsx :: disables actions until reason, reset request, approval user, and state allow them",
+        "e2e/ui-009-safety-interlock.spec.ts :: UI-009 enforces route permission, data scope, version recovery, and idempotency"
+      ]
+    },
+    {
+      "requirement": "version drift and no partial write",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/commands.test.ts :: returns DEMO-VERSION-001 after API version drift and performs no C09 command write",
+        "e2e/ui-009-safety-interlock.spec.ts :: UI-009 enforces route permission, data scope, version recovery, and idempotency"
+      ]
+    },
+    {
+      "requirement": "idempotency",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/commands.test.ts :: replays a frozen commandId without repeating API, commit, workflow, or audit",
+        "e2e/ui-009-safety-interlock.spec.ts :: UI-009 enforces route permission, data scope, version recovery, and idempotency"
+      ]
+    },
+    {
+      "requirement": "API-025 reset",
+      "status": "passed",
+      "tests": [
+        "src/runtime/__tests__/runtime.test.tsx :: exposes one C09 runtime and API-025 clears workflow, replay cache, and command sequences"
+      ]
+    },
+    {
+      "requirement": "six page states",
+      "status": "passed",
+      "states": [
+        "loading",
+        "empty",
+        "business-error",
+        "network-error",
+        "forbidden",
+        "not-found"
+      ],
+      "tests": [
+        "src/pages/__tests__/SafetyInterlockPage.permission.test.tsx :: renders route forbidden before API for BUSINESS",
+        "src/pages/__tests__/SafetyInterlockPage.permission.test.tsx :: renders loading, empty, network-error, business-error, and safe not-found states"
+      ]
+    },
+    {
+      "requirement": "four progress states",
+      "status": "passed",
+      "states": [
+        "LOCKED",
+        "RESETTING",
+        "RESTORED",
+        "OVERRIDE"
+      ],
+      "tests": [
+        "src/pages/__tests__/SafetyInterlockPage.render.test.tsx :: reactively renders LOCKED, RESETTING, RESTORED, and OVERRIDE progress"
+      ]
+    },
+    {
+      "requirement": "C08 source context without production foreign key",
+      "status": "passed",
+      "tests": [
+        "src/features/safety-interlock/__tests__/integration.test.ts :: parses the UI-008 INTERLOCK entry URL as display-only C09 source context",
+        "src/features/safety-interlock/__tests__/integration.test.ts :: keeps exceptionId outside the strict DO-010 projection",
+        "src/pages/__tests__/SafetyInterlockPage.render.test.tsx :: shows identity, C08 display-only context, KPI, ledger, detail, snapshot, action, audit, and return entry",
+        "e2e/ui-009-safety-interlock.spec.ts :: UI-009 enters from C08 and requests a reset without claiming a production foreign key"
+      ]
+    },
+    {
+      "requirement": "FORCE_STOP warning and no real control",
+      "status": "passed",
+      "tests": [
+        "src/pages/__tests__/SafetyInterlockPage.render.test.tsx :: shows FORCE_STOP and receipt-failure boundaries without claiming real reset control",
+        "src/pages/__tests__/SafetyInterlockPage.permission.test.tsx :: shows the FORCE_STOP safety boundary while allowing only a Demo restoration record",
+        "src/features/safety-interlock/__tests__/commands.test.ts :: records FORCE_STOP restore only inside strict DO-010 and preserves the safety disclosure",
+        "e2e/ui-009-safety-interlock.spec.ts :: UI-009 recovers network and malformed responses, warns FORCE_STOP, and records override"
+      ]
+    }
+  ],
+  "e2e": {
+    "status": "passed",
+    "count": 4,
+    "tests": [
+      "UI-009 enters from C08 and requests a reset without claiming a production foreign key",
+      "UI-009 approves a reset and registers Demo restoration only",
+      "UI-009 enforces route permission, data scope, version recovery, and idempotency",
+      "UI-009 recovers network and malformed responses, warns FORCE_STOP, and records override"
+    ]
+  },
+  "screenshots": {
+    "status": "passed",
+    "count": 8,
+    "items": [
+      "C09-UI009-SCN01-LOCKED-1440x900.png",
+      "C09-UI009-SCN01-LOCKED-1280x720.png",
+      "C09-UI009-SCN01-RESETTING-1440x900.png",
+      "C09-UI009-SCN01-RESETTING-1280x720.png",
+      "C09-UI009-SCN01-RESTORED-1440x900.png",
+      "C09-UI009-SCN01-RESTORED-1280x720.png",
+      "C09-UI009-SCN01-OVERRIDE-1440x900.png",
+      "C09-UI009-SCN01-OVERRIDE-1280x720.png"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+C13A contract RED gate
+date: 2026-07-22
+command: node_modules\.bin\vitest.CMD run src/contracts/__tests__/schemas.test.ts src/contracts/__tests__/openapi-consistency.test.ts src/mocks/__tests__/fixtures.test.ts --reporter=verbose
+exitCode: 1
+testFiles: 3 failed
+tests: 6 failed, 11 passed, 17 total
+duration: 3.03s
+
+Expected feature-missing failures
+---------------------------------
+1. API-022 runtime catalog still returned `200: ApiSuccessEnvelope` instead of `API022SuccessEnvelope`.
+2. OpenAPI domain components ended at DO014; expected DO015.
+3. OpenAPI API023Request had no `oneOf` command union.
+4. Runtime `domainObjectIds` ended at DO-014; expected DO-015.
+5. `do015Schema` export was undefined.
+6. Fixture object groups ended at DO-014; expected DO-015.
+
+The suite loaded normally and produced assertion failures rather than syntax or module-load errors.
+No production or baseline file had been changed when this red gate was captured.

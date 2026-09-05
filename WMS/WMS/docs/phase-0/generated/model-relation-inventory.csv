@@ -1,0 +1,10 @@
+﻿module,source_class,source_table,source_column,target_table,target_column,line
+finance.py,MoneyLine,f_money_line,money_id,f_money,id,143
+stockin.py,StockinLine,i_stockin_line,stockin_id,i_stockin,id,462
+stockin.py,StockinLineTrans,i_stockin_line_trans,stockin_id,i_stockin,id,611
+stockin.py,StockinLineTrans,i_stockin_line_trans,stockin_line_id,i_stockin_line,id,612
+stockin.py,DisassembleLine,i_disassemble_line,order_id,i_disassemble,id,763
+stockout.py,StockoutLine,o_stockout_line,stockout_id,o_stockout,id,483
+stockout.py,StockoutLineTrans,o_stockout_line_trans,stockout_id,o_stockout,id,621
+stockout.py,StockoutLineTrans,o_stockout_line_trans,stockout_line_id,o_stockout_line,id,622
+stockout.py,BoxLine,o_box_line,order_id,o_box,id,776

@@ -1,0 +1,26 @@
+[Unit]
+Description=MT-WMS warehouse management service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=mtwms
+Group=mtwms
+WorkingDirectory=/opt/mt-wms
+EnvironmentFile=/etc/mt-wms/mt-wms.env
+ExecStart=/usr/bin/java -jar /opt/mt-wms/mt-wms.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+StateDirectory=mt-wms
+RuntimeDirectory=mt-wms
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target

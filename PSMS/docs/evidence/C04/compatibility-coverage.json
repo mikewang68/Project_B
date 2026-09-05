@@ -1,0 +1,47 @@
+{
+  "gate": "C04-COMPATIBILITY",
+  "status": "passed",
+  "transitionCount": 53,
+  "newTransition": ["ADJUSTED", "confirm", "CONFIRMED"],
+  "handlerCoverage": [
+    {
+      "case": "incomplete SCN-02 denied",
+      "scenarioId": "SCN-02",
+      "apiId": "API-004",
+      "status": "passed",
+      "expectedErrorCode": "TOS-EXT-002"
+    },
+    {
+      "case": "complete SCN-02 allowed",
+      "scenarioId": "SCN-02",
+      "apiId": "API-004",
+      "status": "passed",
+      "expectedHttpStatus": 200
+    },
+    {
+      "case": "SCN-03 unchanged",
+      "scenarioId": "SCN-03",
+      "apiId": "API-004",
+      "status": "passed",
+      "expectedErrorCode": "TOS-EXT-001"
+    }
+  ],
+  "testNames": [
+    "C04 confirms a supplemented plan without changing another DO-001 path",
+    "SCN-02 permits only API-004 requests that supply every declared missing field"
+  ],
+  "verification": {
+    "focused": {
+      "command": "node_modules\\.bin\\vitest.CMD run src/commands/__tests__/stateMachines.test.ts src/mocks/__tests__/handlers.test.ts",
+      "status": "passed",
+      "testFiles": 2,
+      "tests": 77
+    },
+    "full": {
+      "command": "pnpm test -- --run",
+      "status": "passed",
+      "testFiles": 19,
+      "tests": 168
+    }
+  }
+}

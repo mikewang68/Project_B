@@ -1,0 +1,55 @@
+COMMAND: node_modules\.bin\vitest.CMD run src\features\offline-sync\__tests__\offlinePacketProjection.test.ts src\features\offline-sync\__tests__\offlinePacketQueries.test.ts --maxWorkers=1
+EXIT_CODE: 1
+
+ RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+ ❯ src/features/offline-sync/__tests__/offlinePacketProjection.test.ts (0 test)
+ ❯ src/features/offline-sync/__tests__/offlinePacketQueries.test.ts (0 test)
+System.Management.Automation.RemoteException
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+System.Management.Automation.RemoteException
+ FAIL  src/features/offline-sync/__tests__/offlinePacketProjection.test.ts [ src/features/offline-sync/__tests__/offlinePacketProjection.test.ts ]
+Error: Failed to resolve import "../offlinePacketProjection" from "src/features/offline-sync/__tests__/offlinePacketProjection.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/features/offline-sync/__tests__/offlinePacketProjection.test.ts:6:66
+  2  |  import { createFixtureSnapshot } from "../../../mocks/fixtures";
+  3  |  import { createDemoStore } from "../../../stores";
+  4  |  import { selectOfflinePacketBoard, selectOfflinePacketKpis } from "../offlinePacketProjection";
+     |                                                                     ^
+  5  |  import { parseOfflinePacketQuery } from "../offlinePacketQueries";
+  6  |  const session = (overrides = {}) => ({
+ ❯ TransformPluginContext._formatLog ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30366:39
+ ❯ TransformPluginContext.error ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30363:14
+ ❯ normalizeUrl ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27393:18
+ ❯ ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27456:30
+ ❯ TransformPluginContext.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27424:4
+ ❯ EnvironmentPluginContainer.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30151:14
+ ❯ loadAndTransform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:20098:26
+System.Management.Automation.RemoteException
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+System.Management.Automation.RemoteException
+ FAIL  src/features/offline-sync/__tests__/offlinePacketQueries.test.ts [ src/features/offline-sync/__tests__/offlinePacketQueries.test.ts ]
+Error: Failed to resolve import "../offlinePacketQueries" from "src/features/offline-sync/__tests__/offlinePacketQueries.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/features/offline-sync/__tests__/offlinePacketQueries.test.ts:4:40
+  1  |  import { describe, expect, it } from "vitest";
+  2  |  import { mergeStatuses } from "../../../contracts";
+  3  |  import { parseOfflinePacketQuery } from "../offlinePacketQueries";
+     |                                           ^
+  4  |  describe("C10 offline packet query hydration", () => {
+  5  |  	it("parses all supported filters and source context", () => {
+ ❯ TransformPluginContext._formatLog ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30366:39
+ ❯ TransformPluginContext.error ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30363:14
+ ❯ normalizeUrl ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27393:18
+ ❯ ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27456:30
+ ❯ TransformPluginContext.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27424:4
+ ❯ EnvironmentPluginContainer.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30151:14
+ ❯ loadAndTransform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:20098:26
+System.Management.Automation.RemoteException
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+System.Management.Automation.RemoteException
+
+ Test Files  2 failed (2)
+      Tests  no tests
+   Start at  15:03:35
+   Duration  3.54s (transform 26ms, setup 276ms, import 0ms, tests 0ms, environment 2.74s)

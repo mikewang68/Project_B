@@ -1,0 +1,15 @@
+target/
+backups/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+.idea/
+.vscode/
+*.iml
+*.log
+.env.local
+.env
+.toolchains/
+.run/
+__pycache__/
+*.pyc

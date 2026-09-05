@@ -1,0 +1,35 @@
+DROP DATABASE IF EXISTS wms_fixture;
+CREATE DATABASE wms_fixture CHARACTER SET utf8mb4;
+USE wms_fixture;
+
+CREATE TABLE w_warehouse(id INT PRIMARY KEY,code VARCHAR(50),name VARCHAR(50),company_code VARCHAR(50),contact VARCHAR(50),tel VARCHAR(30),email VARCHAR(100),address VARCHAR(200),express_code VARCHAR(50),remark VARCHAR(200));
+CREATE TABLE w_area(id INT PRIMARY KEY,code VARCHAR(50),name VARCHAR(50),warehouse_code VARCHAR(50),company_code VARCHAR(50),xtype VARCHAR(20),remark VARCHAR(200));
+CREATE TABLE w_workarea(id INT PRIMARY KEY,code VARCHAR(50),name VARCHAR(50),warehouse_code VARCHAR(50),company_code VARCHAR(50),is_inner TINYINT,remark VARCHAR(200));
+CREATE TABLE w_location(id INT PRIMARY KEY,code VARCHAR(50),warehouse_code VARCHAR(50),area_code VARCHAR(50),workarea_code VARCHAR(50),company_code VARCHAR(50),`index` INT,priority VARCHAR(2),is_inner TINYINT,length VARCHAR(20),width VARCHAR(20),height VARCHAR(20),weight VARCHAR(20),remark VARCHAR(200));
+CREATE TABLE u_partner(id INT PRIMARY KEY,code VARCHAR(100),name VARCHAR(250),xtype VARCHAR(50),company_code VARCHAR(50),contact VARCHAR(100),tel VARCHAR(50),phone VARCHAR(50),email VARCHAR(100),address VARCHAR(250),remark VARCHAR(250));
+CREATE TABLE inv_category(id INT PRIMARY KEY,code VARCHAR(50),name VARCHAR(50),owner_code VARCHAR(50),company_code VARCHAR(50),remark VARCHAR(200));
+CREATE TABLE inv_good(id INT PRIMARY KEY,code VARCHAR(50),name VARCHAR(200),barcode VARCHAR(50),owner_code VARCHAR(50),company_code VARCHAR(50),category_code VARCHAR(50),spec VARCHAR(100),unit VARCHAR(20),brand VARCHAR(50),quality_month INT,min_qty INT,max_qty INT,weight VARCHAR(50),price DECIMAL(15,4),cost_price DECIMAL(15,4),remark VARCHAR(200));
+CREATE TABLE inv(id INT PRIMARY KEY,sku VARCHAR(50),location_code VARCHAR(50),owner_code VARCHAR(50),warehouse_code VARCHAR(50),company_code VARCHAR(50),qty INT,qty_able INT,qty_alloc INT,qty_freeze INT,batch_code VARCHAR(50),quality_type VARCHAR(8),supplier_code VARCHAR(50),product_date DATE,expire_date DATE,lpn VARCHAR(50));
+CREATE TABLE inv_rfid(id INT PRIMARY KEY,rfid VARCHAR(128),sku VARCHAR(50),location_code VARCHAR(50),owner_code VARCHAR(50),warehouse_code VARCHAR(50),company_code VARCHAR(50),qty INT,weight DECIMAL(15,4),source VARCHAR(20),state VARCHAR(10),printed TINYINT);
+CREATE TABLE i_stockin(id INT PRIMARY KEY,order_code VARCHAR(50),warehouse_code VARCHAR(50),owner_code VARCHAR(50),company_code VARCHAR(50),state VARCHAR(20),erp_order_code VARCHAR(50),middle_order_code VARCHAR(50),xtype VARCHAR(50),source VARCHAR(20),partner_code VARCHAR(50),date_planned DATE,date_finished DATETIME,price DECIMAL(15,4),remark VARCHAR(200),create_time DATETIME,update_time DATETIME);
+CREATE TABLE i_stockin_line(id INT PRIMARY KEY,stockin_id INT,sku VARCHAR(50),qty INT,qty_real INT,lineno VARCHAR(20),location_code VARCHAR(50),supplier_code VARCHAR(50),quality_type VARCHAR(8),product_date DATE,expire_date DATE,batch_code VARCHAR(50),price DECIMAL(15,4),remark VARCHAR(200));
+CREATE TABLE o_stockout(id INT PRIMARY KEY,order_code VARCHAR(50),warehouse_code VARCHAR(50),owner_code VARCHAR(50),company_code VARCHAR(50),state VARCHAR(20),erp_order_code VARCHAR(50),middle_order_code VARCHAR(50),xtype VARCHAR(50),order_type VARCHAR(50),source VARCHAR(20),partner_code VARCHAR(50),date_planned DATE,date_finished DATETIME,receiver_name VARCHAR(50),receiver_tel VARCHAR(50),receiver_address VARCHAR(250),express_code VARCHAR(50),bill_code VARCHAR(50),price DECIMAL(15,4),remark VARCHAR(200),create_time DATETIME,update_time DATETIME);
+CREATE TABLE o_stockout_line(id INT PRIMARY KEY,stockout_id INT,sku VARCHAR(50),qty INT,qty_real INT,qty_out INT,lineno VARCHAR(20),supplier_code VARCHAR(50),quality_type VARCHAR(8),batch_code VARCHAR(50),price DECIMAL(15,4),remark VARCHAR(200));
+CREATE TABLE f_money_account(id INT PRIMARY KEY,code VARCHAR(50),company_code VARCHAR(50),warehouse_code VARCHAR(50),owner_code VARCHAR(50),organ VARCHAR(100),name VARCHAR(100),long_name VARCHAR(250),remark VARCHAR(200));
+CREATE TABLE f_money(id INT PRIMARY KEY,code VARCHAR(50),company_code VARCHAR(50),warehouse_code VARCHAR(50),owner_code VARCHAR(50),xtype VARCHAR(20),direction VARCHAR(20),amount DECIMAL(15,4),price DECIMAL(15,4),amount_real DECIMAL(15,4),paid_amount DECIMAL(15,4),state VARCHAR(20),order_code VARCHAR(50),fee_type VARCHAR(50),stype VARCHAR(50),partner_code VARCHAR(50),partner_name VARCHAR(100),pay_type VARCHAR(30),date_account DATE,date_finished DATETIME,remark VARCHAR(200),create_time DATETIME,update_time DATETIME);
+
+INSERT INTO w_warehouse VALUES(1,'P8-WH','阶段八样例仓','fixture','验收人','13000000000','fixture@example.test','验收地址','SF','P8-FIXTURE');
+INSERT INTO w_area VALUES(1,'P8-AREA','阶段八库区','P8-WH','fixture','storage','P8-FIXTURE');
+INSERT INTO w_workarea VALUES(1,'P8-WORK','阶段八工作区','P8-WH','fixture',0,'P8-FIXTURE');
+INSERT INTO w_location VALUES(1,'P8-LOC','P8-WH','P8-AREA','P8-WORK','fixture',1,'L2',0,'100','100','100','1000','P8-FIXTURE');
+INSERT INTO u_partner VALUES(1,'P8-OWNER','阶段八货主','owner','fixture','货主联系人','13000000001','','owner@example.test','货主地址','P8-FIXTURE'),(2,'P8-CLIENT','阶段八客户','client','fixture','客户联系人','13000000002','','client@example.test','客户地址','P8-FIXTURE');
+INSERT INTO inv_category VALUES(1,'P8-CAT','阶段八货类','P8-OWNER','fixture','P8-FIXTURE');
+INSERT INTO inv_good VALUES(1,'P8-GOOD','阶段八货品','P8-BARCODE','P8-OWNER','fixture','P8-CAT','规格','件','品牌',12,5,100,'1.2',10.5,8.2,'P8-FIXTURE');
+INSERT INTO inv VALUES(1,'P8-GOOD','P8-LOC','P8-OWNER','P8-WH','fixture',10,8,1,1,'P8-BATCH','ZP','P8-SUP','2026-01-01','2027-01-01','P8-LPN');
+INSERT INTO inv_rfid VALUES(1,'P8-RFID','P8-GOOD','P8-LOC','P8-OWNER','P8-WH','fixture',1,1.2,'erp','on',1);
+INSERT INTO i_stockin VALUES(1,'P8-IN','P8-WH','P8-OWNER','fixture','done','P8-ERP-IN','','purchase','erp','P8-CLIENT','2026-08-01','2026-08-02 10:00:00',105,'P8-FIXTURE','2026-08-01 10:00:00','2026-08-02 10:00:00');
+INSERT INTO i_stockin_line VALUES(1,1,'P8-GOOD',10,10,'1','P8-LOC','P8-SUP','ZP','2026-01-01','2027-01-01','P8-BATCH',10.5,'P8-FIXTURE');
+INSERT INTO o_stockout VALUES(1,'P8-OUT','P8-WH','P8-OWNER','fixture','done','P8-ERP-OUT','','sale','sale','erp','P8-CLIENT','2026-08-03','2026-08-04 10:00:00','收货人','13000000003','收货地址','SF','P8-TRACK',21,'P8-FIXTURE','2026-08-03 10:00:00','2026-08-04 10:00:00');
+INSERT INTO o_stockout_line VALUES(1,1,'P8-GOOD',2,2,2,'1','P8-SUP','ZP','P8-BATCH',10.5,'P8-FIXTURE');
+INSERT INTO f_money_account VALUES(1,'P8-ACC','fixture','P8-WH','P8-OWNER','验收机构','阶段八账户','阶段八账户-P8-ACC','P8-FIXTURE');
+INSERT INTO f_money VALUES(1,'P8-MONEY','fixture','P8-WH','P8-OWNER','income','income',21,21,21,21,'done','P8-OUT','sale','sale','P8-CLIENT','阶段八客户','bank','2026-08-04','2026-08-04 12:00:00','P8-FIXTURE','2026-08-04 11:00:00','2026-08-04 12:00:00');

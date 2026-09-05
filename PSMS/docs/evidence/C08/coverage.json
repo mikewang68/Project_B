@@ -1,0 +1,246 @@
+{
+  "feature": "C08",
+  "pageId": "UI-008",
+  "generatedAt": "2026-07-21T21:40:03+08:00",
+  "status": "passed",
+  "focusedVerification": {
+    "status": "passed",
+    "testFiles": 8,
+    "tests": 44
+  },
+  "requirements": {
+    "selectors": {
+      "status": "passed",
+      "tests": [
+        "C08 exception handling selectors > projects strict DO-009 records and never carries a fabricated foreign key",
+        "C08 exception handling selectors > applies data scope before status, type, level, and owner filters",
+        "C08 exception handling selectors > derives due state, evidence counts, progress, state flow, and the UI-009 link",
+        "C08 exception handling selectors > derives KPI counts from visible strict records and injected demo time",
+        "C08 exception handling selectors > returns deeply frozen projections and disables actions without frozen permissions"
+      ]
+    },
+    "api014": {
+      "status": "passed",
+      "tests": [
+        "ExceptionHandlingGateway > uses exact API-014/API-015 paths, operation identities, and the frozen C08 command body",
+        "ExceptionHandlingGateway > returns strict transport facts without writing the C03 Store",
+        "ExceptionHandlingGateway > passes network failure through to the page/command boundary",
+        "UI-008 states and permissions > renders loading, empty, network-error, business-error, and safe not-found states"
+      ]
+    },
+    "api015": {
+      "status": "passed",
+      "tests": [
+        "ExceptionHandlingGateway > uses exact API-014/API-015 paths, operation identities, and the frozen C08 command body",
+        "ExceptionHandlingGateway > rejects path id mismatch",
+        "ExceptionHandlingGateway > rejects extra command identity",
+        "ExceptionHandlingGateway > rejects malformed success envelope",
+        "UI-008 exception actions > shows loading, preserves drafts on API-015 failure, and retries the action"
+      ]
+    },
+    "actions": [
+      {
+        "id": "EX-01",
+        "command": "ack",
+        "status": "passed",
+        "test": "UI-008 exception actions > acknowledges, assigns, handles, reviews, handles again, closes, and reopens"
+      },
+      {
+        "id": "EX-02",
+        "command": "assign",
+        "status": "passed",
+        "test": "UI-008 exception actions > acknowledges, assigns, handles, reviews, handles again, closes, and reopens"
+      },
+      {
+        "id": "EX-03",
+        "command": "handle",
+        "status": "passed",
+        "test": "ExceptionHandlingCommandService EX-01..EX-05 > runs API before one DO-009 commit for the complete review/close/reopen chain"
+      },
+      {
+        "id": "EX-04",
+        "command": "review/close",
+        "status": "passed",
+        "test": "ExceptionHandlingCommandService EX-01..EX-05 > runs API before one DO-009 commit for the complete review/close/reopen chain"
+      },
+      {
+        "id": "EX-05",
+        "command": "reopen",
+        "status": "passed",
+        "test": "ExceptionHandlingCommandService EX-01..EX-05 > runs API before one DO-009 commit for the complete review/close/reopen chain"
+      }
+    ],
+    "permissions": {
+      "status": "passed",
+      "tests": [
+        "UI-008 states and permissions > DISPATCHER sees monitor:view and EX actions",
+        "UI-008 states and permissions > SHIFT_LEADER sees monitor:view and EX actions",
+        "UI-008 states and permissions > keeps BUSINESS read-only and renders route forbidden before API for SAFETY",
+        "ExceptionHandlingCommandService EX-01..EX-05 > rejects permission, scope, reason, owner, evidence, and illegal state before API with one audit"
+      ]
+    },
+    "dataScope": {
+      "status": "passed",
+      "tests": [
+        "C08 exception handling selectors > applies data scope before status, type, level, and owner filters",
+        "ExceptionHandlingCommandService EX-01..EX-05 > rejects permission, scope, reason, owner, evidence, and illegal state before API with one audit",
+        "UI-008 states and permissions > renders loading, empty, network-error, business-error, and safe not-found states"
+      ]
+    },
+    "versionDrift": {
+      "status": "passed",
+      "test": "ExceptionHandlingCommandService EX-01..EX-05 > returns DEMO-VERSION-001 when the exception drifts after API and makes no C08 write"
+    },
+    "idempotency": {
+      "status": "passed",
+      "test": "ExceptionHandlingCommandService EX-01..EX-05 > replays the first frozen commandId without repeating API, commit, workflow, or audit"
+    },
+    "reset": {
+      "status": "passed",
+      "test": "DemoRuntimeProvider > exposes one C08 runtime and API-025 clears workflow, replay cache, and command sequences"
+    },
+    "pageStates": [
+      {
+        "state": "loading",
+        "status": "passed",
+        "test": "UI-008 states and permissions > renders loading, empty, network-error, business-error, and safe not-found states"
+      },
+      {
+        "state": "empty",
+        "status": "passed",
+        "test": "UI-008 states and permissions > renders loading, empty, network-error, business-error, and safe not-found states"
+      },
+      {
+        "state": "business-error",
+        "status": "passed",
+        "test": "UI-008 states and permissions > renders loading, empty, network-error, business-error, and safe not-found states"
+      },
+      {
+        "state": "network-error",
+        "status": "passed",
+        "test": "UI-008 states and permissions > renders loading, empty, network-error, business-error, and safe not-found states"
+      },
+      {
+        "state": "forbidden",
+        "status": "passed",
+        "test": "UI-008 states and permissions > keeps BUSINESS read-only and renders route forbidden before API for SAFETY"
+      },
+      {
+        "state": "not-found",
+        "status": "passed",
+        "test": "UI-008 states and permissions > renders loading, empty, network-error, business-error, and safe not-found states"
+      }
+    ],
+    "progressStates": [
+      {
+        "state": "OPEN_QUEUE",
+        "status": "passed",
+        "test": "UI-008 exception handling render > reactively renders OPEN_QUEUE, HANDLING, REVIEW, and CLOSED progress"
+      },
+      {
+        "state": "HANDLING",
+        "status": "passed",
+        "test": "UI-008 exception handling render > reactively renders OPEN_QUEUE, HANDLING, REVIEW, and CLOSED progress"
+      },
+      {
+        "state": "REVIEW",
+        "status": "passed",
+        "test": "UI-008 exception handling render > reactively renders OPEN_QUEUE, HANDLING, REVIEW, and CLOSED progress"
+      },
+      {
+        "state": "CLOSED",
+        "status": "passed",
+        "test": "UI-008 exception handling render > reactively renders OPEN_QUEUE, HANDLING, REVIEW, and CLOSED progress"
+      }
+    ],
+    "c07SourceContext": {
+      "status": "passed",
+      "foreignKeyClaim": false,
+      "tests": [
+        "C07 to C08 integration boundary > accepts DB-05 query fields as display-only context without inventing DO-009 relations",
+        "C08 exception query context > returns only display context and filters without resolving or inventing object relations",
+        "UI-008 exception handling render > filters by frozen query values without claiming a production relation"
+      ]
+    },
+    "upstreamMutationBoundary": {
+      "status": "passed",
+      "test": "C07 to C08 integration boundary > keeps WorkOrder, WorkNode, and Interlock stores unchanged across EX-01 and EX-02"
+    },
+    "ui009Link": {
+      "status": "passed",
+      "implementationIncluded": false,
+      "tests": [
+        "UI-008 states and permissions > disables C08 writes for INTERLOCK and exposes only the UI-009 boundary",
+        "ExceptionHandlingCommandService EX-01..EX-05 > maps gateway failure and INTERLOCK boundary to failed audits without domain writes"
+      ]
+    }
+  },
+  "e2e": [
+    {
+      "name": "UI-008 enters from C07 DB-05, then acknowledges and assigns an exception",
+      "status": "passed"
+    },
+    {
+      "name": "UI-008 handles, reviews, handles again, and closes with deterministic evidence",
+      "status": "passed"
+    },
+    {
+      "name": "UI-008 enforces permission, data scope, version recovery, and idempotent double submit",
+      "status": "passed"
+    },
+    {
+      "name": "UI-008 recovers network and malformed responses, then keeps INTERLOCK in UI-009",
+      "status": "passed"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "C08-UI008-SCN01-OPEN_QUEUE-1440x900.png",
+      "status": "passed",
+      "viewport": "1440x900",
+      "imageSize": "1440x1732"
+    },
+    {
+      "file": "C08-UI008-SCN01-OPEN_QUEUE-1280x720.png",
+      "status": "passed",
+      "viewport": "1280x720",
+      "imageSize": "1280x2227"
+    },
+    {
+      "file": "C08-UI008-SCN01-HANDLING-1440x900.png",
+      "status": "passed",
+      "viewport": "1440x900",
+      "imageSize": "1440x1788"
+    },
+    {
+      "file": "C08-UI008-SCN01-HANDLING-1280x720.png",
+      "status": "passed",
+      "viewport": "1280x720",
+      "imageSize": "1280x2283"
+    },
+    {
+      "file": "C08-UI008-SCN01-REVIEW-1440x900.png",
+      "status": "passed",
+      "viewport": "1440x900",
+      "imageSize": "1440x1859"
+    },
+    {
+      "file": "C08-UI008-SCN01-REVIEW-1280x720.png",
+      "status": "passed",
+      "viewport": "1280x720",
+      "imageSize": "1280x2325"
+    },
+    {
+      "file": "C08-UI008-SCN01-CLOSED-1440x900.png",
+      "status": "passed",
+      "viewport": "1440x900",
+      "imageSize": "1440x1831"
+    },
+    {
+      "file": "C08-UI008-SCN01-CLOSED-1280x720.png",
+      "status": "passed",
+      "viewport": "1280x720",
+      "imageSize": "1280x2325"
+    }
+  ]
+}

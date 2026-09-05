@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "suite": "src/stores/__tests__/store.test.ts",
+  "result": {
+    "testFiles": 1,
+    "tests": 13,
+    "passed": 13
+  },
+  "slices": [
+    {
+      "key": "session",
+      "source": "DemoSessionSeed plus active fixture scenario clock",
+      "domainObjectIds": []
+    },
+    {
+      "key": "scenario",
+      "source": "FixtureSnapshot.scenarios",
+      "domainObjectIds": []
+    },
+    {
+      "key": "plan",
+      "source": "FixtureSnapshot.objects",
+      "domainObjectIds": ["DO-001", "DO-002"]
+    },
+    {
+      "key": "recommendation",
+      "source": "empty until populated by a validated API result",
+      "domainObjectIds": []
+    },
+    {
+      "key": "workOrder",
+      "source": "FixtureSnapshot.objects",
+      "domainObjectIds": ["DO-005", "DO-006"]
+    },
+    {
+      "key": "resource",
+      "source": "FixtureSnapshot.objects",
+      "domainObjectIds": ["DO-003", "DO-004", "DO-007"]
+    },
+    {
+      "key": "vehicle",
+      "source": "FixtureSnapshot.objects",
+      "domainObjectIds": ["DO-008"]
+    },
+    {
+      "key": "exception",
+      "source": "FixtureSnapshot.objects",
+      "domainObjectIds": ["DO-009"]
+    },
+    {
+      "key": "interlock",
+      "source": "FixtureSnapshot.objects",
+      "domainObjectIds": ["DO-010"]
+    },
+    {
+      "key": "offline",
+      "source": "FixtureSnapshot.objects",
+      "domainObjectIds": ["DO-011"]
+    },
+    {
+      "key": "report",
+      "source": "FixtureSnapshot.objects",
+      "domainObjectIds": ["DO-012"]
+    },
+    {
+      "key": "configAudit",
+      "source": "FixtureSnapshot.objects",
+      "domainObjectIds": ["DO-013", "DO-014"]
+    }
+  ],
+  "domainObjectCoverage": [
+    "DO-001",
+    "DO-002",
+    "DO-003",
+    "DO-004",
+    "DO-005",
+    "DO-006",
+    "DO-007",
+    "DO-008",
+    "DO-009",
+    "DO-010",
+    "DO-011",
+    "DO-012",
+    "DO-013",
+    "DO-014"
+  ],
+  "behaviorTests": {
+    "initialization": "composes exactly 12 named slices and maps DO-001 through DO-014 once",
+    "fixtureIsolation": "deep-copies fixture input and never holds the Mock runtime mutable state",
+    "atomicCommit": "commits a validated cross-slice candidate with exactly one root notification",
+    "candidateThrowRollback": "leaves state and notifications unchanged when candidate construction throws",
+    "validationRollback": "rejects an invalid complete candidate without a partial commit",
+    "scenarioReset": [
+      "atomically resets all 12 slices for SCN-01",
+      "atomically resets all 12 slices for SCN-02",
+      "atomically resets all 12 slices for SCN-03",
+      "atomically resets all 12 slices for SCN-04",
+      "atomically resets all 12 slices for SCN-05",
+      "atomically resets all 12 slices for SCN-06",
+      "atomically resets all 12 slices for SCN-07"
+    ],
+    "crossSliceSelector": "keeps a cross-slice selector referentially stable for an unchanged root state"
+  }
+}

@@ -1,0 +1,22 @@
+C10 UI-010 Playwright RED evidence
+Date: 2026-07-22 Asia/Shanghai
+
+Command:
+node_modules\.bin\playwright.CMD test e2e/ui-010-offline-sync.spec.ts
+
+Exit code: 1
+Result: 2 passed, 2 failed (4 total), duration 36.9s.
+
+Passing before the layout fix:
+- permission/data-scope/version/illegal-transition/idempotency/upstream-isolation flow
+- API-018/API-019 network/malformed recovery and REJECTED branch
+
+Meaningful failures:
+- 1280x720 screenshot gate expected every critical control y < 720.
+- selected packet/version area was at y=1152.296875 in the standard path.
+- selected packet/version area was at y=899.296875 in the conflict path.
+
+The failure isolated viewport positioning for evidence capture. Business state transitions and
+recovery behavior were already passing. The fix must keep viewport screenshots and explicitly
+align the responsive workspace start before asserting selected status, version delta, actions,
+and feedback in the same viewport.

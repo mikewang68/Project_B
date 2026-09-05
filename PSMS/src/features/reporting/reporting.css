@@ -1,0 +1,295 @@
+.reporting-page {
+  --report-ink: #17313a;
+  --report-muted: #61717a;
+  --report-line: #dce6e9;
+  --report-teal: #147d92;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  color: var(--report-ink);
+}
+
+.reporting-page > *,
+.report-analysis-layout > *,
+.report-ledger-layout > *,
+.report-distribution-grid > *,
+.report-detail-column > * {
+  min-width: 0;
+}
+
+.reporting-page-heading,
+.report-context-content,
+.report-rate-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reporting-page .ant-card {
+  border-color: var(--report-line);
+  box-shadow: 0 6px 20px rgba(31, 61, 72, .045);
+}
+
+.report-context-card {
+  background: linear-gradient(115deg, #f7fbfb 0%, #eef8f7 52%, #f8f6ef 100%);
+  border-left: 4px solid var(--report-teal) !important;
+}
+
+.report-context-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.report-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.report-kpi-card {
+  overflow: hidden;
+  position: relative;
+}
+
+.report-kpi-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--report-teal);
+}
+
+.report-kpi-tone-1::before { background: #5b5bd6; }
+.report-kpi-tone-2::before { background: #d97706; }
+.report-kpi-tone-3::before { background: #c24156; }
+
+.report-kpi-card .ant-card-body {
+  padding: 12px 14px 12px 16px;
+}
+
+.report-kpi-card .ant-statistic-title {
+  min-height: 42px;
+  color: var(--report-muted);
+  line-height: 1.35;
+}
+
+.report-kpi-card .ant-statistic-content {
+  color: var(--report-ink);
+  font-size: 25px;
+}
+
+.report-analysis-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, .8fr) minmax(620px, 1.7fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.report-efficiency-card,
+.report-distribution-grid {
+  height: 100%;
+}
+
+.report-rate-list,
+.report-detail-stack,
+.report-detail-column,
+.report-feedback-stack,
+.report-definition-list {
+  display: grid;
+  gap: 10px;
+}
+
+.report-rate-row {
+  padding-bottom: 7px;
+  border-bottom: 1px dashed var(--report-line);
+}
+
+.report-rate-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.report-rate-source {
+  display: block;
+  margin-top: -4px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.report-distribution-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.report-distribution-card .ant-card-head {
+  min-height: 40px;
+}
+
+.report-distribution-card .ant-card-body {
+  padding: 8px 12px 10px;
+}
+
+.report-chart {
+  width: 100%;
+  height: 132px;
+}
+
+.report-distribution-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 24px;
+}
+
+.report-distribution-summary .ant-tag {
+  margin-inline-end: 0;
+  font-size: 11px;
+}
+
+.report-ledger-layout {
+  display: grid;
+  grid-template-columns: minmax(610px, 1.6fr) minmax(320px, .8fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.report-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.report-filter-grid label,
+.report-reason-field {
+  display: grid;
+  gap: 5px;
+  color: var(--report-muted);
+  font-size: 12px;
+}
+
+.report-filter-grid select {
+  width: 100%;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--report-ink);
+}
+
+.report-ledger-table .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+.report-ledger-table .report-row-selected > td {
+  background: #eaf6f6 !important;
+}
+
+.report-ledger-table tbody tr {
+  cursor: pointer;
+}
+
+.report-detail-card .ant-descriptions-item-label {
+  width: 126px;
+  color: var(--report-muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.report-metrics-json {
+  display: inline-block;
+  max-width: 100%;
+  max-height: 92px;
+  overflow: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.report-snapshot-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid #d5e7e8;
+  border-radius: 7px;
+  background: #f2f9f8;
+}
+
+.report-filter-empty {
+  padding: 24px 0 6px;
+}
+
+.report-loading-card .ant-card-body {
+  padding-bottom: 2px;
+}
+
+.report-read-alert .ant-alert-description {
+  margin-top: 8px;
+}
+
+.report-definition {
+  margin-bottom: 4px;
+}
+
+.report-definition .ant-descriptions-title {
+  margin-bottom: 7px;
+  color: var(--report-ink);
+}
+
+@media (max-width: 1360px) {
+  .reporting-page {
+    gap: 11px;
+  }
+
+  .report-kpi-grid {
+    gap: 8px;
+  }
+
+  .report-ledger-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-detail-column {
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+    align-items: start;
+  }
+}
+
+@media (max-width: 900px) {
+  .reporting-page-heading,
+  .report-context-content {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .report-kpi-grid,
+  .report-distribution-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-analysis-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-efficiency-card .report-rate-list,
+  .report-detail-column,
+  .report-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reporting-page *,
+  .reporting-page *::before,
+  .reporting-page *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}

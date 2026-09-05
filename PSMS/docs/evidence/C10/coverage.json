@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "component": "C10",
+  "pageId": "UI-010",
+  "route": "/operations/offline-sync",
+  "verifiedAt": "2026-07-22T16:14:00+08:00",
+  "status": "PASS",
+  "contractBoundary": {
+    "frozenHashes": "6/6 MATCH",
+    "frozenFaultModified": false,
+    "frozenFixtureModified": false,
+    "publicContractModified": false,
+    "permissionCatalogModified": false,
+    "stateMachineCatalogModified": false,
+    "c09OwnedCodeModified": false,
+    "mergeCommitsAfterC09": 0
+  },
+  "capabilities": [
+    {
+      "id": "query",
+      "status": "PASS",
+      "coverage": [
+        "packetId",
+        "terminalId",
+        "workOrderNo",
+        "mergeStatus",
+        "scenarioId",
+        "from",
+        "invalid-value sanitization"
+      ],
+      "evidence": ["src/features/offline-sync/__tests__/offlinePacketQueries.test.ts"]
+    },
+    {
+      "id": "projection",
+      "status": "PASS",
+      "coverage": [
+        "strict DO-011 fields",
+        "deep freeze",
+        "seven KPIs",
+        "filters",
+        "version delta",
+        "validation issues",
+        "action availability",
+        "SCN-06 recovery guidance"
+      ],
+      "evidence": ["src/features/offline-sync/__tests__/offlinePacketProjection.test.ts"]
+    },
+    {
+      "id": "API-018",
+      "status": "PASS",
+      "coverage": [
+        "GET /mock/offline-packets",
+        "strict success identity",
+        "strict DO-011 item array",
+        "public error envelope",
+        "network response recovery",
+        "malformed response recovery",
+        "SCN-06 list remains readable"
+      ],
+      "evidence": [
+        "src/features/offline-sync/__tests__/offlinePacketGateway.test.ts",
+        "src/mocks/__tests__/handlers.test.ts",
+        "e2e/ui-010-offline-sync.spec.ts"
+      ]
+    },
+    {
+      "id": "API-019",
+      "status": "PASS",
+      "coverage": [
+        "POST /mock/offline-packets/:id/command",
+        "strict action/reason/validation body",
+        "path and response packet identity",
+        "public error envelope",
+        "network response recovery",
+        "malformed response recovery",
+        "TOS-OFF-001 for SCN-06 OFF-001 only"
+      ],
+      "evidence": [
+        "src/features/offline-sync/__tests__/offlinePacketGateway.test.ts",
+        "src/mocks/__tests__/handlers.test.ts",
+        "src/features/offline-sync/__tests__/offlinePacketIntegration.test.ts",
+        "e2e/ui-010-offline-sync.spec.ts"
+      ]
+    },
+    {
+      "id": "command-pipeline",
+      "status": "PASS",
+      "coverage": [
+        "permission",
+        "AREA-A data scope",
+        "reason validation",
+        "validation payload",
+        "optimistic version",
+        "illegal transition",
+        "API-before-commit",
+        "one atomic domain write",
+        "one audit per first result",
+        "idempotent replay",
+        "upstream slice isolation"
+      ],
+      "evidence": [
+        "src/features/offline-sync/__tests__/offlinePacketCommands.test.ts",
+        "src/features/offline-sync/__tests__/offlinePacketIntegration.test.ts"
+      ]
+    },
+    {
+      "id": "reset",
+      "status": "PASS",
+      "coverage": [
+        "restore frozen SCN-01 packets",
+        "clear workflow draft/pending/feedback",
+        "clear command idempotency state",
+        "restart CMD/TRACE/AUD sequences at 001",
+        "preserve single C03 reset audit semantics"
+      ],
+      "evidence": [
+        "src/features/offline-sync/__tests__/offlinePacketIntegration.test.ts",
+        "src/runtime/__tests__/runtime.test.tsx"
+      ]
+    },
+    {
+      "id": "page-states",
+      "status": "PASS",
+      "coverage": [
+        "identity",
+        "source context",
+        "seven KPIs",
+        "ledger",
+        "detail",
+        "state flow",
+        "action panel",
+        "command feedback",
+        "loading",
+        "empty",
+        "forbidden",
+        "not found",
+        "network error",
+        "malformed response",
+        "business error",
+        "CACHED",
+        "UPLOADING",
+        "VALIDATING",
+        "MERGED",
+        "REJECTED",
+        "RETRY",
+        "CONFLICT"
+      ],
+      "evidence": [
+        "src/pages/__tests__/OfflineSyncPage.render.test.tsx",
+        "src/pages/__tests__/OfflineSyncPage.action.test.tsx",
+        "src/pages/__tests__/OfflineSyncPage.permission.test.tsx"
+      ]
+    },
+    {
+      "id": "scenario-boundary",
+      "status": "PASS",
+      "coverage": [
+        "SCN-06 conflict recognition and recovery guidance",
+        "SCN-06 OFF-001 RETRY returns TOS-OFF-001 without a domain write",
+        "reset to SCN-01 before the standard full loop",
+        "SCN-01 RETRY -> PENDING_UPLOAD -> VALIDATING -> MERGED",
+        "SCN-01 RETRY -> PENDING_UPLOAD -> VALIDATING -> REJECTED"
+      ],
+      "evidence": [
+        "src/features/offline-sync/__tests__/offlinePacketIntegration.test.ts",
+        "src/pages/__tests__/OfflineSyncPage.action.test.tsx",
+        "e2e/ui-010-offline-sync.spec.ts"
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "businessAction": "OS-01",
+      "domainCommand": "upload",
+      "permission": "offline:retry",
+      "transitions": ["CACHED -> PENDING_UPLOAD", "RETRY -> PENDING_UPLOAD"],
+      "status": "PASS"
+    },
+    {
+      "businessAction": "OS-02",
+      "domainCommand": "validate",
+      "permission": "offline:resolve",
+      "transitions": ["PENDING_UPLOAD -> VALIDATING"],
+      "status": "PASS"
+    },
+    {
+      "businessAction": "OS-03",
+      "domainCommand": "merge",
+      "permission": "offline:resolve",
+      "transitions": ["VALIDATING -> MERGED"],
+      "status": "PASS"
+    },
+    {
+      "businessAction": "OS-04",
+      "domainCommand": "reject",
+      "permission": "offline:resolve",
+      "transitions": ["VALIDATING -> REJECTED", "CONFLICT -> REJECTED"],
+      "status": "PASS"
+    },
+    {
+      "businessAction": "OS-05",
+      "domainCommand": "retry",
+      "permission": "offline:retry",
+      "transitions": ["CONFLICT -> RETRY", "REJECTED -> RETRY"],
+      "status": "PASS"
+    }
+  ],
+  "e2e": [
+    {
+      "id": 1,
+      "name": "standard OFF-004 merge path with deterministic evidence",
+      "status": "PASS"
+    },
+    {
+      "id": 2,
+      "name": "SCN-06 conflict guidance separated from reset SCN-01 full loop",
+      "status": "PASS"
+    },
+    {
+      "id": 3,
+      "name": "permission, scope, version, illegal transition, idempotency, upstream isolation",
+      "status": "PASS"
+    },
+    {
+      "id": 4,
+      "name": "API-018/API-019 network and malformed recovery with REJECTED branch",
+      "status": "PASS"
+    }
+  ],
+  "screenshots": [
+    {"file": "C10-UI010-SCN01-CACHED-1440x900.png", "width": 1440, "height": 900, "status": "PASS"},
+    {"file": "C10-UI010-SCN01-CACHED-1280x720.png", "width": 1280, "height": 720, "status": "PASS"},
+    {"file": "C10-UI010-SCN01-UPLOADING-1440x900.png", "width": 1440, "height": 900, "status": "PASS"},
+    {"file": "C10-UI010-SCN01-UPLOADING-1280x720.png", "width": 1280, "height": 720, "status": "PASS"},
+    {"file": "C10-UI010-SCN01-CONFLICT-1440x900.png", "width": 1440, "height": 900, "status": "PASS"},
+    {"file": "C10-UI010-SCN01-CONFLICT-1280x720.png", "width": 1280, "height": 720, "status": "PASS"},
+    {"file": "C10-UI010-SCN01-MERGED-1440x900.png", "width": 1440, "height": 900, "status": "PASS"},
+    {"file": "C10-UI010-SCN01-MERGED-1280x720.png", "width": 1280, "height": 720, "status": "PASS"}
+  ]
+}

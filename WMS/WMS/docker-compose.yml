@@ -1,0 +1,23 @@
+services:
+  opengauss:
+    image: opengauss:6.0.5
+    container_name: mt-wms-opengauss
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env.local
+    volumes:
+      - mt-wms-opengauss-data:/var/lib/opengauss
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "LD_LIBRARY_PATH=/usr/local/opengauss/lib:/scws/lib /usr/local/opengauss/bin/gsql -d $${GS_DB} -U $${GS_USERNAME} -W $${GS_USER_PASSWORD} -c 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+volumes:
+  mt-wms-opengauss-data:
+    name: mt-wms-opengauss-data

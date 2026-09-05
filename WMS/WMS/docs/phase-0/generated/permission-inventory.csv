@@ -1,0 +1,11 @@
+﻿role,inherits_or_grants,source_file,line
+admin,admin|manager|normal,extensions/permissions.py,4
+manager,manager|normal,extensions/permissions.py,4
+normal,normal,extensions/permissions.py,4
+employee,employee,extensions/permissions.py,20
+boss,boss|manager|finance|stock,extensions/permissions.py,26
+manager,manager|finance|stock,extensions/permissions.py,4
+finance,finance|stock,extensions/permissions.py,26
+stock,stock,extensions/permissions.py,26
+express,express,extensions/permissions.py,30
+empty,empty,extensions/permissions.py,31

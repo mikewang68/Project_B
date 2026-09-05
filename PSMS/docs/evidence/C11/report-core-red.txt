@@ -1,0 +1,10 @@
+COMMAND: node_modules\.bin\vitest.CMD run src/features/reporting/__tests__/reportProjection.test.ts src/features/reporting/__tests__/reportMetrics.test.ts src/features/reporting/__tests__/reportQueries.test.ts
+RUN_AT: 2026-07-22 before C11 reporting production modules existed
+EXIT_CODE: 1
+TEST_FILES: 3 failed
+TESTS: no tests imported
+EXPECTED_FAILURES:
+- Failed to resolve import ../reportQueries from reportQueries.test.ts.
+- Failed to resolve import ../reportQueries from reportProjection.test.ts.
+- Failed to resolve import ../reportMetrics from reportMetrics.test.ts.
+CLASSIFICATION: valid RED; failures are caused by the missing C11 feature modules, not test syntax or fixture errors.

@@ -1,0 +1,249 @@
+{
+  "module": "C05",
+  "pages": ["UI-003"],
+  "selectors": [
+    "selectConfirmedPlan",
+    "selectReceptionRecommendations",
+    "selectTrackConflicts"
+  ],
+  "apis": ["API-005", "API-006"],
+  "scenarios": ["SCN-01", "SCN-02"],
+  "uiStates": [
+    "loading",
+    "empty",
+    "business-error",
+    "network-error",
+    "forbidden",
+    "not-found"
+  ],
+  "e2eExpected": 4,
+  "screenshotsExpected": 8,
+  "checks": [
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/ruleEngine.test.ts",
+      "name": "calculates the frozen PLAN-001 scores, windows, ranking, and hard exclusion exactly",
+      "status": "passed",
+      "covers": ["C05-DEMO-RULE-1.0", "100-point-score", "T1/T3/T2", "T4-exclusion"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/ruleEngine.test.ts",
+      "name": "orders equal scores by windowStart and then trackNo",
+      "status": "passed",
+      "covers": ["stable-sorting"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/schemas.test.ts",
+      "name": "accepts complete CALCULATED and CONFIRMED drafts and deep-freezes parsed values",
+      "status": "passed",
+      "covers": ["strict-RecommendationDraft", "CALCULATED", "CONFIRMED"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/gateway.test.ts",
+      "name": "sends the exact API-005 query and strict API-006 body",
+      "status": "passed",
+      "covers": ["API-005", "API-006", "method-and-body"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/gateway.test.ts",
+      "name": "returns a strict failure envelope unchanged",
+      "status": "passed",
+      "covers": ["strict-Gateway", "failure-envelope"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/selectors.test.ts",
+      "name": "returns PLAN-001 only after confirmation and returns immutable copies",
+      "status": "passed",
+      "covers": ["selectConfirmedPlan"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/selectors.test.ts",
+      "name": "parses drafts strictly and filters AREA-A before lookup, parsing, or association",
+      "status": "passed",
+      "covers": ["selectReceptionRecommendations", "AREA-A-pre-filter"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/selectors.test.ts",
+      "name": "maps exclusions and affected work orders in deterministic order",
+      "status": "passed",
+      "covers": ["selectTrackConflicts", "work-order-ordering"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/pages/__tests__/ReceptionRecommendationPage.permission.test.tsx",
+      "name": "仅 DISPATCHER 进入推荐页并触发受控 API-005",
+      "status": "passed",
+      "covers": ["permission", "API-005"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/pages/__tests__/ReceptionRecommendationPage.permission.test.tsx",
+      "name": "BUSINESS 在懒加载页面和 API-005 前进入既有 403",
+      "status": "passed",
+      "covers": ["forbidden", "no-unauthorized-API"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/commands.test.ts",
+      "name": "rejects a changed plan version before API and retains selection and draft",
+      "status": "passed",
+      "covers": ["plan-version", "DEMO-VERSION-001"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/commands.test.ts",
+      "name": "rejects a changed track version before API and retains selection and draft",
+      "status": "passed",
+      "covers": ["track-version", "DEMO-VERSION-001"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/commands.test.ts",
+      "name": "replays an injected commandId without a second request, draft commit, or audit",
+      "status": "passed",
+      "covers": ["idempotence"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/commands.test.ts",
+      "name": "requires CONFIRMED PLAN-001 v2, invokes API-005, writes exact CALCULATED scores, and appends RC-01",
+      "status": "passed",
+      "covers": ["RC-01", "audit", "atomic-commit"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/features/recommendation/__tests__/commands.test.ts",
+      "name": "denies same-person review before API, preserves the draft, and appends one DENIED RC-04 audit",
+      "status": "passed",
+      "covers": ["separation-of-duties", "TOS-AUTH-001", "RC-04", "audit"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/runtime/__tests__/runtime.test.tsx",
+      "name": "makes a C04 confirmation immediately visible to C05 and resets all C05 state through API-025",
+      "status": "passed",
+      "covers": ["single-store", "reset", "workflow-reset", "id-cache-reset", "deterministic-id-reset"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/mocks/__tests__/handlers.test.ts",
+      "name": "SCN-02 complete API-004 only unlocks strict API-005 and API-006 for PLAN-002",
+      "status": "passed",
+      "covers": ["SCN-02-compatibility", "API-005", "API-006"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/mocks/__tests__/handlers.test.ts",
+      "name": "SCN-02 resolution rejects incomplete, invalid, failed, reset, and different-object continuations",
+      "status": "passed",
+      "covers": ["resolvedFaultObjects-allow-deny-boundary", "reset"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/pages/__tests__/ReceptionRecommendationPage.action.test.tsx",
+      "name": "自动计算、默认选择 T1、展示规则说明并确认后开放 UI-004 链接",
+      "status": "passed",
+      "covers": ["loading", "calculated", "confirmed", "UI-004-entry"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/pages/__tests__/ReceptionRecommendationPage.action.test.tsx",
+      "name": "API-005 failure 进入 network-error",
+      "status": "passed",
+      "covers": ["network-error"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/pages/__tests__/ReceptionRecommendationPage.action.test.tsx",
+      "name": "未确认计划进入 business-error，未知计划进入 not-found",
+      "status": "passed",
+      "covers": ["business-error", "not-found"]
+    },
+    {
+      "kind": "vitest",
+      "file": "src/pages/__tests__/ReceptionRecommendationPage.action.test.tsx",
+      "name": "空候选显示全部硬排除原因而不是空白页",
+      "status": "passed",
+      "covers": ["empty"]
+    },
+    {
+      "kind": "playwright",
+      "file": "e2e/ui-003-reception-recommendation.spec.ts",
+      "name": "UI-003 SCN-01 calculates and confirms the system-recommended T1",
+      "status": "passed"
+    },
+    {
+      "kind": "playwright",
+      "file": "e2e/ui-003-reception-recommendation.spec.ts",
+      "name": "UI-003 SCN-01 confirms a reviewed T3 alternative and preserves provenance",
+      "status": "passed"
+    },
+    {
+      "kind": "playwright",
+      "file": "e2e/ui-003-reception-recommendation.spec.ts",
+      "name": "UI-003 continues from resolved SCN-02 PLAN-002 through recommendation confirmation",
+      "status": "passed"
+    },
+    {
+      "kind": "playwright",
+      "file": "e2e/ui-003-reception-recommendation.spec.ts",
+      "name": "UI-003 enforces route authorization, separation of duties, and version recovery",
+      "status": "passed"
+    },
+    {
+      "kind": "screenshot",
+      "file": "docs/evidence/C05/C05-UI003-SCN01-CALCULATED-1440x900.png",
+      "test": "UI-003 SCN-01 calculates and confirms the system-recommended T1",
+      "status": "inspected-pass"
+    },
+    {
+      "kind": "screenshot",
+      "file": "docs/evidence/C05/C05-UI003-SCN01-CALCULATED-1280x720.png",
+      "test": "UI-003 SCN-01 calculates and confirms the system-recommended T1",
+      "status": "inspected-pass"
+    },
+    {
+      "kind": "screenshot",
+      "file": "docs/evidence/C05/C05-UI003-SCN01-CONFIRMED-1440x900.png",
+      "test": "UI-003 SCN-01 calculates and confirms the system-recommended T1",
+      "status": "inspected-pass"
+    },
+    {
+      "kind": "screenshot",
+      "file": "docs/evidence/C05/C05-UI003-SCN01-CONFIRMED-1280x720.png",
+      "test": "UI-003 SCN-01 calculates and confirms the system-recommended T1",
+      "status": "inspected-pass"
+    },
+    {
+      "kind": "screenshot",
+      "file": "docs/evidence/C05/C05-UI003-SCN01-ADJUSTMENT-1440x900.png",
+      "test": "UI-003 SCN-01 confirms a reviewed T3 alternative and preserves provenance",
+      "status": "inspected-pass"
+    },
+    {
+      "kind": "screenshot",
+      "file": "docs/evidence/C05/C05-UI003-SCN01-ADJUSTMENT-1280x720.png",
+      "test": "UI-003 SCN-01 confirms a reviewed T3 alternative and preserves provenance",
+      "status": "inspected-pass"
+    },
+    {
+      "kind": "screenshot",
+      "file": "docs/evidence/C05/C05-UI003-SCN02-CONFIRMED-1440x900.png",
+      "test": "UI-003 continues from resolved SCN-02 PLAN-002 through recommendation confirmation",
+      "status": "inspected-pass"
+    },
+    {
+      "kind": "screenshot",
+      "file": "docs/evidence/C05/C05-UI003-SCN02-CONFIRMED-1280x720.png",
+      "test": "UI-003 continues from resolved SCN-02 PLAN-002 through recommendation confirmation",
+      "status": "inspected-pass"
+    }
+  ]
+}

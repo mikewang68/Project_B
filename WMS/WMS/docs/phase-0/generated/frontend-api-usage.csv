@@ -1,0 +1,545 @@
+﻿source_file,line,method,path_expression,first_segment,legacy_backend_match
+src/App.vue,336,GET,'/warehouse/selection/'+selection).then(function(resp){,warehouse,yes
+src/App.vue,365,POST,"'/auth/current_tenant', this.tenant).then(function(resp){",auth,yes
+src/App.vue,392,GET,'/auth/current_user').then(function(resp){,auth,yes
+src/App.vue,442,GET,"'/auth/translation?q={""per_page"":100}').then(function(resp){",auth,yes
+src/components/dash/Dash.vue,160,GET,'/chart/order/count').then(function(resp){,chart,yes
+src/components/dash/Dash.vue,208,GET,'/chart/money/count/pay').then(function(resp){,chart,yes
+src/components/dash/Dash.vue,237,GET,'/chart/money/count/recv').then(function(resp){,chart,yes
+src/components/finance/FinanceSummary.vue,223,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/finance/FinanceSummary.vue,236,GET,'/auth/user?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/finance/FinanceSummary.vue,383,GET,'/finance/stat/partner/summary?q='+JSON.stringify(q)).then(function(resp){,finance,yes
+src/components/finance/List.vue,433,POST,"'/auth/config', env.conf).then(function(resp) {",auth,yes
+src/components/finance/List.vue,465,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/finance/List.vue,480,POST,"'/finance/money/summary', this.summary).then(function(resp){",finance,yes
+src/components/finance/List.vue,508,GET,'/finance/money/month/summary').then(function(resp){,finance,yes
+src/components/finance/List.vue,574,PUT,"'/finance/money/'+this.object.id, this.object).then(function(resp){",finance,yes
+src/components/finance/List.vue,585,POST,"'/finance/money', this.object).then(function(resp){",finance,yes
+src/components/finance/List.vue,610,DELETE,'/finance/money/'+this.object.id).then(function(resp){,finance,yes
+src/components/finance/List.vue,641,POST,"'/finance/money/pay/'+this.object.id, env.mact).then(function(resp){",finance,yes
+src/components/finance/List.vue,661,POST,"'/finance/money/recv/'+this.object.id, env.mact).then(function(resp){",finance,yes
+src/components/finance/List.vue,676,GET,'/finance/money/trans/'+object.id).then(function(resp){,finance,yes
+src/components/finance/List.vue,690,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/finance/List.vue,703,GET,'/auth/user?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/finance/List.vue,715,GET,'/finance/money/account?q='+JSON.stringify(q)).then(function(resp){,finance,yes
+src/components/finance/List.vue,855,GET,'/finance/money?q='+JSON.stringify(q)).then(function(resp){,finance,yes
+src/components/finance/MoneyAccount.vue,122,PUT,"'/finance/money/account/'+this.object.id, this.object).then(function(resp){",finance,yes
+src/components/finance/MoneyAccount.vue,133,POST,"'/finance/money/account', this.object).then(function(resp){",finance,yes
+src/components/finance/MoneyAccount.vue,231,GET,'/finance/money/account?q='+JSON.stringify(q)).then(function(resp){,finance,yes
+src/components/finance/Pay.vue,437,POST,"'/auth/config', env.conf).then(function(resp) {",auth,yes
+src/components/finance/Pay.vue,470,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/finance/Pay.vue,485,POST,"'/finance/money/summary', this.summary).then(function(resp){",finance,yes
+src/components/finance/Pay.vue,513,GET,'/finance/money/month/summary').then(function(resp){,finance,yes
+src/components/finance/Pay.vue,580,PUT,"'/finance/money/'+this.object.id, this.object).then(function(resp){",finance,yes
+src/components/finance/Pay.vue,591,POST,"'/finance/money', this.object).then(function(resp){",finance,yes
+src/components/finance/Pay.vue,609,DELETE,'/finance/money/'+this.object.id).then(function(resp){,finance,yes
+src/components/finance/Pay.vue,661,POST,"'/finance/money/pay/'+this.object.id, env.mact).then(function(resp){",finance,yes
+src/components/finance/Pay.vue,676,POST,"'/finance/money/recv/'+this.object.id, env.mact).then(function(resp){",finance,yes
+src/components/finance/Pay.vue,690,GET,'/finance/money/trans/'+object.id).then(function(resp){,finance,yes
+src/components/finance/Pay.vue,704,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/finance/Pay.vue,717,GET,'/auth/user?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/finance/Pay.vue,729,GET,'/finance/money/account?q='+JSON.stringify(q)).then(function(resp){,finance,yes
+src/components/finance/Pay.vue,869,GET,'/finance/money?q='+JSON.stringify(q)).then(function(resp){,finance,yes
+src/components/finance/Recv.vue,441,POST,"'/auth/config', env.conf).then(function(resp) {",auth,yes
+src/components/finance/Recv.vue,474,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/finance/Recv.vue,489,POST,"'/finance/money/summary', this.summary).then(function(resp){",finance,yes
+src/components/finance/Recv.vue,517,GET,'/finance/money/month/summary').then(function(resp){,finance,yes
+src/components/finance/Recv.vue,584,PUT,"'/finance/money/'+this.object.id, this.object).then(function(resp){",finance,yes
+src/components/finance/Recv.vue,595,POST,"'/finance/money', this.object).then(function(resp){",finance,yes
+src/components/finance/Recv.vue,613,DELETE,'/finance/money/'+this.object.id).then(function(resp){,finance,yes
+src/components/finance/Recv.vue,644,POST,"'/finance/money/pay/'+this.object.id, env.mact).then(function(resp){",finance,yes
+src/components/finance/Recv.vue,664,POST,"'/finance/money/recv/'+this.object.id, env.mact).then(function(resp){",finance,yes
+src/components/finance/Recv.vue,678,GET,'/finance/money/trans/'+object.id).then(function(resp){,finance,yes
+src/components/finance/Recv.vue,712,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/finance/Recv.vue,725,GET,'/auth/user?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/finance/Recv.vue,737,GET,'/finance/money/account?q='+JSON.stringify(q)).then(function(resp){,finance,yes
+src/components/finance/Recv.vue,878,GET,'/finance/money?q='+JSON.stringify(q)).then(function(resp){,finance,yes
+src/components/finance/StatStockin.vue,124,POST,"'/finance/stat/goods/stockin/detail?sku='+record.sku, this.summary).then(function(resp){",finance,yes
+src/components/finance/StatStockin.vue,221,POST,"'/finance/stat/goods/stockin', this.summary).then(function(resp){",finance,yes
+src/components/finance/StatStockout.vue,124,POST,"'/finance/stat/goods/stockout/detail?sku='+record.sku, this.summary).then(function(resp){",finance,yes
+src/components/finance/StatStockout.vue,220,POST,"'/finance/stat/goods/stockout', this.summary).then(function(resp){",finance,yes
+src/components/inv/InvAdjust.vue,109,POST,'/inv/adjust/cancel/'+this.object.series_code).then(function(resp){,inv,yes
+src/components/inv/InvAdjust.vue,123,PUT,"'/inv/adjust', this.lines).then(function(resp){",inv,yes
+src/components/inv/InvAdjust.vue,136,POST,'/inv/adjust/exec/'+order.series_code).then(function(resp){,inv,yes
+src/components/inv/InvAdjust.vue,153,GET,'/inv/adjust?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvAdjust.vue,245,GET,'/inv/adjust?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvCount.vue,340,POST,"'/inv/count/create_lines', this.order_new).then(function(resp){",inv,yes
+src/components/inv/InvCount.vue,354,GET,'/inv/inv?without_batch=true&q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvCount.vue,370,GET,'/inv/good?qtype=&q=').then(function(resp){,inv,yes
+src/components/inv/InvCount.vue,392,GET,'/inv/good?qtype=&q='+val).then(function(resp){,inv,yes
+src/components/inv/InvCount.vue,407,GET,'/stockin/recommend/location/sku/'+this.line.sku).then(function(resp){,stockin,yes
+src/components/inv/InvCount.vue,425,GET,'/stockin/recommend/location/sku/'+this.line.sku+'?q='+val).then(function(resp){,stockin,yes
+src/components/inv/InvCount.vue,434,POST,'/inv/count/cancel/'+this.object.series_code).then(function(resp){,inv,yes
+src/components/inv/InvCount.vue,476,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/inv/InvCount.vue,494,POST,"'/inv/count', this.new_order).then(function(resp){",inv,yes
+src/components/inv/InvCount.vue,514,PUT,"'/inv/count?series_code='+this.object.series_code, this.lines).then(function(resp){",inv,yes
+src/components/inv/InvCount.vue,527,POST,'/inv/count/to_adjust/'+order.series_code+'/exec').then(function(resp){,inv,yes
+src/components/inv/InvCount.vue,544,GET,'/inv/count?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvCount.vue,659,GET,'/inv/count?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvCount.vue,680,GET,'/warehouse/area').then(function(resp){,warehouse,yes
+src/components/inv/InvFreeze.vue,125,POST,"'/inv/freeze/do', {inv_list:env.invid_list}).then(function(resp){",inv,yes
+src/components/inv/InvFreeze.vue,146,POST,"'/inv/freeze/undo', {inv_list:env.invid_list}).then(function(resp){",inv,yes
+src/components/inv/InvFreeze.vue,275,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/inv/InvFreeze.vue,308,GET,'/inv/inv?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvMove.vue,335,DELETE,'/inv/move/'+record.id).then(function(resp){,inv,yes
+src/components/inv/InvMove.vue,369,GET,'/inv/inv?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvMove.vue,411,POST,"'/inv/move', this.new_lines).then(function(resp){",inv,yes
+src/components/inv/InvMove.vue,424,PUT,"'/inv/move', this.lines).then(function(resp){",inv,yes
+src/components/inv/InvMove.vue,437,POST,'/inv/move/exec/'+order.series_code).then(function(resp){,inv,yes
+src/components/inv/InvMove.vue,450,POST,"'/inv/move/autolocation?type=movein_inv', env.new_lines).then(function(resp){",inv,yes
+src/components/inv/InvMove.vue,466,POST,'/inv/move/exec_out/'+this.object.series_code).then(function(resp){,inv,yes
+src/components/inv/InvMove.vue,479,POST,'/inv/move/exec_in/'+this.object.series_code).then(function(resp){,inv,yes
+src/components/inv/InvMove.vue,492,POST,'/inv/move/cancel/'+this.object.series_code).then(function(resp){,inv,yes
+src/components/inv/InvMove.vue,534,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/inv/InvMove.vue,555,GET,'/inv/move?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvMove.vue,566,GET,'/stockin/recommend/location/sku/'+line.sku+'/'+line.location_code).then(function(resp){,stockin,yes
+src/components/inv/InvMove.vue,582,GET,'/stockin/recommend/location/sku/'+this.line.sku+'/'+this.line.location_code+'?q='+val).then(function(resp){,stockin,yes
+src/components/inv/InvMove.vue,713,GET,'/inv/move?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvQuery.vue,217,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/inv/InvQuery.vue,249,GET,'/inv/inv?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvReplenish.vue,152,PUT,"'/inv/replenish/invwarn', this.object).then(function(resp){",inv,yes
+src/components/inv/InvReplenish.vue,163,POST,"'/inv/replenish/invwarn', this.object).then(function(resp){",inv,yes
+src/components/inv/InvReplenish.vue,176,GET,'/inv/replenish/compute/move').then(function(resp){,inv,yes
+src/components/inv/InvReplenish.vue,199,GET,'/inv/good?q='+val).then(function(resp){,inv,yes
+src/components/inv/InvReplenish.vue,220,GET,'/inv/replenish/invwarn?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvRfid.vue,150,POST,"'/inv/rfid/gen', record).then(function(resp){",inv,yes
+src/components/inv/InvRfid.vue,161,GET,'/inv/good?q='+this.current_good).then(function(resp){,inv,yes
+src/components/inv/InvRfid.vue,175,GET,'/inv/rfid/gen/print?id='+record.id).then(function(resp){,inv,yes
+src/components/inv/InvRfid.vue,289,GET,'/inv/rfid/gen?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvRfidQuery.vue,144,GET,'/inv/rfid?q='+JSON.stringify(q)).then(function(resp){,inv,yes
+src/components/inv/InvWarn.vue,196,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/inv/InvWarn.vue,230,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/inv/InvWarn.vue,268,GET,url+JSON.stringify(q)).then(function(resp){,dynamic,no_or_dynamic
+src/components/stockin/StockinList.vue,566,POST,'/stockin/to_move/'+this.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinList.vue,629,POST,"'/stockin/stockin', data).then(function(resp){",stockin,yes
+src/components/stockin/StockinList.vue,645,GET,url+'&q='+JSON.stringify(q)).then(function(resp){,dynamic,no_or_dynamic
+src/components/stockin/StockinList.vue,673,DELETE,'/stockin/'+env.order.id+'/line/'+record.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinList.vue,687,POST,"'/stockin/stockin/info', this.order).then(function(resp){",stockin,yes
+src/components/stockin/StockinList.vue,700,POST,'/stockin/cancel/'+this.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinList.vue,716,PUT,"'/stockin/stockin/one/'+this.order.id, data).then(function(resp){",stockin,yes
+src/components/stockin/StockinList.vue,777,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinList.vue,809,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinList.vue,828,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinList.vue,840,GET,'/stockin/recommend/location/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinList.vue,855,GET,'/stockin/recommend/location/'+lineid+'?q='+val).then(function(resp){,stockin,yes
+src/components/stockin/StockinList.vue,866,GET,'/stockin/recommend/location/sku/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinList.vue,879,GET,'/stockin/recommend/location/sku/'+lineid+'?q='+val).then(function(resp){,stockin,yes
+src/components/stockin/StockinList.vue,900,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinList.vue,924,POST,"'/stockin/putin/'+this.order.id, json).then(function(resp){",stockin,yes
+src/components/stockin/StockinList.vue,953,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinList.vue,971,GET,"'/stockin/trans/'+this.order.id+'?q={""limit"":1000}').then(function(resp){",stockin,yes
+src/components/stockin/StockinList.vue,1096,GET,'/stockin/stockin?q='+JSON.stringify(q)).then(function(resp){,stockin,yes
+src/components/stockin/StockinList.vue,1106,GET,'/stockin/putin/'+env.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinOne.vue,518,POST,"'/stockin/stockin/info', this.order).then(function(resp){",stockin,yes
+src/components/stockin/StockinOne.vue,531,POST,'/stockin/cancel/'+this.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinOne.vue,544,POST,'/stockin/reverse/'+this.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinOne.vue,556,POST,'/open/qimen/confirm/in/'+this.order.id).then(function(resp){,open,yes
+src/components/stockin/StockinOne.vue,587,GET,"'/stockin/trans/'+this.order.id+'?q={""limit"":1000}').then(function(resp){",stockin,yes
+src/components/stockin/StockinOne.vue,623,POST,"'/stockin/'+this.order.id+'/line', env.order_line2).then(function(resp){",stockin,yes
+src/components/stockin/StockinOne.vue,676,POST,"'/stockin/check', data).then(function(resp){",stockin,yes
+src/components/stockin/StockinOne.vue,699,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinOne.vue,714,POST,'/stockin/'+this.order.id+'/autolocation').then(function(resp){,stockin,yes
+src/components/stockin/StockinOne.vue,740,POST,"'/stockin/putin/'+this.order.id, json).then(function(resp){",stockin,yes
+src/components/stockin/StockinOne.vue,774,POST,"'/stockin/putin/rfid/'+this.order.id, {lines: data, }).then(function(resp){",stockin,yes
+src/components/stockin/StockinOne.vue,799,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinOne.vue,858,GET,'/inv/rfid?rfid='+this.current_rfid2).then(function(resp){,inv,yes
+src/components/stockin/StockinOne.vue,901,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinOne.vue,953,POST,"'/stockin/check', data).then(function(resp){",stockin,yes
+src/components/stockin/StockinOne.vue,994,GET,"'/stockin/trans/'+this.order.id+'?q={""limit"":1000}').then(function(resp){",stockin,yes
+src/components/stockin/StockinOne.vue,1006,GET,'/stockin/recommend/location/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinOne.vue,1105,GET,'/stockin/stockin/one/'+this.$route.params.order_id).then(function(resp){,stockin,yes
+src/components/stockin/StockinOne.vue,1115,GET,'/stockin/putin/'+env.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,647,POST,"'/stockin/stockin', data).then(function(resp){",stockin,yes
+src/components/stockin/StockinQuick.vue,663,GET,url+'&q='+JSON.stringify(q)).then(function(resp){,dynamic,no_or_dynamic
+src/components/stockin/StockinQuick.vue,691,DELETE,'/stockin/'+env.order.id+'/line/'+record.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,705,POST,"'/stockin/stockin/info', this.order).then(function(resp){",stockin,yes
+src/components/stockin/StockinQuick.vue,718,POST,'/stockin/cancel/'+this.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,735,PUT,"'/stockin/stockin/one/'+this.order.id, data).then(function(resp){",stockin,yes
+src/components/stockin/StockinQuick.vue,796,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinQuick.vue,828,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinQuick.vue,846,GET,'/stockin/recommend/location/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,861,GET,'/stockin/recommend/location/sku/'+lineid+'?q='+val).then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,872,GET,'/stockin/recommend/location/sku/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,885,GET,'/stockin/recommend/location/sku/'+lineid+'?q='+val).then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,898,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinQuick.vue,938,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,953,POST,'/stockin/'+this.order.id+'/autolocation').then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,979,POST,"'/stockin/putin/'+this.order.id, json).then(function(resp){",stockin,yes
+src/components/stockin/StockinQuick.vue,1008,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,1028,GET,"'/stockin/trans/'+this.order.id+'?q={""limit"":1000}').then(function(resp){",stockin,yes
+src/components/stockin/StockinQuick.vue,1154,GET,'/stockin/stockin?q='+JSON.stringify(q)).then(function(resp){,stockin,yes
+src/components/stockin/StockinQuick.vue,1168,GET,'/stockin/putin/'+env.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinSaleReturn.vue,554,POST,"'/stockin/stockin', data).then(function(resp){",stockin,yes
+src/components/stockin/StockinSaleReturn.vue,567,GET,'/inv/good?with_inv_qty=true&qtype=in&q='+this.current_good).then(function(resp){,inv,yes
+src/components/stockin/StockinSaleReturn.vue,594,POST,"'/stockin/stockin/info', this.order).then(function(resp){",stockin,yes
+src/components/stockin/StockinSaleReturn.vue,655,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinSaleReturn.vue,687,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinSaleReturn.vue,706,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinSaleReturn.vue,718,GET,'/stockin/recommend/location/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinSaleReturn.vue,733,GET,'/stockin/recommend/location/'+lineid+'?q='+val).then(function(resp){,stockin,yes
+src/components/stockin/StockinSaleReturn.vue,754,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinSaleReturn.vue,778,POST,"'/stockin/putin/'+this.order.id, json).then(function(resp){",stockin,yes
+src/components/stockin/StockinSaleReturn.vue,802,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinSaleReturn.vue,817,GET,"'/stockin/trans/'+this.order.id+'?q={""limit"":1000}').then(function(resp){",stockin,yes
+src/components/stockin/StockinSaleReturn.vue,944,GET,'/stockin/stockin?q='+JSON.stringify(q)).then(function(resp){,stockin,yes
+src/components/stockin/StockinSaleReturn.vue,958,GET,'/stockin/putin/'+env.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScan.vue,392,POST,"'/stockin/stockin/info', this.order).then(function(resp){",stockin,yes
+src/components/stockin/StockinScan.vue,445,POST,"'/stockin/'+this.order.id+'/line', env.order_line).then(function(resp){",stockin,yes
+src/components/stockin/StockinScan.vue,477,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinScan.vue,496,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinScan.vue,512,GET,'/stockin/recommend/location/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinScan.vue,540,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScan.vue,586,POST,"'/stockin/check', data).then(function(resp){",stockin,yes
+src/components/stockin/StockinScan.vue,610,POST,"'/stockin/putin/'+this.order.id, json).then(function(resp){",stockin,yes
+src/components/stockin/StockinScan.vue,633,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScan.vue,647,GET,"'/stockin/trans/'+this.order.id+'?q={""limit"":1000}').then(function(resp){",stockin,yes
+src/components/stockin/StockinScan.vue,771,GET,'/stockin/stockin?q='+JSON.stringify(q)).then(function(resp){,stockin,yes
+src/components/stockin/StockinScan.vue,784,GET,'/stockin/putin/'+env.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanBarcode.vue,464,POST,"'/stockin/stockin/info', this.order).then(function(resp){",stockin,yes
+src/components/stockin/StockinScanBarcode.vue,526,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinScanBarcode.vue,548,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanBarcode.vue,570,POST,"'/stockin/putin/'+this.order.id, json).then(function(resp){",stockin,yes
+src/components/stockin/StockinScanBarcode.vue,603,POST,"'/stockin/putin/rfid/'+this.order.id, {lines: data, }).then(function(resp){",stockin,yes
+src/components/stockin/StockinScanBarcode.vue,627,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanBarcode.vue,686,GET,'/inv/rfid?rfid='+this.current_rfid2).then(function(resp){,inv,yes
+src/components/stockin/StockinScanBarcode.vue,729,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanBarcode.vue,781,POST,"'/stockin/check', data).then(function(resp){",stockin,yes
+src/components/stockin/StockinScanBarcode.vue,825,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanBarcode.vue,839,GET,"'/stockin/trans/'+this.order.id+'?q={""limit"":1000}').then(function(resp){",stockin,yes
+src/components/stockin/StockinScanBarcode.vue,852,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinScanBarcode.vue,864,GET,'/stockin/recommend/location/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanBarcode.vue,995,GET,'/stockin/stockin?q='+JSON.stringify(q)).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanBarcode.vue,1008,GET,'/stockin/putin/'+env.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanRFID.vue,441,POST,"'/stockin/stockin/info', this.order).then(function(resp){",stockin,yes
+src/components/stockin/StockinScanRFID.vue,493,POST,"'/stockin/'+this.order.id+'/line', env.order_line).then(function(resp){",stockin,yes
+src/components/stockin/StockinScanRFID.vue,522,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinScanRFID.vue,541,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinScanRFID.vue,553,GET,'/stockin/recommend/location/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanRFID.vue,581,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanRFID.vue,607,POST,"'/stockin/putin/rfid/'+this.order.id, {lines: data, }).then(function(resp){",stockin,yes
+src/components/stockin/StockinScanRFID.vue,632,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanRFID.vue,689,GET,'/inv/rfid?rfid='+this.current_rfid2).then(function(resp){,inv,yes
+src/components/stockin/StockinScanRFID.vue,748,POST,"'/stockin/check', data).then(function(resp){",stockin,yes
+src/components/stockin/StockinScanRFID.vue,772,POST,"'/stockin/putin/'+this.order.id, json).then(function(resp){",stockin,yes
+src/components/stockin/StockinScanRFID.vue,795,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanRFID.vue,809,GET,"'/stockin/trans/'+this.order.id+'?q={""limit"":1000}').then(function(resp){",stockin,yes
+src/components/stockin/StockinScanRFID.vue,933,GET,'/stockin/stockin?q='+JSON.stringify(q)).then(function(resp){,stockin,yes
+src/components/stockin/StockinScanRFID.vue,946,GET,'/stockin/putin/'+env.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,595,POST,'/stockin/to_move/'+this.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,659,POST,"'/stockin/stockin', data).then(function(resp){",stockin,yes
+src/components/stockin/StockinTransfer.vue,672,GET,'/inv/good?with_inv_qty=true&qtype=in&q='+this.current_good).then(function(resp){,inv,yes
+src/components/stockin/StockinTransfer.vue,699,DELETE,'/stockin/'+env.order.id+'/line/'+record.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,713,POST,"'/stockin/stockin/info', this.order).then(function(resp){",stockin,yes
+src/components/stockin/StockinTransfer.vue,726,POST,'/stockin/cancel/'+this.order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,748,PUT,"'/stockin/stockin/one/'+this.order.id, data).then(function(resp){",stockin,yes
+src/components/stockin/StockinTransfer.vue,809,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinTransfer.vue,841,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockin/StockinTransfer.vue,860,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinTransfer.vue,871,GET,'/auth/company?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/stockin/StockinTransfer.vue,917,GET,'/warehouse/warehouse?company_code='+env.order_new.transfer_out_company_code+'&q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinTransfer.vue,927,GET,'/warehouse/partner/owner?company_code='+env.order_new.transfer_out_company_code+'&q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinTransfer.vue,937,GET,'/warehouse/warehouse?company_code='+env.query.transfer_out_company_code+'&q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinTransfer.vue,947,GET,'/warehouse/partner/owner?company_code='+env.query.transfer_out_company_code+'&q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockin/StockinTransfer.vue,960,GET,'/stockin/recommend/location/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,975,GET,'/stockin/recommend/location/'+lineid+'?q='+val).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,986,GET,'/stockin/recommend/location/sku/'+lineid).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,999,GET,'/stockin/recommend/location/sku/'+lineid+'?q='+val).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,1020,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,1044,POST,"'/stockin/putin/'+this.order.id, json).then(function(resp){",stockin,yes
+src/components/stockin/StockinTransfer.vue,1074,GET,'/stockin/putin/'+order.id).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,1092,GET,"'/stockin/trans/'+this.order.id+'?q={""limit"":1000}').then(function(resp){",stockin,yes
+src/components/stockin/StockinTransfer.vue,1112,GET,'/stockin/stockin?q='+JSON.stringify(q)).then(function(resp){,stockin,yes
+src/components/stockin/StockinTransfer.vue,1122,GET,'/stockin/putin/'+env.order.id).then(function(resp){,stockin,yes
+src/components/stockout/StockoutHandle.vue,709,POST,"'/stockout/stockout', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutHandle.vue,725,GET,url+'&q='+JSON.stringify(q)).then(function(resp){,dynamic,no_or_dynamic
+src/components/stockout/StockoutHandle.vue,753,DELETE,'/stockout/'+env.order.id+'/line/'+record.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,767,POST,"'/mes/produce/'+this.order.id+'/create', {}).then(function(resp){",mes,no_or_dynamic
+src/components/stockout/StockoutHandle.vue,779,POST,"'/stockout/stockout/info', this.order).then(function(resp){",stockout,yes
+src/components/stockout/StockoutHandle.vue,792,POST,'/stockout/cancel/'+this.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,809,PUT,"'/stockout/stockout/one/'+this.order.id, data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutHandle.vue,871,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutHandle.vue,903,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutHandle.vue,925,GET,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,937,GET,'/stockout/alloc/'+order.id+'/line?unpick=1').then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,941,GET,'/stockout/alloc/'+order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,954,GET,'/stockout/alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,967,POST,'/stockout/cancel_alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,972,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,977,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,990,POST,'/stockout/cancel_alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,995,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1000,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1016,POST,'/stockout/cancel_alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1021,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1025,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1037,POST,'/stockout/cancel_alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1042,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1046,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1070,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1089,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1102,POST,'/stockout/done/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1115,POST,'/stockout/part_pick/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1134,POST,'/stockout/quick_pick/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1154,GET,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1188,POST,"'/stockout/alloc/'+this.order.id+'/line/specify', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutHandle.vue,1214,GET,'/stockout/alloc/'+this.order.id+'/line/'+line.id+'/inv').then(function(resp){,stockout,yes
+src/components/stockout/StockoutHandle.vue,1272,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutHandle.vue,1416,GET,'/stockout/stockout?q='+JSON.stringify(q)).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,665,POST,"'/stockout/stockout', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutList.vue,681,GET,url+'&q='+JSON.stringify(q)).then(function(resp){,dynamic,no_or_dynamic
+src/components/stockout/StockoutList.vue,727,POST,"'/stockout/merge', {lines:this.merge_list}).then(function(resp){",stockout,yes
+src/components/stockout/StockoutList.vue,742,DELETE,'/stockout/'+env.order.id+'/line/'+record.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,756,POST,"'/mes/produce/'+this.order.id+'/create', {}).then(function(resp){",mes,no_or_dynamic
+src/components/stockout/StockoutList.vue,768,POST,"'/stockout/stockout/info', this.order).then(function(resp){",stockout,yes
+src/components/stockout/StockoutList.vue,781,POST,'/stockout/cancel/'+this.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,797,PUT,"'/stockout/stockout/one/'+this.order.id, data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutList.vue,859,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutList.vue,891,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutList.vue,912,GET,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,923,GET,'/stockout/alloc/'+order.id+'/line?unpick=1').then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,927,GET,'/stockout/alloc/'+order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,940,GET,'/stockout/alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,953,POST,'/stockout/cancel_alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,958,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,962,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,975,POST,'/stockout/cancel_alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,980,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,984,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1000,POST,'/stockout/cancel_alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1005,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1009,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1021,POST,'/stockout/cancel_alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1027,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1031,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1055,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1074,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1093,POST,'/stockout/quick_pick/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1113,GET,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1147,POST,"'/stockout/alloc/'+this.order.id+'/line/specify', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutList.vue,1173,GET,'/stockout/alloc/'+this.order.id+'/line/'+line.id+'/inv').then(function(resp){,stockout,yes
+src/components/stockout/StockoutList.vue,1230,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutList.vue,1356,GET,'/stockout/stockout?q='+JSON.stringify(q)).then(function(resp){,stockout,yes
+src/components/stockout/StockoutMerge.vue,174,POST,'/stockout/cancel/'+this.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutMerge.vue,225,GET,'/stockout/merge?q='+JSON.stringify(q)).then(function(resp){,stockout,yes
+src/components/stockout/StockoutMergeOne.vue,288,POST,"'/stockout/stockout/box/pack/'+this.current_out.id, {lines:this.pack_lines, pack_boxcode:this.pack_boxcode}).then(function(resp){",stockout,yes
+src/components/stockout/StockoutMergeOne.vue,346,POST,'/stockout/cancel_alloc/'+out.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutMergeOne.vue,364,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutMergeOne.vue,382,POST,'/stockout/quick_pick/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutMergeOne.vue,395,POST,"'/stockout/merge/throw/'+env.order.id, {'stockout_id': order.id}).then(function(resp){",stockout,yes
+src/components/stockout/StockoutMergeOne.vue,408,DELETE,'/stockout/merge/one/'+this.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutMergeOne.vue,421,POST,'/stockout/merge/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutMergeOne.vue,440,POST,'/stockout/merge/pick/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutMergeOne.vue,460,GET,'/stockout/merge/one/'+this.$route.params.order_id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutMergeOne.vue,466,GET,'/stockout/merge/alloc/'+this.$route.params.order_id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,801,POST,"'/stockout/stockout/box/pack/'+this.order.id, {lines:this.pack_lines, pack_boxcode:this.pack_boxcode}).then(function(resp){",stockout,yes
+src/components/stockout/StockoutOne.vue,843,POST,'/stockout/stockout/box/ship/'+record.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,871,POST,'/stockout/stockout/box/waybill/'+env.order.id+'/'+record.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,910,PUT,"'/stockout/stockout/box/'+this.order.id, {box_lines: this.box_lines}).then(function(resp){",stockout,yes
+src/components/stockout/StockoutOne.vue,922,POST,"'/stockout/stockout/info', this.order).then(function(resp){",stockout,yes
+src/components/stockout/StockoutOne.vue,935,POST,'/stockout/cancel/'+this.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,947,POST,'/stockout/reverse/'+this.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,959,POST,'/open/qimen/confirm/out/'+this.order.id).then(function(resp){,open,yes
+src/components/stockout/StockoutOne.vue,971,POST,'/stockout/cancel_alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,1004,GET,'/stockout/alloc/'+this.order.id+'/line?unpick=1').then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,1033,POST,'/stockout/done/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,1046,POST,'/stockout/part_pick/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,1063,POST,'/stockout/quick_pick/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,1077,GET,'/stockout/alloc/'+this.order.id+'/line?unpick=1').then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,1090,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,1137,POST,"'/stockout/alloc/'+this.order.id+'/line/specify', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutOne.vue,1163,GET,'/stockout/alloc/'+this.order.id+'/line/'+line.id+'/inv').then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,1224,POST,"'/stockout/check_pick/rfid/'+this.order.id, {lines: data,}).then(function(resp){",stockout,yes
+src/components/stockout/StockoutOne.vue,1251,GET,'/stockout/'+order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,1311,GET,'/inv/rfid?rfid='+this.current_rfid2).then(function(resp){,inv,yes
+src/components/stockout/StockoutOne.vue,1342,POST,"'/stockout/check_pick/query/'+this.order.id+'/line', env.order_line).then(function(resp){",stockout,yes
+src/components/stockout/StockoutOne.vue,1402,POST,"'/stockout/check_pick', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutOne.vue,1433,GET,'/stockout/'+order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutOne.vue,1484,POST,"'/stockout/check_pick', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutOne.vue,1588,GET,'/stockout/stockout/one/'+this.$route.params.order_id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,634,POST,"'/stockout/stockout', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,647,GET,'/inv/good?with_inv_qty=true&qtype=out&q='+this.current_good).then(function(resp){,inv,yes
+src/components/stockout/StockoutPurchaseReturn.vue,669,POST,"'/mes/produce/'+this.order.id+'/create', {}).then(function(resp){",mes,no_or_dynamic
+src/components/stockout/StockoutPurchaseReturn.vue,681,POST,"'/stockout/stockout/info', this.order).then(function(resp){",stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,742,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutPurchaseReturn.vue,774,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutPurchaseReturn.vue,791,GET,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,797,GET,'/stockout/alloc/'+order.id+'/line?unpick=1').then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,801,GET,'/stockout/alloc/'+order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,814,GET,'/stockout/alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,827,POST,'/stockout/cancel_alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,832,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,836,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,849,POST,'/stockout/cancel_alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,854,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,858,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,874,POST,'/stockout/cancel_alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,879,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,883,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,895,POST,'/stockout/cancel_alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,900,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,904,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,928,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,947,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,966,POST,'/stockout/quick_pick/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,986,GET,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,1020,POST,"'/stockout/alloc/'+this.order.id+'/line/specify', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,1046,GET,'/stockout/alloc/'+this.order.id+'/line/'+line.id+'/inv').then(function(resp){,stockout,yes
+src/components/stockout/StockoutPurchaseReturn.vue,1104,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutPurchaseReturn.vue,1229,GET,'/stockout/stockout?q='+JSON.stringify(q)).then(function(resp){,stockout,yes
+src/components/stockout/StockoutScan.vue,209,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutScan.vue,224,POST,"'/stockout/check_pick/query/'+this.order.id+'/line', env.order_line).then(function(resp){",stockout,yes
+src/components/stockout/StockoutScan.vue,287,POST,"'/stockout/check_pick', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutScan.vue,307,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutScan.vue,325,POST,'/stockout/quick_pick/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutScan.vue,342,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutScan.vue,466,GET,'/stockout/stockout?q='+JSON.stringify(q)).then(function(resp){,stockout,yes
+src/components/stockout/StockoutScanBarcode.vue,224,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutScanBarcode.vue,246,POST,"'/stockout/check_pick/rfid/'+this.order.id, {lines: data,}).then(function(resp){",stockout,yes
+src/components/stockout/StockoutScanBarcode.vue,273,GET,'/stockout/'+order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutScanBarcode.vue,333,GET,'/inv/rfid?rfid='+this.current_rfid2).then(function(resp){,inv,yes
+src/components/stockout/StockoutScanBarcode.vue,378,GET,'/stockout/'+order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutScanBarcode.vue,429,POST,"'/stockout/check_pick', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutScanBarcode.vue,449,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutScanBarcode.vue,571,GET,'/stockout/stockout?q='+JSON.stringify(q)).then(function(resp){,stockout,yes
+src/components/stockout/StockoutScanRFID.vue,247,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutScanRFID.vue,262,POST,"'/stockout/check_pick/query/'+this.order.id+'/line', env.order_line).then(function(resp){",stockout,yes
+src/components/stockout/StockoutScanRFID.vue,288,POST,"'/stockout/check_pick/rfid/'+this.order.id, {lines: data,}).then(function(resp){",stockout,yes
+src/components/stockout/StockoutScanRFID.vue,316,GET,'/stockout/'+order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutScanRFID.vue,373,GET,'/inv/rfid?rfid='+this.current_rfid2).then(function(resp){,inv,yes
+src/components/stockout/StockoutScanRFID.vue,445,POST,"'/stockout/check_pick', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutScanRFID.vue,465,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutScanRFID.vue,483,POST,'/stockout/quick_pick/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutScanRFID.vue,500,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutScanRFID.vue,624,GET,'/stockout/stockout?q='+JSON.stringify(q)).then(function(resp){,stockout,yes
+src/components/stockout/StockoutShip.vue,365,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutShip.vue,398,GET,'/stockout/ship?erp_order_code='+this.erp_order_code).then(function(resp){,stockout,yes
+src/components/stockout/StockoutShip.vue,419,GET,'/stockout/ship?erp_order_code='+this.erp_order_code).then(function(resp){,stockout,yes
+src/components/stockout/StockoutShip.vue,437,GET,'/stockout/ship/'+this.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutShip.vue,444,POST,"'/stockout/ship', {'erp_order_code': erp_order_code}).then(function(resp){",stockout,yes
+src/components/stockout/StockoutShip.vue,460,GET,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutShip.vue,469,GET,'/stockout/trans/'+order.id+'?q='+JSON.stringify(q)).then(function(resp){,stockout,yes
+src/components/stockout/StockoutShip.vue,497,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutShip.vue,621,GET,'/stockout/stockout?q='+JSON.stringify(q)).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,700,POST,"'/stockout/stockout', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutTransfer.vue,713,GET,'/inv/good?with_inv_qty=true&qtype=out&q='+this.current_good).then(function(resp){,inv,yes
+src/components/stockout/StockoutTransfer.vue,753,POST,"'/stockout/merge', {lines:this.merge_list}).then(function(resp){",stockout,yes
+src/components/stockout/StockoutTransfer.vue,768,DELETE,'/stockout/'+env.order.id+'/line/'+record.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,782,POST,"'/mes/produce/'+this.order.id+'/create', {}).then(function(resp){",mes,no_or_dynamic
+src/components/stockout/StockoutTransfer.vue,794,POST,"'/stockout/stockout/info', this.order).then(function(resp){",stockout,yes
+src/components/stockout/StockoutTransfer.vue,807,POST,'/stockout/cancel/'+this.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,829,PUT,"'/stockout/stockout/one/'+this.order.id, data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutTransfer.vue,891,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutTransfer.vue,923,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/stockout/StockoutTransfer.vue,945,GET,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,956,GET,'/stockout/alloc/'+order.id+'/line?unpick=1').then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,960,GET,'/stockout/alloc/'+order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,973,GET,'/stockout/alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,986,POST,'/stockout/cancel_alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,991,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,995,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1008,POST,'/stockout/cancel_alloc/'+line.stockout_id+'/line/'+line.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1013,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1017,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1033,POST,'/stockout/cancel_alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1038,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1042,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1054,POST,'/stockout/cancel_alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1060,GET,'/stockout/alloc/'+env.order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1064,GET,'/stockout/alloc/'+env.order.id+'/line').then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1088,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1107,POST,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1126,POST,'/stockout/quick_pick/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1146,GET,'/stockout/alloc/'+order.id).then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1180,POST,"'/stockout/alloc/'+this.order.id+'/line/specify', data).then(function(resp){",stockout,yes
+src/components/stockout/StockoutTransfer.vue,1206,GET,'/stockout/alloc/'+this.order.id+'/line/'+line.id+'/inv').then(function(resp){,stockout,yes
+src/components/stockout/StockoutTransfer.vue,1263,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutTransfer.vue,1275,GET,'/auth/company?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/stockout/StockoutTransfer.vue,1321,GET,'/warehouse/warehouse?company_code='+env.order_new.transfer_in_company_code+'&q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutTransfer.vue,1331,GET,'/warehouse/partner/owner?company_code='+env.order_new.transfer_in_company_code+'&q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutTransfer.vue,1341,GET,'/warehouse/warehouse?company_code='+env.query.transfer_in_company_code+'&q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutTransfer.vue,1351,GET,'/warehouse/partner/owner?company_code='+env.query.transfer_in_company_code+'&q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/stockout/StockoutTransfer.vue,1371,GET,'/stockout/stockout?q='+JSON.stringify(q)).then(function(resp){,stockout,yes
+src/components/system/AsyncQuery.vue,197,GET,'/async?q='+JSON.stringify(q)).then(function(resp){,async,yes
+src/components/system/AsyncQuery.vue,225,GET,'/async/table_import').then(function(resp){,async,yes
+src/components/system/Company.vue,221,PUT,"'/auth/company/'+this.object.id, this.object).then(function(resp){",auth,yes
+src/components/system/Company.vue,233,POST,"'/auth/company', this.object).then(function(resp){",auth,yes
+src/components/system/Company.vue,356,GET,'/auth/company?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/system/Company.vue,378,GET,'/auth/current_user').then(function(resp){,auth,yes
+src/components/system/Config.vue,158,PUT,"'/auth/config/'+this.object.id, this.object).then(function(resp){",auth,yes
+src/components/system/Config.vue,168,POST,"'/auth/config', this.object).then(function(resp){",auth,yes
+src/components/system/Config.vue,272,GET,'/auth/config?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/system/Config.vue,288,POST,'/auth/current_tenant').then(function(resp){,auth,yes
+src/components/system/Setting.vue,400,POST,"""/auth/setting"", conf).then(function(resp){",auth,yes
+src/components/system/Setting.vue,433,PUT,"'/auth/config/'+this.object.id, this.object).then(function(resp){",auth,yes
+src/components/system/Setting.vue,443,POST,"'/auth/config', this.object).then(function(resp){",auth,yes
+src/components/system/Setting.vue,614,GET,'/auth/config?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/system/Setting.vue,635,POST,'/auth/current_tenant').then(function(resp){,auth,yes
+src/components/system/SystemConfig.vue,158,PUT,"'/auth/config/'+this.object.id, this.object).then(function(resp){",auth,yes
+src/components/system/SystemConfig.vue,168,POST,"'/auth/config', this.object).then(function(resp){",auth,yes
+src/components/system/SystemConfig.vue,272,GET,'/auth/config?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/system/SystemConfig.vue,288,POST,'/auth/current_tenant').then(function(resp){,auth,yes
+src/components/system/User.vue,201,GET,'/warehouse/selection/'+selection).then(function(resp){,warehouse,yes
+src/components/system/User.vue,216,POST,"'/warehouse/selection/'+selection, {'unit':field}).then(function(resp){",warehouse,yes
+src/components/system/User.vue,253,PUT,"'/auth/user/'+object.id, object).then(function(resp){",auth,yes
+src/components/system/User.vue,265,DELETE,"'/auth/user/'+object.id, object).then(function(resp){",auth,yes
+src/components/system/User.vue,292,PUT,"'/auth/user/'+this.object.id, this.object).then(function(resp){",auth,yes
+src/components/system/User.vue,304,POST,"'/auth/user', this.object).then(function(resp){",auth,yes
+src/components/system/User.vue,446,GET,'/auth/user?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/system/User.vue,482,GET,'/warehouse/warehouse').then(function(resp){,warehouse,yes
+src/components/system/User.vue,491,GET,'/warehouse/partner/owner').then(function(resp){,warehouse,yes
+src/components/system/User.vue,500,GET,'/auth/current_user').then(function(resp){,auth,yes
+src/components/system/UserCenter.vue,150,POST,"'/auth/user/reset-passwd', env.po).then(function(resp){",auth,yes
+src/components/system/UserCenter.vue,186,PUT,"'/auth/user/'+object.id, object).then(function(resp){",auth,yes
+src/components/system/UserCenter.vue,210,PUT,"'/auth/user/'+this.object.id, this.object).then(function(resp){",auth,yes
+src/components/system/UserCenter.vue,222,POST,"'/auth/user', this.object).then(function(resp){",auth,yes
+src/components/system/UserCenter.vue,334,GET,'/auth/user?q='+JSON.stringify(q)).then(function(resp){,auth,yes
+src/components/system/UserCenter.vue,355,GET,'/warehouse/warehouse').then(function(resp){,warehouse,yes
+src/components/system/UserCenter.vue,364,GET,'/warehouse/partner/owner').then(function(resp){,warehouse,yes
+src/components/system/UserCenter.vue,373,GET,'/auth/current_user').then(function(resp){,auth,yes
+src/components/warehouse/Area.vue,121,PUT,"'/warehouse/area', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Area.vue,132,POST,"'/warehouse/area', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Area.vue,229,GET,'/warehouse/area?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/warehouse/Area.vue,244,GET,'/warehouse/warehouse').then(function(resp){,warehouse,yes
+src/components/warehouse/Category.vue,129,PUT,"'/warehouse/category', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Category.vue,140,POST,"'/warehouse/category', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Category.vue,172,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/warehouse/Category.vue,294,GET,'/warehouse/category?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/warehouse/Good.vue,289,POST,"'/warehouse/selection/'+selection, {'unit':field}).then(function(resp){",warehouse,yes
+src/components/warehouse/Good.vue,306,GET,'/warehouse/selection/'+selection).then(function(resp){,warehouse,yes
+src/components/warehouse/Good.vue,321,POST,"'/warehouse/category', this.category).then(function(resp){",warehouse,yes
+src/components/warehouse/Good.vue,354,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/warehouse/Good.vue,386,DELETE,'/inv/good/'+this.object.id+'/image?img='+im).then(function(resp){,inv,yes
+src/components/warehouse/Good.vue,415,DELETE,'/inv/good/'+this.object.id+'/ad_image?img='+im).then(function(resp){,inv,yes
+src/components/warehouse/Good.vue,498,PUT,"'/warehouse/good', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Good.vue,513,POST,"'/warehouse/good', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Good.vue,636,GET,'/warehouse/good?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/warehouse/Good.vue,649,GET,'/warehouse/category').then(function(resp){,warehouse,yes
+src/components/warehouse/GoodMap.vue,198,PUT,"'/warehouse/goodmap/one', data).then(function(resp){",warehouse,yes
+src/components/warehouse/GoodMap.vue,217,DELETE,'/warehouse/goodmap/'+record.id).then(function(resp){,warehouse,yes
+src/components/warehouse/GoodMap.vue,250,PUT,"'/warehouse/goodmap/one', record).then(function(resp){",warehouse,yes
+src/components/warehouse/GoodMap.vue,284,GET,'/warehouse/good?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/warehouse/GoodMap.vue,310,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/warehouse/GoodMap.vue,342,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/warehouse/GoodMap.vue,364,GET,'/warehouse/goodmap?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/warehouse/GoodMap.vue,398,PUT,"'/warehouse/goodmap', this.lines).then(function(resp){",warehouse,yes
+src/components/warehouse/GoodMap.vue,414,POST,"'/warehouse/goodmap', this.lines).then(function(resp){",warehouse,yes
+src/components/warehouse/GoodMap.vue,534,GET,'/warehouse/goodmap?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/warehouse/GoodMap.vue,547,GET,'/warehouse/category').then(function(resp){,warehouse,yes
+src/components/warehouse/Location.vue,160,PUT,"'/warehouse/location', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Location.vue,171,POST,"'/warehouse/location', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Location.vue,300,GET,'/warehouse/location?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/warehouse/Location.vue,316,GET,'/warehouse/area').then(function(resp){,warehouse,yes
+src/components/warehouse/Location.vue,327,GET,'/warehouse/workarea').then(function(resp){,warehouse,yes
+src/components/warehouse/Partner.vue,262,POST,"'/async/table_export?q='+JSON.stringify(q), data).then(function(resp){",async,yes
+src/components/warehouse/Partner.vue,297,PUT,"'/warehouse/partner', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Partner.vue,311,POST,"'/warehouse/partner', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Partner.vue,439,GET,'/warehouse/partner?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/warehouse/Share.vue,124,PUT,"'/share/location', this.object).then(function(resp){",share,no_or_dynamic
+src/components/warehouse/Share.vue,135,POST,"'/share/location', this.object).then(function(resp){",share,no_or_dynamic
+src/components/warehouse/Share.vue,233,GET,'/share/location?q='+JSON.stringify(q)).then(function(resp){,share,no_or_dynamic
+src/components/warehouse/Warehouse.vue,132,PUT,"'/warehouse/warehouse', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Warehouse.vue,146,POST,"'/warehouse/warehouse', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Warehouse.vue,244,GET,'/warehouse/warehouse?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes
+src/components/warehouse/Workarea.vue,115,PUT,"'/warehouse/workarea', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Workarea.vue,126,POST,"'/warehouse/workarea', this.object).then(function(resp){",warehouse,yes
+src/components/warehouse/Workarea.vue,224,GET,'/warehouse/workarea?q='+JSON.stringify(q)).then(function(resp){,warehouse,yes

@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    # CI/本地无真实 openGauss：指向拒绝连接的端口，快速失败；启动阶段不强制建连
+    url: jdbc:postgresql://127.0.0.1:1/b_project
+    username: test
+    password: test
+    hikari:
+      initialization-fail-timeout: -1
+      connection-timeout: 1000
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 1
+      timeout: 500ms
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173
+  rocketmq:
+    enabled: false
+  opengemini:
+    enabled: false

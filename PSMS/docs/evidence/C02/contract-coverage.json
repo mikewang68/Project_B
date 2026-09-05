@@ -1,0 +1,58 @@
+{
+  "gate": "C02-GATE-A",
+  "status": "passed",
+  "verifiedAt": "2026-07-19T17:22:30+08:00",
+  "command": "pnpm test -- --run src/contracts/__tests__/openapi-consistency.test.ts src/contracts/__tests__/schemas.test.ts",
+  "testFiles": {
+    "passed": 10,
+    "failed": 0
+  },
+  "tests": {
+    "passed": 33,
+    "failed": 0
+  },
+  "domainObjects": {
+    "expected": 14,
+    "validated": [
+      "DO-001", "DO-002", "DO-003", "DO-004", "DO-005", "DO-006", "DO-007",
+      "DO-008", "DO-009", "DO-010", "DO-011", "DO-012", "DO-013", "DO-014"
+    ],
+    "fixtureCounts": [3, 8, 4, 8, 12, 12, 10, 6, 5, 4, 4, 3, 9, 13],
+    "strictUnknownFieldRejection": true,
+    "runtimeCase": "camelCase",
+    "fieldSetsMatchOpenApiRequired": true
+  },
+  "enumComponents": {
+    "expected": 24,
+    "valuesMatchOpenApi": true
+  },
+  "requests": {
+    "expected": 14,
+    "validated": [
+      "API003Request", "API004Request", "API006Request", "API007Request", "API008Request",
+      "API009Request", "API011Request", "API013Request", "API015Request", "API017Request",
+      "API019Request", "API021Request", "API023Request", "API025Request"
+    ],
+    "optionalReason": true,
+    "ruleVersionType": "string"
+  },
+  "operations": {
+    "expected": 25,
+    "validated": [
+      "API-001", "API-002", "API-003", "API-004", "API-005", "API-006", "API-007",
+      "API-008", "API-009", "API-010", "API-011", "API-012", "API-013", "API-014",
+      "API-015", "API-016", "API-017", "API-018", "API-019", "API-020", "API-021",
+      "API-022", "API-023", "API-024", "API-025"
+    ],
+    "validatedFields": ["method", "openapiPath", "operationId", "x-msw-path", "parameters", "requestSchema"],
+    "responseStatuses": [200, 400, 403, 409]
+  },
+  "envelopes": {
+    "success": ["ok", "data", "auditLogId", "traceId"],
+    "failure": ["ok", "errorCode", "message", "details?", "auditLogId", "traceId"]
+  },
+  "publicErrorCodes": {
+    "expected": 9,
+    "validatedExactSet": true
+  }
+}

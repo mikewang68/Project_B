@@ -1,0 +1,10 @@
+{
+  "date": "2026-07-22",
+  "command": "node_modules\\.bin\\vitest.CMD run src/features/audit-trail src/pages/__tests__/AuditLogPage.render.test.tsx src/pages/__tests__/AuditLogPage.action.test.tsx src/pages/__tests__/AuditLogPage.permission.test.tsx --coverage.enabled --coverage.reporter=json --coverage.reporter=text",
+  "exitCode": 1,
+  "status": "not-generated",
+  "provider": "@vitest/coverage-v8",
+  "error": "MISSING DEPENDENCY Cannot find dependency '@vitest/coverage-v8'",
+  "trustworthyPercentageProduced": false,
+  "decision": "The frozen install does not contain the official Vitest V8 coverage provider. No dependency was installed and no percentage was fabricated. Focused and full behavioral test results are recorded separately in verification.md."
+}

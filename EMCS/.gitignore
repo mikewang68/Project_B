@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / 前端
+node_modules/
+web/dist/
+*.local
+
+# 环境与密钥（只提交 .env.example）
+.env
+.env.*
+!.env.example
+.mcp.json
+
+# 数据与产物（构造数据用脚本再生，不入库大文件）
+datagen/output/
+*.sql.gz
+*.xlsx
+!datagen/seeds/*.csv
+
+# Docker 卷（compose 用 named volume，此处兜底）
+mysql-data/
+redis-data/
+
+# IDE / 系统
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Claude Code 本地态
+.claude/settings.local.json
+
+# 后端运行时产物（RuoYi 骨架启动即建目录）
+backend/logs/
+backend/caches/
+backend/vf_admin/
+backend-java/target/

@@ -1,0 +1,20 @@
+C12 UI-013 Playwright / visual RED evidence
+Date: 2026-07-22
+Command:
+  node_modules\.bin\playwright.CMD test e2e/ui-013-governance-audit.spec.ts
+
+Automated result:
+  Exit code: 0
+  Tests: 3 passed
+  Duration: 23.6s
+
+Visual RED found during required original-resolution inspection:
+  C12-UI013-SCN01-TRACE-1440x900.png was captured before the Ant Design drawer
+  close animation completed. A blank right-hand drawer and grey mask obscured the trace panel.
+  The 1280 detail capture also had no always-visible top close affordance because closable was
+  disabled and the custom close action was below the current drawer scroll position.
+
+Conclusion:
+  The behavioral E2E flow was green, but the screenshot gate was red. Wait for drawer teardown
+  before TRACE capture and restore the standard top close affordance. No business or Store rule
+  changes are justified by this visual failure.

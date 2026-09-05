@@ -1,0 +1,63 @@
+C13 TypeScript final verification
+date: 2026-07-23
+command: node_modules\.bin\tsc.CMD --noEmit --pretty false
+exitCode: 1
+
+Complete in-process counts
+--------------------------
+outputLines: 1191
+primaryDiagnostics: 1057
+TS2604: 65
+TS7016: 134
+TS7026: 858
+otherDiagnosticCodes: 0
+
+Comparison with C13A preflight
+------------------------------
+before outputLines: 909
+before primaryDiagnostics: 783
+before TS2604: 65
+before TS7016: 126
+before TS7026: 592
+
+delta outputLines: +282
+delta primaryDiagnostics: +274
+delta TS2604: 0
+delta TS7016: +8
+delta TS7026: +266
+new diagnostic families: 0
+new non-React/JSX diagnostics: 0
+
+C13-related path counts
+-----------------------
+paths: src/features/system-settings/**,
+       src/pages/settings/SystemSettingsPage.tsx,
+       src/pages/__tests__/SystemSettingsPage*,
+       src/pages/__tests__/systemSettingsTestHarness.tsx
+primaryDiagnostics: 275
+TS7016: 9
+TS7026: 266
+TS2604: 0
+otherDiagnosticCodes: 0
+C13 non-frozen diagnostics: 0
+
+Non-TSX primary diagnostics
+---------------------------
+src/app/routeCatalog.ts: TS7016 missing declaration for `react`
+src/features/plan-entry/readState.ts: TS7016 missing declaration for `react`
+
+Interpretation
+--------------
+The compiler still exits nonzero because the frozen installation contains React
+19.2.7 without @types/react. The count increase is the expected declaration-chain
+surface of the newly added C13 TSX: missing react/react-jsx-runtime declarations
+and missing JSX.IntrinsicElements. TS2604 is unchanged, the only two non-TSX
+locations are identical to preflight, no new diagnostic family exists, and every
+C13 diagnostic is in the frozen TS7016/TS7026 families. Dependencies, package.json,
+and pnpm-lock.yaml were not changed.
+
+Capture note
+------------
+Counts were calculated against the complete compiler output inside one PowerShell
+process. The terminal transport does not need to preserve all 1191 raw lines for
+these counts. Unexpected-family and C13 non-frozen filters both returned zero.

@@ -1,0 +1,56 @@
+{
+  "gate": "C02-GATE-B",
+  "status": "passed",
+  "verifiedAt": "2026-07-19T17:22:30+08:00",
+  "command": "pnpm test -- --run src/mocks/__tests__/fixtures.test.ts src/mocks/__tests__/scenarios.test.ts src/mocks/__tests__/handlers.test.ts",
+  "testFiles": {
+    "passed": 10,
+    "failed": 0
+  },
+  "tests": {
+    "passed": 33,
+    "failed": 0
+  },
+  "fixtureSource": {
+    "path": "docs/baseline/demo-fixtures.json",
+    "onlyRuntimeBusinessSeed": true,
+    "deepCopyOnLoad": true,
+    "deepCopyOnRead": true,
+    "strictDomainValidation": true
+  },
+  "runtime": {
+    "atomicReset": true,
+    "atomicObjectMutation": true,
+    "deterministicClock": true,
+    "deterministicTraceAndAuditIds": true,
+    "scenarioFaultsAreProjected": true,
+    "baseObjectsRemainValid": true
+  },
+  "scenarios": [
+    { "id": "SCN-01", "seedRefs": ["PLAN-001"], "fault": "NONE", "errorCode": null, "delayMs": 300 },
+    { "id": "SCN-02", "seedRefs": ["PLAN-002"], "fault": "VALIDATION_MISSING_FIELD", "errorCode": "TOS-EXT-002", "delayMs": 300 },
+    { "id": "SCN-03", "seedRefs": ["PLAN-003"], "fault": "INTERFACE_TIMEOUT", "errorCode": "TOS-EXT-001", "delayMs": 1500 },
+    { "id": "SCN-04", "seedRefs": ["WO-005"], "fault": "DEVICE_OFFLINE", "errorCode": "TOS-WO-001", "delayMs": 800 },
+    { "id": "SCN-05", "seedRefs": ["WO-006", "IL-001"], "fault": "INTERLOCK_FORCE_STOP", "errorCode": "TOS-IL-001", "delayMs": 500 },
+    { "id": "SCN-06", "seedRefs": ["OFF-001"], "fault": "OFFLINE_VERSION_CONFLICT", "errorCode": "TOS-OFF-001", "delayMs": 700 },
+    { "id": "SCN-07", "seedRefs": ["APT-006"], "fault": "SOURCE_DATA_CONFLICT", "errorCode": "TOS-EXT-003", "delayMs": 600 }
+  ],
+  "handlers": {
+    "expected": 25,
+    "validated": [
+      "API-001", "API-002", "API-003", "API-004", "API-005", "API-006", "API-007",
+      "API-008", "API-009", "API-010", "API-011", "API-012", "API-013", "API-014",
+      "API-015", "API-016", "API-017", "API-018", "API-019", "API-020", "API-021",
+      "API-022", "API-023", "API-024", "API-025"
+    ],
+    "mswPathsUseColonParameters": true,
+    "successEnvelopeValidated": true,
+    "failureEnvelopeValidated": true,
+    "failureStatuses": [400, 403, 409],
+    "realWaitsInTests": false
+  },
+  "adapters": {
+    "browser": "src/mocks/browser.ts",
+    "node": "src/mocks/server.ts"
+  }
+}

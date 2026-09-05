@@ -1,0 +1,48 @@
+server:
+  port: ${APP_PORT:9099}
+  servlet:
+    context-path: ${APP_ROOT_PATH:}
+
+spring:
+  application:
+    name: b-demo-server
+  datasource:
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_DATABASE:b_demo}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${DB_USERNAME:demo}
+    password: ${DB_PASSWORD:bdemo_dev}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 1
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:2}
+      timeout: 3s
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: Asia/Shanghai
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+b-demo:
+  demo-now: ${DEMO_NOW:2026-07-12T23:59:00}
+  auth:
+    captcha-enabled: ${CAPTCHA_ENABLED:true}
+    register-enabled: false
+    jwt-secret: ${JWT_SECRET_KEY:change-this-development-secret-change-this-development-secret}
+    token-minutes: ${JWT_EXPIRE_MINUTES:120}

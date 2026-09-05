@@ -1,0 +1,46 @@
+.road-appointment-page { display: grid; gap: 16px; min-width: 0; }
+.road-appointment-page > *, .appointment-primary-grid > * { min-width: 0; }
+.road-appointment-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 18px 16px 22px; border: 1px solid #d8e4ea; border-left: 4px solid #178c84; border-radius: 6px; background: #fff; }
+.appointment-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.appointment-primary-grid { display: grid; grid-template-columns: minmax(290px, .82fr) minmax(420px, 1.35fr) minmax(250px, .72fr); gap: 14px; align-items: stretch; }
+.appointment-primary-grid > .ant-card, .appointment-primary-grid > .ant-card > .ant-card-body { height: 100%; }
+.appointment-queue-list, .appointment-detail, .yard-map-fallback { display: grid; gap: 8px; }
+.appointment-queue-item { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 4px; min-width: 0; padding: 6px; border: 1px solid #dfe8ec; border-radius: 4px; background: #f8fbfc; }
+.appointment-queue-item.is-selected { border-color: #178c84; background: #edf8f6; }
+.appointment-drag-handle { width: 30px; height: 34px; border: 0; color: #55717d; background: transparent; cursor: grab; font-size: 21px; }
+.appointment-queue-select.ant-btn { display: grid; height: auto; min-width: 0; justify-items: start; padding: 4px 6px; white-space: normal; }
+.appointment-queue-select span { max-width: 100%; overflow: hidden; color: #667780; font-size: 12px; text-overflow: ellipsis; }
+.yard-map-canvas, .yard-map-fallback { min-height: 290px; overflow: hidden; border: 1px solid #dce6e9; border-radius: 4px; background: #edf3f5; }
+.yard-map-fallback { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; padding: 12px; background: linear-gradient(#d9e5e7 1px, transparent 1px), linear-gradient(90deg, #d9e5e7 1px, transparent 1px), #edf3f5; background-size: 28px 28px; }
+.yard-map-fallback button { display: grid; gap: 2px; min-width: 0; padding: 9px; border: 1px solid #b9cdd1; border-radius: 4px; color: #17313b; background: rgba(255, 255, 255, .92); text-align: left; }
+.yard-map-fallback button.is-selected { border: 2px solid #d4380d; }
+.yard-map-fallback small { color: #60727a; }
+.yard-map-marker { display: grid; min-width: 82px; padding: 4px 6px; border: 1px solid #176b8d; border-radius: 4px; color: #17313b; background: rgba(255, 255, 255, .96); box-shadow: 0 2px 7px rgba(23, 49, 59, .18); cursor: pointer; line-height: 1.2; text-align: left; }
+.yard-map-marker strong { font-size: 11px; }
+.yard-map-marker span { color: #526a73; font-size: 10px; }
+.yard-map-marker.is-selected { border: 2px solid #d4380d; background: #fff7f3; }
+.yard-map-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; color: #60727a; font-size: 12px; }
+.yard-map-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.yard-map-legend i { display: inline-block; width: 12px; height: 4px; background: #178c84; }
+.yard-map-legend .legend-vehicle, .yard-map-legend .legend-selected { width: 9px; height: 9px; border-radius: 50%; background: #176b8d; }
+.yard-map-legend .legend-selected { background: #d4380d; }
+.appointment-detail > div:not(.ant-alert) { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding-bottom: 7px; border-bottom: 1px solid #edf1f2; }
+.appointment-detail span { color: #677780; }
+.appointment-detail strong { overflow-wrap: anywhere; }
+.appointment-filters { display: grid; grid-template-columns: minmax(240px, 420px) 170px auto; align-items: center; gap: 10px; margin-bottom: 12px; }
+.appointment-table-wrap { max-width: 100%; overflow-x: auto; }
+.appointment-table { width: 100%; min-width: 920px; border-collapse: collapse; font-size: 13px; }
+.appointment-table th, .appointment-table td { padding: 10px 12px; border-bottom: 1px solid #e8eef1; text-align: left; white-space: nowrap; }
+.appointment-table th { color: #53656e; background: #f5f8f9; font-weight: 600; }
+.appointment-table tr.is-selected td { background: #edf8f6; }
+@media (max-width: 1260px) {
+  .appointment-primary-grid { grid-template-columns: minmax(280px, .8fr) minmax(420px, 1.2fr); }
+  .appointment-detail-card { grid-column: 1 / -1; }
+  .appointment-detail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .road-appointment-header { flex-direction: column; }
+  .appointment-kpis, .appointment-primary-grid, .appointment-detail, .appointment-filters { grid-template-columns: minmax(0, 1fr); }
+  .appointment-detail-card { grid-column: auto; }
+  .yard-map-canvas, .yard-map-fallback { min-height: 260px; }
+}

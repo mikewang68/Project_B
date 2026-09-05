@@ -1,0 +1,48 @@
+// =====================================================
+// B项目 DT 全局样式入口
+// =====================================================
+@use './tokens';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+  /* 锁定页面滚动：三维场景应用禁止页面滚动（滚轮用于相机缩放） */
+  overflow: hidden;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+// 滚动条（深色风格）
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-panel-alt);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -1,0 +1,24 @@
+C13A TypeScript diagnostic comparison
+date: 2026-07-22
+command: node_modules\.bin\tsc.CMD --noEmit --pretty false
+exitCode: 1
+outputLines: 909
+primaryDiagnostics: 783
+
+Diagnostic families
+-------------------
+TS2604: 65
+TS7016: 126
+TS7026: 592
+unexpectedCodeFamilies: 0
+
+Non-TSX diagnostics
+-------------------
+src/app/routeCatalog.ts: TS7016 missing declaration for `react`
+src/features/plan-entry/readState.ts: TS7016 missing declaration for `react`
+
+Comparison with preflight
+-------------------------
+Counts and code families are exactly unchanged from `tsc-before.txt`.
+All diagnostics remain in the previously frozen React/JSX declaration chain.
+C13A introduced zero new TypeScript diagnostic families or counts.

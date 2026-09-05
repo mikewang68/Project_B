@@ -1,0 +1,18 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+wms:
+  authentication:
+    development-user-enabled: false
+
+server:
+  shutdown: graceful
+  servlet:
+    session:
+      cookie:
+        secure: true
+        same-site: lax

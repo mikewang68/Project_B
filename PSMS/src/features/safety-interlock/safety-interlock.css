@@ -1,0 +1,132 @@
+.safety-interlock-page {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.safety-interlock-page > *,
+.safety-interlock-main > *,
+.interlock-detail-stack > *,
+.interlock-section,
+.interlock-section .ant-card,
+.interlock-section .ant-card-body,
+.interlock-full-width {
+  min-width: 0;
+  width: 100%;
+}
+
+.safety-interlock-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.interlock-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.interlock-kpi-card .ant-statistic-title,
+.interlock-kpi-card .ant-statistic-content {
+  overflow-wrap: anywhere;
+}
+
+.safety-interlock-main {
+  display: grid;
+  grid-template-columns: minmax(270px, .86fr) minmax(380px, 1.2fr) minmax(310px, .9fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.interlock-ledger-list,
+.interlock-ledger-copy,
+.interlock-detail-stack,
+.interlock-audit-list,
+.interlock-summary-block {
+  display: grid;
+  gap: 10px;
+}
+
+.interlock-ledger-button {
+  height: auto;
+  min-height: 132px;
+  padding: 12px;
+  text-align: left;
+  white-space: normal;
+  transition: box-shadow 260ms ease, transform 260ms ease;
+}
+
+.safety-interlock-page[data-demo-active='true'] .interlock-ledger-button.ant-btn-primary {
+  box-shadow: 0 10px 26px rgba(255, 77, 79, .2);
+  transform: translateX(3px);
+}
+
+.interlock-ledger-button > span,
+.interlock-ledger-copy {
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.interlock-ledger-button.ant-btn-primary .ant-typography,
+.interlock-ledger-button.ant-btn-primary .ant-typography-secondary {
+  color: #fff;
+}
+
+.interlock-progress-tag {
+  width: fit-content;
+}
+
+.interlock-state-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.interlock-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.interlock-action-grid .ant-btn {
+  height: auto;
+  min-height: 36px;
+  white-space: normal;
+}
+
+@media (max-width: 1320px) {
+  .interlock-kpi-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .safety-interlock-main {
+    grid-template-columns: minmax(270px, .82fr) minmax(0, 1.18fr);
+  }
+
+  .interlock-action-column {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 800px) {
+  .safety-interlock-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .safety-interlock-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .interlock-action-column {
+    grid-column: auto;
+  }
+
+  .interlock-kpi-strip,
+  .interlock-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

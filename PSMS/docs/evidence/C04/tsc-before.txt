@@ -1,0 +1,63 @@
+﻿src/app/App.tsx(12,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/app/__tests__/appRender.test.tsx(21,12): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/app/__tests__/routeRender.test.tsx(37,27): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/app/routeCatalog.ts(8,8): error TS7016: Could not find a declaration file for module 'react'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react';`
+src/app/router.tsx(40,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/app/router.tsx(54,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/app/router.tsx(56,7): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/components/skeleton/PageScaffold.tsx(16,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/components/skeleton/PageScaffold.tsx(16,6): error TS2604: JSX element type 'Card' does not have any construct or call signatures.
+src/layouts/SkeletonLayout.tsx(21,11): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/layouts/SkeletonLayout.tsx(34,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/layouts/SkeletonLayout.tsx(34,50): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/layouts/SkeletonLayout.tsx(35,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/layouts/SkeletonLayout.tsx(43,9): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/main.tsx(1,28): error TS7016: Could not find a declaration file for module 'react'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react';`
+src/main.tsx(2,28): error TS7016: Could not find a declaration file for module 'react-dom/client'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom/client.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react-dom` if it exists or add a new declaration (.d.ts) file containing `declare module 'react-dom/client';`
+src/main.tsx(7,3): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/NotFoundPage.tsx(5,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/NotFoundPage.tsx(5,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/NotFoundPage.tsx(6,8): error TS2604: JSX element type 'Result' does not have any construct or call signatures.
+src/pages/NotFoundPage.tsx(16,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/RouteErrorPage.tsx(8,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/RouteErrorPage.tsx(8,5): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/RouteErrorPage.tsx(9,8): error TS2604: JSX element type 'Result' does not have any construct or call signatures.
+src/pages/RouteErrorPage.tsx(19,5): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+src/pages/dispatch/DispatchBoardPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/dispatch/OverviewPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/dispatch/PlanLedgerPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/dispatch/ReceptionRecommendationPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/dispatch/TaskDecompositionPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/governance/AuditLogPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/monitor/ExceptionHandlingPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/monitor/OperationMonitorPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/operations/OfflineSyncPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/reports/OperationReportPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/safety/SafetyInterlockPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/settings/SystemSettingsPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`
+src/pages/yard/RoadAppointmentPage.tsx(4,10): error TS7016: Could not find a declaration file for module 'react/jsx-runtime'. 'E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/node_modules/.pnpm/react@19.2.7/node_modules/react/jsx-runtime.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/react` if it exists or add a new declaration (.d.ts) file containing `declare module 'react/jsx-runtime';`

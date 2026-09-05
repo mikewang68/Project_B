@@ -1,0 +1,19 @@
+C13 UI-012 page TDD RED evidence
+date: 2026-07-23
+command: node_modules\.bin\vitest.CMD run src/pages/__tests__/SystemSettingsPage.render.test.tsx src/pages/__tests__/SystemSettingsPage.permission.test.tsx src/pages/__tests__/SystemSettingsPage.action.test.tsx
+exitCode: 1
+testFiles: 3 failed (3)
+tests: 15 failed, 1 passed (16)
+duration: 51.89s
+
+Expected failure:
+- the only passing assertion was the pre-existing RoutePermissionBoundary denying DISPATCHER before API-022;
+- all 15 new render/permission/action behaviors failed because the current UI-012 scaffold had no `系统配置详情`, loading state, group navigation, fixed summary, edit controls, or command feedback;
+- representative failure: `Unable to find a label with the text of: 系统配置详情`.
+
+Render follow-up RED (empty Store classification)
+command: node_modules\.bin\vitest.CMD run src/features/system-settings/__tests__/systemSettingsProjection.test.ts
+exitCode: 1
+tests: 1 failed, 2 passed (3)
+expected: empty Store remains `STORE` even when the route supplies the default `CFG-001`
+received: `NOT_FOUND`

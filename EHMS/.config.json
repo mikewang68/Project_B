@@ -1,0 +1,288 @@
+{
+  "configVersion": "0.1.0",
+  "application": {
+    "name": "ehm",
+    "displayName": "设备健康管理系统",
+    "environment": "development",
+    "timezone": "Asia/Shanghai",
+    "locale": "zh-CN"
+  },
+  "configurationPolicy": {
+    "placeholderSyntax": "${ENVIRONMENT_VARIABLE}",
+    "secretSource": "environment",
+    "rejectUnresolvedSecretsWhenBackendEnabled": true,
+    "clientReadableSections": [
+      "application",
+      "frontend",
+      "featureFlags"
+    ],
+    "serverOnlySections": [
+      "backend",
+      "datasources",
+      "cache",
+      "messaging",
+      "gateway",
+      "observability",
+      "ai",
+      "security"
+    ]
+  },
+  "frontend": {
+    "frameworkTarget": "Vue 3 + TypeScript",
+    "currentPrototypeMode": "static-html",
+    "mockDataEnabled": false,
+    "publicBasePath": "/",
+    "apiBaseUrl": "${EHM_PUBLIC_API_BASE_URL}",
+    "apiTimeoutMs": 15000,
+    "staticServer": {
+      "type": "Nginx",
+      "host": "bpoc-node6",
+      "publicUrl": "${EHM_PUBLIC_WEB_URL}"
+    }
+  },
+  "backend": {
+    "enabled": true,
+    "runtime": "Java 17",
+    "buildTool": "Maven 3.9.16",
+    "serviceName": "ehm-service",
+    "bindAddress": "0.0.0.0",
+    "port": 8080,
+    "contextPath": "/api/ehm/v1",
+    "gracefulShutdownSeconds": 30,
+    "healthEndpoints": {
+      "liveness": "/health/live",
+      "readiness": "/health/ready"
+    }
+  },
+  "datasources": {
+    "demoPrimary": {
+      "enabled": true,
+      "type": "MongoDB",
+      "version": "7.0",
+      "host": "${EHM_MONGODB_HOST}",
+      "port": 27017,
+      "database": "ehm",
+      "username": "${EHM_MONGODB_USERNAME}",
+      "password": "${EHM_MONGODB_PASSWORD}",
+      "connectionUri": "${EHM_MONGODB_URI}",
+      "connectTimeoutMs": 5000,
+      "serverSelectionTimeoutMs": 5000,
+      "usage": [
+        "Demo设备台账",
+        "Demo告警闭环",
+        "Demo维保工单",
+        "可扩展业务字段与AI会话记录"
+      ]
+    },
+    "business": {
+      "enabled": false,
+      "type": "openGauss",
+      "version": "6.0.5",
+      "host": "bpoc-node4",
+      "port": 5432,
+      "database": "ehm",
+      "schema": "ehm",
+      "username": "${EHM_OPENGAUSS_USERNAME}",
+      "password": "${EHM_OPENGAUSS_PASSWORD}",
+      "jdbcUrl": "jdbc:opengauss://bpoc-node4:5432/ehm",
+      "driverClassName": "org.opengauss.Driver",
+      "sslMode": "${EHM_OPENGAUSS_SSL_MODE}",
+      "pool": {
+        "provider": "HikariCP",
+        "minimumIdle": 2,
+        "maximumPoolSize": 20,
+        "connectionTimeoutMs": 5000,
+        "idleTimeoutMs": 600000,
+        "maxLifetimeMs": 1800000,
+        "validationQuery": "SELECT 1"
+      },
+      "migration": {
+        "enabled": false,
+        "tool": "pending-selection",
+        "baselineOnMigrate": true
+      },
+      "usage": [
+        "设备台账与BOM",
+        "用户、角色与数据权限",
+        "告警闭环与审批",
+        "维保计划、工单与点检",
+        "故障知识库与模型元数据",
+        "审计索引与系统配置"
+      ]
+    },
+    "telemetry": {
+      "enabled": false,
+      "type": "openGemini",
+      "version": "1.5.2",
+      "protocol": "http",
+      "host": "bpoc-node6",
+      "port": 8086,
+      "database": "ehm_telemetry",
+      "username": "${EHM_OPENGEMINI_USERNAME}",
+      "password": "${EHM_OPENGEMINI_PASSWORD}",
+      "connectTimeoutMs": 5000,
+      "readTimeoutMs": 15000,
+      "writeBatchSize": 1000,
+      "retentionPolicy": "to-be-confirmed-with-owner",
+      "usage": [
+        "设备实时测点",
+        "振动、温度、电流、载荷与压力时序",
+        "健康评分与劣化趋势",
+        "告警触发前后数据窗口",
+        "模型特征与推理结果时间线"
+      ]
+    }
+  },
+  "cache": {
+    "enabled": false,
+    "type": "Apache Kvrocks",
+    "version": "2.16.0",
+    "protocol": "Redis-compatible",
+    "host": "bpoc-node4",
+    "port": 6666,
+    "database": 0,
+    "username": "${EHM_KVROCKS_USERNAME}",
+    "password": "${EHM_KVROCKS_PASSWORD}",
+    "connectTimeoutMs": 3000,
+    "commandTimeoutMs": 2000,
+    "defaultTtlSeconds": 300,
+    "sessionTtlSeconds": 1800,
+    "usage": [
+      "用户会话与短期令牌状态",
+      "设备状态摘要与驾驶舱热点数据",
+      "接口限流计数",
+      "幂等键与短时分布式锁"
+    ]
+  },
+  "messaging": {
+    "enabled": false,
+    "type": "Apache RocketMQ",
+    "version": "5.5.0",
+    "nameServer": "bpoc-node5:9876",
+    "accessKey": "${EHM_ROCKETMQ_ACCESS_KEY}",
+    "secretKey": "${EHM_ROCKETMQ_SECRET_KEY}",
+    "producerGroup": "ehm-producer",
+    "consumerGroup": "ehm-worker-consumer",
+    "sendTimeoutMs": 5000,
+    "consumeThreadMin": 4,
+    "consumeThreadMax": 16,
+    "maxReconsumeTimes": 8,
+    "topics": {
+      "telemetryIngested": "EHM_TELEMETRY_INGESTED",
+      "dataQualityEvent": "EHM_DATA_QUALITY_EVENT",
+      "alarmEvent": "EHM_ALARM_EVENT",
+      "workOrderEvent": "EHM_WORK_ORDER_EVENT",
+      "modelInferenceRequest": "EHM_MODEL_INFERENCE_REQUEST",
+      "auditEvent": "EHM_AUDIT_EVENT",
+      "deadLetter": "EHM_DEAD_LETTER"
+    }
+  },
+  "gateway": {
+    "enabled": false,
+    "type": "Easegress",
+    "version": "2.11.0",
+    "primaryUrl": "${EHM_EASEGRESS_NODE4_URL}",
+    "secondaryUrl": "${EHM_EASEGRESS_NODE5_URL}",
+    "routePrefix": "/api/ehm",
+    "requestTimeoutMs": 15000,
+    "retries": 2,
+    "rateLimitRequestsPerSecond": 200,
+    "forwardedHeadersEnabled": true
+  },
+  "observability": {
+    "enabled": false,
+    "metricsCollector": {
+      "type": "Categraf",
+      "version": "0.5.14",
+      "nodes": [
+        "bpoc-node4",
+        "bpoc-node5",
+        "bpoc-node6"
+      ]
+    },
+    "monitoringPlatform": {
+      "type": "Nightingale",
+      "version": "8.5.1",
+      "host": "bpoc-node6",
+      "url": "${EHM_NIGHTINGALE_URL}"
+    },
+    "serviceMetricsPath": "/actuator/prometheus",
+    "logLevel": "INFO",
+    "auditLogLevel": "INFO",
+    "traceIdHeader": "X-Trace-Id",
+    "retentionDays": "to-be-confirmed-with-owner"
+  },
+  "ai": {
+    "enabled": false,
+    "status": "reserved-until-inference-stack-is-confirmed",
+    "provider": "${EHM_AI_PROVIDER}",
+    "baseUrl": "${EHM_AI_BASE_URL}",
+    "apiKey": "${EHM_AI_API_KEY}",
+    "model": "${EHM_AI_MODEL}",
+    "timeoutMs": 60000,
+    "temperature": 0.2,
+    "maxOutputTokens": 2048,
+    "functions": {
+      "assistant": false,
+      "assetLedgerExtraction": false,
+      "faultCaseRetrieval": false,
+      "rootCauseSuggestion": false,
+      "rulPrediction": false,
+      "maintenanceAdvice": false
+    },
+    "governance": {
+      "humanConfirmationRequired": true,
+      "allowAutomaticAlarmClosure": false,
+      "allowAutomaticWorkOrderApproval": false,
+      "storePromptAndResponseAudit": true,
+      "maskSensitiveFields": true
+    }
+  },
+  "security": {
+    "configVisibility": "server-only",
+    "forbidBrowserFetchOfConfigFile": true,
+    "allowPlaintextSecrets": false,
+    "tlsEnabled": false,
+    "tlsCertificatePath": "${EHM_TLS_CERTIFICATE_PATH}",
+    "tlsPrivateKeyPath": "${EHM_TLS_PRIVATE_KEY_PATH}",
+    "passwordHashAlgorithm": "Argon2id",
+    "jwt": {
+      "enabled": false,
+      "issuer": "ehm-service",
+      "audience": "ehm-web",
+      "secret": "${EHM_JWT_SECRET}",
+      "accessTokenMinutes": 30,
+      "refreshTokenHours": 8
+    },
+    "rbac": {
+      "enabled": true,
+      "defaultDeny": true,
+      "enforceOnApi": true,
+      "enforceDataScope": true,
+      "auditHighRiskActions": true
+    }
+  },
+  "featureFlags": {
+    "useMockData": false,
+    "enableBackendApi": true,
+    "enableRealtimeTelemetry": false,
+    "enableAlarmEventBus": false,
+    "enablePredictiveMaintenance": false,
+    "enableAiAssistant": false,
+    "enableExternalIntegration": false
+  },
+  "startupValidation": {
+    "failFast": false,
+    "requiredWhenBackendEnabled": [
+      "datasources.demoPrimary.connectionUri",
+      "security.jwt.secret"
+    ],
+    "healthCheckOrder": [
+      "openGauss",
+      "Kvrocks",
+      "RocketMQ",
+      "openGemini",
+      "Easegress"
+    ]
+  }
+}

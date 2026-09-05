@@ -1,0 +1,190 @@
+{
+  "gate": "C04-PLAN-ENTRY",
+  "status": "passed",
+  "pages": [
+    {
+      "id": "UI-001",
+      "name": "调度总览",
+      "path": "/dispatch/overview"
+    },
+    {
+      "id": "UI-002",
+      "name": "计划接收台账",
+      "path": "/dispatch/plans"
+    }
+  ],
+  "selectors": [
+    "selectOverviewKpis",
+    "selectVisibleYardObjects",
+    "selectOpenRisks",
+    "selectPlanLedger",
+    "selectInterfaceHealth",
+    "selectValidationIssues",
+    "selectPlanDetails"
+  ],
+  "apis": [
+    {
+      "id": "API-001",
+      "method": "GET",
+      "path": "/mock/overview",
+      "gatewayMethod": "getOverview"
+    },
+    {
+      "id": "API-002",
+      "method": "GET",
+      "path": "/mock/plans",
+      "gatewayMethod": "getPlans"
+    },
+    {
+      "id": "API-003",
+      "method": "POST",
+      "path": "/mock/plans/sync",
+      "gatewayMethod": "syncPlans"
+    },
+    {
+      "id": "API-004",
+      "method": "POST",
+      "path": "/mock/plans/:planId/confirm",
+      "gatewayMethod": "confirmPlan"
+    },
+    {
+      "id": "API-025",
+      "method": "POST",
+      "path": "/mock/demo/reset",
+      "gatewayMethod": "resetDemo"
+    }
+  ],
+  "flows": [
+    {
+      "id": "SCN-01",
+      "name": "normal plan confirmation",
+      "status": "passed"
+    },
+    {
+      "id": "SCN-02",
+      "name": "missing track supplement, different-person review, and confirmation",
+      "status": "passed"
+    },
+    {
+      "id": "SCN-03",
+      "name": "three sync failures, circuit open, operations recovery, and successful sync",
+      "status": "passed"
+    }
+  ],
+  "finalReviewClosure": [
+    {
+      "id": "I-1",
+      "coverage": "adjust and confirm both apply different-person review before Gateway invocation",
+      "status": "passed"
+    },
+    {
+      "id": "I-2",
+      "coverage": "plan details are gated by both session scope and query workArea before related-object reads",
+      "status": "passed"
+    },
+    {
+      "id": "I-3",
+      "coverage": "API-001/API-002 drive strict loading, data, business-error, and network-error states without importing GET data into Store",
+      "status": "passed"
+    },
+    {
+      "id": "I-4",
+      "coverage": "URL scenario is applied through strict API-025 bootstrap before one session-aware runtime is created",
+      "status": "passed"
+    },
+    {
+      "id": "I-5",
+      "coverage": "one immutable row exception projection drives SCN-02 missing field, SCN-03 timeout, and data-conflict filtering",
+      "status": "passed"
+    },
+    {
+      "id": "I-6",
+      "coverage": "API-001 network state keeps one retry panel beside unavailable interface health, last success, and TOS risk projections",
+      "status": "passed"
+    }
+  ],
+  "minorNotes": [
+    {
+      "id": "M-1",
+      "coverage": "exception filter replaces the URL and survives a fresh UI-002 remount",
+      "status": "passed"
+    }
+  ],
+  "uiErrorStates": [
+    "loading",
+    "empty",
+    "business-error",
+    "network-error",
+    "forbidden",
+    "not-found"
+  ],
+  "roles": [
+    {
+      "code": "BUSINESS",
+      "coverage": "UI-001 read"
+    },
+    {
+      "code": "SHIFT_LEADER",
+      "coverage": "UI-001 read"
+    },
+    {
+      "code": "DISPATCHER",
+      "coverage": "UI-001/UI-002 read, supplement, confirm; interface recovery denied"
+    },
+    {
+      "code": "INTERFACE_OPS",
+      "coverage": "UI-002 read and exact SCN-03 interface recovery"
+    }
+  ],
+  "stateMachineCompatibility": {
+    "domainObject": "DO-001",
+    "transitionCount": 53,
+    "allowedTransitionCount": 53,
+    "addedTransition": {
+      "from": "ADJUSTED",
+      "command": "confirm",
+      "to": "CONFIRMED"
+    }
+  },
+  "e2eTests": [
+    {
+      "file": "e2e/ui-001-dispatch-overview.spec.ts",
+      "name": "UI-001 DISPATCHER sees KPI, plan, risk, interface, and schematic content and preserves query when crossing to UI-002",
+      "status": "passed"
+    },
+    {
+      "file": "e2e/ui-001-dispatch-overview.spec.ts",
+      "name": "UI-001 normal and alert projections have no horizontal overflow at 1440x900 and 1280x720",
+      "status": "passed"
+    },
+    {
+      "file": "e2e/ui-002-dispatch-plans.spec.ts",
+      "name": "UI-002 confirms PLAN-001 in the normal flow to CONFIRMED version 2 and shows the recommendation link",
+      "status": "passed"
+    },
+    {
+      "file": "e2e/ui-002-dispatch-plans.spec.ts",
+      "name": "UI-002 SCN-02 prevents selecting the current actor, retains the failed form, and reaches ADJUSTED then CONFIRMED version 3 with two audits",
+      "status": "passed"
+    },
+    {
+      "file": "e2e/ui-002-dispatch-plans.spec.ts",
+      "name": "UI-002 SCN-03 opens the circuit after three failures, denies DISPATCHER recovery, switches to INTERFACE_OPS, resets to SCN-01, and syncs",
+      "status": "passed"
+    }
+  ],
+  "screenshots": [
+    "C04-UI001-SCN01-1440x900.png",
+    "C04-UI001-SCN01-1280x720.png",
+    "C04-UI002-SCN01-CONFIRMED-1440x900.png",
+    "C04-UI002-SCN01-CONFIRMED-1280x720.png",
+    "C04-UI002-SCN02-MISSING-1440x900.png",
+    "C04-UI002-SCN02-MISSING-1280x720.png",
+    "C04-UI002-SCN02-CONFIRMED-1440x900.png",
+    "C04-UI002-SCN02-CONFIRMED-1280x720.png",
+    "C04-UI002-SCN03-CIRCUIT-1440x900.png",
+    "C04-UI002-SCN03-CIRCUIT-1280x720.png",
+    "C04-UI002-SCN03-RECOVERED-1440x900.png",
+    "C04-UI002-SCN03-RECOVERED-1280x720.png"
+  ]
+}

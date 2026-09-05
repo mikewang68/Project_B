@@ -1,0 +1,91 @@
+{
+  "source": {
+    "backend": "D:\\claude-code-workspace\\高铁货运系统\\mt-wms-demo",
+    "frontend": "D:\\claude-code-workspace\\高铁货运系统\\mt-wms-demo-frontend"
+  },
+  "counts": {
+    "models": 41,
+    "model_columns": 1063,
+    "explicit_model_relations": 9,
+    "api_route_decorators": 166,
+    "frontend_routes": 57,
+    "frontend_http_calls": 544,
+    "state_literal_evidence": 242,
+    "menu_entries": 71,
+    "configuration_defaults": 22,
+    "legacy_roles": 10
+  },
+  "api_domains": {
+    "async": 9,
+    "auth": 20,
+    "chart": 5,
+    "erp": 1,
+    "finance": 13,
+    "inv": 42,
+    "open": 5,
+    "pda": 1,
+    "root": 1,
+    "stockin": 22,
+    "stockout": 35,
+    "warehouse": 12
+  },
+  "page_domains": {
+    "async": 1,
+    "dash": 1,
+    "finance": 7,
+    "home": 1,
+    "inv": 9,
+    "stockin": 10,
+    "stockout": 13,
+    "system": 6,
+    "warehouse": 9
+  },
+  "frontend_api_domains": {
+    "async": 39,
+    "auth": 41,
+    "chart": 3,
+    "dynamic": 5,
+    "finance": 38,
+    "inv": 52,
+    "mes": 4,
+    "open": 2,
+    "share": 3,
+    "stockin": 113,
+    "stockout": 172,
+    "warehouse": 72
+  },
+  "frontend_segments_without_legacy_backend_match": {
+    "dynamic": 5,
+    "mes": 4,
+    "share": 3
+  },
+  "declared_state_enums": {
+    "state": [
+      "all",
+      "ban",
+      "cancel",
+      "create",
+      "delete",
+      "doing",
+      "done",
+      "fail",
+      "on",
+      "part"
+    ],
+    "state_alloc": [
+      "done",
+      "no",
+      "part"
+    ],
+    "state_pick": [
+      "done",
+      "no",
+      "part"
+    ],
+    "state_ship": [
+      "done",
+      "no",
+      "part"
+    ]
+  }
+}

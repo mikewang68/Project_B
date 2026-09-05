@@ -1,0 +1,175 @@
+
+ RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+ ❯ src/features/plan-entry/__tests__/gateway.test.ts (0 test)
+ ❯ src/runtime/__tests__/runtime.test.tsx (0 test)
+node_modules\.bin\vitest.CMD :
+所在位置 行:2 字符: 111
++ ...  $env:Path; node_modules\.bin\vitest.CMD run src/features/plan-entry/ ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/runtime/__tests__/runtime.test.tsx [ src/runtime/__tests__/runtime.test.tsx ]
+Error: Failed to resolve import "../DemoRuntimeContext" from "src/runtime/__tests__/runtime.test.tsx". Does the file ex
+ist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/runtime/__tests__/runtime.test.tsx:11:7
+  2  |  import { describe, expect, it } from "vitest";
+  3  |  import { selectPlans } from "../../stores";
+  4  |  import { createDemoRuntime, DemoRuntimeProvider, useDemoRuntime, useDemoSelector } from "../DemoRuntimeContext"
+;
+     |                                                                                           ^
+  5  |  var _jsxFileName = "E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/runtime/__tests__/runtime.test.t
+sx";
+  6  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/
+%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%
+B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunk
+s/node.js:30366:39
+ ❯ TransformPluginContext.error ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%8
+7%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7
+%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/nod
+e.js:30363:14
+ ❯ normalizeUrl ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5
+%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/productio
+n-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27393:18
+ ❯ ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%
+84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-de
+mo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27456:30
+ ❯ TransformPluginContext.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%
+E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B
+9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks
+/node.js:27424:4
+ ❯ EnvironmentPluginContainer.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%
+9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%
+A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/ch
+unks/node.js:30151:14
+ ❯ loadAndTransform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B
+1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/produ
+ction-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:20098:2
+6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/features/plan-entry/__tests__/gateway.test.ts [ src/features/plan-entry/__tests__/gateway.test.ts ]
+Error: Failed to resolve import "../gateway" from "src/features/plan-entry/__tests__/gateway.test.ts". Does the file ex
+ist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/features/plan-entry/__tests__/gateway.test.ts:10:7
+  1  |  import { describe, expect, it } from "vitest";
+  2  |  import { ZodError } from "zod";
+  3  |  import { createPlanEntryGateway } from "../gateway";
+     |                                          ^
+  4  |  const successEnvelope = {
+  5  |  	ok: true,
+ ❯ TransformPluginContext._formatLog ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/
+%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%
+B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunk
+s/node.js:30366:39
+ ❯ TransformPluginContext.error ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%8
+7%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7
+%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/nod
+e.js:30363:14
+ ❯ normalizeUrl ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5
+%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/productio
+n-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27393:18
+ ❯ ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%
+84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-de
+mo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27456:30
+ ❯ TransformPluginContext.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%
+E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B
+9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks
+/node.js:27424:4
+ ❯ EnvironmentPluginContainer.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%
+9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%
+A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/ch
+unks/node.js:30151:14
+ ❯ loadAndTransform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B
+1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/produ
+ction-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:20098:2
+6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  no tests
+   Start at  21:22:31
+   Duration  1.72s (transform 37ms, setup 308ms, import 0ms, tests 0ms, environment 2.54s)
+'node' is not recognized as an internal or external command,
+operable program or batch file.
+
+ RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+ ? src/features/plan-entry/__tests__/selectors.test.ts (0 test)
+ ? src/features/plan-entry/__tests__/query.test.ts (0 test)
+ ? src/features/plan-entry/__tests__/workflow.test.ts (0 test)
+System.Management.Automation.RemoteException
+?????? Failed Suites 3 ???????
+System.Management.Automation.RemoteException
+ FAIL  src/features/plan-entry/__tests__/query.test.ts [ src/features/plan-entry/__tests__/query.test.ts ]
+Error: Failed to resolve import "../query" from "src/features/plan-entry/__tests__/query.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/features/plan-entry/__tests__/query.test.ts:3:61
+  1  |  import { describe, expect, it } from "vitest";
+  2  |  import { parsePlanEntryQuery, serializePlanEntryQuery } from "../query";
+     |                                                                ^
+  3  |  const completeQuery = {
+  4  |  	date: "2026-07-17",
+ ? TransformPluginContext._formatLog ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30366:39
+ ? TransformPluginContext.error ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30363:14
+ ? normalizeUrl ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27393:18
+ ? ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27456:30
+ ? TransformPluginContext.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27424:4
+ ? EnvironmentPluginContainer.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30151:14
+ ? loadAndTransform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:20098:26
+System.Management.Automation.RemoteException
+????????????????????????[1/3]?
+System.Management.Automation.RemoteException
+ FAIL  src/features/plan-entry/__tests__/selectors.test.ts [ src/features/plan-entry/__tests__/selectors.test.ts ]
+Error: Failed to resolve import "../selectors" from "src/features/plan-entry/__tests__/selectors.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/features/plan-entry/__tests__/selectors.test.ts:13:7
+  2  |  import { createFixtureSnapshot } from "../../../mocks/fixtures";
+  3  |  import { createDemoStore } from "../../../stores";
+  4  |  ...r, selectValidationIssues, selectVisibleYardObjects } from "../selectors";
+     |                                                                 ^
+  5  |  const query = {
+  6  |  	date: "2026-07-16",
+ ? TransformPluginContext._formatLog ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30366:39
+ ? TransformPluginContext.error ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30363:14
+ ? normalizeUrl ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27393:18
+ ? ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27456:30
+ ? TransformPluginContext.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27424:4
+ ? EnvironmentPluginContainer.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30151:14
+ ? loadAndTransform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:20098:26
+System.Management.Automation.RemoteException
+????????????????????????[2/3]?
+System.Management.Automation.RemoteException
+ FAIL  src/features/plan-entry/__tests__/workflow.test.ts [ src/features/plan-entry/__tests__/workflow.test.ts ]
+Error: Failed to resolve import "../workflow" from "src/features/plan-entry/__tests__/workflow.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/features/plan-entry/__tests__/workflow.test.ts:3:45
+  1  |  import { describe, expect, it, vi } from "vitest";
+  2  |  import { createPlanEntryWorkflowStore } from "../workflow";
+     |                                                ^
+  3  |  describe("plan entry workflow store", () => {
+  4  |  	it("opens the circuit exactly on retry three and caps the retry count", () => {
+ ? TransformPluginContext._formatLog ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30366:39
+ ? TransformPluginContext.error ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30363:14
+ ? normalizeUrl ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27393:18
+ ? ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27456:30
+ ? TransformPluginContext.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27424:4
+ ? EnvironmentPluginContainer.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:30151:14
+ ? loadAndTransform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:20098:26
+System.Management.Automation.RemoteException
+????????????????????????[3/3]?
+System.Management.Automation.RemoteException
+
+ Test Files  3 failed (3)
+      Tests  no tests
+   Start at  21:44:05
+   Duration  2.25s (transform 39ms, setup 435ms, import 0ms, tests 0ms, environment 5.00s)

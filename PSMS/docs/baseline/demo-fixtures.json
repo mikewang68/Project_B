@@ -1,0 +1,1920 @@
+{
+  "version": "0.2.0",
+  "timezone": "Asia/Shanghai",
+  "objects": {
+    "DO-001": [
+      {
+        "id": "PLAN-001",
+        "planBatchNo": "PB-20260716-01",
+        "trainNo": "75001",
+        "arrivalDepartureTime": "2026-07-16T08:01:00+08:00/2026-07-16T10:01:00+08:00",
+        "trackNo": "T1",
+        "cargoType": "FLY_ASH",
+        "status": "PENDING_CONFIRM",
+        "sourceSystem": "RAIL_PLAN",
+        "sourceTime": "2026-07-16T07:01:00+08:00",
+        "missingFields": [],
+        "conflicts": [],
+        "version": 1,
+        "createdAt": "2026-07-16T07:01:00+08:00",
+        "updatedAt": "2026-07-16T07:01:00+08:00"
+      },
+      {
+        "id": "PLAN-002",
+        "planBatchNo": "PB-20260716-02",
+        "trainNo": "75002",
+        "arrivalDepartureTime": "2026-07-16T08:02:00+08:00/2026-07-16T10:02:00+08:00",
+        "trackNo": "T2",
+        "cargoType": "STEEL",
+        "status": "BLOCKED",
+        "sourceSystem": "RAIL_PLAN",
+        "sourceTime": "2026-07-16T07:02:00+08:00",
+        "missingFields": [],
+        "conflicts": [],
+        "version": 1,
+        "createdAt": "2026-07-16T07:02:00+08:00",
+        "updatedAt": "2026-07-16T07:02:00+08:00"
+      },
+      {
+        "id": "PLAN-003",
+        "planBatchNo": "PB-20260716-03",
+        "trainNo": "75003",
+        "arrivalDepartureTime": "2026-07-16T08:03:00+08:00/2026-07-16T10:03:00+08:00",
+        "trackNo": "T3",
+        "cargoType": "CEMENT",
+        "status": "RECEIVED",
+        "sourceSystem": "RAIL_PLAN",
+        "sourceTime": "2026-07-16T07:03:00+08:00",
+        "missingFields": [],
+        "conflicts": [],
+        "version": 1,
+        "createdAt": "2026-07-16T07:03:00+08:00",
+        "updatedAt": "2026-07-16T07:03:00+08:00"
+      }
+    ],
+    "DO-002": [
+      {
+        "id": "WAYBILL-001",
+        "waybillNo": "WB-001",
+        "containerNo": "CONT-001",
+        "cargoType": "FLY_ASH",
+        "quantity": 65,
+        "unit": "TON",
+        "weight": 64.5,
+        "version": 1,
+        "createdAt": "2026-07-16T08:01:00+08:00",
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "WAYBILL-002",
+        "waybillNo": "WB-002",
+        "containerNo": "CONT-002",
+        "cargoType": "STEEL",
+        "quantity": 70,
+        "unit": "TON",
+        "weight": 69.5,
+        "version": 1,
+        "createdAt": "2026-07-16T08:02:00+08:00",
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "WAYBILL-003",
+        "waybillNo": "WB-003",
+        "containerNo": "CONT-003",
+        "cargoType": "CEMENT",
+        "quantity": 75,
+        "unit": "TON",
+        "weight": 74.5,
+        "version": 1,
+        "createdAt": "2026-07-16T08:03:00+08:00",
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "WAYBILL-004",
+        "waybillNo": "WB-004",
+        "containerNo": "CONT-004",
+        "cargoType": "GENERAL_CARGO",
+        "quantity": 80,
+        "unit": "TON",
+        "weight": 79.5,
+        "version": 1,
+        "createdAt": "2026-07-16T08:04:00+08:00",
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      },
+      {
+        "id": "WAYBILL-005",
+        "waybillNo": "WB-005",
+        "containerNo": "CONT-005",
+        "cargoType": "FLY_ASH",
+        "quantity": 85,
+        "unit": "TON",
+        "weight": 84.5,
+        "version": 1,
+        "createdAt": "2026-07-16T08:05:00+08:00",
+        "updatedAt": "2026-07-16T08:05:00+08:00"
+      },
+      {
+        "id": "WAYBILL-006",
+        "waybillNo": "WB-006",
+        "containerNo": "CONT-006",
+        "cargoType": "STEEL",
+        "quantity": 90,
+        "unit": "TON",
+        "weight": 89.5,
+        "version": 1,
+        "createdAt": "2026-07-16T08:06:00+08:00",
+        "updatedAt": "2026-07-16T08:06:00+08:00"
+      },
+      {
+        "id": "WAYBILL-007",
+        "waybillNo": "WB-007",
+        "containerNo": "CONT-007",
+        "cargoType": "CEMENT",
+        "quantity": 95,
+        "unit": "TON",
+        "weight": 94.5,
+        "version": 1,
+        "createdAt": "2026-07-16T08:07:00+08:00",
+        "updatedAt": "2026-07-16T08:07:00+08:00"
+      },
+      {
+        "id": "WAYBILL-008",
+        "waybillNo": "WB-008",
+        "containerNo": "CONT-008",
+        "cargoType": "GENERAL_CARGO",
+        "quantity": 100,
+        "unit": "TON",
+        "weight": 99.5,
+        "version": 1,
+        "createdAt": "2026-07-16T08:08:00+08:00",
+        "updatedAt": "2026-07-16T08:08:00+08:00"
+      }
+    ],
+    "DO-003": [
+      {
+        "id": "TRACK-001",
+        "trackNo": "T1",
+        "occupyStatus": "FREE",
+        "estimateReleaseTime": "2026-07-16T11:01:00+08:00",
+        "compatibleCargoTypes": [
+          "FLY_ASH",
+          "STEEL"
+        ],
+        "version": 1,
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "TRACK-002",
+        "trackNo": "T2",
+        "occupyStatus": "OCCUPIED",
+        "estimateReleaseTime": "2026-07-16T11:02:00+08:00",
+        "compatibleCargoTypes": [
+          "FLY_ASH",
+          "STEEL",
+          "CEMENT"
+        ],
+        "version": 1,
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "TRACK-003",
+        "trackNo": "T3",
+        "occupyStatus": "RELEASING",
+        "estimateReleaseTime": "2026-07-16T11:03:00+08:00",
+        "compatibleCargoTypes": [
+          "FLY_ASH",
+          "STEEL",
+          "CEMENT",
+          "GENERAL_CARGO"
+        ],
+        "version": 1,
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "TRACK-004",
+        "trackNo": "T4",
+        "occupyStatus": "BLOCKED",
+        "estimateReleaseTime": "2026-07-16T11:04:00+08:00",
+        "compatibleCargoTypes": [
+          "FLY_ASH"
+        ],
+        "version": 1,
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      }
+    ],
+    "DO-004": [
+      {
+        "id": "MATERIAL-001",
+        "materialId": "MAT-001",
+        "containerNoRfid": "RFID-CONT-001",
+        "cargoType": "FLY_ASH",
+        "quantityWeight": 41.0,
+        "locationCode": "AREA-A",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "MATERIAL-002",
+        "materialId": "MAT-002",
+        "containerNoRfid": "RFID-CONT-002",
+        "cargoType": "STEEL",
+        "quantityWeight": 42.0,
+        "locationCode": "AREA-B",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "MATERIAL-003",
+        "materialId": "MAT-003",
+        "containerNoRfid": "RFID-CONT-003",
+        "cargoType": "CEMENT",
+        "quantityWeight": 43.0,
+        "locationCode": "AREA-C",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "MATERIAL-004",
+        "materialId": "MAT-004",
+        "containerNoRfid": "RFID-CONT-004",
+        "cargoType": "GENERAL_CARGO",
+        "quantityWeight": 44.0,
+        "locationCode": "AREA-A",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      },
+      {
+        "id": "MATERIAL-005",
+        "materialId": "MAT-005",
+        "containerNoRfid": "RFID-CONT-005",
+        "cargoType": "FLY_ASH",
+        "quantityWeight": 45.0,
+        "locationCode": "AREA-B",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:05:00+08:00"
+      },
+      {
+        "id": "MATERIAL-006",
+        "materialId": "MAT-006",
+        "containerNoRfid": "RFID-CONT-006",
+        "cargoType": "STEEL",
+        "quantityWeight": 46.0,
+        "locationCode": "AREA-C",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:06:00+08:00"
+      },
+      {
+        "id": "MATERIAL-007",
+        "materialId": "MAT-007",
+        "containerNoRfid": "RFID-CONT-007",
+        "cargoType": "CEMENT",
+        "quantityWeight": 47.0,
+        "locationCode": "AREA-A",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:07:00+08:00"
+      },
+      {
+        "id": "MATERIAL-008",
+        "materialId": "MAT-008",
+        "containerNoRfid": "RFID-CONT-008",
+        "cargoType": "GENERAL_CARGO",
+        "quantityWeight": 48.0,
+        "locationCode": "AREA-B",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:08:00+08:00"
+      }
+    ],
+    "DO-005": [
+      {
+        "id": "WO-001",
+        "workOrderNo": "WO-001",
+        "planId": "PLAN-001",
+        "parentId": "",
+        "type": "UNLOAD",
+        "title": "演示作业单 01",
+        "priority": "LOW",
+        "status": "DRAFT",
+        "ackStatus": "PENDING",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-001",
+        "teamId": "TEAM-01",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:01:00+08:00",
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "WO-002",
+        "workOrderNo": "WO-002",
+        "planId": "PLAN-002",
+        "parentId": "",
+        "type": "TRANSFER",
+        "title": "演示作业单 02",
+        "priority": "MEDIUM",
+        "status": "READY",
+        "ackStatus": "ACKNOWLEDGED",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-002",
+        "teamId": "TEAM-02",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:02:00+08:00",
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "WO-003",
+        "workOrderNo": "WO-003",
+        "planId": "PLAN-003",
+        "parentId": "",
+        "type": "LOAD",
+        "title": "演示作业单 03",
+        "priority": "HIGH",
+        "status": "DISPATCHED",
+        "ackStatus": "REJECTED",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-003",
+        "teamId": "TEAM-03",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:03:00+08:00",
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "WO-004",
+        "workOrderNo": "WO-004",
+        "planId": "PLAN-001",
+        "parentId": "WO-001",
+        "type": "INSPECT",
+        "title": "演示作业单 04",
+        "priority": "URGENT",
+        "status": "ACKNOWLEDGED",
+        "ackStatus": "TIMEOUT",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-004",
+        "teamId": "TEAM-01",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:04:00+08:00",
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      },
+      {
+        "id": "WO-005",
+        "workOrderNo": "WO-005",
+        "planId": "PLAN-002",
+        "parentId": "WO-002",
+        "type": "UNLOAD",
+        "title": "演示作业单 05",
+        "priority": "LOW",
+        "status": "IN_PROGRESS",
+        "ackStatus": "PENDING",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-005",
+        "teamId": "TEAM-02",
+        "blockReason": "设备离线",
+        "version": 1,
+        "createdAt": "2026-07-16T08:05:00+08:00",
+        "updatedAt": "2026-07-16T08:05:00+08:00"
+      },
+      {
+        "id": "WO-006",
+        "workOrderNo": "WO-006",
+        "planId": "PLAN-003",
+        "parentId": "WO-003",
+        "type": "TRANSFER",
+        "title": "演示作业单 06",
+        "priority": "MEDIUM",
+        "status": "COMPLETED",
+        "ackStatus": "ACKNOWLEDGED",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-006",
+        "teamId": "TEAM-03",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:06:00+08:00",
+        "updatedAt": "2026-07-16T08:06:00+08:00"
+      },
+      {
+        "id": "WO-007",
+        "workOrderNo": "WO-007",
+        "planId": "PLAN-001",
+        "parentId": "WO-004",
+        "type": "LOAD",
+        "title": "演示作业单 07",
+        "priority": "HIGH",
+        "status": "PAUSED",
+        "ackStatus": "REJECTED",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-007",
+        "teamId": "TEAM-01",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:07:00+08:00",
+        "updatedAt": "2026-07-16T08:07:00+08:00"
+      },
+      {
+        "id": "WO-008",
+        "workOrderNo": "WO-008",
+        "planId": "PLAN-002",
+        "parentId": "WO-005",
+        "type": "INSPECT",
+        "title": "演示作业单 08",
+        "priority": "URGENT",
+        "status": "BLOCKED",
+        "ackStatus": "TIMEOUT",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-008",
+        "teamId": "TEAM-02",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:08:00+08:00",
+        "updatedAt": "2026-07-16T08:08:00+08:00"
+      },
+      {
+        "id": "WO-009",
+        "workOrderNo": "WO-009",
+        "planId": "PLAN-003",
+        "parentId": "WO-006",
+        "type": "UNLOAD",
+        "title": "演示作业单 09",
+        "priority": "LOW",
+        "status": "FAILED",
+        "ackStatus": "PENDING",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-009",
+        "teamId": "TEAM-03",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:09:00+08:00",
+        "updatedAt": "2026-07-16T08:09:00+08:00"
+      },
+      {
+        "id": "WO-010",
+        "workOrderNo": "WO-010",
+        "planId": "PLAN-001",
+        "parentId": "WO-007",
+        "type": "TRANSFER",
+        "title": "演示作业单 10",
+        "priority": "MEDIUM",
+        "status": "CANCELLED",
+        "ackStatus": "ACKNOWLEDGED",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-010",
+        "teamId": "TEAM-01",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:10:00+08:00",
+        "updatedAt": "2026-07-16T08:10:00+08:00"
+      },
+      {
+        "id": "WO-011",
+        "workOrderNo": "WO-011",
+        "planId": "PLAN-002",
+        "parentId": "WO-008",
+        "type": "LOAD",
+        "title": "演示作业单 11",
+        "priority": "HIGH",
+        "status": "DRAFT",
+        "ackStatus": "REJECTED",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-001",
+        "teamId": "TEAM-02",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:11:00+08:00",
+        "updatedAt": "2026-07-16T08:11:00+08:00"
+      },
+      {
+        "id": "WO-012",
+        "workOrderNo": "WO-012",
+        "planId": "PLAN-003",
+        "parentId": "WO-009",
+        "type": "INSPECT",
+        "title": "演示作业单 12",
+        "priority": "URGENT",
+        "status": "READY",
+        "ackStatus": "TIMEOUT",
+        "ruleVersion": "RULE-1.0",
+        "resourceId": "RESOURCE-002",
+        "teamId": "TEAM-03",
+        "blockReason": "",
+        "version": 1,
+        "createdAt": "2026-07-16T08:12:00+08:00",
+        "updatedAt": "2026-07-16T08:12:00+08:00"
+      }
+    ],
+    "DO-006": [
+      {
+        "id": "NODE-001",
+        "nodeNo": "N01",
+        "workOrderNo": "WO-001",
+        "sequence": 1,
+        "status": "WAITING",
+        "plannedStartTime": "2026-07-16T09:01:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:01:00+08:00",
+        "actualStartTime": "",
+        "actualFinishTime": "",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "NODE-002",
+        "nodeNo": "N02",
+        "workOrderNo": "WO-002",
+        "sequence": 2,
+        "status": "READY",
+        "plannedStartTime": "2026-07-16T09:02:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:02:00+08:00",
+        "actualStartTime": "",
+        "actualFinishTime": "",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "NODE-003",
+        "nodeNo": "N03",
+        "workOrderNo": "WO-003",
+        "sequence": 3,
+        "status": "IN_PROGRESS",
+        "plannedStartTime": "2026-07-16T09:03:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:03:00+08:00",
+        "actualStartTime": "2026-07-16T09:03:00+08:00",
+        "actualFinishTime": "",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "NODE-004",
+        "nodeNo": "N04",
+        "workOrderNo": "WO-004",
+        "sequence": 4,
+        "status": "COMPLETED",
+        "plannedStartTime": "2026-07-16T09:04:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:04:00+08:00",
+        "actualStartTime": "",
+        "actualFinishTime": "2026-07-16T10:04:00+08:00",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      },
+      {
+        "id": "NODE-005",
+        "nodeNo": "N05",
+        "workOrderNo": "WO-005",
+        "sequence": 5,
+        "status": "SKIPPED",
+        "plannedStartTime": "2026-07-16T09:05:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:05:00+08:00",
+        "actualStartTime": "",
+        "actualFinishTime": "",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:05:00+08:00"
+      },
+      {
+        "id": "NODE-006",
+        "nodeNo": "N06",
+        "workOrderNo": "WO-006",
+        "sequence": 6,
+        "status": "BLOCKED",
+        "plannedStartTime": "2026-07-16T09:06:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:06:00+08:00",
+        "actualStartTime": "2026-07-16T09:06:00+08:00",
+        "actualFinishTime": "",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:06:00+08:00"
+      },
+      {
+        "id": "NODE-007",
+        "nodeNo": "N07",
+        "workOrderNo": "WO-007",
+        "sequence": 7,
+        "status": "FAILED",
+        "plannedStartTime": "2026-07-16T09:07:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:07:00+08:00",
+        "actualStartTime": "",
+        "actualFinishTime": "",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:07:00+08:00"
+      },
+      {
+        "id": "NODE-008",
+        "nodeNo": "N08",
+        "workOrderNo": "WO-008",
+        "sequence": 8,
+        "status": "WAITING",
+        "plannedStartTime": "2026-07-16T09:08:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:08:00+08:00",
+        "actualStartTime": "",
+        "actualFinishTime": "2026-07-16T10:08:00+08:00",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:08:00+08:00"
+      },
+      {
+        "id": "NODE-009",
+        "nodeNo": "N09",
+        "workOrderNo": "WO-009",
+        "sequence": 9,
+        "status": "READY",
+        "plannedStartTime": "2026-07-16T09:09:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:09:00+08:00",
+        "actualStartTime": "2026-07-16T09:09:00+08:00",
+        "actualFinishTime": "",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:09:00+08:00"
+      },
+      {
+        "id": "NODE-010",
+        "nodeNo": "N10",
+        "workOrderNo": "WO-010",
+        "sequence": 10,
+        "status": "IN_PROGRESS",
+        "plannedStartTime": "2026-07-16T09:10:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:10:00+08:00",
+        "actualStartTime": "",
+        "actualFinishTime": "",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:10:00+08:00"
+      },
+      {
+        "id": "NODE-011",
+        "nodeNo": "N11",
+        "workOrderNo": "WO-011",
+        "sequence": 11,
+        "status": "COMPLETED",
+        "plannedStartTime": "2026-07-16T09:11:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:11:00+08:00",
+        "actualStartTime": "",
+        "actualFinishTime": "",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:11:00+08:00"
+      },
+      {
+        "id": "NODE-012",
+        "nodeNo": "N12",
+        "workOrderNo": "WO-012",
+        "sequence": 12,
+        "status": "SKIPPED",
+        "plannedStartTime": "2026-07-16T09:12:00+08:00",
+        "plannedFinishTime": "2026-07-16T10:12:00+08:00",
+        "actualStartTime": "2026-07-16T09:12:00+08:00",
+        "actualFinishTime": "2026-07-16T10:12:00+08:00",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:12:00+08:00"
+      }
+    ],
+    "DO-007": [
+      {
+        "id": "RESOURCE-001",
+        "deviceId": "DEVICE-001",
+        "personId": "",
+        "resourceType": "TIPPER",
+        "capabilityTags": [
+          "UNLOAD",
+          "AREA-1"
+        ],
+        "status": "AVAILABLE",
+        "workArea": "AREA-A",
+        "location": "YARD-01",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "RESOURCE-002",
+        "deviceId": "DEVICE-002",
+        "personId": "",
+        "resourceType": "CRANE",
+        "capabilityTags": [
+          "UNLOAD",
+          "AREA-2"
+        ],
+        "status": "BUSY",
+        "workArea": "AREA-B",
+        "location": "YARD-02",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "RESOURCE-003",
+        "deviceId": "DEVICE-003",
+        "personId": "",
+        "resourceType": "CONVEYOR",
+        "capabilityTags": [
+          "UNLOAD",
+          "AREA-3"
+        ],
+        "status": "OFFLINE",
+        "workArea": "AREA-C",
+        "location": "YARD-03",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "RESOURCE-004",
+        "deviceId": "DEVICE-004",
+        "personId": "",
+        "resourceType": "SILO",
+        "capabilityTags": [
+          "UNLOAD",
+          "AREA-1"
+        ],
+        "status": "MAINTENANCE",
+        "workArea": "AREA-A",
+        "location": "YARD-04",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      },
+      {
+        "id": "RESOURCE-005",
+        "deviceId": "DEVICE-005",
+        "personId": "",
+        "resourceType": "AGV",
+        "capabilityTags": [
+          "UNLOAD",
+          "AREA-2"
+        ],
+        "status": "LOCKED",
+        "workArea": "AREA-B",
+        "location": "YARD-05",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:05:00+08:00"
+      },
+      {
+        "id": "RESOURCE-006",
+        "deviceId": "DEVICE-006",
+        "personId": "",
+        "resourceType": "TEAM",
+        "capabilityTags": [
+          "UNLOAD",
+          "AREA-3"
+        ],
+        "status": "AVAILABLE",
+        "workArea": "AREA-C",
+        "location": "YARD-06",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:06:00+08:00"
+      },
+      {
+        "id": "RESOURCE-007",
+        "deviceId": "DEVICE-007",
+        "personId": "",
+        "resourceType": "TIPPER",
+        "capabilityTags": [
+          "UNLOAD",
+          "AREA-1"
+        ],
+        "status": "BUSY",
+        "workArea": "AREA-A",
+        "location": "YARD-07",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:07:00+08:00"
+      },
+      {
+        "id": "RESOURCE-008",
+        "deviceId": "DEVICE-008",
+        "personId": "PERSON-008",
+        "resourceType": "CRANE",
+        "capabilityTags": [
+          "UNLOAD",
+          "AREA-2"
+        ],
+        "status": "OFFLINE",
+        "workArea": "AREA-B",
+        "location": "YARD-08",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:08:00+08:00"
+      },
+      {
+        "id": "RESOURCE-009",
+        "deviceId": "",
+        "personId": "PERSON-009",
+        "resourceType": "CONVEYOR",
+        "capabilityTags": [
+          "UNLOAD",
+          "AREA-3"
+        ],
+        "status": "MAINTENANCE",
+        "workArea": "AREA-C",
+        "location": "YARD-09",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:09:00+08:00"
+      },
+      {
+        "id": "RESOURCE-010",
+        "deviceId": "",
+        "personId": "PERSON-010",
+        "resourceType": "SILO",
+        "capabilityTags": [
+          "UNLOAD",
+          "AREA-1"
+        ],
+        "status": "LOCKED",
+        "workArea": "AREA-A",
+        "location": "YARD-10",
+        "version": 1,
+        "updatedAt": "2026-07-16T08:10:00+08:00"
+      }
+    ],
+    "DO-008": [
+      {
+        "id": "APT-001",
+        "reservationNo": "RES-20260716-01",
+        "vehicleNo": "川A·DEMO01",
+        "driverId": "DRIVER-001",
+        "status": "QUEUED",
+        "queueNo": "Q01",
+        "gateStatus": "WAITING",
+        "version": 1,
+        "createdAt": "2026-07-16T08:01:00+08:00",
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "APT-002",
+        "reservationNo": "RES-20260716-02",
+        "vehicleNo": "川A·DEMO02",
+        "driverId": "DRIVER-002",
+        "status": "CALLED",
+        "queueNo": "Q02",
+        "gateStatus": "OPEN",
+        "version": 1,
+        "createdAt": "2026-07-16T08:02:00+08:00",
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "APT-003",
+        "reservationNo": "RES-20260716-03",
+        "vehicleNo": "川A·DEMO03",
+        "driverId": "DRIVER-003",
+        "status": "ENTERED",
+        "queueNo": "Q03",
+        "gateStatus": "PASSED",
+        "version": 1,
+        "createdAt": "2026-07-16T08:03:00+08:00",
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "APT-004",
+        "reservationNo": "RES-20260716-04",
+        "vehicleNo": "川A·DEMO04",
+        "driverId": "DRIVER-004",
+        "status": "OPERATING",
+        "queueNo": "Q04",
+        "gateStatus": "CLOSED",
+        "version": 1,
+        "createdAt": "2026-07-16T08:04:00+08:00",
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      },
+      {
+        "id": "APT-005",
+        "reservationNo": "RES-20260716-05",
+        "vehicleNo": "川A·DEMO05",
+        "driverId": "DRIVER-005",
+        "status": "RELEASED",
+        "queueNo": "Q05",
+        "gateStatus": "REJECTED",
+        "version": 1,
+        "createdAt": "2026-07-16T08:05:00+08:00",
+        "updatedAt": "2026-07-16T08:05:00+08:00"
+      },
+      {
+        "id": "APT-006",
+        "reservationNo": "RES-20260716-06",
+        "vehicleNo": "川A·DEMO06",
+        "driverId": "DRIVER-006",
+        "status": "EXITED",
+        "queueNo": "Q06",
+        "gateStatus": "WAITING",
+        "version": 1,
+        "createdAt": "2026-07-16T08:06:00+08:00",
+        "updatedAt": "2026-07-16T08:06:00+08:00"
+      }
+    ],
+    "DO-009": [
+      {
+        "id": "EX-001",
+        "exceptionNo": "EX-20260716-01",
+        "type": "DEVICE_OFFLINE",
+        "level": "INFO",
+        "status": "OPEN",
+        "owner": "TEAM-01",
+        "dueAt": "2026-07-16T12:01:00+08:00",
+        "evidence": [
+          "EVIDENCE-001"
+        ],
+        "version": 1,
+        "createdAt": "2026-07-16T08:01:00+08:00",
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "EX-002",
+        "exceptionNo": "EX-20260716-02",
+        "type": "DATA_CONFLICT",
+        "level": "MINOR",
+        "status": "ACKNOWLEDGED",
+        "owner": "TEAM-02",
+        "dueAt": "2026-07-16T12:02:00+08:00",
+        "evidence": [
+          "EVIDENCE-002"
+        ],
+        "version": 1,
+        "createdAt": "2026-07-16T08:02:00+08:00",
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "EX-003",
+        "exceptionNo": "EX-20260716-03",
+        "type": "INTERLOCK",
+        "level": "MAJOR",
+        "status": "HANDLING",
+        "owner": "TEAM-03",
+        "dueAt": "2026-07-16T12:03:00+08:00",
+        "evidence": [
+          "EVIDENCE-003"
+        ],
+        "version": 1,
+        "createdAt": "2026-07-16T08:03:00+08:00",
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "EX-004",
+        "exceptionNo": "EX-20260716-04",
+        "type": "TIMEOUT",
+        "level": "CRITICAL",
+        "status": "PENDING_REVIEW",
+        "owner": "TEAM-01",
+        "dueAt": "2026-07-16T12:04:00+08:00",
+        "evidence": [
+          "EVIDENCE-004"
+        ],
+        "version": 1,
+        "createdAt": "2026-07-16T08:04:00+08:00",
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      },
+      {
+        "id": "EX-005",
+        "exceptionNo": "EX-20260716-05",
+        "type": "QUALITY",
+        "level": "INFO",
+        "status": "CLOSED",
+        "owner": "TEAM-02",
+        "dueAt": "2026-07-16T12:05:00+08:00",
+        "evidence": [
+          "EVIDENCE-005"
+        ],
+        "version": 1,
+        "createdAt": "2026-07-16T08:05:00+08:00",
+        "updatedAt": "2026-07-16T08:05:00+08:00"
+      }
+    ],
+    "DO-010": [
+      {
+        "id": "IL-001",
+        "interlockNo": "IL-20260716-01",
+        "riskType": "PERSON_INTRUSION",
+        "actionLevel": "WARN",
+        "status": "LOCKED",
+        "inputSnapshot": {
+          "sensor": "SENSOR-01",
+          "value": true
+        },
+        "receiptStatus": "PENDING",
+        "resetRequest": {
+          "requested": false
+        },
+        "approvalChain": [
+          "USER-001"
+        ],
+        "version": 1,
+        "createdAt": "2026-07-16T08:01:00+08:00",
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "IL-002",
+        "interlockNo": "IL-20260716-02",
+        "riskType": "OVERLOAD",
+        "actionLevel": "PAUSE",
+        "status": "RESET_REQUESTED",
+        "inputSnapshot": {
+          "sensor": "SENSOR-02",
+          "value": true
+        },
+        "receiptStatus": "RECEIVED",
+        "resetRequest": {
+          "requested": true
+        },
+        "approvalChain": [
+          "USER-002"
+        ],
+        "version": 1,
+        "createdAt": "2026-07-16T08:02:00+08:00",
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "IL-003",
+        "interlockNo": "IL-20260716-03",
+        "riskType": "DEVICE_FAULT",
+        "actionLevel": "FORCE_STOP",
+        "status": "APPROVED",
+        "inputSnapshot": {
+          "sensor": "SENSOR-03",
+          "value": true
+        },
+        "receiptStatus": "FAILED",
+        "resetRequest": {
+          "requested": false
+        },
+        "approvalChain": [
+          "USER-003"
+        ],
+        "version": 1,
+        "createdAt": "2026-07-16T08:03:00+08:00",
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "IL-004",
+        "interlockNo": "IL-20260716-04",
+        "riskType": "MANUAL_STOP",
+        "actionLevel": "WARN",
+        "status": "RESTORED",
+        "inputSnapshot": {
+          "sensor": "SENSOR-04",
+          "value": true
+        },
+        "receiptStatus": "PENDING",
+        "resetRequest": {
+          "requested": true
+        },
+        "approvalChain": [
+          "USER-004"
+        ],
+        "version": 1,
+        "createdAt": "2026-07-16T08:04:00+08:00",
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      }
+    ],
+    "DO-011": [
+      {
+        "id": "OFF-001",
+        "offlinePackageNo": "OFF-PKG-001",
+        "terminalId": "PDA-01",
+        "workOrderNo": "WO-006",
+        "packageVersion": 2,
+        "serverVersion": 1,
+        "validation": {
+          "valid": false,
+          "issues": [
+            "VERSION_CONFLICT"
+          ]
+        },
+        "mergeStatus": "CONFLICT",
+        "version": 1,
+        "createdAt": "2026-07-16T08:01:00+08:00",
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "OFF-002",
+        "offlinePackageNo": "OFF-PKG-002",
+        "terminalId": "PDA-02",
+        "workOrderNo": "WO-007",
+        "packageVersion": 3,
+        "serverVersion": 2,
+        "validation": {
+          "valid": true,
+          "issues": []
+        },
+        "mergeStatus": "REJECTED",
+        "version": 1,
+        "createdAt": "2026-07-16T08:02:00+08:00",
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "OFF-003",
+        "offlinePackageNo": "OFF-PKG-003",
+        "terminalId": "PDA-03",
+        "workOrderNo": "WO-008",
+        "packageVersion": 4,
+        "serverVersion": 3,
+        "validation": {
+          "valid": true,
+          "issues": []
+        },
+        "mergeStatus": "RETRY",
+        "version": 1,
+        "createdAt": "2026-07-16T08:03:00+08:00",
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "OFF-004",
+        "offlinePackageNo": "OFF-PKG-004",
+        "terminalId": "PDA-04",
+        "workOrderNo": "WO-009",
+        "packageVersion": 5,
+        "serverVersion": 4,
+        "validation": {
+          "valid": true,
+          "issues": []
+        },
+        "mergeStatus": "CACHED",
+        "version": 1,
+        "createdAt": "2026-07-16T08:04:00+08:00",
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      }
+    ],
+    "DO-012": [
+      {
+        "id": "RP-001",
+        "reportType": "SHIFT",
+        "period": "2026-07-16",
+        "generateStatus": "SUCCESS",
+        "metrics": {
+          "completedWorkOrders": 12,
+          "exceptions": 1
+        },
+        "generatedAt": "2026-07-16T18:01:00+08:00"
+      },
+      {
+        "id": "RP-002",
+        "reportType": "DAILY",
+        "period": "2026-07-17",
+        "generateStatus": "FAILED",
+        "metrics": {
+          "completedWorkOrders": 24,
+          "exceptions": 2
+        },
+        "generatedAt": "2026-07-16T18:02:00+08:00"
+      },
+      {
+        "id": "RP-003",
+        "reportType": "MONTHLY",
+        "period": "2026-07-18",
+        "generateStatus": "PENDING",
+        "metrics": {
+          "completedWorkOrders": 36,
+          "exceptions": 3
+        },
+        "generatedAt": "2026-07-16T18:03:00+08:00"
+      }
+    ],
+    "DO-013": [
+      {
+        "id": "AUD-001",
+        "actorId": "USER-001",
+        "operatorTerminal": "WEB-01",
+        "action": "PLAN_CONFIRM",
+        "objectType": "PLAN",
+        "objectId": "PLAN-001",
+        "before": {
+          "version": 1
+        },
+        "after": {
+          "version": 2
+        },
+        "reason": "演示操作",
+        "traceId": "TRACE-001",
+        "occurredAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "AUD-002",
+        "actorId": "USER-002",
+        "operatorTerminal": "WEB-02",
+        "action": "WORK_ORDER_DISPATCH",
+        "objectType": "WORK_ORDER",
+        "objectId": "WO-002",
+        "before": {
+          "version": 1
+        },
+        "after": {
+          "version": 2
+        },
+        "reason": "演示操作",
+        "traceId": "TRACE-002",
+        "occurredAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "AUD-003",
+        "actorId": "USER-003",
+        "operatorTerminal": "WEB-03",
+        "action": "INTERLOCK_RECEIPT",
+        "objectType": "INTERLOCK",
+        "objectId": "IL-003",
+        "before": {
+          "version": 1
+        },
+        "after": {
+          "version": 2
+        },
+        "reason": "演示操作",
+        "traceId": "TRACE-003",
+        "occurredAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "AUD-004",
+        "actorId": "USER-004",
+        "operatorTerminal": "WEB-01",
+        "action": "PLAN_CONFIRM",
+        "objectType": "PLAN",
+        "objectId": "PLAN-001",
+        "before": {
+          "version": 1
+        },
+        "after": {
+          "version": 2
+        },
+        "reason": "演示操作",
+        "traceId": "TRACE-004",
+        "occurredAt": "2026-07-16T08:04:00+08:00"
+      },
+      {
+        "id": "AUD-005",
+        "actorId": "USER-005",
+        "operatorTerminal": "WEB-02",
+        "action": "WORK_ORDER_DISPATCH",
+        "objectType": "WORK_ORDER",
+        "objectId": "WO-005",
+        "before": {
+          "version": 1
+        },
+        "after": {
+          "version": 2
+        },
+        "reason": "演示操作",
+        "traceId": "TRACE-005",
+        "occurredAt": "2026-07-16T08:05:00+08:00"
+      },
+      {
+        "id": "AUD-006",
+        "actorId": "USER-006",
+        "operatorTerminal": "WEB-03",
+        "action": "INTERLOCK_RECEIPT",
+        "objectType": "INTERLOCK",
+        "objectId": "IL-002",
+        "before": {
+          "version": 1
+        },
+        "after": {
+          "version": 2
+        },
+        "reason": "演示操作",
+        "traceId": "TRACE-006",
+        "occurredAt": "2026-07-16T08:06:00+08:00"
+      },
+      {
+        "id": "AUD-007",
+        "actorId": "USER-007",
+        "operatorTerminal": "WEB-01",
+        "action": "PLAN_CONFIRM",
+        "objectType": "PLAN",
+        "objectId": "PLAN-001",
+        "before": {
+          "version": 1
+        },
+        "after": {
+          "version": 2
+        },
+        "reason": "演示操作",
+        "traceId": "TRACE-007",
+        "occurredAt": "2026-07-16T08:07:00+08:00"
+      },
+      {
+        "id": "AUD-008",
+        "actorId": "USER-008",
+        "operatorTerminal": "WEB-02",
+        "action": "WORK_ORDER_DISPATCH",
+        "objectType": "WORK_ORDER",
+        "objectId": "WO-008",
+        "before": {
+          "version": 1
+        },
+        "after": {
+          "version": 2
+        },
+        "reason": "演示操作",
+        "traceId": "TRACE-008",
+        "occurredAt": "2026-07-16T08:08:00+08:00"
+      },
+      {
+        "id": "AUD-009",
+        "actorId": "USER-009",
+        "operatorTerminal": "WEB-03",
+        "action": "INTERLOCK_RECEIPT",
+        "objectType": "INTERLOCK",
+        "objectId": "IL-001",
+        "before": {
+          "version": 1
+        },
+        "after": {
+          "version": 2
+        },
+        "reason": "演示操作",
+        "traceId": "TRACE-009",
+        "occurredAt": "2026-07-16T08:09:00+08:00"
+      }
+    ],
+    "DO-014": [
+      {
+        "id": "USER-001",
+        "roleCode": "DISPATCHER",
+        "dataScope": "AREA-1",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:01:00+08:00",
+        "updatedAt": "2026-07-16T08:01:00+08:00"
+      },
+      {
+        "id": "USER-002",
+        "roleCode": "SHIFT_LEADER",
+        "dataScope": "AREA-2",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:02:00+08:00",
+        "updatedAt": "2026-07-16T08:02:00+08:00"
+      },
+      {
+        "id": "USER-003",
+        "roleCode": "OPERATOR",
+        "dataScope": "AREA-3",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:03:00+08:00",
+        "updatedAt": "2026-07-16T08:03:00+08:00"
+      },
+      {
+        "id": "USER-004",
+        "roleCode": "MAINTAINER",
+        "dataScope": "AREA-1",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:04:00+08:00",
+        "updatedAt": "2026-07-16T08:04:00+08:00"
+      },
+      {
+        "id": "USER-005",
+        "roleCode": "WAREHOUSE",
+        "dataScope": "AREA-2",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:05:00+08:00",
+        "updatedAt": "2026-07-16T08:05:00+08:00"
+      },
+      {
+        "id": "USER-006",
+        "roleCode": "GATE_GUARD",
+        "dataScope": "AREA-3",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:06:00+08:00",
+        "updatedAt": "2026-07-16T08:06:00+08:00"
+      },
+      {
+        "id": "USER-007",
+        "roleCode": "DRIVER",
+        "dataScope": "AREA-1",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:07:00+08:00",
+        "updatedAt": "2026-07-16T08:07:00+08:00"
+      },
+      {
+        "id": "USER-008",
+        "roleCode": "SAFETY",
+        "dataScope": "AREA-2",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:08:00+08:00",
+        "updatedAt": "2026-07-16T08:08:00+08:00"
+      },
+      {
+        "id": "USER-009",
+        "roleCode": "BUSINESS",
+        "dataScope": "AREA-3",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:09:00+08:00",
+        "updatedAt": "2026-07-16T08:09:00+08:00"
+      },
+      {
+        "id": "USER-010",
+        "roleCode": "REGULATOR",
+        "dataScope": "AREA-1",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:10:00+08:00",
+        "updatedAt": "2026-07-16T08:10:00+08:00"
+      },
+      {
+        "id": "USER-011",
+        "roleCode": "SYS_ADMIN",
+        "dataScope": "ALL",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:11:00+08:00",
+        "updatedAt": "2026-07-16T08:11:00+08:00"
+      },
+      {
+        "id": "USER-012",
+        "roleCode": "INTERFACE_OPS",
+        "dataScope": "AREA-3",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:12:00+08:00",
+        "updatedAt": "2026-07-16T08:12:00+08:00"
+      },
+      {
+        "id": "USER-013",
+        "roleCode": "AUDITOR",
+        "dataScope": "ALL",
+        "status": "ACTIVE",
+        "createdAt": "2026-07-16T08:13:00+08:00",
+        "updatedAt": "2026-07-16T08:13:00+08:00"
+      }
+    ],
+    "DO-015": [
+      {
+        "id": "CFG-001",
+        "configVersion": "CFG-1.0",
+        "displayName": "B项目生产调度 Demo",
+        "defaultScenarioId": "SCN-01",
+        "ruleVersion": "RULE-1.0",
+        "dispatchStrategy": "BALANCED",
+        "recommendationEnabled": true,
+        "offlineSyncEnabled": true,
+        "reportPeriod": "SHIFT",
+        "auditRetentionDays": 180,
+        "status": "DRAFT",
+        "version": 1,
+        "createdAt": "2026-07-16T08:15:00+08:00",
+        "updatedAt": "2026-07-16T08:15:00+08:00",
+        "updatedBy": "USER-011"
+      }
+    ]
+  },
+  "roles": [
+    {
+      "code": "DISPATCHER",
+      "name": "货场调度员",
+      "permissions": "计划确认与调整、任务拆分、派工改派、一般异常处置。",
+      "behavior": "在授权作业区内组织生产；高风险联锁复位、覆盖和权限配置无审批权。",
+      "objects": "计划、工单、异常、作业区"
+    },
+    {
+      "code": "SHIFT_LEADER",
+      "name": "现场班组长",
+      "permissions": "本班任务查看、接单组织、进度反馈、一般异常复核和班次交接。",
+      "behavior": "仅访问所属班组和作业区，不得调整跨班组计划或审批本人申请。",
+      "objects": "班组、移动工单、交接记录"
+    },
+    {
+      "code": "OPERATOR",
+      "name": "现场作业人员",
+      "permissions": "接收本人任务、节点交账、附件上传、异常上报。",
+      "behavior": "仅访问本人或所在班组已下发工单，不得改派、关闭安全异常或复位联锁。",
+      "objects": "本人任务、作业节点、异常上报"
+    },
+    {
+      "code": "MAINTAINER",
+      "name": "设备维保人员",
+      "permissions": "设备状态确认、故障处理、试运行和复位申请。",
+      "behavior": "按授权设备范围处置故障；可提出复位申请，不得审批本人申请。",
+      "objects": "设备、故障、维保、控制回执"
+    },
+    {
+      "code": "WAREHOUSE",
+      "name": "仓储/物资管理员",
+      "permissions": "货位/筒仓确认、入出库校验、库存差异处理。",
+      "behavior": "仅访问授权仓储区域；不得绕过联锁或单独放行账实不符货物。",
+      "objects": "货位、库存、批次、出入库记录"
+    },
+    {
+      "code": "GATE_GUARD",
+      "name": "门岗人员",
+      "permissions": "车辆证件核验、入离场登记、电子放行执行。",
+      "behavior": "仅访问所属门岗和当班车辆；异常放行须由货场调度员复核。",
+      "objects": "预约、车辆、门禁、放行记录"
+    },
+    {
+      "code": "DRIVER",
+      "name": "外来货车司机",
+      "permissions": "提交本人预约与资质、查询叫号和路径、确认本人运输任务。",
+      "behavior": "仅访问本人、本人车辆和关联运输任务。",
+      "objects": "本人预约、资质、叫号、路径"
+    },
+    {
+      "code": "SAFETY",
+      "name": "安环负责人",
+      "permissions": "安全规则与阈值审批、联锁复位/覆盖审批、安全异常复核。",
+      "behavior": "在授权安全域审批；不得申请并审批同一高风险动作。",
+      "objects": "联锁规则、阈值、安全事件、复位记录"
+    },
+    {
+      "code": "BUSINESS",
+      "name": "经营管理人员",
+      "permissions": "经营看板、统计报表和运营分析的全局只读访问。",
+      "behavior": "可查看汇总及授权明细，不得修改生产记录或安全配置。",
+      "objects": "统计指标、报表、运营台账"
+    },
+    {
+      "code": "REGULATOR",
+      "name": "监管人员",
+      "permissions": "安全环保合规证据和监管报表只读查询、受控导出。",
+      "behavior": "按监管授权范围访问；敏感字段脱敏，导出全量留痕。",
+      "objects": "安全环保记录、监管报表、证据链"
+    },
+    {
+      "code": "SYS_ADMIN",
+      "name": "系统管理员",
+      "permissions": "账号、角色、权限和数据域配置；处理账号生命周期。",
+      "behavior": "不得执行接口运维、修改/删除审计日志或审批自身权限提升。",
+      "objects": "账号、角色、权限、数据域"
+    },
+    {
+      "code": "INTERFACE_OPS",
+      "name": "接口运维员",
+      "permissions": "接口参数、同步重试、熔断恢复和连接状态维护。",
+      "behavior": "仅访问授权接口范围；不得授予权限、审批安全动作或删除审计记录。",
+      "objects": "接口配置、同步批次、熔断记录"
+    },
+    {
+      "code": "AUDITOR",
+      "name": "独立审计员",
+      "permissions": "审计日志、审批链和操作证据的全局只读查询与受控导出。",
+      "behavior": "不得配置权限、修改业务数据、执行接口运维或参与被审计动作审批。",
+      "objects": "审计日志、审批记录、导出记录"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "SCN-01",
+      "name": "正常整列",
+      "initialState": "PLAN-001/T1/资源可用",
+      "events": [
+        "同步",
+        "确认",
+        "推荐",
+        "拆解",
+        "派工",
+        "完成"
+      ],
+      "expected": "所有页面绿色闭环，报表增加吞吐。",
+      "resetPoint": "种子状态 A",
+      "clock": "2026-07-16T09:00:00+08:00",
+      "seedRefs": [
+        "PLAN-001"
+      ],
+      "fault": {
+        "type": "NONE",
+        "errorCode": null,
+        "delayMs": 300,
+        "mutations": []
+      },
+      "reset": {
+        "restoreBaseObjects": true,
+        "restoreScenarioOverlay": true,
+        "resetTraceCounter": 1,
+        "resetAuditCounter": 1,
+        "clearFaultState": true
+      }
+    },
+    {
+      "id": "SCN-02",
+      "name": "字段缺失",
+      "initialState": "PLAN-002 缺 trackNo/containerNo",
+      "events": [
+        "同步",
+        "校验失败",
+        "补录",
+        "确认"
+      ],
+      "expected": "UI-002 待确认；补录后开放 UI-003。",
+      "resetPoint": "种子状态 B",
+      "clock": "2026-07-16T10:00:00+08:00",
+      "seedRefs": [
+        "PLAN-002"
+      ],
+      "fault": {
+        "type": "VALIDATION_MISSING_FIELD",
+        "errorCode": "TOS-EXT-002",
+        "delayMs": 300,
+        "mutations": [
+          {
+            "objectId": "PLAN-002",
+            "omitFields": [
+              "trackNo"
+            ]
+          }
+        ]
+      },
+      "reset": {
+        "restoreBaseObjects": true,
+        "restoreScenarioOverlay": true,
+        "resetTraceCounter": 1,
+        "resetAuditCounter": 1,
+        "clearFaultState": true
+      }
+    },
+    {
+      "id": "SCN-03",
+      "name": "接口超时",
+      "initialState": "PLAN-003/接口响应超时",
+      "events": [
+        "重试 3 次",
+        "熔断",
+        "运维恢复"
+      ],
+      "expected": "总览红点、UI-002 熔断、UI-013 审计。",
+      "resetPoint": "种子状态 C",
+      "clock": "2026-07-16T11:00:00+08:00",
+      "seedRefs": [
+        "PLAN-003"
+      ],
+      "fault": {
+        "type": "INTERFACE_TIMEOUT",
+        "errorCode": "TOS-EXT-001",
+        "delayMs": 1500,
+        "mutations": []
+      },
+      "reset": {
+        "restoreBaseObjects": true,
+        "restoreScenarioOverlay": true,
+        "resetTraceCounter": 1,
+        "resetAuditCounter": 1,
+        "clearFaultState": true
+      }
+    },
+    {
+      "id": "SCN-04",
+      "name": "设备离线",
+      "initialState": "WO-005 已下发/TIPPER-01",
+      "events": [
+        "心跳中断",
+        "无回执",
+        "异常",
+        "改派"
+      ],
+      "expected": "UI-005/007/008 同步，资源不可用。",
+      "resetPoint": "种子状态 D",
+      "clock": "2026-07-16T12:00:00+08:00",
+      "seedRefs": [
+        "WO-005"
+      ],
+      "fault": {
+        "type": "DEVICE_OFFLINE",
+        "errorCode": "TOS-WO-001",
+        "delayMs": 800,
+        "mutations": []
+      },
+      "reset": {
+        "restoreBaseObjects": true,
+        "restoreScenarioOverlay": true,
+        "resetTraceCounter": 1,
+        "resetAuditCounter": 1,
+        "clearFaultState": true
+      }
+    },
+    {
+      "id": "SCN-05",
+      "name": "人员侵入",
+      "initialState": "WO-006 执行中/UWB+AI",
+      "events": [
+        "风险命中",
+        "强制停机",
+        "复位申请",
+        "审批"
+      ],
+      "expected": "UI-009 锁定；UI-005/007 冻结；审计完整。",
+      "resetPoint": "种子状态 E",
+      "clock": "2026-07-16T13:00:00+08:00",
+      "seedRefs": [
+        "WO-006",
+        "IL-001"
+      ],
+      "fault": {
+        "type": "INTERLOCK_FORCE_STOP",
+        "errorCode": "TOS-IL-001",
+        "delayMs": 500,
+        "mutations": []
+      },
+      "reset": {
+        "restoreBaseObjects": true,
+        "restoreScenarioOverlay": true,
+        "resetTraceCounter": 1,
+        "resetAuditCounter": 1,
+        "clearFaultState": true
+      }
+    },
+    {
+      "id": "SCN-06",
+      "name": "离线冲突",
+      "initialState": "PDA-03 离线/服务端已改派",
+      "events": [
+        "补传",
+        "版本冲突",
+        "转历史证据"
+      ],
+      "expected": "UI-010 不覆盖服务端；UI-013 留痕。",
+      "resetPoint": "种子状态 F",
+      "clock": "2026-07-16T14:00:00+08:00",
+      "seedRefs": [
+        "OFF-001"
+      ],
+      "fault": {
+        "type": "OFFLINE_VERSION_CONFLICT",
+        "errorCode": "TOS-OFF-001",
+        "delayMs": 700,
+        "mutations": []
+      },
+      "reset": {
+        "restoreBaseObjects": true,
+        "restoreScenarioOverlay": true,
+        "resetTraceCounter": 1,
+        "resetAuditCounter": 1,
+        "clearFaultState": true
+      }
+    },
+    {
+      "id": "SCN-07",
+      "name": "公路放行异常",
+      "initialState": "APT-006 重量不一致",
+      "events": [
+        "核验失败",
+        "异常复核",
+        "关闭或拒绝"
+      ],
+      "expected": "UI-006 锁定放行；UI-008 生成异常。",
+      "resetPoint": "种子状态 G",
+      "clock": "2026-07-16T15:00:00+08:00",
+      "seedRefs": [
+        "APT-006"
+      ],
+      "fault": {
+        "type": "SOURCE_DATA_CONFLICT",
+        "errorCode": "TOS-EXT-003",
+        "delayMs": 600,
+        "mutations": [
+          {
+            "objectId": "APT-006",
+            "replaceValues": {
+              "vehicleNo": "CONFLICT-SOURCE"
+            }
+          }
+        ]
+      },
+      "reset": {
+        "restoreBaseObjects": true,
+        "restoreScenarioOverlay": true,
+        "resetTraceCounter": 1,
+        "resetAuditCounter": 1,
+        "clearFaultState": true
+      }
+    }
+  ],
+  "acceptanceScenarios": [
+    {
+      "id": "AT-TOS-001",
+      "name": "接口不可达",
+      "data": "SCN-03",
+      "pages": "UI-001/002/013",
+      "passCriteria": "熔断且无可执行工单。"
+    },
+    {
+      "id": "AT-TOS-002",
+      "name": "关键字段缺失",
+      "data": "SCN-02",
+      "pages": "UI-002",
+      "passCriteria": "待确认并显示缺失字段。"
+    },
+    {
+      "id": "AT-TOS-003",
+      "name": "多源冲突",
+      "data": "PLAN-002 冲突变体",
+      "pages": "UI-002/003",
+      "passCriteria": "按权威源处理并保留冲突。"
+    },
+    {
+      "id": "AT-TOS-004",
+      "name": "高峰任务拆解",
+      "data": "PLAN-001 聚合 160 箱",
+      "pages": "UI-004",
+      "passCriteria": "工单追溯完整。"
+    },
+    {
+      "id": "AT-TOS-005",
+      "name": "下发无回执",
+      "data": "SCN-04 变体",
+      "pages": "UI-005",
+      "passCriteria": "保持待处理并有重试。"
+    },
+    {
+      "id": "AT-TOS-006",
+      "name": "公路叫号闭环",
+      "data": "SCN-07 正常变体",
+      "pages": "UI-006",
+      "passCriteria": "状态闭环到离场。"
+    },
+    {
+      "id": "AT-TOS-007",
+      "name": "异常处置闭环",
+      "data": "SCN-04",
+      "pages": "UI-008",
+      "passCriteria": "关闭条件和证据完整。"
+    },
+    {
+      "id": "AT-TOS-008",
+      "name": "联锁强制停机",
+      "data": "SCN-05",
+      "pages": "UI-009",
+      "passCriteria": "动作、回执、复位审批完整。"
+    },
+    {
+      "id": "AT-TOS-009",
+      "name": "离线冲突",
+      "data": "SCN-06",
+      "pages": "UI-010",
+      "passCriteria": "不覆盖服务端。"
+    },
+    {
+      "id": "AT-TOS-010",
+      "name": "统计追溯",
+      "data": "SCN-01 完成",
+      "pages": "UI-011",
+      "passCriteria": "报表钻取到明细。"
+    },
+    {
+      "id": "AT-TOS-011",
+      "name": "授权正向",
+      "data": "13 角色",
+      "pages": "全部",
+      "passCriteria": "允许动作成功且数据域正确。"
+    },
+    {
+      "id": "AT-TOS-012",
+      "name": "越权访问",
+      "data": "跨域账号",
+      "pages": "全部",
+      "passCriteria": "拒绝并记录日志。"
+    },
+    {
+      "id": "AT-TOS-013",
+      "name": "职责分离",
+      "data": "申请人与审批人相同",
+      "pages": "UI-009/012",
+      "passCriteria": "本人自批被拒绝。"
+    },
+    {
+      "id": "AT-TOS-014",
+      "name": "高风险审批完整性",
+      "data": "缺证据/审批/有效期",
+      "pages": "UI-009/012",
+      "passCriteria": "任一缺失均不能完成。"
+    }
+  ],
+  "errorCodes": [
+    {
+      "code": "TOS-EXT-001",
+      "meaning": "外部接口超时或不可用",
+      "uiHandling": "提示重试并保留当前上下文",
+      "audit": true,
+      "httpStatus": 400
+    },
+    {
+      "code": "TOS-EXT-002",
+      "meaning": "权威输入字段缺失",
+      "uiHandling": "标记缺失字段并阻断确认",
+      "audit": true,
+      "httpStatus": 400
+    },
+    {
+      "code": "TOS-EXT-003",
+      "meaning": "多源数据冲突",
+      "uiHandling": "展示冲突来源并要求人工裁决",
+      "audit": true,
+      "httpStatus": 409
+    },
+    {
+      "code": "TOS-WO-001",
+      "meaning": "作业单资源或设备不可用",
+      "uiHandling": "阻断派工并提示替换资源",
+      "audit": true,
+      "httpStatus": 409
+    },
+    {
+      "code": "TOS-IL-001",
+      "meaning": "安全联锁触发",
+      "uiHandling": "强提示并禁止继续执行",
+      "audit": true,
+      "httpStatus": 409
+    },
+    {
+      "code": "TOS-OFF-001",
+      "meaning": "离线包版本冲突",
+      "uiHandling": "进入冲突处置流程",
+      "audit": true,
+      "httpStatus": 409
+    },
+    {
+      "code": "TOS-AUTH-001",
+      "meaning": "权限不足或职责冲突",
+      "uiHandling": "拒绝操作并提示联系负责人",
+      "audit": true,
+      "httpStatus": 403
+    },
+    {
+      "code": "DEMO-VERSION-001",
+      "meaning": "对象版本已变化",
+      "uiHandling": "刷新对象后重新操作",
+      "audit": true,
+      "httpStatus": 409
+    },
+    {
+      "code": "DEMO-SCENARIO-001",
+      "meaning": "请求结构、枚举、状态或场景不允许",
+      "uiHandling": "展示校验问题并保持当前页",
+      "audit": true,
+      "httpStatus": 400
+    }
+  ]
+}

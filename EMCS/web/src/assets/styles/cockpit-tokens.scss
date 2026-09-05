@@ -1,0 +1,219 @@
+// 驾驶舱主题 token｜B 项目演示 demo 共享色板
+// 用法：页面根节点加 `cockpit-page` 类，样式内消费 var(--bg) / var(--panel) …
+// 双主题：亮色为缺省，`html.dark` 由 @vueuse/core useDark() 挂到 <html>，此处仅覆盖。
+// 修改本文件后必须同步 web/src/views/energy/shared/cockpitTheme.js
+// （ECharts 主题色的 JS 镜像），改一处必改两处。
+
+@mixin cockpit-tokens-light {
+  --bg: #F4F7FA;
+  --panel: #FFFFFF;
+  --panel-2: #F1F5F9;
+  --line: #E2E8F0;
+  --line-strong: #CBD5E1;
+
+  --ink: #0F172A;
+  --ink-2: #475569;
+  --ink-3: #64748B;
+
+  --cyan: #0284C7;
+  --amber: #B45309;
+  --red: #DC2626;
+  --lime: #16A34A;
+  --violet: #7C3AED;
+
+  --cyan-tint: rgba(2, 132, 199, 0.08);
+  --amber-tint: rgba(180, 83, 9, 0.08);
+  --red-tint: rgba(220, 38, 38, 0.06);
+  --lime-tint: rgba(22, 163, 74, 0.08);
+
+  --serif: "Songti SC", "SimSun", serif;
+  --mono: "SF Mono", "Menlo", "Consolas", monospace;
+
+  --hero-glow: radial-gradient(900px 420px at 100% 0, rgba(2, 132, 199, 0.05), transparent 60%);
+}
+
+@mixin cockpit-tokens-dark {
+  --bg: #0B0F14;
+  --panel: #131922;
+  --panel-2: #1A222E;
+  --line: #233042;
+  --line-strong: #324256;
+
+  --ink: #E7ECF3;
+  --ink-2: #93A6BC;
+  --ink-3: #5A6E84;
+
+  --cyan: #38BDF8;
+  --amber: #F5A524;
+  --red: #EF4444;
+  --lime: #4ADE80;
+  --violet: #A78BFA;
+
+  --cyan-tint: rgba(56, 189, 248, 0.08);
+  --amber-tint: rgba(245, 165, 36, 0.07);
+  --red-tint: rgba(239, 68, 68, 0.06);
+  --lime-tint: rgba(74, 222, 128, 0.05);
+
+  --hero-glow: radial-gradient(900px 420px at 100% 0, rgba(56, 189, 248, 0.06), transparent 60%);
+}
+
+.cockpit-page { @include cockpit-tokens-light; }
+html.dark .cockpit-page { @include cockpit-tokens-dark; }
+
+// Element Plus 组件的通用 :deep 覆盖（引用 token，自动双主题）
+.cockpit-page {
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-textarea__inner {
+    background: var(--panel-2) !important;
+    box-shadow: 0 0 0 1px var(--line-strong) inset;
+    color: var(--ink-2);
+  }
+  .el-input__inner,
+  .el-select__placeholder,
+  .el-range-input,
+  .el-range-separator {
+    color: var(--ink-2);
+  }
+  .el-input-number .el-input__wrapper {
+    background: var(--panel-2) !important;
+  }
+
+  .el-button:not(.el-button--primary) {
+    background: var(--panel-2);
+    border-color: var(--line-strong);
+    color: var(--ink-2);
+  }
+  .el-button:not(.el-button--primary):hover {
+    color: var(--cyan);
+    border-color: var(--cyan);
+  }
+  .el-tag {
+    background: var(--panel-2);
+    border-color: var(--line-strong);
+    color: var(--ink-2);
+  }
+
+  .el-alert {
+    background: var(--panel-2);
+    border: 1px solid var(--line-strong);
+    color: var(--ink-2);
+  }
+  .el-alert--warning {
+    background: var(--amber-tint);
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .el-alert--error {
+    background: var(--red-tint);
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .el-alert--info {
+    background: var(--cyan-tint);
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+  .el-alert__title {
+    color: inherit;
+  }
+  .el-empty__description p {
+    color: var(--ink-2);
+  }
+
+  .dark-table {
+    --el-table-bg-color: transparent;
+    --el-table-tr-bg-color: transparent;
+    --el-table-header-bg-color: var(--panel-2);
+    --el-table-row-hover-bg-color: var(--cyan-tint);
+    --el-table-border-color: var(--line);
+    --el-table-text-color: var(--ink-2);
+    --el-table-header-text-color: var(--ink-3);
+  }
+}
+
+// 抽屉与对话框脱 scoped：Element Plus teleport 到 body，变量必须在 modal 根重新声明
+// 用法：<el-drawer custom-class="cockpit-modal">（可与业务特化类叠加，例如 cost-trace-modal）
+.cockpit-modal.el-drawer,
+.cockpit-modal.el-dialog {
+  @include cockpit-tokens-light;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+html.dark .cockpit-modal.el-drawer,
+html.dark .cockpit-modal.el-dialog {
+  @include cockpit-tokens-dark;
+}
+
+.cockpit-modal {
+  .el-drawer__header,
+  .el-dialog__header {
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    padding: 16px 20px;
+    margin-bottom: 0;
+    font-family: var(--serif);
+    letter-spacing: .06em;
+  }
+  .el-drawer__body,
+  .el-dialog__body {
+    color: var(--ink-2);
+    background: var(--panel);
+  }
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .el-textarea__inner {
+    background: var(--panel-2) !important;
+    box-shadow: 0 0 0 1px var(--line-strong) inset;
+    color: var(--ink);
+  }
+  .el-input__inner,
+  .el-select__placeholder,
+  .el-range-input,
+  .el-range-separator {
+    color: var(--ink);
+  }
+  .el-form-item__label {
+    color: var(--ink-2) !important;
+  }
+  .el-drawer__close-btn,
+  .el-dialog__headerbtn .el-dialog__close {
+    color: var(--ink-3);
+  }
+  .el-alert {
+    background: var(--panel-2);
+    border: 1px solid var(--line-strong);
+    color: var(--ink-2);
+  }
+  .el-alert--info {
+    background: var(--cyan-tint);
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+  .el-alert--warning {
+    background: var(--amber-tint);
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .el-alert--error {
+    background: var(--red-tint);
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .el-alert__title {
+    color: inherit;
+  }
+  .el-empty__description p {
+    color: var(--ink-2);
+  }
+  .el-table {
+    --el-table-bg-color: transparent;
+    --el-table-tr-bg-color: transparent;
+    --el-table-header-bg-color: var(--panel-2);
+    --el-table-row-hover-bg-color: var(--cyan-tint);
+    --el-table-border-color: var(--line);
+    --el-table-text-color: var(--ink-2);
+    --el-table-header-text-color: var(--ink-3);
+  }
+}

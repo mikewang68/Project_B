@@ -1,0 +1,17 @@
+C11 UI-011 Playwright RED evidence
+Date: 2026-07-22
+
+Command:
+node_modules\.bin\playwright.CMD test e2e/ui-011-reports-operations.spec.ts
+
+Result:
+- Exit code: 1
+- Tests: 2 failed
+- Duration: 30.5s
+
+Meaningful failures:
+1. The strict report detail had no accessible "报表快照摘要" exposing the 13 deterministic derived metrics.
+2. A network fault injected into the first API-020 call disappeared under React development effect replay because the page launched a duplicate identical list request; the successful replay won over the network error.
+
+Conclusion:
+The RED run found two genuine E2E gaps. The implementation must add the accessible derived-snapshot summary and deduplicate identical in-flight API-020 reads without weakening the test.

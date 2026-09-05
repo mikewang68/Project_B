@@ -1,0 +1,36 @@
+{
+  "name": "mt-wms-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.11.1 <25",
+    "pnpm": ">=10.34.5 <12"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "test:unit": "vitest run",
+    "verify-and-build": "pnpm typecheck && pnpm test:unit && pnpm build"
+  },
+  "dependencies": {
+    "axios": "1.13.5",
+    "echarts": "6.1.0",
+    "element-plus": "2.14.4",
+    "pinia": "3.0.4",
+    "vue": "3.5.41",
+    "vue-router": "4.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.2",
+    "@vitejs/plugin-vue": "6.0.8",
+    "@vue/test-utils": "2.4.11",
+    "jsdom": "26.1.0",
+    "sass": "1.102.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.6",
+    "vitest": "4.1.11",
+    "vue-tsc": "3.3.10"
+  }
+}

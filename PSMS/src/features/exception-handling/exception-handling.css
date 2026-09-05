@@ -1,0 +1,133 @@
+.exception-handling-page {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.exception-handling-page > *,
+.exception-handling-main > *,
+.exception-detail-stack > *,
+.exception-section,
+.exception-section .ant-card,
+.exception-section .ant-card-body,
+.exception-full-width {
+  min-width: 0;
+  width: 100%;
+}
+
+.exception-handling-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.exception-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.exception-kpi-card .ant-statistic-title,
+.exception-kpi-card .ant-statistic-content {
+  overflow-wrap: anywhere;
+}
+
+.exception-handling-main {
+  display: grid;
+  grid-template-columns: minmax(270px, .86fr) minmax(360px, 1.15fr) minmax(300px, .9fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.exception-ledger-list,
+.exception-ledger-entry,
+.exception-ledger-copy,
+.exception-detail-stack,
+.exception-audit-list {
+  display: grid;
+  gap: 10px;
+}
+
+.exception-ledger-button {
+  height: auto;
+  min-height: 132px;
+  padding: 12px;
+  text-align: left;
+  white-space: normal;
+  transition: box-shadow 260ms ease, transform 260ms ease;
+}
+
+.exception-handling-page[data-demo-active='true'] .exception-ledger-button[aria-pressed='true'],
+.exception-handling-page[data-demo-active='true'] .exception-ledger-button.ant-btn-primary {
+  box-shadow: 0 10px 26px rgba(22, 119, 255, .18);
+  transform: translateX(3px);
+}
+
+.exception-ledger-button > span,
+.exception-ledger-copy {
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.exception-ledger-button.ant-btn-primary .ant-typography,
+.exception-ledger-button.ant-btn-primary .ant-typography-secondary {
+  color: #fff;
+}
+
+.exception-progress-tag {
+  width: fit-content;
+}
+
+.exception-state-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.exception-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.exception-action-grid .ant-btn {
+  height: auto;
+  min-height: 36px;
+  white-space: normal;
+}
+
+@media (max-width: 1320px) {
+  .exception-kpi-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .exception-handling-main {
+    grid-template-columns: minmax(270px, .82fr) minmax(0, 1.18fr);
+  }
+
+  .exception-action-column {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 800px) {
+  .exception-handling-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .exception-handling-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .exception-action-column {
+    grid-column: auto;
+  }
+
+  .exception-kpi-strip,
+  .exception-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

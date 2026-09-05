@@ -1,0 +1,61 @@
+// =====================================================
+// IAM 全局样式入口
+// =====================================================
+@use './tokens';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  color: var(--iam-text-base);
+  background-color: var(--iam-content-bg);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+// 皮肤切换时，表面与主色平滑过渡
+.el-button,
+.el-card,
+.el-menu,
+.el-input__wrapper,
+.el-select__wrapper,
+.el-table,
+.el-tag {
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease;
+}
+
+// 滚动条
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--iam-sidebar-divider, rgba(0, 0, 0, 0.18));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

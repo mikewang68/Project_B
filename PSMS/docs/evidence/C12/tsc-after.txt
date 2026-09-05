@@ -1,0 +1,54 @@
+C12 TypeScript final verification
+date: 2026-07-22
+command: node_modules\.bin\tsc.CMD --noEmit
+exitCode: 1
+
+Complete in-process counts
+--------------------------
+outputLines: 909
+primaryDiagnostics: 783
+TS7016: 126
+TS7026: 592
+TS2604: 65
+otherDiagnosticCodes: 0
+
+C12-related path counts
+-----------------------
+paths: src/features/audit-trail/**, src/pages/governance/AuditLogPage.tsx,
+       src/pages/__tests__/AuditLogPage*, src/pages/__tests__/auditTrailTestHarness.tsx,
+       src/runtime/DemoRuntimeContext.tsx, src/runtime/__tests__/runtime.test.tsx
+primaryDiagnostics: 100
+TS7016: 13
+TS7026: 80
+TS2604: 7
+otherDiagnosticCodes: 0
+audit-trail non-TSX primary diagnostics: 0
+C12 non-React/JSX primary diagnostics: 0
+
+Interpretation
+--------------
+The frozen install has React 19.2.7 but no @types/react declaration package. Every
+primary diagnostic belongs to the existing React/JSX declaration chain: missing
+react or react/jsx-runtime declarations, missing JSX.IntrinsicElements, or Ant
+Design JSX components consequently lacking construct/call signatures. No new
+diagnostic category and no C12 non-React/JSX diagnostic was produced. Dependencies,
+package.json, and pnpm-lock.yaml were not changed.
+
+Representative diagnostics
+--------------------------
+src/features/audit-trail/components/AuditContextHeader.tsx(23,5): error TS7016:
+Could not find a declaration file for module 'react/jsx-runtime'.
+
+src/features/audit-trail/components/AuditContextHeader.tsx(23,6): error TS2604:
+JSX element type 'Card' does not have any construct or call signatures.
+
+src/features/audit-trail/components/AuditContextHeader.tsx(24,7): error TS7026:
+JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+
+Capture note
+------------
+The terminal transport truncates the raw 909-line compiler stream. Counts above
+were calculated against the complete output inside the same PowerShell process,
+then independently reproduced after the final test-only commit. An earlier partial
+capture contained only the tail and yielded 187 diagnostics; that partial count was
+discarded and is not used as verification evidence.

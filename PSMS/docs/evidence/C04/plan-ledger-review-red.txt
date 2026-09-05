@@ -1,0 +1,3423 @@
+
+ RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+ ❯ src/features/plan-entry/__tests__/selectors.test.ts (11 tests | 3 failed) 161ms
+     × projects immutable UI-ready supplement policy and reviewer options without raw user roles 18ms
+     × projects exact interface recovery visibility from the current session and health 7ms
+     × reports timeout workflow health independently of domain state 10ms
+ ❯ src/pages/__tests__/PlanLedgerPage.render.test.tsx (3 tests | 1 failed) 5073ms
+     × 呈现精确烟测标记、接口健康条和五组 URL 筛选 956ms
+ ❯ src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx (6 tests | 5 failed) 10634ms
+     × renders track selector projection and UI-ready reviewer options without raw roles 1955ms
+     × rejects a same-actor reviewer with the exact C03 separation wording 1963ms
+     × shows a structured API/version/business failure and retains every value 1762ms
+     × shows a network failure and retains every value 1673ms
+     × returns success only through the callback boundary without faking domain success 1581ms
+node_modules\.bin\vitest.CMD : stderr | src/pages/__tests__/PlanLedgerPage.action.test.tsx > UI-002 URL、详情与只读命令边界 > bus
+iness-error 提供真实重试并保留筛选、PLAN-002 抽屉与全部表单值
+所在位置 行:2 字符: 111
++ ...  $env:Path; node_modules\.bin\vitest.CMD run src/features/plan-entry/ ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (stderr | src/pa...AN-002 抽屉与全部表单值:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+Warning: [antd: Alert] `message` is deprecated. Please use `title` instead.
+Warning: [antd: Alert] `message` is deprecated. Please use `title` instead.
+
+ ❯ src/pages/__tests__/PlanLedgerPage.action.test.tsx (10 tests | 4 failed) 19254ms
+     × 一个 actionLoading 状态同时禁用接口、补录、恢复和确认写动作 472ms
+     × business-error 提供真实重试并保留筛选、PLAN-002 抽屉与全部表单值 4267ms
+     × network-error 提供真实重试并保留筛选、PLAN-002 抽屉与全部表单值 4151ms
+     × network-error 不抑制 INTERFACE_OPS 的接口恢复路径 211ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.action.test.tsx > UI-002 URL、详情与只读命令边界 > 一个 actionLoading 状态同时禁用接口、补录、恢复和确认写动
+作
+Error: [2mexpect([22m[31melement[39m[2m).toBeDisabled()[22m
+
+Received element is not disabled:
+  [31m<button
+  class="ant-btn css-dev-only-do-not-override-ry7cab css-var-_r_1e_ ant-btn-default ant-btn-color-default ant-btn-varia
+nt-outlined"
+  type="button"
+/>[39m
+ ❯ src/pages/__tests__/PlanLedgerPage.action.test.tsx:189:7
+    187|         name: '同步计划',
+    188|       }),
+    189|     ).toBeDisabled();
+       |       ^
+    190|     const issueDrawerTitle = await screen.findByText('PLAN-002 计划详情', {
+    191|       selector: '.ant-drawer-title',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.action.test.tsx > UI-002 URL、详情与只读命令边界 > business-error 提供真实重试并保留筛选、PLAN-002
+抽屉与全部表单值
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "重试当前操作"
+
+Here are the accessible roles:
+
+  main:
+
+  Name "":
+  [36m<main[39m
+    [33mclass[39m=[32m"plan-ledger-page"[39m
+    [33mstyle[39m=[32m"--overview-color-primary: #1677ff; --overview-color-primary-bg: #e6f4ff; --overview-color-bg-
+container: #FFFFFF; --overview-color-border: #d9d9d9; --overview-color-border-secondary: #f0f0f0; --overview-color-text
+: rgba(0,0,0,0.88); --overview-color-text-secondary: rgba(0,0,0,0.65); --overview-color-fill: rgba(0,0,0,0.15); --overv
+iew-color-fill-secondary: rgba(0,0,0,0.06); --overview-border-radius: 10px; --overview-border-radius-small: 6px; --over
+view-box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05),
+        0 1px 6px -1px rgba(0,0,0,0.03),
+        0 2px 4px 0 rgba(0,0,0,0.03);"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"plan-ledger-header"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "计划接收台账":
+  [36m<h2[39m
+    [33mclass[39m=[32m"ant-typography plan-entry-page-title css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "计划接口健康":
+  [36m<section[39m
+    [33maria-label[39m=[32m"计划接口健康"[39m
+    [33mclass[39m=[32m"plan-interface-banner"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong />[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "同步计划":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-btn css-dev-only-do-not-override-ry7cab css-var-_r_1s_ ant-btn-default ant-btn-color-defa
+ult ant-btn-variant-outlined"[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "close-circle":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-input-clear-icon"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "close-circle":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-input-clear-icon"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "重置筛选":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-btn css-dev-only-do-not-override-ry7cab css-var-_r_1s_ ant-btn-default ant-btn-color-defa
+ult ant-btn-variant-outlined"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  form:
+
+  Name "计划筛选":
+  [36m<form[39m
+    [33maria-label[39m=[32m"计划筛选"[39m
+    [33mclass[39m=[32m"ant-form ant-form-vertical css-var-_r_1s_ ant-form-css-var css-dev-only-do-not-override-ry7ca
+b plan-filter-bar"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "计划批次":
+  [36m<input[39m
+    [33maria-label[39m=[32m"计划批次"[39m
+    [33mclass[39m=[32m"ant-input css-dev-only-do-not-override-ry7cab"[39m
+    [33mid[39m=[32m"plan-batch-filter"[39m
+    [33mplaceholder[39m=[32m"输入批次号"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m"PB-20260716-02"[39m
+  [36m/>[39m
+
+  Name "车次":
+  [36m<input[39m
+    [33maria-label[39m=[32m"车次"[39m
+    [33mclass[39m=[32m"ant-input css-dev-only-do-not-override-ry7cab"[39m
+    [33mid[39m=[32m"train-filter"[39m
+    [33mplaceholder[39m=[32m"输入车次"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m"75002"[39m
+  [36m/>[39m
+
+  Name "时间范围":
+  [36m<input[39m
+    [33maria-invalid[39m=[32m"false"[39m
+    [33maria-label[39m=[32m"时间范围"[39m
+    [33mautocomplete[39m=[32m"off"[39m
+    [33mid[39m=[32m"date-filter"[39m
+    [33mplaceholder[39m=[32m"Select date"[39m
+    [33msize[39m=[32m"12"[39m
+    [33mvalue[39m=[32m"2026-07-16"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  img:
+
+  Name "close-circle":
+  [36m<span[39m
+    [33maria-label[39m=[32m"close-circle"[39m
+    [33mclass[39m=[32m"anticon anticon-close-circle"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "close-circle":
+  [36m<span[39m
+    [33maria-label[39m=[32m"close-circle"[39m
+    [33mclass[39m=[32m"anticon anticon-close-circle"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "down":
+  [36m<span[39m
+    [33maria-label[39m=[32m"down"[39m
+    [33mclass[39m=[32m"anticon anticon-down"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "down":
+  [36m<span[39m
+    [33maria-label[39m=[32m"down"[39m
+    [33mclass[39m=[32m"anticon anticon-down"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "close-circle":
+  [36m<span[39m
+    [33maria-label[39m=[32m"close-circle"[39m
+    [33mclass[39m=[32m"anticon anticon-close-circle"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  combobox:
+
+  Name "状态":
+  [36m<input[39m
+    [33maria-autocomplete[39m=[32m"list"[39m
+    [33maria-expanded[39m=[32m"false"[39m
+    [33maria-haspopup[39m=[32m"listbox"[39m
+    [33maria-label[39m=[32m"状态"[39m
+    [33mautocomplete[39m=[32m"new-password"[39m
+    [33mclass[39m=[32m"ant-select-input"[39m
+    [33mid[39m=[32m"status-filter"[39m
+    [33mrole[39m=[32m"combobox"[39m
+    [33mstyle[39m=[32m"--select-input-width: 0;"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "异常类型":
+  [36m<input[39m
+    [33maria-autocomplete[39m=[32m"list"[39m
+    [33maria-expanded[39m=[32m"false"[39m
+    [33maria-haspopup[39m=[32m"listbox"[39m
+    [33maria-label[39m=[32m"异常类型"[39m
+    [33mautocomplete[39m=[32m"new-password"[39m
+    [33mclass[39m=[32m"ant-select-input"[39m
+    [33mid[39m=[32m"exception-filter"[39m
+    [33mrole[39m=[32m"combobox"[39m
+    [33mstyle[39m=[32m"--select-input-width: 0;"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  alert:
+
+  Name "":
+  [36m<div[39m
+    [33mclass[39m=[32m"ant-alert ant-alert-error ant-alert-outlined ant-alert-with-description page-state-panel css-
+var-_r_1s_ css-dev-only-do-not-override-ry7cab"[39m
+    [33mdata-show[39m=[32m"true"[39m
+    [33mrole[39m=[32m"alert"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  code:
+
+  Name "":
+  [36m<code />[39m
+
+  --------------------------------------------------dialog:
+
+  Name "PLAN-002 计划详情":
+  [36m<div[39m
+    [33maria-labelledby[39m=[32m"test-id"[39m
+    [33maria-modal[39m=[32m"true"[39m
+    [33mclass[39m=[32m"ant-drawer-section plan-detail-drawer"[39m
+    [33mrole[39m=[32m"dialog"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Close":
+  [36m<button[39m
+    [33maria-label[39m=[32m"Close"[39m
+    [33mclass[39m=[32m"ant-drawer-close"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "提交补录":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-btn css-dev-only-do-not-override-ry7cab css-var-_r_1s_ ant-btn-primary ant-btn-color-prim
+ary ant-btn-variant-solid"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+
+  Name "确认计划":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-btn css-dev-only-do-not-override-ry7cab css-var-_r_1s_ ant-btn-primary ant-btn-color-prim
+ary ant-btn-variant-solid"[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  img:
+
+  Name "close":
+  [36m<span[39m
+    [33maria-label[39m=[32m"close"[39m
+    [33mclass[39m=[32m"anticon anticon-close"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "check":
+  [36m<span[39m
+    [33maria-label[39m=[32m"check"[39m
+    [33mclass[39m=[32m"anticon anticon-check ant-steps-item-icon-finish"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "check":
+  [36m<span[39m
+    [33maria-label[39m=[32m"check"[39m
+    [33mclass[39m=[32m"anticon anticon-check ant-steps-item-icon-finish"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "close-circle":
+  [36m<span[39m
+    [33maria-label[39m=[32m"close-circle"[39m
+    [33mclass[39m=[32m"anticon anticon-close-circle"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "down":
+  [36m<span[39m
+    [33maria-label[39m=[32m"down"[39m
+    [33mclass[39m=[32m"anticon anticon-down"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "down":
+  [36m<span[39m
+    [33maria-label[39m=[32m"down"[39m
+    [33mclass[39m=[32m"anticon anticon-down"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "计划确认流程":
+  [36m<section[39m
+    [33maria-label[39m=[32m"计划确认流程"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "计划摘要":
+  [36m<section[39m
+    [33maria-label[39m=[32m"计划摘要"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "字段来源":
+  [36m<section[39m
+    [33maria-label[39m=[32m"字段来源"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "脱敏原始摘要":
+  [36m<section[39m
+    [33maria-label[39m=[32m"脱敏原始摘要"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "校验问题":
+  [36m<section[39m
+    [33maria-label[39m=[32m"校验问题"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "重试记录":
+  [36m<section[39m
+    [33maria-label[39m=[32m"重试记录"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "变更历史":
+  [36m<section[39m
+    [33maria-label[39m=[32m"变更历史"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "计划字段补录":
+  [36m<section[39m
+    [33maria-label[39m=[32m"计划字段补录"[39m
+    [33mclass[39m=[32m"plan-supplement-form"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "确认流程":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+  [36m/>[39m
+
+  Name "计划摘要":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+  [36m/>[39m
+
+  Name "字段来源":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+  [36m/>[39m
+
+  Name "脱敏原始摘要":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+  [36m/>[39m
+
+  Name "校验问题":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+  [36m/>[39m
+
+  Name "重试记录":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+  [36m/>[39m
+
+  Name "变更历史":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+  [36m/>[39m
+
+  Name "字段补录":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table />[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "计划编号 PLAN-002 计划批次 PB-20260716-02":
+  [36m<tr[39m
+    [33mclass[39m=[32m"ant-descriptions-row"[39m
+  [36m/>[39m
+
+  Name "车次 75002 股道 待补录":
+  [36m<tr[39m
+    [33mclass[39m=[32m"ant-descriptions-row"[39m
+  [36m/>[39m
+
+  Name "货类 STEEL 状态 BLOCKED":
+  [36m<tr[39m
+    [33mclass[39m=[32m"ant-descriptions-row"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "计划编号":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "计划批次":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "车次":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "股道":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "货类":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "状态":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "PLAN-002":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "PB-20260716-02":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "75002":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "待补录":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "STEEL":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "BLOCKED":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"plan-detail-list plan-field-source-list"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"plan-detail-list"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  --------------------------------------------------
+  code:
+
+  Name "":
+  [36m<code />[39m
+
+  Name "":
+  [36m<code />[39m
+
+  Name "":
+  [36m<code />[39m
+
+  Name "":
+  [36m<code />[39m
+
+  Name "":
+  [36m<code />[39m
+
+  Name "":
+  [36m<code />[39m
+
+  --------------------------------------------------
+  alert:
+
+  Name "":
+  [36m<div[39m
+    [33mclass[39m=[32m"ant-alert ant-alert-error ant-alert-outlined ant-alert-with-description css-var-_r_1s_ css-de
+v-only-do-not-override-ry7cab"[39m
+    [33mdata-show[39m=[32m"true"[39m
+    [33mrole[39m=[32m"alert"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  combobox:
+
+  Name "补录股道":
+  [36m<input[39m
+    [33maria-autocomplete[39m=[32m"list"[39m
+    [33maria-expanded[39m=[32m"false"[39m
+    [33maria-haspopup[39m=[32m"listbox"[39m
+    [33maria-label[39m=[32m"补录股道"[39m
+    [33maria-required[39m=[32m"true"[39m
+    [33mautocomplete[39m=[32m"new-password"[39m
+    [33mclass[39m=[32m"ant-select-input"[39m
+    [33mid[39m=[32m"trackNo"[39m
+    [33mreadonly[39m=[32m""[39m
+    [33mrole[39m=[32m"combobox"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "异人复核员":
+  [36m<input[39m
+    [33maria-autocomplete[39m=[32m"list"[39m
+    [33maria-expanded[39m=[32m"false"[39m
+    [33maria-haspopup[39m=[32m"listbox"[39m
+    [33maria-label[39m=[32m"异人复核员"[39m
+    [33maria-required[39m=[32m"true"[39m
+    [33mautocomplete[39m=[32m"new-password"[39m
+    [33mclass[39m=[32m"ant-select-input"[39m
+    [33mid[39m=[32m"reviewerId"[39m
+    [33mreadonly[39m=[32m""[39m
+    [33mrole[39m=[32m"combobox"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "补录原因":
+  [36m<textarea[39m
+    [33maria-label[39m=[32m"补录原因"[39m
+    [33maria-required[39m=[32m"true"[39m
+    [33mclass[39m=[32m"ant-input css-dev-only-do-not-override-ry7cab"[39m
+    [33mid[39m=[32m"reason"[39m
+    [33mmaxlength[39m=[32m"200"[39m
+    [33mrows[39m=[32m"2"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  separator:
+
+  Name "":
+  [36m<div[39m
+    [33mclass[39m=[32m"ant-divider css-dev-only-do-not-override-ry7cab css-var-_r_1s_ ant-divider-horizontal ant-div
+ider-rail"[39m
+    [33mrole[39m=[32m"separator"[39m
+  [36m/>[39m
+
+  --------------------------------------------------listbox:
+
+  Name "":
+  [36m<div[39m
+    [33mid[39m=[32m"trackNo_list"[39m
+    [33mrole[39m=[32m"listbox"[39m
+    [33mstyle[39m=[32m"height: 0px; width: 0px; overflow: hidden;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  option:
+
+  Name "T1":
+  [36m<div[39m
+    [33maria-label[39m=[32m"T1"[39m
+    [33maria-selected[39m=[32m"true"[39m
+    [33mid[39m=[32m"trackNo_list_0"[39m
+    [33mrole[39m=[32m"option"[39m
+  [36m/>[39m
+
+  Name "T2":
+  [36m<div[39m
+    [33maria-label[39m=[32m"T2"[39m
+    [33maria-selected[39m=[32m"false"[39m
+    [33mid[39m=[32m"trackNo_list_1"[39m
+    [33mrole[39m=[32m"option"[39m
+  [36m/>[39m
+
+  --------------------------------------------------listbox:
+
+  Name "":
+  [36m<div[39m
+    [33mid[39m=[32m"reviewerId_list"[39m
+    [33mrole[39m=[32m"listbox"[39m
+    [33mstyle[39m=[32m"height: 0px; width: 0px; overflow: hidden;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  option:
+
+  Name "USER-001":
+  [36m<div[39m
+    [33maria-label[39m=[32m"USER-001"[39m
+    [33maria-selected[39m=[32m"true"[39m
+    [33mid[39m=[32m"reviewerId_list_0"[39m
+    [33mrole[39m=[32m"option"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"plan-ledger-page"[39m
+      [33mstyle[39m=[32m"--overview-color-primary: #1677ff; --overview-color-primary-bg: #e6f4ff; --overview-color-b
+g-container: #FFFFFF; --overview-color-border: #d9d9d9; --overview-color-border-secondary: #f0f0f0; --overview-color-te
+xt: rgba(0,0,0,0.88); --overview-color-text-secondary: rgba(0,0,0,0.65); --overview-color-fill: rgba(0,0,0,0.15); --ove
+rview-color-fill-secondary: rgba(0,0,0,0.06); --overview-border-radius: 10px; --overview-border-radius-small: 6px; --ov
+erview-box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05),
+      0 1px 6px -1px rgba(0,0,0,0.03),
+      0 2px 4px 0 rgba(0,0,0,0.03);"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"plan-ledger-header"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-entry-page-identity"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-st
+art css-var-_r_1s_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled plan-entry-page-tag css-dev-only-do-not-override-ry7cab cs
+s-var-_r_1s_"[39m
+              [36m>[39m
+                [0mUI-002[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<h2[39m
+                  [33mclass[39m=[32m"ant-typography plan-entry-page-title css-dev-only-do-not-override-ry7cab css-va
+r-_r_1s_"[39m
+                [36m>[39m
+                  [0m计划接收台账[0m
+                [36m</h2>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"ant-typography plan-entry-page-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_1s_"[39m
+                [36m>[39m
+                  [0m当前路由：[0m
+                  [0m/dispatch/plans[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-cent
+er css-var-_r_1s_"[39m
+          [33mstyle[39m=[32m"flex-wrap: wrap; column-gap: 8px; row-gap: 6px;"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+            [36m>[39m
+              [0m2026-07-16[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+            [36m>[39m
+              [0mAREA-A[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css-v
+ar-_r_1s_"[39m
+            [36m>[39m
+              [0mSCN-02[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-typography ant-typography-secondary css-dev-only-do-not-override-ry7cab css-var
+-_r_1s_"[39m
+            [36m>[39m
+              [0m当前角色：[0m
+              [0mDISPATCHER[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<section[39m
+        [33maria-label[39m=[32m"计划接口健康"[39m
+        [33mclass[39m=[32m"plan-interface-banner"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-interface-main"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"plan-interface-title"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+            [36m>[39m
+              [36m<strong>[39m
+                [0m95306 / 铁路计划接入通道[0m
+              [36m</strong>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-badge ant-badge-status ant-badge-not-a-wrapper css-dev-only-do-not-override-ry7
+cab css-var-_r_1s_"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-badge-status-dot ant-badge-status-warning"[39m
+              [36m/>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-badge-status-text"[39m
+              [36m>[39m
+                [0m降级[0m
+              [36m</span>[39m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_1s_"[39m
+            [33mstyle[39m=[32m"flex-wrap: wrap; column-gap: 10px; row-gap: 6px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography ant-typography-secondary css-dev-only-do-not-override-ry7cab css-v
+ar-_r_1s_"[39m
+              [36m>[39m
+                [0m最近成功：[0m
+                [0m暂无成功记录[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+              [36m>[39m
+                [0m重试 [0m
+                [0m0[0m
+                [0m 次[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_1s_"[39m
+              [36m>[39m
+                [0m未熔断[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"an...
+ ❯ Object.getElementError node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.
+js:37:19
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/__tests__/PlanLedgerPage.action.test.tsx:255:31
+    253|       expect(drawer).not.toBeNull();
+    254|       await fillDrawerForm(drawer!);
+    255|       await user.click(screen.getByRole('button', { name: recoveryLabe…
+       |                               ^
+    256|
+    257|       expect(onSync).toHaveBeenCalledTimes(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.action.test.tsx > UI-002 URL、详情与只读命令边界 > network-error 提供真实重试并保留筛选、PLAN-002 抽
+屉与全部表单值
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "重试同步"
+
+Here are the accessible roles:
+
+  main:
+
+  Name "":
+  [36m<main[39m
+    [33mclass[39m=[32m"plan-ledger-page"[39m
+    [33mstyle[39m=[32m"--overview-color-primary: #1677ff; --overview-color-primary-bg: #e6f4ff; --overview-color-bg-
+container: #FFFFFF; --overview-color-border: #d9d9d9; --overview-color-border-secondary: #f0f0f0; --overview-color-text
+: rgba(0,0,0,0.88); --overview-color-text-secondary: rgba(0,0,0,0.65); --overview-color-fill: rgba(0,0,0,0.15); --overv
+iew-color-fill-secondary: rgba(0,0,0,0.06); --overview-border-radius: 10px; --overview-border-radius-small: 6px; --over
+view-box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05),
+        0 1px 6px -1px rgba(0,0,0,0.03),
+        0 2px 4px 0 rgba(0,0,0,0.03);"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"plan-ledger-header"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "计划接收台账":
+  [36m<h2[39m
+    [33mclass[39m=[32m"ant-typography plan-entry-page-title css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "计划接口健康":
+  [36m<section[39m
+    [33maria-label[39m=[32m"计划接口健康"[39m
+    [33mclass[39m=[32m"plan-interface-banner"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  strong:
+
+  Name "":
+  [36m<strong />[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "同步计划":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-btn css-dev-only-do-not-override-ry7cab css-var-_r_2b_ ant-btn-default ant-btn-color-defa
+ult ant-btn-variant-outlined"[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "close-circle":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-input-clear-icon"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "close-circle":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-input-clear-icon"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "重置筛选":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-btn css-dev-only-do-not-override-ry7cab css-var-_r_2b_ ant-btn-default ant-btn-color-defa
+ult ant-btn-variant-outlined"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  form:
+
+  Name "计划筛选":
+  [36m<form[39m
+    [33maria-label[39m=[32m"计划筛选"[39m
+    [33mclass[39m=[32m"ant-form ant-form-vertical css-var-_r_2b_ ant-form-css-var css-dev-only-do-not-override-ry7ca
+b plan-filter-bar"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "计划批次":
+  [36m<input[39m
+    [33maria-label[39m=[32m"计划批次"[39m
+    [33mclass[39m=[32m"ant-input css-dev-only-do-not-override-ry7cab"[39m
+    [33mid[39m=[32m"plan-batch-filter"[39m
+    [33mplaceholder[39m=[32m"输入批次号"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m"PB-20260716-02"[39m
+  [36m/>[39m
+
+  Name "车次":
+  [36m<input[39m
+    [33maria-label[39m=[32m"车次"[39m
+    [33mclass[39m=[32m"ant-input css-dev-only-do-not-override-ry7cab"[39m
+    [33mid[39m=[32m"train-filter"[39m
+    [33mplaceholder[39m=[32m"输入车次"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m"75002"[39m
+  [36m/>[39m
+
+  Name "时间范围":
+  [36m<input[39m
+    [33maria-invalid[39m=[32m"false"[39m
+    [33maria-label[39m=[32m"时间范围"[39m
+    [33mautocomplete[39m=[32m"off"[39m
+    [33mid[39m=[32m"date-filter"[39m
+    [33mplaceholder[39m=[32m"Select date"[39m
+    [33msize[39m=[32m"12"[39m
+    [33mvalue[39m=[32m"2026-07-16"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  img:
+
+  Name "close-circle":
+  [36m<span[39m
+    [33maria-label[39m=[32m"close-circle"[39m
+    [33mclass[39m=[32m"anticon anticon-close-circle"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "close-circle":
+  [36m<span[39m
+    [33maria-label[39m=[32m"close-circle"[39m
+    [33mclass[39m=[32m"anticon anticon-close-circle"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "down":
+  [36m<span[39m
+    [33maria-label[39m=[32m"down"[39m
+    [33mclass[39m=[32m"anticon anticon-down"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "down":
+  [36m<span[39m
+    [33maria-label[39m=[32m"down"[39m
+    [33mclass[39m=[32m"anticon anticon-down"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "warning":
+  [36m<span[39m
+    [33maria-label[39m=[32m"warning"[39m
+    [33mclass[39m=[32m"anticon anticon-warning"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  combobox:
+
+  Name "状态":
+  [36m<input[39m
+    [33maria-autocomplete[39m=[32m"list"[39m
+    [33maria-expanded[39m=[32m"false"[39m
+    [33maria-haspopup[39m=[32m"listbox"[39m
+    [33maria-label[39m=[32m"状态"[39m
+    [33mautocomplete[39m=[32m"new-password"[39m
+    [33mclass[39m=[32m"ant-select-input"[39m
+    [33mid[39m=[32m"status-filter"[39m
+    [33mrole[39m=[32m"combobox"[39m
+    [33mstyle[39m=[32m"--select-input-width: 0;"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "异常类型":
+  [36m<input[39m
+    [33maria-autocomplete[39m=[32m"list"[39m
+    [33maria-expanded[39m=[32m"false"[39m
+    [33maria-haspopup[39m=[32m"listbox"[39m
+    [33maria-label[39m=[32m"异常类型"[39m
+    [33mautocomplete[39m=[32m"new-password"[39m
+    [33mclass[39m=[32m"ant-select-input"[39m
+    [33mid[39m=[32m"exception-filter"[39m
+    [33mrole[39m=[32m"combobox"[39m
+    [33mstyle[39m=[32m"--select-input-width: 0;"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------dialog:
+
+  Name "PLAN-002 计划详情":
+  [36m<div[39m
+    [33maria-labelledby[39m=[32m"test-id"[39m
+    [33maria-modal[39m=[32m"true"[39m
+    [33mclass[39m=[32m"ant-drawer-section plan-detail-drawer"[39m
+    [33mrole[39m=[32m"dialog"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Close":
+  [36m<button[39m
+    [33maria-label[39m=[32m"Close"[39m
+    [33mclass[39m=[32m"ant-drawer-close"[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  Name "提交补录":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-btn css-dev-only-do-not-override-ry7cab css-var-_r_2b_ ant-btn-primary ant-btn-color-prim
+ary ant-btn-variant-solid"[39m
+    [33mtype[39m=[32m"submit"[39m
+  [36m/>[39m
+
+  Name "确认计划":
+  [36m<button[39m
+    [33mclass[39m=[32m"ant-btn css-dev-only-do-not-override-ry7cab css-var-_r_2b_ ant-btn-primary ant-btn-color-prim
+ary ant-btn-variant-solid"[39m
+    [33mdisabled[39m=[32m""[39m
+    [33mtype[39m=[32m"button"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  img:
+
+  Name "close":
+  [36m<span[39m
+    [33maria-label[39m=[32m"close"[39m
+    [33mclass[39m=[32m"anticon anticon-close"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "check":
+  [36m<span[39m
+    [33maria-label[39m=[32m"check"[39m
+    [33mclass[39m=[32m"anticon anticon-check ant-steps-item-icon-finish"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "check":
+  [36m<span[39m
+    [33maria-label[39m=[32m"check"[39m
+    [33mclass[39m=[32m"anticon anticon-check ant-steps-item-icon-finish"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "close-circle":
+  [36m<span[39m
+    [33maria-label[39m=[32m"close-circle"[39m
+    [33mclass[39m=[32m"anticon anticon-close-circle"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "down":
+  [36m<span[39m
+    [33maria-label[39m=[32m"down"[39m
+    [33mclass[39m=[32m"anticon anticon-down"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  Name "down":
+  [36m<span[39m
+    [33maria-label[39m=[32m"down"[39m
+    [33mclass[39m=[32m"anticon anticon-down"[39m
+    [33mrole[39m=[32m"img"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  region:
+
+  Name "计划确认流程":
+  [36m<section[39m
+    [33maria-label[39m=[32m"计划确认流程"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "计划摘要":
+  [36m<section[39m
+    [33maria-label[39m=[32m"计划摘要"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "字段来源":
+  [36m<section[39m
+    [33maria-label[39m=[32m"字段来源"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "脱敏原始摘要":
+  [36m<section[39m
+    [33maria-label[39m=[32m"脱敏原始摘要"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "校验问题":
+  [36m<section[39m
+    [33maria-label[39m=[32m"校验问题"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "重试记录":
+  [36m<section[39m
+    [33maria-label[39m=[32m"重试记录"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "变更历史":
+  [36m<section[39m
+    [33maria-label[39m=[32m"变更历史"[39m
+    [33mclass[39m=[32m"plan-detail-section"[39m
+  [36m/>[39m
+
+  Name "计划字段补录":
+  [36m<section[39m
+    [33maria-label[39m=[32m"计划字段补录"[39m
+    [33mclass[39m=[32m"plan-supplement-form"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "确认流程":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+  [36m/>[39m
+
+  Name "计划摘要":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+  [36m/>[39m
+
+  Name "字段来源":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+  [36m/>[39m
+
+  Name "脱敏原始摘要":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+  [36m/>[39m
+
+  Name "校验问题":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+  [36m/>[39m
+
+  Name "重试记录":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+  [36m/>[39m
+
+  Name "变更历史":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+  [36m/>[39m
+
+  Name "字段补录":
+  [36m<h5[39m
+    [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table />[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<tbody />[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "计划编号 PLAN-002 计划批次 PB-20260716-02":
+  [36m<tr[39m
+    [33mclass[39m=[32m"ant-descriptions-row"[39m
+  [36m/>[39m
+
+  Name "车次 75002 股道 待补录":
+  [36m<tr[39m
+    [33mclass[39m=[32m"ant-descriptions-row"[39m
+  [36m/>[39m
+
+  Name "货类 STEEL 状态 BLOCKED":
+  [36m<tr[39m
+    [33mclass[39m=[32m"ant-descriptions-row"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "计划编号":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "计划批次":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "车次":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "股道":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "货类":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "状态":
+  [36m<th[39m
+    [33mclass[39m=[32m"ant-descriptions-item-label"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "PLAN-002":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "PB-20260716-02":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "75002":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "待补录":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "STEEL":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  Name "BLOCKED":
+  [36m<td[39m
+    [33mclass[39m=[32m"ant-descriptions-item-content"[39m
+    [33mcolspan[39m=[32m"1"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  list:
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"plan-detail-list plan-field-source-list"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<ul[39m
+    [33mclass[39m=[32m"plan-detail-list"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  listitem:
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  Name "":
+  [36m<li />[39m
+
+  --------------------------------------------------
+  code:
+
+  Name "":
+  [36m<code />[39m
+
+  Name "":
+  [36m<code />[39m
+
+  Name "":
+  [36m<code />[39m
+
+  Name "":
+  [36m<code />[39m
+
+  Name "":
+  [36m<code />[39m
+
+  Name "":
+  [36m<code />[39m
+
+  --------------------------------------------------
+  alert:
+
+  Name "":
+  [36m<div[39m
+    [33mclass[39m=[32m"ant-alert ant-alert-error ant-alert-outlined ant-alert-with-description css-var-_r_2b_ css-de
+v-only-do-not-override-ry7cab"[39m
+    [33mdata-show[39m=[32m"true"[39m
+    [33mrole[39m=[32m"alert"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  combobox:
+
+  Name "补录股道":
+  [36m<input[39m
+    [33maria-autocomplete[39m=[32m"list"[39m
+    [33maria-expanded[39m=[32m"false"[39m
+    [33maria-haspopup[39m=[32m"listbox"[39m
+    [33maria-label[39m=[32m"补录股道"[39m
+    [33maria-required[39m=[32m"true"[39m
+    [33mautocomplete[39m=[32m"new-password"[39m
+    [33mclass[39m=[32m"ant-select-input"[39m
+    [33mid[39m=[32m"trackNo"[39m
+    [33mreadonly[39m=[32m""[39m
+    [33mrole[39m=[32m"combobox"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "异人复核员":
+  [36m<input[39m
+    [33maria-autocomplete[39m=[32m"list"[39m
+    [33maria-expanded[39m=[32m"false"[39m
+    [33maria-haspopup[39m=[32m"listbox"[39m
+    [33maria-label[39m=[32m"异人复核员"[39m
+    [33maria-required[39m=[32m"true"[39m
+    [33mautocomplete[39m=[32m"new-password"[39m
+    [33mclass[39m=[32m"ant-select-input"[39m
+    [33mid[39m=[32m"reviewerId"[39m
+    [33mreadonly[39m=[32m""[39m
+    [33mrole[39m=[32m"combobox"[39m
+    [33mtype[39m=[32m"text"[39m
+    [33mvalue[39m=[32m""[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  textbox:
+
+  Name "补录原因":
+  [36m<textarea[39m
+    [33maria-label[39m=[32m"补录原因"[39m
+    [33maria-required[39m=[32m"true"[39m
+    [33mclass[39m=[32m"ant-input css-dev-only-do-not-override-ry7cab"[39m
+    [33mid[39m=[32m"reason"[39m
+    [33mmaxlength[39m=[32m"200"[39m
+    [33mrows[39m=[32m"2"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  separator:
+
+  Name "":
+  [36m<div[39m
+    [33mclass[39m=[32m"ant-divider css-dev-only-do-not-override-ry7cab css-var-_r_2b_ ant-divider-horizontal ant-div
+ider-rail"[39m
+    [33mrole[39m=[32m"separator"[39m
+  [36m/>[39m
+
+  --------------------------------------------------listbox:
+
+  Name "":
+  [36m<div[39m
+    [33mid[39m=[32m"trackNo_list"[39m
+    [33mrole[39m=[32m"listbox"[39m
+    [33mstyle[39m=[32m"height: 0px; width: 0px; overflow: hidden;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  option:
+
+  Name "T1":
+  [36m<div[39m
+    [33maria-label[39m=[32m"T1"[39m
+    [33maria-selected[39m=[32m"true"[39m
+    [33mid[39m=[32m"trackNo_list_0"[39m
+    [33mrole[39m=[32m"option"[39m
+  [36m/>[39m
+
+  Name "T2":
+  [36m<div[39m
+    [33maria-label[39m=[32m"T2"[39m
+    [33maria-selected[39m=[32m"false"[39m
+    [33mid[39m=[32m"trackNo_list_1"[39m
+    [33mrole[39m=[32m"option"[39m
+  [36m/>[39m
+
+  --------------------------------------------------listbox:
+
+  Name "":
+  [36m<div[39m
+    [33mid[39m=[32m"reviewerId_list"[39m
+    [33mrole[39m=[32m"listbox"[39m
+    [33mstyle[39m=[32m"height: 0px; width: 0px; overflow: hidden;"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  option:
+
+  Name "USER-001":
+  [36m<div[39m
+    [33maria-label[39m=[32m"USER-001"[39m
+    [33maria-selected[39m=[32m"true"[39m
+    [33mid[39m=[32m"reviewerId_list_0"[39m
+    [33mrole[39m=[32m"option"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"plan-ledger-page"[39m
+      [33mstyle[39m=[32m"--overview-color-primary: #1677ff; --overview-color-primary-bg: #e6f4ff; --overview-color-b
+g-container: #FFFFFF; --overview-color-border: #d9d9d9; --overview-color-border-secondary: #f0f0f0; --overview-color-te
+xt: rgba(0,0,0,0.88); --overview-color-text-secondary: rgba(0,0,0,0.65); --overview-color-fill: rgba(0,0,0,0.15); --ove
+rview-color-fill-secondary: rgba(0,0,0,0.06); --overview-border-radius: 10px; --overview-border-radius-small: 6px; --ov
+erview-box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05),
+      0 1px 6px -1px rgba(0,0,0,0.03),
+      0 2px 4px 0 rgba(0,0,0,0.03);"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"plan-ledger-header"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-entry-page-identity"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-st
+art css-var-_r_2b_"[39m
+            [33mstyle[39m=[32m"column-gap: 12px; row-gap: 12px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-tag ant-tag-filled plan-entry-page-tag css-dev-only-do-not-override-ry7cab cs
+s-var-_r_2b_"[39m
+              [36m>[39m
+                [0mUI-002[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<h2[39m
+                  [33mclass[39m=[32m"ant-typography plan-entry-page-title css-dev-only-do-not-override-ry7cab css-va
+r-_r_2b_"[39m
+                [36m>[39m
+                  [0m计划接收台账[0m
+                [36m</h2>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"ant-typography plan-entry-page-route css-dev-only-do-not-override-ry7cab css-va
+r-_r_2b_"[39m
+                [36m>[39m
+                  [0m当前路由：[0m
+                  [0m/dispatch/plans[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-cent
+er css-var-_r_2b_"[39m
+          [33mstyle[39m=[32m"flex-wrap: wrap; column-gap: 8px; row-gap: 6px;"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+            [36m>[39m
+              [0m2026-07-16[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+            [36m>[39m
+              [0mAREA-A[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-processing css-dev-only-do-not-override-ry7cab css-v
+ar-_r_2b_"[39m
+            [36m>[39m
+              [0mSCN-02[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space-item"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-typography ant-typography-secondary css-dev-only-do-not-override-ry7cab css-var
+-_r_2b_"[39m
+            [36m>[39m
+              [0m当前角色：[0m
+              [0mDISPATCHER[0m
+            [36m</span>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<section[39m
+        [33maria-label[39m=[32m"计划接口健康"[39m
+        [33mclass[39m=[32m"plan-interface-banner"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-interface-main"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"plan-interface-title"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+            [36m>[39m
+              [36m<strong>[39m
+                [0m95306 / 铁路计划接入通道[0m
+              [36m</strong>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"ant-badge ant-badge-status ant-badge-not-a-wrapper css-dev-only-do-not-override-ry7
+cab css-var-_r_2b_"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-badge-status-dot ant-badge-status-warning"[39m
+              [36m/>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-badge-status-text"[39m
+              [36m>[39m
+                [0m降级[0m
+              [36m</span>[39m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-space css-dev-only-do-not-override-ry7cab ant-space-horizontal ant-space-align-ce
+nter css-var-_r_2b_"[39m
+            [33mstyle[39m=[32m"flex-wrap: wrap; column-gap: 10px; row-gap: 6px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography ant-typography-secondary css-dev-only-do-not-override-ry7cab css-v
+ar-_r_2b_"[39m
+              [36m>[39m
+                [0m最近成功：[0m
+                [0m暂无成功记录[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+              [36m>[39m
+                [0m重试 [0m
+                [0m0[0m
+                [0m 次[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-space-item"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-_r_2b_"[39m
+              [36m>[39m
+                [0m未熔断[0m
+              [36m</span>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"an...
+ ❯ Object.getElementError node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.
+js:37:19
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/__tests__/PlanLedgerPage.action.test.tsx:255:31
+    253|       expect(drawer).not.toBeNull();
+    254|       await fillDrawerForm(drawer!);
+    255|       await user.click(screen.getByRole('button', { name: recoveryLabe…
+       |                               ^
+    256|
+    257|       expect(onSync).toHaveBeenCalledTimes(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.action.test.tsx > UI-002 URL、详情与只读命令边界 > network-error 不抑制 INTERFACE_OPS 的接口恢
+复路径
+Error: [2mexpect([22m[31melement[39m[2m).toBeEnabled()[22m
+
+Received element is not enabled:
+  [31m<button
+  class="ant-btn css-dev-only-do-not-override-ry7cab css-var-_r_2q_ ant-btn-primary ant-btn-color-primary ant-btn-varia
+nt-solid"
+  disabled=""
+  type="button"
+/>[39m
+ ❯ src/pages/__tests__/PlanLedgerPage.action.test.tsx:284:21
+    282|       name: '恢复接口',
+    283|     });
+    284|     expect(recover).toBeEnabled();
+       |                     ^
+    285|     await user.click(recover);
+    286|     expect(onRecover).toHaveBeenCalledTimes(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+
+ FAIL  src/pages/__tests__/PlanLedgerPage.render.test.tsx > UI-002 计划接收台账内容 > 呈现精确烟测标记、接口健康条和五组 URL 筛选
+AssertionError: expected [Function value] to have a length of 2 but got 1
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ src/pages/__tests__/PlanLedgerPage.render.test.tsx:46:37
+     44|     renderLedger();
+     45|
+     46|     expect(window.getComputedStyle).toHaveLength(2);
+       |                                     ^
+     47|
+     48|     expect(await screen.findByRole('heading', { name: '计划接收台账', level:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯
+
+ FAIL  src/features/plan-entry/__tests__/selectors.test.ts > plan entry selectors > projects immutable UI-ready supplem
+ent policy and reviewer options without raw user roles
+AssertionError: expected undefined to deeply equal { visible: true, …(2) }
+
+- Expected:
+{
+  "actorId": "E2E-DISPATCHER",
+  "reviewerOptions": [
+    {
+      "label": "USER-001",
+      "value": "USER-001",
+    },
+  ],
+  "visible": true,
+}
+
++ Received:
+undefined
+
+ ❯ src/features/plan-entry/__tests__/selectors.test.ts:216:33
+    214|     );
+    215|
+    216|     expect(details?.supplement).toEqual({
+       |                                 ^
+    217|       visible: true,
+    218|       actorId: 'E2E-DISPATCHER',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯
+
+ FAIL  src/features/plan-entry/__tests__/selectors.test.ts > plan entry selectors > projects exact interface recovery v
+isibility from the current session and health
+AssertionError: expected undefined to be true // Object.is equality
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ src/features/plan-entry/__tests__/selectors.test.ts:246:7
+    244|         unresolvedWorkflow,
+    245|       ).recoveryVisible,
+    246|     ).toBe(true);
+       |       ^
+    247|     expect(
+    248|       selectInterfaceHealth(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/13]⎯
+
+ FAIL  src/features/plan-entry/__tests__/selectors.test.ts > plan entry selectors > reports timeout workflow health ind
+ependently of domain state
+AssertionError: expected { status: 'CIRCUIT_OPEN', …(4) } to deeply equal { status: 'CIRCUIT_OPEN', …(5) }
+
+- Expected
++ Received
+
+  {
+    "circuitOpen": true,
+    "errorCode": "TOS-EXT-001",
+    "lastSuccessAt": "2026-07-16T09:30:00+08:00",
+-   "recoveryVisible": false,
+    "retryCount": 3,
+    "status": "CIRCUIT_OPEN",
+  }
+
+ ❯ src/features/plan-entry/__tests__/selectors.test.ts:335:52
+    333|     };
+    334|
+    335|     expect(selectInterfaceHealth(state, workflow)).toEqual({
+       |                                                    ^
+    336|       status: 'CIRCUIT_OPEN',
+    337|       errorCode: 'TOS-EXT-001',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/13]⎯
+
+ FAIL  src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx > SupplementPlanForm > renders track se
+lector projection and UI-ready reviewer options without raw roles
+TestingLibraryElementError: Unable to find an element with the text: USER-001, which matches selector '.ant-select-item
+-option-content'. This could be because the text is broken up by multiple elements. In this case, you can provide a fun
+ction for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"计划字段补录"[39m
+      [33mclass[39m=[32m"plan-supplement-form"[39m
+    [36m>[39m
+      [36m<h5[39m
+        [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-root"[39m
+      [36m>[39m
+        [0m字段补录[0m
+      [36m</h5>[39m
+      [36m<form[39m
+        [33mclass[39m=[32m"ant-form ant-form-vertical css-var-root ant-form-css-var css-dev-only-do-not-override-ry7
+cab"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-supplement-grid"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"trackNo"[39m
+                  [33mtitle[39m=[32m"股道"[39m
+                [36m>[39m
+                  [0m股道[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-single ant-select-show-arrow"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-select-placeholder"[39m
+                          [33mstyle[39m=[32m"visibility: visible;"[39m
+                        [36m>[39m
+                          [0m选择可见股道[0m
+                        [36m</div>[39m
+                        [36m<input[39m
+                          [33maria-autocomplete[39m=[32m"list"[39m
+                          [33maria-expanded[39m=[32m"false"[39m
+                          [33maria-haspopup[39m=[32m"listbox"[39m
+                          [33maria-label[39m=[32m"补录股道"[39m
+                          [33maria-required[39m=[32m"true"[39m
+                          [33mautocomplete[39m=[32m"new-password"[39m
+                          [33mclass[39m=[32m"ant-select-input"[39m
+                          [33mid[39m=[32m"trackNo"[39m
+                          [33mreadonly[39m=[32m""[39m
+                          [33mrole[39m=[32m"combobox"[39m
+                          [33mtype[39m=[32m"text"[39m
+                          [33mvalue[39m=[32m""[39m
+                        [36m/>[39m
+                      [36m</div>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-suffix"[39m
+                      [36m>[39m
+                        [36m<span[39m
+                          [33maria-label[39m=[32m"down"[39m
+                          [33mclass[39m=[32m"anticon anticon-down"[39m
+                          [33mrole[39m=[32m"img"[39m
+                        [36m>[39m
+                          [36m<svg[39m
+                            [33maria-hidden[39m=[32m"true"[39m
+                            [33mdata-icon[39m=[32m"down"[39m
+                            [33mfill[39m=[32m"currentColor"[39m
+                            [33mfocusable[39m=[32m"false"[39m
+                            [33mheight[39m=[32m"1em"[39m
+                            [33mviewBox[39m=[32m"64 64 896 896"[39m
+                            [33mwidth[39m=[32m"1em"[39m
+                          [36m>[39m
+                            [36m<path[39m
+                              [33md[39m=[32m"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6
+.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"[39
+m
+                            [36m/>[39m
+                          [36m</svg>[39m
+                        [36m</span>[39m
+                      [36m</div>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"reviewerId"[39m
+                  [33mtitle[39m=[32m"异人复核员"[39m
+                [36m>[39m
+                  [0m异人复核员[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-focused ant-select-single ant-select-show-arrow ant-select-o
+pen"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+               ...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"计划字段补录"[39m
+      [33mclass[39m=[32m"plan-supplement-form"[39m
+    [36m>[39m
+      [36m<h5[39m
+        [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-root"[39m
+      [36m>[39m
+        [0m字段补录[0m
+      [36m</h5>[39m
+      [36m<form[39m
+        [33mclass[39m=[32m"ant-form ant-form-vertical css-var-root ant-form-css-var css-dev-only-do-not-override-ry7
+cab"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-supplement-grid"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"trackNo"[39m
+                  [33mtitle[39m=[32m"股道"[39m
+                [36m>[39m
+                  [0m股道[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-single ant-select-show-arrow"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-select-placeholder"[39m
+                          [33mstyle[39m=[32m"visibility: visible;"[39m
+                        [36m>[39m
+                          [0m选择可见股道[0m
+                        [36m</div>[39m
+                        [36m<input[39m
+                          [33maria-autocomplete[39m=[32m"list"[39m
+                          [33maria-expanded[39m=[32m"false"[39m
+                          [33maria-haspopup[39m=[32m"listbox"[39m
+                          [33maria-label[39m=[32m"补录股道"[39m
+                          [33maria-required[39m=[32m"true"[39m
+                          [33mautocomplete[39m=[32m"new-password"[39m
+                          [33mclass[39m=[32m"ant-select-input"[39m
+                          [33mid[39m=[32m"trackNo"[39m
+                          [33mreadonly[39m=[32m""[39m
+                          [33mrole[39m=[32m"combobox"[39m
+                          [33mtype[39m=[32m"text"[39m
+                          [33mvalue[39m=[32m""[39m
+                        [36m/>[39m
+                      [36m</div>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-suffix"[39m
+                      [36m>[39m
+                        [36m<span[39m
+                          [33maria-label[39m=[32m"down"[39m
+                          [33mclass[39m=[32m"anticon anticon-down"[39m
+                          [33mrole[39m=[32m"img"[39m
+                        [36m>[39m
+                          [36m<svg[39m
+                            [33maria-hidden[39m=[32m"true"[39m
+                            [33mdata-icon[39m=[32m"down"[39m
+                            [33mfill[39m=[32m"currentColor"[39m
+                            [33mfocusable[39m=[32m"false"[39m
+                            [33mheight[39m=[32m"1em"[39m
+                            [33mviewBox[39m=[32m"64 64 896 896"[39m
+                            [33mwidth[39m=[32m"1em"[39m
+                          [36m>[39m
+                            [36m<path[39m
+                              [33md[39m=[32m"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6
+.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"[39
+m
+                            [36m/>[39m
+                          [36m</svg>[39m
+                        [36m</span>[39m
+                      [36m</div>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"reviewerId"[39m
+                  [33mtitle[39m=[32m"异人复核员"[39m
+                [36m>[39m
+                  [0m异人复核员[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-focused ant-select-single ant-select-show-arrow ant-select-o
+pen"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+               ...
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163
+:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:120:20
+    118|     await user.click(screen.getByRole('combobox', { name: '异人复核员' }));
+    119|     expect(
+    120|       await screen.findByText('USER-001', { selector: '.ant-select-ite…
+       |                    ^
+    121|     ).toBeVisible();
+    122|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/13]⎯
+
+ FAIL  src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx > SupplementPlanForm > rejects a same-a
+ctor reviewer with the exact C03 separation wording
+TestingLibraryElementError: Unable to find an element with the text: E2E-DISPATCHER, which matches selector '.ant-selec
+t-item-option-content'. This could be because the text is broken up by multiple elements. In this case, you can provide
+ a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"计划字段补录"[39m
+      [33mclass[39m=[32m"plan-supplement-form"[39m
+    [36m>[39m
+      [36m<h5[39m
+        [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-root"[39m
+      [36m>[39m
+        [0m字段补录[0m
+      [36m</h5>[39m
+      [36m<form[39m
+        [33mclass[39m=[32m"ant-form ant-form-vertical css-var-root ant-form-css-var css-dev-only-do-not-override-ry7
+cab"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-supplement-grid"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-has-success ant-form-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"trackNo"[39m
+                  [33mtitle[39m=[32m"股道"[39m
+                [36m>[39m
+                  [0m股道[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item ant-select-status-su
+ccess css-var-root ant-select-css-var css-dev-only-do-not-override-ry7cab ant-select-single ant-select-show-arrow"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content ant-select-content-has-value"[39m
+                        [33mtitle[39m=[32m"T1"[39m
+                      [36m>[39m
+                        [0mT1[0m
+                        [36m<input[39m
+                          [33maria-autocomplete[39m=[32m"list"[39m
+                          [33maria-expanded[39m=[32m"false"[39m
+                          [33maria-haspopup[39m=[32m"listbox"[39m
+                          [33maria-label[39m=[32m"补录股道"[39m
+                          [33maria-required[39m=[32m"true"[39m
+                          [33mautocomplete[39m=[32m"new-password"[39m
+                          [33mclass[39m=[32m"ant-select-input"[39m
+                          [33mid[39m=[32m"trackNo"[39m
+                          [33mreadonly[39m=[32m""[39m
+                          [33mrole[39m=[32m"combobox"[39m
+                          [33mtype[39m=[32m"text"[39m
+                          [33mvalue[39m=[32m""[39m
+                        [36m/>[39m
+                      [36m</div>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-suffix"[39m
+                      [36m>[39m
+                        [36m<span[39m
+                          [33maria-label[39m=[32m"down"[39m
+                          [33mclass[39m=[32m"anticon anticon-down"[39m
+                          [33mrole[39m=[32m"img"[39m
+                        [36m>[39m
+                          [36m<svg[39m
+                            [33maria-hidden[39m=[32m"true"[39m
+                            [33mdata-icon[39m=[32m"down"[39m
+                            [33mfill[39m=[32m"currentColor"[39m
+                            [33mfocusable[39m=[32m"false"[39m
+                            [33mheight[39m=[32m"1em"[39m
+                            [33mviewBox[39m=[32m"64 64 896 896"[39m
+                            [33mwidth[39m=[32m"1em"[39m
+                          [36m>[39m
+                            [36m<path[39m
+                              [33md[39m=[32m"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6
+.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"[39
+m
+                            [36m/>[39m
+                          [36m</svg>[39m
+                        [36m</span>[39m
+                      [36m</div>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"reviewerId"[39m
+                  [33mtitle[39m=[32m"异人复核员"[39m
+                [36m>[39m
+                  [0m异人复核员[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-focused ant-select-single ant-select-show-arrow ant-select-o
+pen"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-select-placeholder"[39m
+                          [33mstyle[39m=[32m"visibility: visible;"[39m
+ ...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"计划字段补录"[39m
+      [33mclass[39m=[32m"plan-supplement-form"[39m
+    [36m>[39m
+      [36m<h5[39m
+        [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-root"[39m
+      [36m>[39m
+        [0m字段补录[0m
+      [36m</h5>[39m
+      [36m<form[39m
+        [33mclass[39m=[32m"ant-form ant-form-vertical css-var-root ant-form-css-var css-dev-only-do-not-override-ry7
+cab"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-supplement-grid"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-has-success ant-form-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"trackNo"[39m
+                  [33mtitle[39m=[32m"股道"[39m
+                [36m>[39m
+                  [0m股道[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item ant-select-status-su
+ccess css-var-root ant-select-css-var css-dev-only-do-not-override-ry7cab ant-select-single ant-select-show-arrow"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content ant-select-content-has-value"[39m
+                        [33mtitle[39m=[32m"T1"[39m
+                      [36m>[39m
+                        [0mT1[0m
+                        [36m<input[39m
+                          [33maria-autocomplete[39m=[32m"list"[39m
+                          [33maria-expanded[39m=[32m"false"[39m
+                          [33maria-haspopup[39m=[32m"listbox"[39m
+                          [33maria-label[39m=[32m"补录股道"[39m
+                          [33maria-required[39m=[32m"true"[39m
+                          [33mautocomplete[39m=[32m"new-password"[39m
+                          [33mclass[39m=[32m"ant-select-input"[39m
+                          [33mid[39m=[32m"trackNo"[39m
+                          [33mreadonly[39m=[32m""[39m
+                          [33mrole[39m=[32m"combobox"[39m
+                          [33mtype[39m=[32m"text"[39m
+                          [33mvalue[39m=[32m""[39m
+                        [36m/>[39m
+                      [36m</div>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-suffix"[39m
+                      [36m>[39m
+                        [36m<span[39m
+                          [33maria-label[39m=[32m"down"[39m
+                          [33mclass[39m=[32m"anticon anticon-down"[39m
+                          [33mrole[39m=[32m"img"[39m
+                        [36m>[39m
+                          [36m<svg[39m
+                            [33maria-hidden[39m=[32m"true"[39m
+                            [33mdata-icon[39m=[32m"down"[39m
+                            [33mfill[39m=[32m"currentColor"[39m
+                            [33mfocusable[39m=[32m"false"[39m
+                            [33mheight[39m=[32m"1em"[39m
+                            [33mviewBox[39m=[32m"64 64 896 896"[39m
+                            [33mwidth[39m=[32m"1em"[39m
+                          [36m>[39m
+                            [36m<path[39m
+                              [33md[39m=[32m"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6
+.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"[39
+m
+                            [36m/>[39m
+                          [36m</svg>[39m
+                        [36m</span>[39m
+                      [36m</div>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"reviewerId"[39m
+                  [33mtitle[39m=[32m"异人复核员"[39m
+                [36m>[39m
+                  [0m异人复核员[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-focused ant-select-single ant-select-show-arrow ant-select-o
+pen"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-select-placeholder"[39m
+                          [33mstyle[39m=[32m"visibility: visible;"[39m
+ ...
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163
+:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ chooseOption src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:71:18
+     69|   await user.click(screen.getByRole('combobox', { name }));
+     70|   await user.click(
+     71|     await screen.findByText(label, { selector: '.ant-select-item-optio…
+       |                  ^
+     72|   );
+     73| }
+ ❯ fillForm src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:78:3
+ ❯ src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:132:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/13]⎯
+
+ FAIL  src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx > SupplementPlanForm > shows a structur
+ed API/version/business failure and retains every value
+TestingLibraryElementError: Unable to find an element with the text: USER-001, which matches selector '.ant-select-item
+-option-content'. This could be because the text is broken up by multiple elements. In this case, you can provide a fun
+ction for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"计划字段补录"[39m
+      [33mclass[39m=[32m"plan-supplement-form"[39m
+    [36m>[39m
+      [36m<h5[39m
+        [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-root"[39m
+      [36m>[39m
+        [0m字段补录[0m
+      [36m</h5>[39m
+      [36m<form[39m
+        [33mclass[39m=[32m"ant-form ant-form-vertical css-var-root ant-form-css-var css-dev-only-do-not-override-ry7
+cab"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-supplement-grid"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-has-success ant-form-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"trackNo"[39m
+                  [33mtitle[39m=[32m"股道"[39m
+                [36m>[39m
+                  [0m股道[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item ant-select-status-su
+ccess css-var-root ant-select-css-var css-dev-only-do-not-override-ry7cab ant-select-single ant-select-show-arrow"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content ant-select-content-has-value"[39m
+                        [33mtitle[39m=[32m"T1"[39m
+                      [36m>[39m
+                        [0mT1[0m
+                        [36m<input[39m
+                          [33maria-autocomplete[39m=[32m"list"[39m
+                          [33maria-expanded[39m=[32m"false"[39m
+                          [33maria-haspopup[39m=[32m"listbox"[39m
+                          [33maria-label[39m=[32m"补录股道"[39m
+                          [33maria-required[39m=[32m"true"[39m
+                          [33mautocomplete[39m=[32m"new-password"[39m
+                          [33mclass[39m=[32m"ant-select-input"[39m
+                          [33mid[39m=[32m"trackNo"[39m
+                          [33mreadonly[39m=[32m""[39m
+                          [33mrole[39m=[32m"combobox"[39m
+                          [33mtype[39m=[32m"text"[39m
+                          [33mvalue[39m=[32m""[39m
+                        [36m/>[39m
+                      [36m</div>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-suffix"[39m
+                      [36m>[39m
+                        [36m<span[39m
+                          [33maria-label[39m=[32m"down"[39m
+                          [33mclass[39m=[32m"anticon anticon-down"[39m
+                          [33mrole[39m=[32m"img"[39m
+                        [36m>[39m
+                          [36m<svg[39m
+                            [33maria-hidden[39m=[32m"true"[39m
+                            [33mdata-icon[39m=[32m"down"[39m
+                            [33mfill[39m=[32m"currentColor"[39m
+                            [33mfocusable[39m=[32m"false"[39m
+                            [33mheight[39m=[32m"1em"[39m
+                            [33mviewBox[39m=[32m"64 64 896 896"[39m
+                            [33mwidth[39m=[32m"1em"[39m
+                          [36m>[39m
+                            [36m<path[39m
+                              [33md[39m=[32m"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6
+.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"[39
+m
+                            [36m/>[39m
+                          [36m</svg>[39m
+                        [36m</span>[39m
+                      [36m</div>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"reviewerId"[39m
+                  [33mtitle[39m=[32m"异人复核员"[39m
+                [36m>[39m
+                  [0m异人复核员[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-focused ant-select-single ant-select-show-arrow ant-select-o
+pen"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-select-placeholder"[39m
+                          [33mstyle[39m=[32m"visibility: visible;"[39m
+ ...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"计划字段补录"[39m
+      [33mclass[39m=[32m"plan-supplement-form"[39m
+    [36m>[39m
+      [36m<h5[39m
+        [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-root"[39m
+      [36m>[39m
+        [0m字段补录[0m
+      [36m</h5>[39m
+      [36m<form[39m
+        [33mclass[39m=[32m"ant-form ant-form-vertical css-var-root ant-form-css-var css-dev-only-do-not-override-ry7
+cab"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-supplement-grid"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-has-success ant-form-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"trackNo"[39m
+                  [33mtitle[39m=[32m"股道"[39m
+                [36m>[39m
+                  [0m股道[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item ant-select-status-su
+ccess css-var-root ant-select-css-var css-dev-only-do-not-override-ry7cab ant-select-single ant-select-show-arrow"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content ant-select-content-has-value"[39m
+                        [33mtitle[39m=[32m"T1"[39m
+                      [36m>[39m
+                        [0mT1[0m
+                        [36m<input[39m
+                          [33maria-autocomplete[39m=[32m"list"[39m
+                          [33maria-expanded[39m=[32m"false"[39m
+                          [33maria-haspopup[39m=[32m"listbox"[39m
+                          [33maria-label[39m=[32m"补录股道"[39m
+                          [33maria-required[39m=[32m"true"[39m
+                          [33mautocomplete[39m=[32m"new-password"[39m
+                          [33mclass[39m=[32m"ant-select-input"[39m
+                          [33mid[39m=[32m"trackNo"[39m
+                          [33mreadonly[39m=[32m""[39m
+                          [33mrole[39m=[32m"combobox"[39m
+                          [33mtype[39m=[32m"text"[39m
+                          [33mvalue[39m=[32m""[39m
+                        [36m/>[39m
+                      [36m</div>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-suffix"[39m
+                      [36m>[39m
+                        [36m<span[39m
+                          [33maria-label[39m=[32m"down"[39m
+                          [33mclass[39m=[32m"anticon anticon-down"[39m
+                          [33mrole[39m=[32m"img"[39m
+                        [36m>[39m
+                          [36m<svg[39m
+                            [33maria-hidden[39m=[32m"true"[39m
+                            [33mdata-icon[39m=[32m"down"[39m
+                            [33mfill[39m=[32m"currentColor"[39m
+                            [33mfocusable[39m=[32m"false"[39m
+                            [33mheight[39m=[32m"1em"[39m
+                            [33mviewBox[39m=[32m"64 64 896 896"[39m
+                            [33mwidth[39m=[32m"1em"[39m
+                          [36m>[39m
+                            [36m<path[39m
+                              [33md[39m=[32m"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6
+.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"[39
+m
+                            [36m/>[39m
+                          [36m</svg>[39m
+                        [36m</span>[39m
+                      [36m</div>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"reviewerId"[39m
+                  [33mtitle[39m=[32m"异人复核员"[39m
+                [36m>[39m
+                  [0m异人复核员[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-focused ant-select-single ant-select-show-arrow ant-select-o
+pen"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-select-placeholder"[39m
+                          [33mstyle[39m=[32m"visibility: visible;"[39m
+ ...
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163
+:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ chooseOption src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:71:18
+     69|   await user.click(screen.getByRole('combobox', { name }));
+     70|   await user.click(
+     71|     await screen.findByText(label, { selector: '.ant-select-item-optio…
+       |                  ^
+     72|   );
+     73| }
+ ❯ fillForm src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:78:3
+ ❯ src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:149:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/13]⎯
+
+ FAIL  src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx > SupplementPlanForm > shows a network
+failure and retains every value
+TestingLibraryElementError: Unable to find an element with the text: USER-001, which matches selector '.ant-select-item
+-option-content'. This could be because the text is broken up by multiple elements. In this case, you can provide a fun
+ction for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"计划字段补录"[39m
+      [33mclass[39m=[32m"plan-supplement-form"[39m
+    [36m>[39m
+      [36m<h5[39m
+        [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-root"[39m
+      [36m>[39m
+        [0m字段补录[0m
+      [36m</h5>[39m
+      [36m<form[39m
+        [33mclass[39m=[32m"ant-form ant-form-vertical css-var-root ant-form-css-var css-dev-only-do-not-override-ry7
+cab"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-supplement-grid"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-has-success ant-form-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"trackNo"[39m
+                  [33mtitle[39m=[32m"股道"[39m
+                [36m>[39m
+                  [0m股道[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item ant-select-status-su
+ccess css-var-root ant-select-css-var css-dev-only-do-not-override-ry7cab ant-select-single ant-select-show-arrow"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content ant-select-content-has-value"[39m
+                        [33mtitle[39m=[32m"T1"[39m
+                      [36m>[39m
+                        [0mT1[0m
+                        [36m<input[39m
+                          [33maria-autocomplete[39m=[32m"list"[39m
+                          [33maria-expanded[39m=[32m"false"[39m
+                          [33maria-haspopup[39m=[32m"listbox"[39m
+                          [33maria-label[39m=[32m"补录股道"[39m
+                          [33maria-required[39m=[32m"true"[39m
+                          [33mautocomplete[39m=[32m"new-password"[39m
+                          [33mclass[39m=[32m"ant-select-input"[39m
+                          [33mid[39m=[32m"trackNo"[39m
+                          [33mreadonly[39m=[32m""[39m
+                          [33mrole[39m=[32m"combobox"[39m
+                          [33mtype[39m=[32m"text"[39m
+                          [33mvalue[39m=[32m""[39m
+                        [36m/>[39m
+                      [36m</div>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-suffix"[39m
+                      [36m>[39m
+                        [36m<span[39m
+                          [33maria-label[39m=[32m"down"[39m
+                          [33mclass[39m=[32m"anticon anticon-down"[39m
+                          [33mrole[39m=[32m"img"[39m
+                        [36m>[39m
+                          [36m<svg[39m
+                            [33maria-hidden[39m=[32m"true"[39m
+                            [33mdata-icon[39m=[32m"down"[39m
+                            [33mfill[39m=[32m"currentColor"[39m
+                            [33mfocusable[39m=[32m"false"[39m
+                            [33mheight[39m=[32m"1em"[39m
+                            [33mviewBox[39m=[32m"64 64 896 896"[39m
+                            [33mwidth[39m=[32m"1em"[39m
+                          [36m>[39m
+                            [36m<path[39m
+                              [33md[39m=[32m"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6
+.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"[39
+m
+                            [36m/>[39m
+                          [36m</svg>[39m
+                        [36m</span>[39m
+                      [36m</div>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"reviewerId"[39m
+                  [33mtitle[39m=[32m"异人复核员"[39m
+                [36m>[39m
+                  [0m异人复核员[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-focused ant-select-single ant-select-show-arrow ant-select-o
+pen"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-select-placeholder"[39m
+                          [33mstyle[39m=[32m"visibility: visible;"[39m
+ ...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"计划字段补录"[39m
+      [33mclass[39m=[32m"plan-supplement-form"[39m
+    [36m>[39m
+      [36m<h5[39m
+        [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-root"[39m
+      [36m>[39m
+        [0m字段补录[0m
+      [36m</h5>[39m
+      [36m<form[39m
+        [33mclass[39m=[32m"ant-form ant-form-vertical css-var-root ant-form-css-var css-dev-only-do-not-override-ry7
+cab"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-supplement-grid"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-has-success ant-form-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"trackNo"[39m
+                  [33mtitle[39m=[32m"股道"[39m
+                [36m>[39m
+                  [0m股道[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item ant-select-status-su
+ccess css-var-root ant-select-css-var css-dev-only-do-not-override-ry7cab ant-select-single ant-select-show-arrow"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content ant-select-content-has-value"[39m
+                        [33mtitle[39m=[32m"T1"[39m
+                      [36m>[39m
+                        [0mT1[0m
+                        [36m<input[39m
+                          [33maria-autocomplete[39m=[32m"list"[39m
+                          [33maria-expanded[39m=[32m"false"[39m
+                          [33maria-haspopup[39m=[32m"listbox"[39m
+                          [33maria-label[39m=[32m"补录股道"[39m
+                          [33maria-required[39m=[32m"true"[39m
+                          [33mautocomplete[39m=[32m"new-password"[39m
+                          [33mclass[39m=[32m"ant-select-input"[39m
+                          [33mid[39m=[32m"trackNo"[39m
+                          [33mreadonly[39m=[32m""[39m
+                          [33mrole[39m=[32m"combobox"[39m
+                          [33mtype[39m=[32m"text"[39m
+                          [33mvalue[39m=[32m""[39m
+                        [36m/>[39m
+                      [36m</div>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-suffix"[39m
+                      [36m>[39m
+                        [36m<span[39m
+                          [33maria-label[39m=[32m"down"[39m
+                          [33mclass[39m=[32m"anticon anticon-down"[39m
+                          [33mrole[39m=[32m"img"[39m
+                        [36m>[39m
+                          [36m<svg[39m
+                            [33maria-hidden[39m=[32m"true"[39m
+                            [33mdata-icon[39m=[32m"down"[39m
+                            [33mfill[39m=[32m"currentColor"[39m
+                            [33mfocusable[39m=[32m"false"[39m
+                            [33mheight[39m=[32m"1em"[39m
+                            [33mviewBox[39m=[32m"64 64 896 896"[39m
+                            [33mwidth[39m=[32m"1em"[39m
+                          [36m>[39m
+                            [36m<path[39m
+                              [33md[39m=[32m"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6
+.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"[39
+m
+                            [36m/>[39m
+                          [36m</svg>[39m
+                        [36m</span>[39m
+                      [36m</div>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"reviewerId"[39m
+                  [33mtitle[39m=[32m"异人复核员"[39m
+                [36m>[39m
+                  [0m异人复核员[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-focused ant-select-single ant-select-show-arrow ant-select-o
+pen"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-select-placeholder"[39m
+                          [33mstyle[39m=[32m"visibility: visible;"[39m
+ ...
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163
+:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ chooseOption src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:71:18
+     69|   await user.click(screen.getByRole('combobox', { name }));
+     70|   await user.click(
+     71|     await screen.findByText(label, { selector: '.ant-select-item-optio…
+       |                  ^
+     72|   );
+     73| }
+ ❯ fillForm src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:78:3
+ ❯ src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:165:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/13]⎯
+
+ FAIL  src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx > SupplementPlanForm > returns success
+only through the callback boundary without faking domain success
+TestingLibraryElementError: Unable to find an element with the text: USER-001, which matches selector '.ant-select-item
+-option-content'. This could be because the text is broken up by multiple elements. In this case, you can provide a fun
+ction for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"计划字段补录"[39m
+      [33mclass[39m=[32m"plan-supplement-form"[39m
+    [36m>[39m
+      [36m<h5[39m
+        [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-root"[39m
+      [36m>[39m
+        [0m字段补录[0m
+      [36m</h5>[39m
+      [36m<form[39m
+        [33mclass[39m=[32m"ant-form ant-form-vertical css-var-root ant-form-css-var css-dev-only-do-not-override-ry7
+cab"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-supplement-grid"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-has-success ant-form-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"trackNo"[39m
+                  [33mtitle[39m=[32m"股道"[39m
+                [36m>[39m
+                  [0m股道[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item ant-select-status-su
+ccess css-var-root ant-select-css-var css-dev-only-do-not-override-ry7cab ant-select-single ant-select-show-arrow"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content ant-select-content-has-value"[39m
+                        [33mtitle[39m=[32m"T1"[39m
+                      [36m>[39m
+                        [0mT1[0m
+                        [36m<input[39m
+                          [33maria-autocomplete[39m=[32m"list"[39m
+                          [33maria-expanded[39m=[32m"false"[39m
+                          [33maria-haspopup[39m=[32m"listbox"[39m
+                          [33maria-label[39m=[32m"补录股道"[39m
+                          [33maria-required[39m=[32m"true"[39m
+                          [33mautocomplete[39m=[32m"new-password"[39m
+                          [33mclass[39m=[32m"ant-select-input"[39m
+                          [33mid[39m=[32m"trackNo"[39m
+                          [33mreadonly[39m=[32m""[39m
+                          [33mrole[39m=[32m"combobox"[39m
+                          [33mtype[39m=[32m"text"[39m
+                          [33mvalue[39m=[32m""[39m
+                        [36m/>[39m
+                      [36m</div>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-suffix"[39m
+                      [36m>[39m
+                        [36m<span[39m
+                          [33maria-label[39m=[32m"down"[39m
+                          [33mclass[39m=[32m"anticon anticon-down"[39m
+                          [33mrole[39m=[32m"img"[39m
+                        [36m>[39m
+                          [36m<svg[39m
+                            [33maria-hidden[39m=[32m"true"[39m
+                            [33mdata-icon[39m=[32m"down"[39m
+                            [33mfill[39m=[32m"currentColor"[39m
+                            [33mfocusable[39m=[32m"false"[39m
+                            [33mheight[39m=[32m"1em"[39m
+                            [33mviewBox[39m=[32m"64 64 896 896"[39m
+                            [33mwidth[39m=[32m"1em"[39m
+                          [36m>[39m
+                            [36m<path[39m
+                              [33md[39m=[32m"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6
+.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"[39
+m
+                            [36m/>[39m
+                          [36m</svg>[39m
+                        [36m</span>[39m
+                      [36m</div>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"reviewerId"[39m
+                  [33mtitle[39m=[32m"异人复核员"[39m
+                [36m>[39m
+                  [0m异人复核员[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-focused ant-select-single ant-select-show-arrow ant-select-o
+pen"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-select-placeholder"[39m
+                          [33mstyle[39m=[32m"visibility: visible;"[39m
+ ...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33maria-label[39m=[32m"计划字段补录"[39m
+      [33mclass[39m=[32m"plan-supplement-form"[39m
+    [36m>[39m
+      [36m<h5[39m
+        [33mclass[39m=[32m"ant-typography css-dev-only-do-not-override-ry7cab css-var-root"[39m
+      [36m>[39m
+        [0m字段补录[0m
+      [36m</h5>[39m
+      [36m<form[39m
+        [33mclass[39m=[32m"ant-form ant-form-vertical css-var-root ant-form-css-var css-dev-only-do-not-override-ry7
+cab"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"plan-supplement-grid"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-has-success ant-form-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"trackNo"[39m
+                  [33mtitle[39m=[32m"股道"[39m
+                [36m>[39m
+                  [0m股道[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item ant-select-status-su
+ccess css-var-root ant-select-css-var css-dev-only-do-not-override-ry7cab ant-select-single ant-select-show-arrow"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content ant-select-content-has-value"[39m
+                        [33mtitle[39m=[32m"T1"[39m
+                      [36m>[39m
+                        [0mT1[0m
+                        [36m<input[39m
+                          [33maria-autocomplete[39m=[32m"list"[39m
+                          [33maria-expanded[39m=[32m"false"[39m
+                          [33maria-haspopup[39m=[32m"listbox"[39m
+                          [33maria-label[39m=[32m"补录股道"[39m
+                          [33maria-required[39m=[32m"true"[39m
+                          [33mautocomplete[39m=[32m"new-password"[39m
+                          [33mclass[39m=[32m"ant-select-input"[39m
+                          [33mid[39m=[32m"trackNo"[39m
+                          [33mreadonly[39m=[32m""[39m
+                          [33mrole[39m=[32m"combobox"[39m
+                          [33mtype[39m=[32m"text"[39m
+                          [33mvalue[39m=[32m""[39m
+                        [36m/>[39m
+                      [36m</div>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-suffix"[39m
+                      [36m>[39m
+                        [36m<span[39m
+                          [33maria-label[39m=[32m"down"[39m
+                          [33mclass[39m=[32m"anticon anticon-down"[39m
+                          [33mrole[39m=[32m"img"[39m
+                        [36m>[39m
+                          [36m<svg[39m
+                            [33maria-hidden[39m=[32m"true"[39m
+                            [33mdata-icon[39m=[32m"down"[39m
+
+ Test Files  4 failed | 1 passed (5)
+      Tests  13 failed | 22 passed (35)
+   Start at  21:58:10
+   Duration  27.54s (transform 1.07s, setup 1.16s, import 21.68s, tests 42.49s, environment 9.72s)
+
+                            [33mfill[39m=[32m"currentColor"[39m
+                            [33mfocusable[39m=[32m"false"[39m
+                            [33mheight[39m=[32m"1em"[39m
+                            [33mviewBox[39m=[32m"64 64 896 896"[39m
+                            [33mwidth[39m=[32m"1em"[39m
+                          [36m>[39m
+                            [36m<path[39m
+                              [33md[39m=[32m"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6
+.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"[39
+m
+                            [36m/>[39m
+                          [36m</svg>[39m
+                        [36m</span>[39m
+                      [36m</div>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-form-item css-var-root ant-form-css-var css-dev-only-do-not-override-ry7cab ant-f
+orm-item-vertical"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-row ant-form-item-row css-dev-only-do-not-override-ry7cab css-var-root"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-label css-dev-only-do-not-override-ry7cab css-var-root"[39
+m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"ant-form-item-required"[39m
+                  [33mfor[39m=[32m"reviewerId"[39m
+                  [33mtitle[39m=[32m"异人复核员"[39m
+                [36m>[39m
+                  [0m异人复核员[0m
+                [36m</label>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-col ant-form-item-control css-dev-only-do-not-override-ry7cab css-var-root"[
+39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"ant-form-item-control-input"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-form-item-control-input-content"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-select ant-select-outlined ant-select-in-form-item css-var-root ant-sel
+ect-css-var css-dev-only-do-not-override-ry7cab ant-select-focused ant-select-single ant-select-show-arrow ant-select-o
+pen"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"ant-select-content"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-select-placeholder"[39m
+                          [33mstyle[39m=[32m"visibility: visible;"[39m
+ ...
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163
+:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ chooseOption src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:71:18
+     69|   await user.click(screen.getByRole('combobox', { name }));
+     70|   await user.click(
+     71|     await screen.findByText(label, { selector: '.ant-select-item-optio…
+       |                  ^
+     72|   );
+     73| }
+ ❯ fillForm src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:78:3
+ ❯ src/features/plan-entry/components/__tests__/SupplementPlanForm.test.tsx:177:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/13]⎯

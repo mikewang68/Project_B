@@ -1,0 +1,70 @@
+﻿
+ RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+ ❯ src/features/task-decomposition/__tests__/commands.test.ts (0 test)
+vitest.CMD :
+所在位置 行:2 字符: 109
++ ...  $env:Path; & .\node_modules\.bin\vitest.CMD run src/features/task-de ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/task-decomposition/__tests__/commands.test.ts [ src/features/task-decomposition/__tests__/commands.
+test.ts ]
+Error: Failed to resolve import "../commands" from "src/features/task-decomposition/__tests__/commands.test.ts". Does t
+he file exist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/features/task-decomposition/__tests__/commands.test.
+ts:13:7
+  5  |  import { createDemoStore } from "../../../stores";
+  6  |  import { calculateReceptionRecommendation, recommendationDraftSchema } from "../../recommendation";
+  7  |  import { createTaskDecompositionCommandService, taskCommandPayloadSchema } from "../commands";
+     |                                                                                   ^
+  8  |  import { TASK_DECOMPOSITION_RULE_VERSION } from "../constants";
+  9  |  import { isC06WorkNode, isC06WorkOrder } from "../ownership";
+ ❯ TransformPluginContext._formatLog ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/
+%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%
+B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunk
+s/node.js:30366:39
+ ❯ TransformPluginContext.error ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%8
+7%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7
+%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/nod
+e.js:30363:14
+ ❯ normalizeUrl ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5
+%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/productio
+n-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27393:18
+ ❯ ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%
+84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/production-dispatch-de
+mo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:27456:30
+ ❯ TransformPluginContext.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%
+E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B
+9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks
+/node.js:27424:4
+ ❯ EnvironmentPluginContainer.transform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%
+9A/%E8%87%AA%E5%B7%B1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%
+A1%B9%E7%9B%AE/production-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/ch
+unks/node.js:30151:14
+ ❯ loadAndTransform ../../../../../../%E9%AD%94%E6%B3%95%E5%85%A5%E9%97%A8%E4%B8%8E%E7%B2%BE%E9%80%9A/%E8%87%AA%E5%B7%B
+1%E5%86%99%E7%9A%84%E7%A5%9E%E5%A5%87%E7%8E%A9%E5%BA%94/%E7%A0%94%E7%A9%B6/%E5%B7%A5%E4%BD%9C/B%E9%A1%B9%E7%9B%AE/produ
+ction-dispatch-demo/node_modules/.pnpm/vite@8.1.4_@types+node@26.1.1/node_modules/vite/dist/node/chunks/node.js:20098:2
+6
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  16:05:27
+ Duration  2.26s (transform 29ms, setup 181ms, import 0ms, tests 0ms, environment 1.61s)
+
+--- Task 6 TD-05 RED ---
+
+Command: vitest run src/features/task-decomposition/__tests__/commands.test.ts
+Observed: 22 TD-05 tests failed and 16 earlier command tests passed.
+Primary failure: "TD-05 is implemented by a later C06 task."
+Coverage introduced before production code: confirmation preconditions, exact atomic
+DECOMPOSED/READY result, frozen DO-001/DO-005 transitions, all five post-API version
+families, force-stop, malformed/failed API-007, workflow preservation, and resource-type
+catalog validation.

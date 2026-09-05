@@ -1,0 +1,25 @@
+COMMAND: pnpm test -- --run src/mocks/__tests__/fixtures.test.ts src/mocks/__tests__/scenarios.test.ts src/mocks/__tests__/handlers.test.ts
+STARTED_AT: 2026-07-19T16:54:13.767+08:00
+ENDED_AT: 2026-07-19T16:54:24.429+08:00
+EXIT_CODE: 1
+EXPECTED_RED: true
+OUTPUT_BEGIN
+$ vitest run "--" "--run" "src/mocks/__tests__/fixtures.test.ts" "src/mocks/__tests__/scenarios.test.ts" "src/mocks/__tests__/handlers.test.ts"
+
+RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+FAIL  src/mocks/__tests__/fixtures.test.ts
+Error: Failed to resolve import "../fixtures" from "src/mocks/__tests__/fixtures.test.ts". Does the file exist?
+
+FAIL  src/mocks/__tests__/handlers.test.ts
+Error: Failed to resolve import "../scenarios" from "src/mocks/__tests__/handlers.test.ts". Does the file exist?
+
+FAIL  src/mocks/__tests__/scenarios.test.ts
+Error: Failed to resolve import "../scenarios" from "src/mocks/__tests__/scenarios.test.ts". Does the file exist?
+
+Test Files  3 failed | 7 passed (10)
+Tests       19 passed (19)
+Duration    9.26s
+
+[ELIFECYCLE] Test failed. See above for more details.
+OUTPUT_END

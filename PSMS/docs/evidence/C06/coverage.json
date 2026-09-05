@@ -1,0 +1,448 @@
+{
+  "module": "C06",
+  "pages": ["UI-004"],
+  "selectors": ["selectCargoSummary", "selectRuleExplanation", "selectTaskTree"],
+  "apis": ["API-007"],
+  "actions": ["TD-01", "TD-02", "TD-03", "TD-04", "TD-05"],
+  "scenarios": ["SCN-01", "SCN-05", "AT-TOS-004"],
+  "uiStates": ["loading", "empty", "business-error", "network-error", "forbidden", "not-found"],
+  "progressStates": ["EMPTY", "GENERATED", "EDITED", "READY"],
+  "e2eExpected": 4,
+  "screenshotsExpected": 8,
+  "checks": [
+    {
+      "requirement": "strict ownership / WorkOrder",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ownership.test.ts",
+      "name": "requires plan, both WorkOrder prefixes, and the frozen rule version together",
+      "status": "PASS"
+    },
+    {
+      "requirement": "strict ownership / WorkNode",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ownership.test.ts",
+      "name": "requires both WorkNode prefixes and rejects legacy near-matches",
+      "status": "PASS"
+    },
+    {
+      "requirement": "graph invariants / valid one-to-one graph",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ownership.test.ts",
+      "name": "strictly parses, clone-freezes, and returns a valid one-to-one graph",
+      "status": "PASS"
+    },
+    {
+      "requirement": "graph invariants / uniqueness",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ownership.test.ts",
+      "name": "rejects duplicate WorkOrder id",
+      "status": "PASS"
+    },
+    {
+      "requirement": "graph invariants / contiguous sequence",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ownership.test.ts",
+      "name": "rejects noncontiguous sequence",
+      "status": "PASS"
+    },
+    {
+      "requirement": "graph invariants / no orphan",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ownership.test.ts",
+      "name": "rejects orphan parent",
+      "status": "PASS"
+    },
+    {
+      "requirement": "graph invariants / no cycle",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ownership.test.ts",
+      "name": "rejects cycle",
+      "status": "PASS"
+    },
+    {
+      "requirement": "graph invariants / one-to-one pair",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ownership.test.ts",
+      "name": "rejects mismatched pair",
+      "status": "PASS"
+    },
+    {
+      "requirement": "cargo route / FLY_ASH",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ruleEngine.test.ts",
+      "name": "uses the frozen FLY_ASH four-stage route",
+      "status": "PASS"
+    },
+    {
+      "requirement": "cargo route / CEMENT",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ruleEngine.test.ts",
+      "name": "uses the frozen CEMENT four-stage route",
+      "status": "PASS"
+    },
+    {
+      "requirement": "cargo route / STEEL",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ruleEngine.test.ts",
+      "name": "uses the frozen STEEL four-stage route",
+      "status": "PASS"
+    },
+    {
+      "requirement": "cargo route / GENERAL_CARGO",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/ruleEngine.test.ts",
+      "name": "uses the frozen GENERAL_CARGO four-stage route",
+      "status": "PASS"
+    },
+    {
+      "requirement": "AT-TOS-004 disclosure and deterministic projection",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/selectors.test.ts",
+      "name": "projects frozen cargo facts, stable mapping, rules, task tree, and real resource states",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API-007 exact method, path, and body",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/gateway.test.ts",
+      "name": "posts only the exact frozen API-007 ruleVersion and mode body",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API-007 strict failure envelope",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/gateway.test.ts",
+      "name": "returns a strict API failure envelope without writing or reshaping it",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API-007 response identity / apiId",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/gateway.test.ts",
+      "name": "rejects wrong apiId",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API-007 response identity / operationId",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/gateway.test.ts",
+      "name": "rejects wrong operationId",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API-007 response identity / one matching Plan",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/gateway.test.ts",
+      "name": "rejects wrong Plan id",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API-007 strict success envelope",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/gateway.test.ts",
+      "name": "rejects extra success data",
+      "status": "PASS"
+    },
+    {
+      "requirement": "selectCargoSummary",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/selectors.test.ts",
+      "name": "projects frozen cargo facts, stable mapping, rules, task tree, and real resource states",
+      "status": "PASS"
+    },
+    {
+      "requirement": "selectRuleExplanation",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/selectors.test.ts",
+      "name": "projects frozen cargo facts, stable mapping, rules, task tree, and real resource states",
+      "status": "PASS"
+    },
+    {
+      "requirement": "selectTaskTree",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/selectors.test.ts",
+      "name": "keeps the C06 READY read model visible after Plan becomes DECOMPOSED",
+      "status": "PASS"
+    },
+    {
+      "requirement": "AREA-A masking before parsing or counting",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/selectors.test.ts",
+      "name": "strictly parses the C05 draft in scope but filters AREA-A before parsing or counting",
+      "status": "PASS"
+    },
+    {
+      "requirement": "TD-01 AUTO",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "generates four strict C06 DRAFT/WAITING pairs atomically and appends one TD-01 audit",
+      "status": "PASS"
+    },
+    {
+      "requirement": "TD-02 SPLIT",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "runs TD-02 through task:edit, sends only SPLIT mode, rewires the tree, and records reason",
+      "status": "PASS"
+    },
+    {
+      "requirement": "TD-03 MERGE",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "runs TD-03 only for a valid direct pair and records merge provenance",
+      "status": "PASS"
+    },
+    {
+      "requirement": "TD-04 REGENERATE",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "regenerates only current-plan C06 DRAFT pairs as G002 and preserves history/audits",
+      "status": "PASS"
+    },
+    {
+      "requirement": "TD-05 CONFIRM",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "confirms one complete draft atomically without assigning resource instances",
+      "status": "PASS"
+    },
+    {
+      "requirement": "permission / DISPATCHER task:view",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.permission.test.tsx",
+      "name": "DISPATCHER uses frozen task:view policy and sees the workspace",
+      "status": "PASS"
+    },
+    {
+      "requirement": "permission / SHIFT_LEADER task:view",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.permission.test.tsx",
+      "name": "SHIFT_LEADER uses frozen task:view policy and sees the workspace",
+      "status": "PASS"
+    },
+    {
+      "requirement": "permission / BUSINESS forbidden",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.permission.test.tsx",
+      "name": "blocks BUSINESS before lazy page behavior or API calls",
+      "status": "PASS"
+    },
+    {
+      "requirement": "permission / task:decompose, task:edit, and AREA-B denial",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "rejects missing prerequisites, unauthorized role, and AREA-B before API with one audit each",
+      "status": "PASS"
+    },
+    {
+      "requirement": "version snapshot / Resource after API",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "returns DEMO-VERSION-001 after API when a participating Resource version drifts",
+      "status": "PASS"
+    },
+    {
+      "requirement": "version snapshot / Plan",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "maps post-API Plan drift to DEMO-VERSION-001 without a partial confirmation",
+      "status": "PASS"
+    },
+    {
+      "requirement": "version snapshot / RecommendationDraft",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "maps post-API RecommendationDraft drift to DEMO-VERSION-001 without a partial confirmation",
+      "status": "PASS"
+    },
+    {
+      "requirement": "version snapshot / WorkOrder",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "maps post-API WorkOrder drift to DEMO-VERSION-001 without a partial confirmation",
+      "status": "PASS"
+    },
+    {
+      "requirement": "version snapshot / WorkNode",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "maps post-API WorkNode drift to DEMO-VERSION-001 without a partial confirmation",
+      "status": "PASS"
+    },
+    {
+      "requirement": "SCN-05 force-stop before write",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "blocks SCN-05 force-stop before API with TOS-IL-001 and no task write",
+      "status": "PASS"
+    },
+    {
+      "requirement": "SCN-05 force-stop before TD-05",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "blocks TD-05 force-stop before API and keeps the DRAFT generation intact",
+      "status": "PASS"
+    },
+    {
+      "requirement": "idempotent replay",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "replays the first frozen result for the same commandId without another API, commit, workflow, or audit",
+      "status": "PASS"
+    },
+    {
+      "requirement": "one deterministic audit per outcome",
+      "kind": "vitest",
+      "file": "src/features/task-decomposition/__tests__/commands.test.ts",
+      "name": "generates four strict C06 DRAFT/WAITING pairs atomically and appends one TD-01 audit",
+      "status": "PASS"
+    },
+    {
+      "requirement": "API-025 reset",
+      "kind": "vitest",
+      "file": "src/runtime/__tests__/runtime.test.tsx",
+      "name": "resets C05/C06 domain and workflow state only through API-025 and restarts C06 IDs at G001",
+      "status": "PASS"
+    },
+    {
+      "requirement": "UI state / empty",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.render.test.tsx",
+      "name": "renders exact identity, frozen facts, benchmark disclosure, and EMPTY action",
+      "status": "PASS"
+    },
+    {
+      "requirement": "UI states / loading and network-error",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.permission.test.tsx",
+      "name": "shows loading for unresolved API-007 and network-error with retry for failed/malformed envelopes",
+      "status": "PASS"
+    },
+    {
+      "requirement": "UI state / business-error",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.permission.test.tsx",
+      "name": "shows business-error when the confirmed C05 prerequisite is missing",
+      "status": "PASS"
+    },
+    {
+      "requirement": "UI state / forbidden",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.permission.test.tsx",
+      "name": "blocks BUSINESS before lazy page behavior or API calls",
+      "status": "PASS"
+    },
+    {
+      "requirement": "UI state / not-found",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.permission.test.tsx",
+      "name": "returns safe not-found for AREA-B and unknown Plan without leaking task facts",
+      "status": "PASS"
+    },
+    {
+      "requirement": "progress / GENERATED",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.action.test.tsx",
+      "name": "runs TD-01 from EMPTY and shows deterministic tree plus trace/audit feedback",
+      "status": "PASS"
+    },
+    {
+      "requirement": "progress / EDITED",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.action.test.tsx",
+      "name": "splits a selected node, and preserves target/reason with retry when API-007 fails",
+      "status": "PASS"
+    },
+    {
+      "requirement": "progress / READY and UI-005 boundary",
+      "kind": "vitest",
+      "file": "src/pages/__tests__/TaskDecompositionPage.action.test.tsx",
+      "name": "regenerates with explicit G001 warning, then confirms DECOMPOSED/READY without dispatching",
+      "status": "PASS"
+    },
+    {
+      "requirement": "E2E 1 / SCN-01 mainline",
+      "kind": "playwright",
+      "file": "e2e/ui-004-task-decomposition.spec.ts",
+      "name": "UI-004 SCN-01 generates deterministic tasks and confirms READY without dispatching",
+      "status": "PASS"
+    },
+    {
+      "requirement": "E2E 2 / split, merge, regenerate",
+      "kind": "playwright",
+      "file": "e2e/ui-004-task-decomposition.spec.ts",
+      "name": "UI-004 SCN-01 edits, merges, splits again, and regenerates G002",
+      "status": "PASS"
+    },
+    {
+      "requirement": "E2E 3 / authorization, scope, version, replay",
+      "kind": "playwright",
+      "file": "e2e/ui-004-task-decomposition.spec.ts",
+      "name": "UI-004 enforces authorization, data scope, version recovery, and replay guards",
+      "status": "PASS"
+    },
+    {
+      "requirement": "E2E 4 / API recovery and SCN-05",
+      "kind": "playwright",
+      "file": "e2e/ui-004-task-decomposition.spec.ts",
+      "name": "UI-004 recovers API-007 transport failure and blocks SCN-05 before API with UI-009 entry",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / GENERATED 1440",
+      "kind": "screenshot",
+      "file": "docs/evidence/C06/C06-UI004-SCN01-GENERATED-1440x900.png",
+      "name": "GENERATED / G001 original-resolution inspection (1440x1581)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / GENERATED 1280",
+      "kind": "screenshot",
+      "file": "docs/evidence/C06/C06-UI004-SCN01-GENERATED-1280x720.png",
+      "name": "GENERATED / G001 original-resolution inspection (1280x2271)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / READY 1440",
+      "kind": "screenshot",
+      "file": "docs/evidence/C06/C06-UI004-SCN01-READY-1440x900.png",
+      "name": "READY / G001 original-resolution inspection (1440x1670)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / READY 1280",
+      "kind": "screenshot",
+      "file": "docs/evidence/C06/C06-UI004-SCN01-READY-1280x720.png",
+      "name": "READY / G001 original-resolution inspection (1280x2360)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / EDITED 1440",
+      "kind": "screenshot",
+      "file": "docs/evidence/C06/C06-UI004-SCN01-EDITED-1440x900.png",
+      "name": "EDITED / split G001 original-resolution inspection (1440x1729)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / EDITED 1280",
+      "kind": "screenshot",
+      "file": "docs/evidence/C06/C06-UI004-SCN01-EDITED-1280x720.png",
+      "name": "EDITED / split G001 original-resolution inspection (1280x2507)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / REGENERATED 1440",
+      "kind": "screenshot",
+      "file": "docs/evidence/C06/C06-UI004-SCN01-REGENERATED-1440x900.png",
+      "name": "REGENERATED / G002 original-resolution inspection (1440x1581)",
+      "status": "PASS"
+    },
+    {
+      "requirement": "screenshot / REGENERATED 1280",
+      "kind": "screenshot",
+      "file": "docs/evidence/C06/C06-UI004-SCN01-REGENERATED-1280x720.png",
+      "name": "REGENERATED / G002 original-resolution inspection (1280x2271)",
+      "status": "PASS"
+    }
+  ]
+}

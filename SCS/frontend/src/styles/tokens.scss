@@ -1,0 +1,47 @@
+:root {
+  --color-primary: #315fa8;
+  --color-primary-hover: #284f8d;
+  --color-primary-soft: #edf3fc;
+  --color-primary-faint: #f5f8fd;
+  --color-page: #f3f6f9;
+  --color-surface: #ffffff;
+  --color-text: #172033;
+  --color-text-secondary: #647085;
+  --color-text-tertiary: #929bad;
+  --color-border: #e6eaf0;
+  --color-border-strong: #d9dfe8;
+  --color-success: #2d8b6f;
+  --color-success-soft: #edf8f4;
+  --color-warning: #c58a2a;
+  --color-warning-soft: #fff8ea;
+  --color-danger: #d6474f;
+  --color-danger-soft: #fff1f2;
+  --sidebar-width: 252px;
+  --header-height: 96px;
+  --radius-button: 11px;
+  --radius-card: 18px;
+  --radius-large: 22px;
+  --shadow-card: 0 10px 30px rgb(31 45 67 / 6%);
+  --shadow-float: 0 18px 45px rgb(31 45 67 / 12%);
+  --el-color-primary: var(--color-primary);
+  --el-color-primary-light-3: #6485ba;
+  --el-color-primary-light-5: #91aad0;
+  --el-color-primary-light-8: #e3ebf7;
+  --el-color-primary-light-9: #f2f6fb;
+  --el-border-radius-base: var(--radius-button);
+  --el-font-size-base: 14px;
+}
+
+* { box-sizing: border-box; }
+html, body, #app { min-height: 100%; margin: 0; }
+body {
+  color: var(--color-text);
+  background: var(--color-page);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; }
+button { color: inherit; }
+a { color: inherit; text-decoration: none; }
+b, strong { font-weight: 650; }

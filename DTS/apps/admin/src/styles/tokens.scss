@@ -1,0 +1,70 @@
+// =====================================================
+// B项目 DT 设计令牌
+// 对齐《云服务器云底座与前端统一技术栈及系统基线清单》表15色板
+// =====================================================
+
+:root {
+  // ── 字体 ──
+  --font-family: 'Source Han Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-mono: 'Roboto Mono', 'Consolas', monospace;
+
+  // ── 间距（4px 网格）──
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  // ── 圆角 ──
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  // ── 字号（PC 基线）──
+  --font-size-body: 14px;
+  --font-size-form: 14px;
+  --font-size-page-title: 24px;
+  --font-size-panel-title: 20px;
+}
+
+// ── 深色主题（大屏/三维/DT默认）──
+:root,
+[data-theme='dark'] {
+  --bg-primary: #071228; // 深色主背景
+  --bg-panel: #13243a; // 深色面板
+  --bg-panel-alt: #17324d; // 深色面板次级
+  --brand: #065a82; // 品牌主色（高原蓝）
+  --highlight: #00e5ff; // 高亮青（选中/实时数据/关键连线）
+  --accent-blue: #2b6fe0; // 次级蓝（维护状态/次级操作）
+  --text-primary: #fff; // 深色主题主要文字
+  --text-secondary: #a9c6f5; // 深色主题说明和轴标签
+  --border-color: #1e3a5f;
+
+  // ── 状态色 ──
+  --status-ok: #34d399; // 运行正常/完成
+  --status-warn: #f5b84c; // 一般告警/待处理
+  --status-serious: #f97316; // 严重告警
+  --status-error: #ef4444; // 紧急告警/故障/破坏性操作
+  --status-offline: #64748b; // 离线/未知/停用
+  --status-ai: #8067d8; // AI推理/特殊算法
+}
+
+// ── 浅色主题（PC管理端）──
+[data-theme='light'] {
+  --bg-primary: #f7faff; // 浅色背景
+  --bg-panel: #fff; // 浅色表面
+  --bg-panel-alt: #eaf0f8;
+  --brand: #065a82;
+  --highlight: #00a8cc;
+  --accent-blue: #2b6fe0;
+  --text-primary: #13243a; // 浅色主题标题与正文
+  --text-secondary: #5a6b7e;
+  --border-color: #d8e0ea;
+  --status-ok: #10b981;
+  --status-warn: #f59e0b;
+  --status-serious: #f97316;
+  --status-error: #dc2626;
+  --status-offline: #6b7280;
+  --status-ai: #7c5cd8;
+}

@@ -1,0 +1,6 @@
+{
+  "name": "b-project-safety-gate",
+  "private": true,
+  "version": "0.2.0",
+  "packageManager": "pnpm@10.34.5"
+}

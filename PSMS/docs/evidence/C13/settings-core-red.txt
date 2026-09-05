@@ -1,0 +1,52 @@
+C13 system settings core TDD RED evidence
+date: 2026-07-22
+
+Cycle 1: projection, query, and draft
+--------------------------------------
+command: node_modules\.bin\vitest.CMD run src/features/system-settings/__tests__/systemSettingsProjection.test.ts src/features/system-settings/__tests__/systemSettingsQueries.test.ts src/features/system-settings/__tests__/systemSettingsDraft.test.ts
+exitCode: 1
+testFiles: 3 failed (3)
+tests: no tests imported
+duration: 2.65s
+
+Expected failure:
+All three suites failed during import because the production feature entry point did not exist:
+`Failed to resolve import "../index"`.
+This is the intended RED for the missing system-settings projection, query, and draft behavior. No existing assertion or fixture failed.
+
+Cycle 2: API-022/023 Gateway and C13 fault mapping
+--------------------------------------------------
+command: node_modules\.bin\vitest.CMD run src/features/system-settings/__tests__/systemSettingsGateway.test.ts src/mocks/__tests__/handlers.test.ts
+exitCode: 1
+testFiles: 2 failed (2)
+tests: 19 failed, 23 passed (42)
+duration: 3.59s
+
+Expected failures:
+- all 18 new Gateway assertions failed because `createSystemSettingsGateway` was not yet exported;
+- the one new handler assertion failed because `x-demo-c13-fault: network` still returned the normal API-022 200 response;
+- the pre-existing 23 handler assertions passed, proving no unrelated handler regression caused RED.
+
+Cycle 3: workflow and atomic command service
+--------------------------------------------
+command: node_modules\.bin\vitest.CMD run src/features/system-settings/__tests__/systemSettingsRuntime.test.ts src/features/system-settings/__tests__/systemSettingsCommands.test.ts
+exitCode: 1
+testFiles: 2 failed (2)
+tests: 18 failed (18)
+duration: 3.35s
+
+Expected failure:
+Every new test failed at the missing `createSystemSettingsWorkflowStore` export. The tests reached the intended missing production boundary before any Gateway, Store, or audit assertion could run.
+
+Cycle 4: shared runtime and authorized external reset
+-----------------------------------------------------
+command: node_modules\.bin\vitest.CMD run src/runtime/__tests__/runtime.test.tsx src/features/system-settings/__tests__/systemSettingsIntegration.test.ts
+exitCode: 1
+testFiles: 2 failed (2)
+tests: 2 failed, 14 passed (16)
+duration: 5.01s
+
+Expected failures:
+- the runtime probe received `undefined` instead of `runtime.systemSettings`;
+- the reset integration stopped when reading `runtime.systemSettings.commands`;
+- all 14 pre-existing shared-runtime assertions passed.

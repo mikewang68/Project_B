@@ -1,0 +1,4581 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "B项目生产调度管理模块网页Demo Mock API",
+    "version": "0.2.0",
+    "description": "仅用于本地网页Demo，不连接生产系统。"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "MSW browser worker"
+    }
+  ],
+  "paths": {
+    "/mock/overview": {
+      "get": {
+        "operationId": "GET_mock_overview",
+        "summary": "UI-001 /mock/overview",
+        "tags": [
+          "UI-001"
+        ],
+        "x-api-id": "API-001",
+        "x-msw-path": "/mock/overview",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "description": "date 演示参数",
+            "schema": {
+              "type": "string"
+            },
+            "example": "2026-07-16T09:30:00+08:00"
+          },
+          {
+            "name": "workArea",
+            "in": "query",
+            "required": false,
+            "description": "workArea 演示参数",
+            "schema": {
+              "type": "string"
+            },
+            "example": "workArea-sample"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "OverviewSnapshot",
+                    "id": "API-001-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-001",
+                  "traceId": "TRACE-001"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-001-400",
+                  "traceId": "TRACE-001-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-001-403",
+                  "traceId": "TRACE-001-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-001-409",
+                  "traceId": "TRACE-001-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/plans": {
+      "get": {
+        "operationId": "GET_mock_plans",
+        "summary": "UI-002 /mock/plans",
+        "tags": [
+          "UI-002"
+        ],
+        "x-api-id": "API-002",
+        "x-msw-path": "/mock/plans",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Page<Plan>",
+                    "id": "API-002-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-002",
+                  "traceId": "TRACE-002"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-002-400",
+                  "traceId": "TRACE-002-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-002-403",
+                  "traceId": "TRACE-002-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-002-409",
+                  "traceId": "TRACE-002-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/plans/sync": {
+      "post": {
+        "operationId": "POST_mock_plans_sync",
+        "summary": "UI-002 /mock/plans/sync",
+        "tags": [
+          "UI-002"
+        ],
+        "x-api-id": "API-003",
+        "x-msw-path": "/mock/plans/sync",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "SyncBatch",
+                    "id": "API-003-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-003",
+                  "traceId": "TRACE-003"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-003-400",
+                  "traceId": "TRACE-003-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-003-403",
+                  "traceId": "TRACE-003-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-003-409",
+                  "traceId": "TRACE-003-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API003Request"
+              },
+              "example": {
+                "scenarioId": "SCN-01"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/plans/{id}/confirm": {
+      "post": {
+        "operationId": "POST_mock_plans_id_confirm",
+        "summary": "UI-002 /mock/plans/{id}/confirm",
+        "tags": [
+          "UI-002"
+        ],
+        "x-api-id": "API-004",
+        "x-msw-path": "/mock/plans/:id/confirm",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Plan",
+                    "id": "API-004-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-004",
+                  "traceId": "TRACE-004"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-004-400",
+                  "traceId": "TRACE-004-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-004-403",
+                  "traceId": "TRACE-004-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-004-409",
+                  "traceId": "TRACE-004-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API004Request"
+              },
+              "example": {
+                "reason": "reason-sample",
+                "supplements": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/plans/{id}/recommendation": {
+      "get": {
+        "operationId": "GET_mock_plans_id_recommendation",
+        "summary": "UI-003 /mock/plans/{id}/recommendation",
+        "tags": [
+          "UI-003"
+        ],
+        "x-api-id": "API-005",
+        "x-msw-path": "/mock/plans/:id/recommendation",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          },
+          {
+            "name": "inputVersion",
+            "in": "query",
+            "required": false,
+            "description": "inputVersion 演示参数",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Recommendation",
+                    "id": "API-005-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-005",
+                  "traceId": "TRACE-005"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-005-400",
+                  "traceId": "TRACE-005-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-005-403",
+                  "traceId": "TRACE-005-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-005-409",
+                  "traceId": "TRACE-005-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/plans/{id}/recommendation/confirm": {
+      "post": {
+        "operationId": "POST_mock_plans_id_recommendation_confirm",
+        "summary": "UI-003 /mock/plans/{id}/recommendation/confirm",
+        "tags": [
+          "UI-003"
+        ],
+        "x-api-id": "API-006",
+        "x-msw-path": "/mock/plans/:id/recommendation/confirm",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "ReceptionPlan",
+                    "id": "API-006-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-006",
+                  "traceId": "TRACE-006"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-006-400",
+                  "traceId": "TRACE-006-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-006-403",
+                  "traceId": "TRACE-006-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-006-409",
+                  "traceId": "TRACE-006-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API006Request"
+              },
+              "example": {
+                "trackNo": "TRACKNO-001",
+                "window": "window-sample",
+                "reason": "reason-sample"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/plans/{id}/decompose": {
+      "post": {
+        "operationId": "POST_mock_plans_id_decompose",
+        "summary": "UI-004 /mock/plans/{id}/decompose",
+        "tags": [
+          "UI-004"
+        ],
+        "x-api-id": "API-007",
+        "x-msw-path": "/mock/plans/:id/decompose",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "TaskTree",
+                    "id": "API-007-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-007",
+                  "traceId": "TRACE-007"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-007-400",
+                  "traceId": "TRACE-007-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-007-403",
+                  "traceId": "TRACE-007-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-007-409",
+                  "traceId": "TRACE-007-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API007Request"
+              },
+              "example": {
+                "ruleVersion": "RULE-1.0",
+                "mode": "mode-sample"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/work-orders/{id}/assign": {
+      "post": {
+        "operationId": "POST_mock_work_orders_id_assign",
+        "summary": "UI-005 /mock/work-orders/{id}/assign",
+        "tags": [
+          "UI-005"
+        ],
+        "x-api-id": "API-008",
+        "x-msw-path": "/mock/work-orders/:id/assign",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "WorkOrder",
+                    "id": "API-008-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-008",
+                  "traceId": "TRACE-008"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-008-400",
+                  "traceId": "TRACE-008-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-008-403",
+                  "traceId": "TRACE-008-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-008-409",
+                  "traceId": "TRACE-008-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API008Request"
+              },
+              "example": {
+                "resourceId": "RESOURCEID-001",
+                "reason": "reason-sample"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/work-orders/{id}/dispatch": {
+      "post": {
+        "operationId": "POST_mock_work_orders_id_dispatch",
+        "summary": "UI-005 /mock/work-orders/{id}/dispatch",
+        "tags": [
+          "UI-005"
+        ],
+        "x-api-id": "API-009",
+        "x-msw-path": "/mock/work-orders/:id/dispatch",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "DispatchReceipt",
+                    "id": "API-009-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-009",
+                  "traceId": "TRACE-009"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-009-400",
+                  "traceId": "TRACE-009-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-009-403",
+                  "traceId": "TRACE-009-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-009-409",
+                  "traceId": "TRACE-009-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API009Request"
+              },
+              "example": {
+                "target": "target-sample",
+                "simulateReceipt": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/appointments": {
+      "get": {
+        "operationId": "GET_mock_appointments",
+        "summary": "UI-006 /mock/appointments",
+        "tags": [
+          "UI-006"
+        ],
+        "x-api-id": "API-010",
+        "x-msw-path": "/mock/appointments",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "description": "role 演示参数",
+            "schema": {
+              "type": "string"
+            },
+            "example": "role-sample"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Page<Appointment>",
+                    "id": "API-010-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-010",
+                  "traceId": "TRACE-010"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-010-400",
+                  "traceId": "TRACE-010-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-010-403",
+                  "traceId": "TRACE-010-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-010-409",
+                  "traceId": "TRACE-010-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/appointments/{id}/transition": {
+      "post": {
+        "operationId": "POST_mock_appointments_id_transition",
+        "summary": "UI-006 /mock/appointments/{id}/transition",
+        "tags": [
+          "UI-006"
+        ],
+        "x-api-id": "API-011",
+        "x-msw-path": "/mock/appointments/:id/transition",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Appointment",
+                    "id": "API-011-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-011",
+                  "traceId": "TRACE-011"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-011-400",
+                  "traceId": "TRACE-011-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-011-403",
+                  "traceId": "TRACE-011-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-011-409",
+                  "traceId": "TRACE-011-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API011Request"
+              },
+              "example": {
+                "action": "action-sample",
+                "evidence": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/operations": {
+      "get": {
+        "operationId": "GET_mock_operations",
+        "summary": "UI-007 /mock/operations",
+        "tags": [
+          "UI-007"
+        ],
+        "x-api-id": "API-012",
+        "x-msw-path": "/mock/operations",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "time",
+            "in": "query",
+            "required": false,
+            "description": "time 演示参数",
+            "schema": {
+              "type": "string"
+            },
+            "example": "2026-07-16T09:30:00+08:00"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "OperationSnapshot",
+                    "id": "API-012-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-012",
+                  "traceId": "TRACE-012"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-012-400",
+                  "traceId": "TRACE-012-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-012-403",
+                  "traceId": "TRACE-012-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-012-409",
+                  "traceId": "TRACE-012-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/scenarios/{id}/play": {
+      "post": {
+        "operationId": "POST_mock_scenarios_id_play",
+        "summary": "UI-001/007/009 /mock/scenarios/{id}/play",
+        "tags": [
+          "UI-001",
+          "007",
+          "009"
+        ],
+        "x-api-id": "API-013",
+        "x-msw-path": "/mock/scenarios/:id/play",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "ScenarioState",
+                    "id": "API-013-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-013",
+                  "traceId": "TRACE-013"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-013-400",
+                  "traceId": "TRACE-013-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-013-403",
+                  "traceId": "TRACE-013-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-013-409",
+                  "traceId": "TRACE-013-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API013Request"
+              },
+              "example": {
+                "speed": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/exceptions": {
+      "get": {
+        "operationId": "GET_mock_exceptions",
+        "summary": "UI-008 /mock/exceptions",
+        "tags": [
+          "UI-008"
+        ],
+        "x-api-id": "API-014",
+        "x-msw-path": "/mock/exceptions",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Page<Exception>",
+                    "id": "API-014-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-014",
+                  "traceId": "TRACE-014"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-014-400",
+                  "traceId": "TRACE-014-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-014-403",
+                  "traceId": "TRACE-014-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-014-409",
+                  "traceId": "TRACE-014-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/exceptions/{id}/command": {
+      "post": {
+        "operationId": "POST_mock_exceptions_id_command",
+        "summary": "UI-008 /mock/exceptions/{id}/command",
+        "tags": [
+          "UI-008"
+        ],
+        "x-api-id": "API-015",
+        "x-msw-path": "/mock/exceptions/:id/command",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Exception",
+                    "id": "API-015-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-015",
+                  "traceId": "TRACE-015"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-015-400",
+                  "traceId": "TRACE-015-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-015-403",
+                  "traceId": "TRACE-015-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-015-409",
+                  "traceId": "TRACE-015-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API015Request"
+              },
+              "example": {
+                "command": "command-sample",
+                "reason": "reason-sample",
+                "evidence": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/interlocks": {
+      "get": {
+        "operationId": "GET_mock_interlocks",
+        "summary": "UI-009 /mock/interlocks",
+        "tags": [
+          "UI-009"
+        ],
+        "x-api-id": "API-016",
+        "x-msw-path": "/mock/interlocks",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Page<Interlock>",
+                    "id": "API-016-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-016",
+                  "traceId": "TRACE-016"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-016-400",
+                  "traceId": "TRACE-016-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-016-403",
+                  "traceId": "TRACE-016-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-016-409",
+                  "traceId": "TRACE-016-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/interlocks/{id}/command": {
+      "post": {
+        "operationId": "POST_mock_interlocks_id_command",
+        "summary": "UI-009 /mock/interlocks/{id}/command",
+        "tags": [
+          "UI-009"
+        ],
+        "x-api-id": "API-017",
+        "x-msw-path": "/mock/interlocks/:id/command",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Interlock",
+                    "id": "API-017-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-017",
+                  "traceId": "TRACE-017"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-017-400",
+                  "traceId": "TRACE-017-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-017-403",
+                  "traceId": "TRACE-017-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-017-409",
+                  "traceId": "TRACE-017-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API017Request"
+              },
+              "example": {
+                "command": "command-sample",
+                "receipt": {},
+                "approval": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/offline-packets": {
+      "get": {
+        "operationId": "GET_mock_offline_packets",
+        "summary": "UI-010 /mock/offline-packets",
+        "tags": [
+          "UI-010"
+        ],
+        "x-api-id": "API-018",
+        "x-msw-path": "/mock/offline-packets",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Page<OfflinePacket>",
+                    "id": "API-018-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-018",
+                  "traceId": "TRACE-018"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-018-400",
+                  "traceId": "TRACE-018-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-018-403",
+                  "traceId": "TRACE-018-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-018-409",
+                  "traceId": "TRACE-018-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/offline-packets/{id}/command": {
+      "post": {
+        "operationId": "POST_mock_offline_packets_id_command",
+        "summary": "UI-010 /mock/offline-packets/{id}/command",
+        "tags": [
+          "UI-010"
+        ],
+        "x-api-id": "API-019",
+        "x-msw-path": "/mock/offline-packets/:id/command",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "PLAN-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "OfflinePacket",
+                    "id": "API-019-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-019",
+                  "traceId": "TRACE-019"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-019-400",
+                  "traceId": "TRACE-019-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-019-403",
+                  "traceId": "TRACE-019-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-019-409",
+                  "traceId": "TRACE-019-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API019Request"
+              },
+              "example": {
+                "upload": "upload-sample",
+                "merge": "merge-sample",
+                "reject": "reject-sample",
+                "retry": "retry-sample"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/reports": {
+      "get": {
+        "operationId": "GET_mock_reports",
+        "summary": "UI-011 /mock/reports",
+        "tags": [
+          "UI-011"
+        ],
+        "x-api-id": "API-020",
+        "x-msw-path": "/mock/reports",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "type 演示参数",
+            "schema": {
+              "type": "string"
+            },
+            "example": "type-sample"
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "description": "period 演示参数",
+            "schema": {
+              "type": "string"
+            },
+            "example": "period-sample"
+          },
+          {
+            "name": "dimensions",
+            "in": "query",
+            "required": false,
+            "description": "dimensions 演示参数",
+            "schema": {
+              "type": "array"
+            },
+            "example": [
+              "workArea"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "ReportSnapshot",
+                    "id": "API-020-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-020",
+                  "traceId": "TRACE-020"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-020-400",
+                  "traceId": "TRACE-020-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-020-403",
+                  "traceId": "TRACE-020-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-020-409",
+                  "traceId": "TRACE-020-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/reports/export": {
+      "post": {
+        "operationId": "POST_mock_reports_export",
+        "summary": "UI-011 /mock/reports/export",
+        "tags": [
+          "UI-011"
+        ],
+        "x-api-id": "API-021",
+        "x-msw-path": "/mock/reports/export",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "ExportTask",
+                    "id": "API-021-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-021",
+                  "traceId": "TRACE-021"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-021-400",
+                  "traceId": "TRACE-021-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-021-403",
+                  "traceId": "TRACE-021-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-021-409",
+                  "traceId": "TRACE-021-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API021Request"
+              },
+              "example": {
+                "scope": "scope-sample",
+                "format": "2026-07-16T09:30:00+08:00",
+                "purpose": "purpose-sample"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/config": {
+      "get": {
+        "operationId": "GET_mock_config",
+        "summary": "UI-012 /mock/config",
+        "tags": [
+          "UI-012"
+        ],
+        "x-api-id": "API-022",
+        "x-msw-path": "/mock/config",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "domain",
+            "in": "query",
+            "required": false,
+            "description": "domain 演示参数",
+            "schema": {
+              "type": "string"
+            },
+            "example": "domain-sample"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/API022SuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "apiId": "API-022",
+                    "operationId": "GET_mock_config",
+                    "now": "2026-07-16T09:00:00+08:00",
+                    "scenarioId": "SCN-01",
+                    "items": [
+                      {
+                        "id": "CFG-001",
+                        "configVersion": "CFG-1.0",
+                        "displayName": "B项目生产调度 Demo",
+                        "defaultScenarioId": "SCN-01",
+                        "ruleVersion": "RULE-1.0",
+                        "dispatchStrategy": "BALANCED",
+                        "recommendationEnabled": true,
+                        "offlineSyncEnabled": true,
+                        "reportPeriod": "SHIFT",
+                        "auditRetentionDays": 180,
+                        "status": "DRAFT",
+                        "version": 1,
+                        "createdAt": "2026-07-16T08:15:00+08:00",
+                        "updatedAt": "2026-07-16T08:15:00+08:00",
+                        "updatedBy": "USER-011"
+                      }
+                    ]
+                  },
+                  "auditLogId": "AUD-022",
+                  "traceId": "TRACE-022"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-022-400",
+                  "traceId": "TRACE-022-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-022-403",
+                  "traceId": "TRACE-022-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-022-409",
+                  "traceId": "TRACE-022-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/config/{id}/command": {
+      "post": {
+        "operationId": "POST_mock_config_id_command",
+        "summary": "UI-012 /mock/config/{id}/command",
+        "tags": [
+          "UI-012"
+        ],
+        "x-api-id": "API-023",
+        "x-msw-path": "/mock/config/:id/command",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id 稳定对象标识",
+            "schema": {
+              "type": "string"
+            },
+            "example": "CFG-001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/API023SuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "apiId": "API-023",
+                    "operationId": "POST_mock_config_id_command",
+                    "now": "2026-07-16T09:00:00+08:00",
+                    "scenarioId": "SCN-01",
+                    "items": [
+                      {
+                        "id": "CFG-001",
+                        "configVersion": "CFG-1.0",
+                        "displayName": "B项目生产调度 Demo（草稿）",
+                        "defaultScenarioId": "SCN-01",
+                        "ruleVersion": "RULE-1.0",
+                        "dispatchStrategy": "BALANCED",
+                        "recommendationEnabled": true,
+                        "offlineSyncEnabled": true,
+                        "reportPeriod": "SHIFT",
+                        "auditRetentionDays": 180,
+                        "status": "DRAFT",
+                        "version": 2,
+                        "createdAt": "2026-07-16T08:15:00+08:00",
+                        "updatedAt": "2026-07-16T09:00:00+08:00",
+                        "updatedBy": "USER-011"
+                      }
+                    ]
+                  },
+                  "auditLogId": "AUD-023",
+                  "traceId": "TRACE-023"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-023-400",
+                  "traceId": "TRACE-023-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-023-403",
+                  "traceId": "TRACE-023-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-023-409",
+                  "traceId": "TRACE-023-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API023Request"
+              },
+              "example": {
+                "command": "edit",
+                "expectedVersion": 1,
+                "changes": {
+                  "displayName": "B项目生产调度 Demo（草稿）"
+                },
+                "reason": "演示配置草稿编辑"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/audit-logs": {
+      "get": {
+        "operationId": "GET_mock_audit_logs",
+        "summary": "UI-013 /mock/audit-logs",
+        "tags": [
+          "UI-013"
+        ],
+        "x-api-id": "API-024",
+        "x-msw-path": "/mock/audit-logs",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "Page<AuditLog>",
+                    "id": "API-024-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-024",
+                  "traceId": "TRACE-024"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-024-400",
+                  "traceId": "TRACE-024-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-024-403",
+                  "traceId": "TRACE-024-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-024-409",
+                  "traceId": "TRACE-024-409"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mock/demo/reset": {
+      "post": {
+        "operationId": "POST_mock_demo_reset",
+        "summary": "全部 /mock/demo/reset",
+        "tags": [
+          "全部"
+        ],
+        "x-api-id": "API-025",
+        "x-msw-path": "/mock/demo/reset",
+        "x-permission": "页面权限与数据域均通过后允许调用。",
+        "x-latency": "正常300ms；异常场景可配置500～1500ms。",
+        "x-idempotency": "命令使用对象ID、动作和expectedVersion组成幂等键。",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessEnvelope"
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "type": "DemoState",
+                    "id": "API-025-RESULT",
+                    "version": 1
+                  },
+                  "auditLogId": "AUD-025",
+                  "traceId": "TRACE-025"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "业务校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-SCENARIO-001",
+                  "message": "当前场景或状态不允许执行。",
+                  "auditLogId": "AUD-025-400",
+                  "traceId": "TRACE-025-400"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限或数据域拒绝",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "TOS-AUTH-001",
+                  "message": "权限不足或职责冲突。",
+                  "auditLogId": "AUD-025-403",
+                  "traceId": "TRACE-025-403"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                },
+                "example": {
+                  "ok": false,
+                  "errorCode": "DEMO-VERSION-001",
+                  "message": "对象版本已变化，请刷新。",
+                  "details": {
+                    "expectedVersion": 1,
+                    "actualVersion": 2
+                  },
+                  "auditLogId": "AUD-025-409",
+                  "traceId": "TRACE-025-409"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/API025Request"
+              },
+              "example": {
+                "scenarioId": "SCN-01"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CargoType": {
+        "type": "string",
+        "enum": [
+          "FLY_ASH",
+          "STEEL",
+          "CEMENT",
+          "GENERAL_CARGO"
+        ]
+      },
+      "PlanStatus": {
+        "type": "string",
+        "enum": [
+          "RECEIVED",
+          "VALIDATING",
+          "PENDING_CONFIRM",
+          "CONFIRMED",
+          "DECOMPOSED",
+          "BLOCKED",
+          "CANCELLED",
+          "ADJUSTED"
+        ]
+      },
+      "TrackOccupyStatus": {
+        "type": "string",
+        "enum": [
+          "FREE",
+          "OCCUPIED",
+          "RELEASING",
+          "BLOCKED"
+        ]
+      },
+      "WorkOrderType": {
+        "type": "string",
+        "enum": [
+          "UNLOAD",
+          "TRANSFER",
+          "LOAD",
+          "INSPECT"
+        ]
+      },
+      "WorkOrderPriority": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH",
+          "URGENT"
+        ]
+      },
+      "WorkOrderStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "READY",
+          "DISPATCHED",
+          "ACKNOWLEDGED",
+          "IN_PROGRESS",
+          "COMPLETED",
+          "PAUSED",
+          "BLOCKED",
+          "FAILED",
+          "CANCELLED"
+        ]
+      },
+      "AckStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "ACKNOWLEDGED",
+          "REJECTED",
+          "TIMEOUT"
+        ]
+      },
+      "WorkNodeStatus": {
+        "type": "string",
+        "enum": [
+          "WAITING",
+          "READY",
+          "IN_PROGRESS",
+          "COMPLETED",
+          "SKIPPED",
+          "BLOCKED",
+          "FAILED"
+        ]
+      },
+      "ResourceType": {
+        "type": "string",
+        "enum": [
+          "TIPPER",
+          "CRANE",
+          "CONVEYOR",
+          "SILO",
+          "AGV",
+          "TEAM"
+        ]
+      },
+      "ResourceStatus": {
+        "type": "string",
+        "enum": [
+          "AVAILABLE",
+          "BUSY",
+          "OFFLINE",
+          "MAINTENANCE",
+          "LOCKED"
+        ]
+      },
+      "AppointmentStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "SUBMITTED",
+          "APPROVED",
+          "QUEUED",
+          "CALLED",
+          "ENTERED",
+          "OPERATING",
+          "RELEASED",
+          "EXITED",
+          "REJECTED",
+          "NEED_FIX",
+          "EXCEPTION"
+        ]
+      },
+      "GateStatus": {
+        "type": "string",
+        "enum": [
+          "WAITING",
+          "OPEN",
+          "PASSED",
+          "CLOSED",
+          "REJECTED"
+        ]
+      },
+      "ExceptionType": {
+        "type": "string",
+        "enum": [
+          "DEVICE_OFFLINE",
+          "DATA_CONFLICT",
+          "INTERLOCK",
+          "TIMEOUT",
+          "QUALITY"
+        ]
+      },
+      "ExceptionLevel": {
+        "type": "string",
+        "enum": [
+          "INFO",
+          "MINOR",
+          "MAJOR",
+          "CRITICAL"
+        ]
+      },
+      "ExceptionStatus": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "ACKNOWLEDGED",
+          "HANDLING",
+          "PENDING_REVIEW",
+          "CLOSED",
+          "ESCALATED",
+          "REOPENED"
+        ]
+      },
+      "ActionLevel": {
+        "type": "string",
+        "enum": [
+          "WARN",
+          "PAUSE",
+          "FORCE_STOP"
+        ]
+      },
+      "InterlockStatus": {
+        "type": "string",
+        "enum": [
+          "TRIGGERED",
+          "ACTION_ISSUED",
+          "WAITING_RECEIPT",
+          "LOCKED",
+          "RESET_REQUESTED",
+          "APPROVED",
+          "RESTORED",
+          "FAILED",
+          "OVERRIDE_PENDING",
+          "OVERRIDDEN"
+        ]
+      },
+      "ReceiptStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "RECEIVED",
+          "FAILED"
+        ]
+      },
+      "MergeStatus": {
+        "type": "string",
+        "enum": [
+          "CACHED",
+          "PENDING_UPLOAD",
+          "VALIDATING",
+          "MERGED",
+          "CONFLICT",
+          "REJECTED",
+          "RETRY"
+        ]
+      },
+      "ReportType": {
+        "type": "string",
+        "enum": [
+          "SHIFT",
+          "DAILY",
+          "MONTHLY",
+          "CUSTOM"
+        ]
+      },
+      "GenerateStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "RUNNING",
+          "SUCCESS",
+          "FAILED"
+        ]
+      },
+      "RoleCode": {
+        "type": "string",
+        "enum": [
+          "DISPATCHER",
+          "SHIFT_LEADER",
+          "OPERATOR",
+          "MAINTAINER",
+          "WAREHOUSE",
+          "GATE_GUARD",
+          "DRIVER",
+          "SAFETY",
+          "BUSINESS",
+          "REGULATOR",
+          "SYS_ADMIN",
+          "INTERFACE_OPS",
+          "AUDITOR"
+        ]
+      },
+      "UserStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "DISABLED",
+          "LOCKED"
+        ]
+      },
+      "ConfigStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "SUBMITTED",
+          "APPROVED",
+          "PUBLISHED",
+          "ROLLED_BACK"
+        ]
+      },
+      "DispatchStrategy": {
+        "type": "string",
+        "enum": [
+          "BALANCED",
+          "PRIORITY_FIRST",
+          "RESOURCE_FIRST"
+        ]
+      },
+      "ConfigReportPeriod": {
+        "type": "string",
+        "enum": [
+          "SHIFT",
+          "DAILY",
+          "MONTHLY"
+        ]
+      },
+      "PublicErrorCode": {
+        "type": "string",
+        "enum": [
+          "TOS-EXT-001",
+          "TOS-EXT-002",
+          "TOS-EXT-003",
+          "TOS-WO-001",
+          "TOS-IL-001",
+          "TOS-OFF-001",
+          "TOS-AUTH-001",
+          "DEMO-VERSION-001",
+          "DEMO-SCENARIO-001"
+        ]
+      },
+      "ApiSuccessEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "auditLogId": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "auditLogId",
+          "traceId"
+        ]
+      },
+      "API022Data": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "apiId": {
+            "type": "string",
+            "const": "API-022"
+          },
+          "operationId": {
+            "type": "string",
+            "const": "GET_mock_config"
+          },
+          "now": {
+            "type": "string"
+          },
+          "scenarioId": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DO015"
+            }
+          }
+        },
+        "required": [
+          "apiId",
+          "operationId",
+          "now",
+          "scenarioId",
+          "items"
+        ]
+      },
+      "API023Data": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "apiId": {
+            "type": "string",
+            "const": "API-023"
+          },
+          "operationId": {
+            "type": "string",
+            "const": "POST_mock_config_id_command"
+          },
+          "now": {
+            "type": "string"
+          },
+          "scenarioId": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/DO015"
+            }
+          }
+        },
+        "required": [
+          "apiId",
+          "operationId",
+          "now",
+          "scenarioId",
+          "items"
+        ]
+      },
+      "API022SuccessEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/API022Data"
+          },
+          "auditLogId": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "auditLogId",
+          "traceId"
+        ]
+      },
+      "API023SuccessEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/API023Data"
+          },
+          "auditLogId": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "auditLogId",
+          "traceId"
+        ]
+      },
+      "ApiErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false
+          },
+          "errorCode": {
+            "$ref": "#/components/schemas/PublicErrorCode"
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "auditLogId": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "errorCode",
+          "message",
+          "auditLogId",
+          "traceId"
+        ]
+      },
+      "API003Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scenarioId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenarioId"
+        ]
+      },
+      "API004Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "supplements": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": []
+      },
+      "API006Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "trackNo": {
+            "type": "string"
+          },
+          "window": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "trackNo",
+          "window"
+        ]
+      },
+      "API007Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ruleVersion": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ruleVersion",
+          "mode"
+        ]
+      },
+      "API008Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "resourceId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resourceId"
+        ]
+      },
+      "API009Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "simulateReceipt": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "target",
+          "simulateReceipt"
+        ]
+      },
+      "API011Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "action",
+          "evidence"
+        ]
+      },
+      "API013Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "speed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "speed"
+        ]
+      },
+      "API015Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "command",
+          "evidence"
+        ]
+      },
+      "API017Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "receipt": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "approval": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "command",
+          "receipt",
+          "approval"
+        ]
+      },
+      "API019Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "upload": {
+            "type": "string"
+          },
+          "merge": {
+            "type": "string"
+          },
+          "reject": {
+            "type": "string"
+          },
+          "retry": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload",
+          "merge",
+          "reject",
+          "retry"
+        ]
+      },
+      "API021Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "format",
+          "purpose"
+        ]
+      },
+      "API023Request": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string",
+                "const": "edit"
+              },
+              "expectedVersion": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "changes": {
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "defaultScenarioId": {
+                    "type": "string",
+                    "enum": [
+                      "SCN-01",
+                      "SCN-02",
+                      "SCN-03",
+                      "SCN-04",
+                      "SCN-05",
+                      "SCN-06",
+                      "SCN-07"
+                    ]
+                  },
+                  "ruleVersion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "dispatchStrategy": {
+                    "$ref": "#/components/schemas/DispatchStrategy"
+                  },
+                  "recommendationEnabled": {
+                    "type": "boolean"
+                  },
+                  "offlineSyncEnabled": {
+                    "type": "boolean"
+                  },
+                  "reportPeriod": {
+                    "$ref": "#/components/schemas/ConfigReportPeriod"
+                  },
+                  "auditRetentionDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650
+                  }
+                }
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "command",
+              "expectedVersion",
+              "changes"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string",
+                "enum": [
+                  "submit",
+                  "approve",
+                  "publish",
+                  "rollback"
+                ]
+              },
+              "expectedVersion": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "command",
+              "expectedVersion"
+            ]
+          }
+        ]
+      },
+      "API025Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scenarioId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenarioId"
+        ]
+      },
+      "DO001": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "planBatchNo": {
+            "type": "string",
+            "x-source-field": "plan_batch_no"
+          },
+          "trainNo": {
+            "type": "string",
+            "x-source-field": "train_no"
+          },
+          "arrivalDepartureTime": {
+            "type": "string",
+            "x-source-field": "arrival_departure_time"
+          },
+          "trackNo": {
+            "type": "string",
+            "x-source-field": "track_no"
+          },
+          "cargoType": {
+            "$ref": "#/components/schemas/CargoType",
+            "x-source-field": "cargo_type"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PlanStatus",
+            "x-source-field": "status"
+          },
+          "sourceSystem": {
+            "type": "string",
+            "x-source-field": "source_system"
+          },
+          "sourceTime": {
+            "type": "string",
+            "x-source-field": "source_time"
+          },
+          "missingFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-source-field": "missing_fields"
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "x-source-field": "conflicts"
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "createdAt": {
+            "type": "string",
+            "x-source-field": "created_at"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "planBatchNo",
+          "trainNo",
+          "arrivalDepartureTime",
+          "trackNo",
+          "cargoType",
+          "status",
+          "sourceSystem",
+          "sourceTime",
+          "missingFields",
+          "conflicts",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-001"
+      },
+      "DO002": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "waybillNo": {
+            "type": "string",
+            "x-source-field": "waybill_no"
+          },
+          "containerNo": {
+            "type": "string",
+            "x-source-field": "container_no"
+          },
+          "cargoType": {
+            "$ref": "#/components/schemas/CargoType",
+            "x-source-field": "cargo_type"
+          },
+          "quantity": {
+            "type": "number",
+            "x-source-field": "quantity"
+          },
+          "unit": {
+            "type": "string",
+            "x-source-field": "unit"
+          },
+          "weight": {
+            "type": "number",
+            "x-source-field": "weight"
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "createdAt": {
+            "type": "string",
+            "x-source-field": "created_at"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "waybillNo",
+          "containerNo",
+          "cargoType",
+          "quantity",
+          "unit",
+          "weight",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-002"
+      },
+      "DO003": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "trackNo": {
+            "type": "string",
+            "x-source-field": "track_no"
+          },
+          "occupyStatus": {
+            "$ref": "#/components/schemas/TrackOccupyStatus",
+            "x-source-field": "occupy_status"
+          },
+          "estimateReleaseTime": {
+            "type": "string",
+            "x-source-field": "estimate_release_time"
+          },
+          "compatibleCargoTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CargoType"
+            },
+            "x-source-field": "compatible_cargo_types"
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "trackNo",
+          "occupyStatus",
+          "estimateReleaseTime",
+          "compatibleCargoTypes",
+          "version",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-003"
+      },
+      "DO004": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "materialId": {
+            "type": "string",
+            "x-source-field": "material_id"
+          },
+          "containerNoRfid": {
+            "type": "string",
+            "x-source-field": "container_no_rfid"
+          },
+          "cargoType": {
+            "$ref": "#/components/schemas/CargoType",
+            "x-source-field": "cargo_type"
+          },
+          "quantityWeight": {
+            "type": "number",
+            "x-source-field": "quantity_weight"
+          },
+          "locationCode": {
+            "type": "string",
+            "x-source-field": "location_code"
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "materialId",
+          "containerNoRfid",
+          "cargoType",
+          "quantityWeight",
+          "locationCode",
+          "version",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-004"
+      },
+      "DO005": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "workOrderNo": {
+            "type": "string",
+            "x-source-field": "work_order_no"
+          },
+          "planId": {
+            "type": "string",
+            "x-source-field": "plan_id"
+          },
+          "parentId": {
+            "type": "string",
+            "x-source-field": "parent_id"
+          },
+          "type": {
+            "$ref": "#/components/schemas/WorkOrderType",
+            "x-source-field": "type"
+          },
+          "title": {
+            "type": "string",
+            "x-source-field": "title"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/WorkOrderPriority",
+            "x-source-field": "priority"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkOrderStatus",
+            "x-source-field": "work_order_status"
+          },
+          "ackStatus": {
+            "$ref": "#/components/schemas/AckStatus",
+            "x-source-field": "ack_status"
+          },
+          "ruleVersion": {
+            "type": "string",
+            "x-source-field": "rule_version"
+          },
+          "resourceId": {
+            "type": "string",
+            "x-source-field": "resource_id"
+          },
+          "teamId": {
+            "type": "string",
+            "x-source-field": "team_id"
+          },
+          "blockReason": {
+            "type": "string",
+            "x-source-field": "block_reason"
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "createdAt": {
+            "type": "string",
+            "x-source-field": "created_at"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "workOrderNo",
+          "planId",
+          "parentId",
+          "type",
+          "title",
+          "priority",
+          "status",
+          "ackStatus",
+          "ruleVersion",
+          "resourceId",
+          "teamId",
+          "blockReason",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-005"
+      },
+      "DO006": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "nodeNo": {
+            "type": "string",
+            "x-source-field": "node_no"
+          },
+          "workOrderNo": {
+            "type": "string",
+            "x-source-field": "work_order_no"
+          },
+          "sequence": {
+            "type": "integer",
+            "x-source-field": "sequence"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkNodeStatus",
+            "x-source-field": "status"
+          },
+          "plannedStartTime": {
+            "type": "string",
+            "x-source-fields": [
+              "start_finish_time",
+              "planned_start_time"
+            ]
+          },
+          "plannedFinishTime": {
+            "type": "string",
+            "x-source-fields": [
+              "start_finish_time",
+              "planned_finish_time"
+            ]
+          },
+          "actualStartTime": {
+            "type": "string",
+            "x-source-fields": [
+              "start_finish_time",
+              "actual_start_time"
+            ]
+          },
+          "actualFinishTime": {
+            "type": "string",
+            "x-source-fields": [
+              "start_finish_time",
+              "actual_finish_time"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "nodeNo",
+          "workOrderNo",
+          "sequence",
+          "status",
+          "plannedStartTime",
+          "plannedFinishTime",
+          "actualStartTime",
+          "actualFinishTime",
+          "version",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-006"
+      },
+      "DO007": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "deviceId": {
+            "type": "string",
+            "x-source-field": "device_id"
+          },
+          "personId": {
+            "type": "string",
+            "x-source-field": "person_id"
+          },
+          "resourceType": {
+            "$ref": "#/components/schemas/ResourceType",
+            "x-source-field": "resource_type"
+          },
+          "capabilityTags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-source-field": "capability_tags"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResourceStatus",
+            "x-source-field": "status"
+          },
+          "workArea": {
+            "type": "string",
+            "x-source-field": "work_area"
+          },
+          "location": {
+            "type": "string",
+            "x-source-field": "location"
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "deviceId",
+          "personId",
+          "resourceType",
+          "capabilityTags",
+          "status",
+          "workArea",
+          "location",
+          "version",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-007"
+      },
+      "DO008": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "reservationNo": {
+            "type": "string",
+            "x-source-field": "reservation_no"
+          },
+          "vehicleNo": {
+            "type": "string",
+            "x-source-field": "vehicle_no"
+          },
+          "driverId": {
+            "type": "string",
+            "x-source-field": "driver_id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus",
+            "x-source-field": "status"
+          },
+          "queueNo": {
+            "type": "string",
+            "x-source-field": "queue_no"
+          },
+          "gateStatus": {
+            "$ref": "#/components/schemas/GateStatus",
+            "x-source-field": "gate_status"
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "createdAt": {
+            "type": "string",
+            "x-source-field": "created_at"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "reservationNo",
+          "vehicleNo",
+          "driverId",
+          "status",
+          "queueNo",
+          "gateStatus",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-008"
+      },
+      "DO009": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "exceptionNo": {
+            "type": "string",
+            "x-source-field": "exception_no"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ExceptionType",
+            "x-source-field": "type"
+          },
+          "level": {
+            "$ref": "#/components/schemas/ExceptionLevel",
+            "x-source-field": "exception_level"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExceptionStatus",
+            "x-source-field": "status"
+          },
+          "owner": {
+            "type": "string",
+            "x-source-field": "owner"
+          },
+          "dueAt": {
+            "type": "string",
+            "x-source-field": "due_at"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-source-field": "evidence"
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "createdAt": {
+            "type": "string",
+            "x-source-field": "created_at"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "exceptionNo",
+          "type",
+          "level",
+          "status",
+          "owner",
+          "dueAt",
+          "evidence",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-009"
+      },
+      "DO010": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "interlockNo": {
+            "type": "string",
+            "x-source-field": "interlock_no"
+          },
+          "riskType": {
+            "type": "string",
+            "x-source-field": "risk_type"
+          },
+          "actionLevel": {
+            "$ref": "#/components/schemas/ActionLevel",
+            "x-source-field": "action_level"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InterlockStatus",
+            "x-source-field": "status"
+          },
+          "inputSnapshot": {
+            "type": "object",
+            "additionalProperties": true,
+            "x-source-field": "input_snapshot"
+          },
+          "receiptStatus": {
+            "$ref": "#/components/schemas/ReceiptStatus",
+            "x-source-field": "receipt_status"
+          },
+          "resetRequest": {
+            "type": "object",
+            "additionalProperties": true,
+            "x-source-field": "reset_request"
+          },
+          "approvalChain": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-source-field": "approval_chain"
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "createdAt": {
+            "type": "string",
+            "x-source-field": "created_at"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "interlockNo",
+          "riskType",
+          "actionLevel",
+          "status",
+          "inputSnapshot",
+          "receiptStatus",
+          "resetRequest",
+          "approvalChain",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-010"
+      },
+      "DO011": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "id"
+          },
+          "offlinePackageNo": {
+            "type": "string",
+            "x-source-field": "offline_package_no"
+          },
+          "terminalId": {
+            "type": "string",
+            "x-source-field": "terminal_id"
+          },
+          "workOrderNo": {
+            "type": "string",
+            "x-source-field": "work_order_no"
+          },
+          "packageVersion": {
+            "type": "integer",
+            "x-source-field": "package_version"
+          },
+          "serverVersion": {
+            "type": "integer",
+            "x-source-field": "server_version"
+          },
+          "validation": {
+            "type": "object",
+            "additionalProperties": true,
+            "x-source-field": "validation"
+          },
+          "mergeStatus": {
+            "$ref": "#/components/schemas/MergeStatus",
+            "x-source-field": "merge_status"
+          },
+          "version": {
+            "type": "integer",
+            "x-source-field": "version"
+          },
+          "createdAt": {
+            "type": "string",
+            "x-source-field": "created_at"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "offlinePackageNo",
+          "terminalId",
+          "workOrderNo",
+          "packageVersion",
+          "serverVersion",
+          "validation",
+          "mergeStatus",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-011"
+      },
+      "DO012": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "report_id"
+          },
+          "reportType": {
+            "$ref": "#/components/schemas/ReportType",
+            "x-source-field": "report_type"
+          },
+          "period": {
+            "type": "string",
+            "x-source-field": "period"
+          },
+          "generateStatus": {
+            "$ref": "#/components/schemas/GenerateStatus",
+            "x-source-field": "generate_status"
+          },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": true,
+            "x-source-field": "metrics"
+          },
+          "generatedAt": {
+            "type": "string",
+            "x-source-field": "generated_at"
+          }
+        },
+        "required": [
+          "id",
+          "reportType",
+          "period",
+          "generateStatus",
+          "metrics",
+          "generatedAt"
+        ],
+        "x-domain-object-id": "DO-012"
+      },
+      "DO013": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "audit_log_id"
+          },
+          "actorId": {
+            "type": "string",
+            "x-source-field": "actor_id"
+          },
+          "operatorTerminal": {
+            "type": "string",
+            "x-source-field": "operator_terminal"
+          },
+          "action": {
+            "type": "string",
+            "x-source-field": "action"
+          },
+          "objectType": {
+            "type": "string",
+            "x-source-field": "object_type"
+          },
+          "objectId": {
+            "type": "string",
+            "x-source-field": "object_id"
+          },
+          "before": {
+            "type": "object",
+            "additionalProperties": true,
+            "x-source-fields": [
+              "before_after_value",
+              "before"
+            ]
+          },
+          "after": {
+            "type": "object",
+            "additionalProperties": true,
+            "x-source-fields": [
+              "before_after_value",
+              "after"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "x-source-field": "reason"
+          },
+          "traceId": {
+            "type": "string",
+            "x-source-field": "trace_id"
+          },
+          "occurredAt": {
+            "type": "string",
+            "x-source-field": "occurred_at"
+          }
+        },
+        "required": [
+          "id",
+          "actorId",
+          "operatorTerminal",
+          "action",
+          "objectType",
+          "objectId",
+          "before",
+          "after",
+          "reason",
+          "traceId",
+          "occurredAt"
+        ],
+        "x-domain-object-id": "DO-013"
+      },
+      "DO014": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "x-source-field": "user_id"
+          },
+          "roleCode": {
+            "$ref": "#/components/schemas/RoleCode",
+            "x-source-field": "role_code"
+          },
+          "dataScope": {
+            "type": "string",
+            "x-source-field": "data_scope"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus",
+            "x-source-field": "status"
+          },
+          "createdAt": {
+            "type": "string",
+            "x-source-field": "created_at"
+          },
+          "updatedAt": {
+            "type": "string",
+            "x-source-field": "updated_at"
+          }
+        },
+        "required": [
+          "id",
+          "roleCode",
+          "dataScope",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "x-domain-object-id": "DO-014"
+      },
+      "DO015": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "x-source-field": "config_id"
+          },
+          "configVersion": {
+            "type": "string",
+            "minLength": 1,
+            "x-source-field": "config_version"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "x-source-field": "display_name"
+          },
+          "defaultScenarioId": {
+            "type": "string",
+            "enum": [
+              "SCN-01",
+              "SCN-02",
+              "SCN-03",
+              "SCN-04",
+              "SCN-05",
+              "SCN-06",
+              "SCN-07"
+            ],
+            "x-source-field": "default_scenario_id"
+          },
+          "ruleVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32,
+            "x-source-field": "rule_version"
+          },
+          "dispatchStrategy": {
+            "$ref": "#/components/schemas/DispatchStrategy",
+            "x-source-field": "dispatch_strategy"
+          },
+          "recommendationEnabled": {
+            "type": "boolean",
+            "x-source-field": "recommendation_enabled"
+          },
+          "offlineSyncEnabled": {
+            "type": "boolean",
+            "x-source-field": "offline_sync_enabled"
+          },
+          "reportPeriod": {
+            "$ref": "#/components/schemas/ConfigReportPeriod",
+            "x-source-field": "report_period"
+          },
+          "auditRetentionDays": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3650,
+            "x-source-field": "audit_retention_days"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ConfigStatus",
+            "x-source-field": "status"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "x-source-field": "version"
+          },
+          "createdAt": {
+            "type": "string",
+            "minLength": 1,
+            "x-source-field": "created_at"
+          },
+          "updatedAt": {
+            "type": "string",
+            "minLength": 1,
+            "x-source-field": "updated_at"
+          },
+          "updatedBy": {
+            "type": "string",
+            "minLength": 1,
+            "x-source-field": "updated_by"
+          }
+        },
+        "required": [
+          "id",
+          "configVersion",
+          "displayName",
+          "defaultScenarioId",
+          "ruleVersion",
+          "dispatchStrategy",
+          "recommendationEnabled",
+          "offlineSyncEnabled",
+          "reportPeriod",
+          "auditRetentionDays",
+          "status",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "x-domain-object-id": "DO-015"
+      }
+    },
+    "responses": {
+      "BusinessError": {
+        "description": "业务校验失败"
+      },
+      "ForbiddenError": {
+        "description": "权限或数据域拒绝"
+      },
+      "ConflictError": {
+        "description": "版本或业务冲突"
+      }
+    }
+  }
+}

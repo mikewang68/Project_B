@@ -1,0 +1,5 @@
+[project]
+name = "b-demo-backend"
+version = "0.1.0"
+description = "B 项目能源管控系统演示 demo 后端（骨架源自 RuoYi-Vue3-FastAPI，MIT）"
+requires-python = ">=3.10"

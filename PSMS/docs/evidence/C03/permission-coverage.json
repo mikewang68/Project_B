@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "suites": [
+    "src/auth/__tests__/authorize.test.ts",
+    "src/auth/__tests__/masking.test.ts",
+    "src/components/__tests__/permissionGate.test.tsx",
+    "src/app/__tests__/routePermission.test.tsx"
+  ],
+  "result": {
+    "testFiles": 4,
+    "tests": 34,
+    "passed": 34
+  },
+  "roles": [
+    "DISPATCHER",
+    "SHIFT_LEADER",
+    "OPERATOR",
+    "MAINTAINER",
+    "WAREHOUSE",
+    "GATE_GUARD",
+    "DRIVER",
+    "SAFETY",
+    "BUSINESS",
+    "REGULATOR",
+    "SYS_ADMIN",
+    "INTERFACE_OPS",
+    "AUDITOR"
+  ],
+  "roleCoverageTest": "contains exactly the 13 C02 roles and 45 permission codes",
+  "permissions": [
+    "audit:export",
+    "audit:verify",
+    "audit:view",
+    "demo:reset",
+    "dispatch:assign",
+    "dispatch:pause",
+    "dispatch:reassign",
+    "dispatch:send",
+    "dispatch:view",
+    "exception:ack",
+    "exception:close",
+    "exception:handle",
+    "exception:reopen",
+    "exception:review",
+    "export:summary",
+    "interface:retry",
+    "interlock:approve",
+    "interlock:request-override",
+    "interlock:reset",
+    "interlock:view",
+    "monitor:view",
+    "offline:resolve",
+    "offline:retry",
+    "offline:view",
+    "overview:view",
+    "plan:adjust",
+    "plan:confirm",
+    "plan:recommend",
+    "plan:view",
+    "report:export",
+    "report:generate",
+    "report:view",
+    "settings:approve",
+    "settings:edit",
+    "settings:publish",
+    "settings:rollback",
+    "settings:view",
+    "task:decompose",
+    "task:edit",
+    "task:view",
+    "yard:call",
+    "yard:gate",
+    "yard:release",
+    "yard:review",
+    "yard:submit"
+  ],
+  "permissionCoverageTest": "maps every permission to a non-empty set of known frozen roles",
+  "routes": [
+    "UI-001",
+    "UI-002",
+    "UI-003",
+    "UI-004",
+    "UI-005",
+    "UI-006",
+    "UI-007",
+    "UI-008",
+    "UI-009",
+    "UI-010",
+    "UI-011",
+    "UI-012",
+    "UI-013"
+  ],
+  "routeCoverageTest": "contains the exact 13 route role policies",
+  "decisionStages": [
+    {
+      "stage": "PAGE",
+      "test": "returns 'PAGE' before every later failing stage"
+    },
+    {
+      "stage": "ACTION",
+      "test": "returns 'ACTION' before every later failing stage"
+    },
+    {
+      "stage": "DATA_SCOPE",
+      "test": "returns 'DATA_SCOPE' before every later failing stage"
+    },
+    {
+      "stage": "SEPARATION_OF_DUTIES",
+      "test": "returns 'SEPARATION_OF_DUTIES' before every later failing stage"
+    },
+    {
+      "stage": "ONLINE",
+      "test": "returns 'ONLINE' before every later failing stage"
+    },
+    {
+      "stage": "VERSION",
+      "test": "returns 'VERSION' before every later failing stage"
+    }
+  ],
+  "dataScopeTests": [
+    "denies unknown role, permission, and data-scope types instead of defaulting allow",
+    "filters unauthorized objects before count or aggregation"
+  ],
+  "offlineDeniedFamilies": [
+    {
+      "family": "interlock reset",
+      "test": "denies offline interlock:reset"
+    },
+    {
+      "family": "interlock override",
+      "test": "denies offline interlock:request-override"
+    },
+    {
+      "family": "yard release",
+      "test": "denies offline yard:release"
+    },
+    {
+      "family": "permission/configuration change",
+      "test": "denies offline settings:edit"
+    }
+  ],
+  "separationOfDutiesTests": [
+    "denies the same person approving a high-risk interlock action",
+    "denies SYS_ADMIN approval of their own permission elevation",
+    "denies AUDITOR mutation through audit:verify",
+    "denies AUDITOR mutation through report:generate"
+  ],
+  "masking": [
+    {
+      "kind": "name",
+      "example": "张三 -> 张**",
+      "test": "masks a name in the frozen format"
+    },
+    {
+      "kind": "mobile",
+      "example": "13800121234 -> 138****1234",
+      "test": "masks a mobile number in the frozen format"
+    },
+    {
+      "kind": "vehicleNo",
+      "example": "川A·12345 -> 川A·***45",
+      "test": "masks a vehicle number in the frozen format"
+    }
+  ],
+  "maskingImmutabilityTest": "returns a new masked view without mutating the source record",
+  "sessionStorageKey": "production-dispatch-demo:c03-session",
+  "sessionTests": [
+    "creates the frozen default session",
+    "uses one documented localStorage key for a valid E2E override"
+  ],
+  "permissionGateTests": [
+    "renders an allowed child unchanged",
+    "does not render a denied child in hide mode",
+    "clones a denied control as disabled with an accessible reason",
+    "keeps the denied action visible and displays the policy reason in explain mode"
+  ],
+  "routeGateTests": [
+    "filters navigation from the current session policy catalog",
+    "shows navigation granted to a different frozen role",
+    "returns a safe direct-access 403 with permission and scope but no page object",
+    "does not call or render an unauthorized page module before the boundary"
+  ]
+}

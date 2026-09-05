@@ -1,0 +1,55 @@
+## Task 2: state-machine catalog red
+
+COMMAND_REQUESTED=pnpm exec vitest run src/commands/__tests__/stateMachines.test.ts
+COMMAND_EXECUTED=.\node_modules\.bin\vitest.CMD run src/commands/__tests__/stateMachines.test.ts
+STARTED=2026-07-19T18:17:52.8979140+08:00
+
+ RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+ ❯ src/commands/__tests__/stateMachines.test.ts (0 test)
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  18:17:53
+   Duration  1.53s (transform 23ms, setup 148ms, import 0ms, tests 0ms, environment 1.14s)
+
+ FAIL  src/commands/__tests__/stateMachines.test.ts [ src/commands/__tests__/stateMachines.test.ts ]
+Error: Failed to resolve import "../stateMachines" from "src/commands/__tests__/stateMachines.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/commands/__tests__/stateMachines.test.ts:7:7
+  1  |  import { describe, expect, it } from "vitest";
+  2  |  import { stateMachineCatalog, transitionState } from "../stateMachines";
+     |                                                        ^
+  3  |  const expectedMachines = {
+
+ENDED=2026-07-19T18:17:55.0242589+08:00
+EXIT_CODE=1
+EXPECTED_FAILURE=missing src/commands/stateMachines.ts
+
+## Task 4: command-pipeline red
+
+COMMAND_REQUESTED=pnpm exec vitest run src/commands/__tests__/pipeline.test.ts
+COMMAND_EXECUTED=.\node_modules\.bin\vitest.CMD run src/commands/__tests__/pipeline.test.ts
+STARTED=2026-07-19T18:30:21.7862674+08:00
+
+ RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+ ❯ src/commands/__tests__/pipeline.test.ts (0 test)
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  18:30:22
+   Duration  1.68s (transform 21ms, setup 144ms, import 0ms, tests 0ms, environment 1.25s)
+
+ FAIL  src/commands/__tests__/pipeline.test.ts [ src/commands/__tests__/pipeline.test.ts ]
+Error: Failed to resolve import ".." from "src/commands/__tests__/pipeline.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo/src/commands/__tests__/pipeline.test.ts:9:7
+  1  |  import { describe, expect, it } from "vitest";
+  2  |  import { createCommandExecutor } from "..";
+     |                                         ^
+  3  |  const command = {
+
+ENDED=2026-07-19T18:30:24.1000361+08:00
+EXIT_CODE=1
+EXPECTED_FAILURE=missing src/commands/index.ts and command executor

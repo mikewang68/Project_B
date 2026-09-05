@@ -1,0 +1,130 @@
+
+ RUN  v4.1.10 E:/魔法入门与精通/自己写的神奇玩应/研究/工作/B项目/production-dispatch-demo
+
+ ❯ src/commands/__tests__/stateMachines.test.ts (71 tests | 3 failed) 32ms
+     × DO-001 exposes every frozen state, command, and explicit transition 12ms
+     × DO-001 allows ADJUSTED + confirm -> CONFIRMED 2ms
+     × C04 confirms a supplemented plan without changing another DO-001 path 2ms
+ ❯ src/mocks/__tests__/handlers.test.ts (6 tests | 1 failed) 165ms
+     × SCN-02 permits only API-004 requests that supply every declared missing field 11ms
+node_modules\.bin\vitest.CMD : 
+所在位置 行:2 字符: 111
++ ...  $env:Path; node_modules\.bin\vitest.CMD run src/commands/__tests__/s ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/commands/__tests__/stateMachines.test.ts > C03 frozen state-machine catalog > DO-001 exposes every frozen st
+ate, command, and explicit transition
+AssertionError: expected { states: [ 'RECEIVED', …(7) ], …(2) } to deeply equal { states: [ 'RECEIVED', …(7) ], …(2) }
+
+- Expected
++ Received
+
+@@ -41,15 +41,10 @@
+        "BLOCKED",
+        "adjust",
+        "ADJUSTED",
+      ],
+      [
+-       "ADJUSTED",
+-       "confirm",
+-       "CONFIRMED",
+-     ],
+-     [
+        "CONFIRMED",
+        "decompose",
+        "DECOMPOSED",
+      ],
+      [
+
+ ❯ src/commands/__tests__/stateMachines.test.ts:159:59
+    157|     '%s exposes every frozen state, command, and explicit transition',
+    158|     (machineId, expected) => {
+    159|       expect(stateMachineCatalog[machineId as MachineId]).toEqual(expe…
+       |                                                           ^
+    160|     },
+    161|   );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/commands/__tests__/stateMachines.test.ts > C03 frozen state-machine catalog > DO-001 allows ADJUSTED + confi
+rm -> CONFIRMED
+AssertionError: expected { ok: false, …(3) } to deeply equal { Object (ok, previous, ...) }
+
+- Expected
++ Received
+
+  {
+    "command": "confirm",
+-   "next": "CONFIRMED",
+-   "ok": true,
++   "ok": false,
+    "previous": "ADJUSTED",
++   "reason": "FORBIDDEN_TRANSITION",
+  }
+
+ ❯ src/commands/__tests__/stateMachines.test.ts:171:11
+    169|         expect(
+    170|           transitionState({ machineId: machineId as MachineId, current…
+    171|         ).toEqual({ ok: true, previous: current, next, command });
+       |           ^
+    172|       },
+    173|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/commands/__tests__/stateMachines.test.ts > C03 frozen state-machine catalog > C04 confirms a supplemented pl
+an without changing another DO-001 path
+AssertionError: expected { ok: false, …(3) } to deeply equal { Object (ok, previous, ...) }
+
+- Expected
++ Received
+
+  {
+    "command": "confirm",
+-   "next": "CONFIRMED",
+-   "ok": true,
++   "ok": false,
+    "previous": "ADJUSTED",
++   "reason": "FORBIDDEN_TRANSITION",
+  }
+
+ ❯ src/commands/__tests__/stateMachines.test.ts:213:8
+    211|   it('C04 confirms a supplemented plan without changing another DO-001…
+    212|     expect(transitionState({ machineId: 'DO-001', current: 'ADJUSTED',…
+    213|       .toEqual({ ok: true, previous: 'ADJUSTED', next: 'CONFIRMED', co…
+       |        ^
+    214|     expect(transitionState({ machineId: 'DO-001', current: 'BLOCKED', …
+    215|       .toMatchObject({ ok: false, reason: 'FORBIDDEN_TRANSITION' });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/mocks/__tests__/handlers.test.ts > C02 MSW handlers > SCN-02 permits only API-004 requests that supply every
+ declared missing field
+AssertionError: expected 400 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 400
+
+ ❯ src/mocks/__tests__/handlers.test.ts:161:29
+    159|       }),
+    160|     });
+    161|     expect(complete.status).toBe(200);
+       |                             ^
+    162|     expect(await complete.json()).toMatchObject({ ok: true });
+    163|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  4 failed | 73 passed (77)
+   Start at  21:09:19
+   Duration  2.70s (transform 229ms, setup 377ms, import 795ms, tests 197ms, environment 2.67s)
+

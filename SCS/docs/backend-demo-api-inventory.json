@@ -1,0 +1,3038 @@
+{
+  "meta": {
+    "title": "B项目 Backend Demo 接口清单",
+    "version": "v1.0",
+    "generatedAt": "2026-09-04",
+    "basePath": "/api/v1",
+    "priorityLegend": {
+      "P0": "前后端 Demo 跑通必须实现",
+      "P1": "增强演示完整度",
+      "P2": "可继续使用 Mock/SIMULATED"
+    },
+    "total": 116
+  },
+  "apis": [
+    {
+      "module": "用户/登录",
+      "name": "登录（Demo 可固定账号）",
+      "method": "POST",
+      "path": "/auth/login",
+      "request": {
+        "body": {
+          "username": "string",
+          "password": "string"
+        }
+      },
+      "response": {
+        "token": "string",
+        "user": {
+          "id": "string",
+          "name": "string",
+          "role": "string",
+          "team": "string"
+        }
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "AppHeader 硬编码“李娜/安全员”；移动端硬编码“王建国”",
+      "page": "全局 Header / 移动端首页",
+      "note": "Demo 也可跳过登录直接用 /auth/me"
+    },
+    {
+      "module": "用户/登录",
+      "name": "当前登录用户与班次",
+      "method": "GET",
+      "path": "/auth/me",
+      "request": {},
+      "response": {
+        "id": "string",
+        "name": "string",
+        "role": "string",
+        "team": "string",
+        "shift": "string",
+        "online": "boolean"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "demoSnapshot.workPlan；MobileHome 王建国/夜班",
+      "page": "全局 Header、移动端首页",
+      "note": "前端当前用户与班次全部硬编码，至少需要此接口替换"
+    },
+    {
+      "module": "用户/登录",
+      "name": "基础字典（区域/班组/责任人/下拉枚举）",
+      "method": "GET",
+      "path": "/meta/dictionaries",
+      "request": {
+        "query": {
+          "keys": "areas,teams,assignees(可选，缺省全部)"
+        }
+      },
+      "response": {
+        "areas": [
+          "string"
+        ],
+        "teams": [
+          "string"
+        ],
+        "assignees": [
+          {
+            "id": "string",
+            "name": "string",
+            "team": "string"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "各页面内联常量（ANALYTICS_AREAS、ALERT_ASSIGNEES、RULE_OWNERS 等）",
+      "page": "全部筛选区/Dialog",
+      "note": ""
+    },
+    {
+      "module": "安全态势",
+      "name": "首页核心指标",
+      "method": "GET",
+      "path": "/overview/summary",
+      "request": {},
+      "response": {
+        "onDuty": "number",
+        "deviceOnline": "number",
+        "deviceTotal": "number",
+        "activeAlerts": "number",
+        "urgentAlerts": "number",
+        "riskyDevices": "number",
+        "pendingAi": "number"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "SafetyOverview 内联 + SafetyStatCard",
+      "page": "/overview",
+      "note": ""
+    },
+    {
+      "module": "安全态势",
+      "name": "首页态势地图（人员+设备+围栏）",
+      "method": "GET",
+      "path": "/overview/map",
+      "request": {
+        "query": {
+          "ts": "最新时间戳(可选)"
+        }
+      },
+      "response": {
+        "people": [
+          {
+            "id": "string",
+            "name": "string",
+            "team": "string",
+            "x": "number%",
+            "y": "number%",
+            "battery": "number",
+            "risk": "正常|关注|高风险",
+            "state": "normal|warning|danger|offline"
+          }
+        ],
+        "equipment": [
+          {
+            "id": "string",
+            "name": "string",
+            "type": "crane|tipper|vehicle|camera",
+            "x": "number%",
+            "y": "number%",
+            "state": "string"
+          }
+        ],
+        "fences": [
+          {
+            "id": "string",
+            "name": "string",
+            "polygon": [
+              {
+                "x": "number",
+                "y": "number"
+              }
+            ],
+            "tone": "string"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": true,
+      "mockSource": "SafetyOverview.basePeople/baseEquipment；SafetyMap overviewFences",
+      "page": "/overview",
+      "note": "坐标当前为前端百分比，见文档字段问题"
+    },
+    {
+      "module": "安全态势",
+      "name": "首页实时告警流",
+      "method": "GET",
+      "path": "/overview/alerts/feed",
+      "request": {
+        "query": {
+          "limit": "number，默认 10"
+        }
+      },
+      "response": {
+        "list": [
+          {
+            "id": "string",
+            "title": "string",
+            "level": "紧急|严重|一般",
+            "summary": "string",
+            "time": "ISO8601",
+            "area": "string",
+            "objectName": "string",
+            "status": "string",
+            "timeline": [
+              {
+                "time": "string",
+                "title": "string",
+                "detail": "string"
+              }
+            ]
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "SafetyOverview.baseAlerts / RealtimeAlertFeed",
+      "page": "/overview",
+      "note": "可由 WS 推送替代轮询"
+    },
+    {
+      "module": "安全态势",
+      "name": "首页风险趋势",
+      "method": "GET",
+      "path": "/overview/risk-trend",
+      "request": {
+        "query": {
+          "range": "24h|7d"
+        }
+      },
+      "response": {
+        "points": [
+          {
+            "label": "string",
+            "total": "number",
+            "high": "number"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "RiskTrendChart 内联",
+      "page": "/overview",
+      "note": ""
+    },
+    {
+      "module": "安全态势",
+      "name": "首页风险类型分布",
+      "method": "GET",
+      "path": "/overview/risk-distribution",
+      "request": {},
+      "response": {
+        "items": [
+          {
+            "type": "string",
+            "count": "number"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "RiskDistributionChart 内联",
+      "page": "/overview",
+      "note": ""
+    },
+    {
+      "module": "安全态势",
+      "name": "首页告警详情（抽屉时间线）",
+      "method": "GET",
+      "path": "/overview/alerts/{id}",
+      "request": {},
+      "response": {
+        "id": "string",
+        "title": "string",
+        "level": "string",
+        "timeline": [
+          {
+            "time": "string",
+            "title": "string",
+            "detail": "string"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "OverviewAlert（alert-001~003）",
+      "page": "/overview AlertDrawer",
+      "note": "Demo 可直接复用告警中心详情"
+    },
+    {
+      "module": "安全态势",
+      "name": "模拟风险（演示器）",
+      "method": "POST",
+      "path": "/overview/simulate-risk",
+      "request": {
+        "body": {
+          "scenario": "person_intrusion 等"
+        }
+      },
+      "response": {
+        "snapshot": "更新后的地图/告警数据"
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "MockRiskButton（赵磊移入龙门吊禁区）",
+      "page": "/overview",
+      "note": "SIMULATED，可继续前端 Mock"
+    },
+    {
+      "module": "人员定位",
+      "name": "人员列表（含筛选/统计）",
+      "method": "GET",
+      "path": "/personnel",
+      "request": {
+        "query": {
+          "keyword": "string",
+          "team": "string",
+          "area": "string",
+          "state": "正常|异常",
+          "bracelet": "在线|低电量|离线",
+          "onlyAbnormal": "boolean"
+        }
+      },
+      "response": {
+        "stats": {
+          "online": "number",
+          "abnormal": "number",
+          "bandOffline": "number",
+          "lowBattery": "number"
+        },
+        "list": [
+          {
+            "id": "string",
+            "jobNo": "string",
+            "name": "string",
+            "team": "string",
+            "area": "string",
+            "battery": "number",
+            "braceletStatus": "在线|离线|低电量",
+            "positioningQuality": "优秀|良好|较低|无信号",
+            "risk": "正常|关注|高风险",
+            "x": "number",
+            "y": "number",
+            "lastUpdated": "string",
+            "distanceToday": "number",
+            "alertsToday": "number"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "PersonnelLocationView.basePeople（7 人）",
+      "page": "/people",
+      "note": ""
+    },
+    {
+      "module": "人员定位",
+      "name": "人员详情",
+      "method": "GET",
+      "path": "/personnel/{id}",
+      "request": {},
+      "response": {
+        "id": "string",
+        "name": "string",
+        "jobNo": "string",
+        "team": "string",
+        "area": "string",
+        "bracelet": "string",
+        "battery": "number",
+        "coordinate": "string",
+        "distanceToday": "number",
+        "alertsToday": "number",
+        "lastUpdated": "string"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "PersonnelRecord",
+      "page": "/people PersonnelDetailDrawer",
+      "note": ""
+    },
+    {
+      "module": "人员定位",
+      "name": "人员历史轨迹",
+      "method": "GET",
+      "path": "/personnel/{id}/track",
+      "request": {
+        "query": {
+          "from": "ISO8601",
+          "to": "ISO8601"
+        }
+      },
+      "response": {
+        "points": [
+          {
+            "x": "number",
+            "y": "number",
+            "time": "ISO8601"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "PersonnelLocationView.track（9 点）/ TrackPlayback",
+      "page": "/people 轨迹回放",
+      "note": ""
+    },
+    {
+      "module": "人员定位",
+      "name": "人员实时位置（批量）",
+      "method": "GET",
+      "path": "/personnel/live",
+      "request": {
+        "query": {
+          "area": "string(可选)"
+        }
+      },
+      "response": {
+        "list": [
+          {
+            "id": "string",
+            "x": "number",
+            "y": "number",
+            "area": "string",
+            "battery": "number",
+            "ts": "ISO8601"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "页面标注“约 3 秒刷新”",
+      "page": "/people",
+      "note": "也可并入 /ws/live 推送"
+    },
+    {
+      "module": "人员定位",
+      "name": "发送手环提醒",
+      "method": "POST",
+      "path": "/personnel/{id}/remind",
+      "request": {
+        "body": {
+          "message": "string(可选)"
+        }
+      },
+      "response": {
+        "sent": "boolean",
+        "time": "ISO8601"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "PersonnelDetailDrawer @remind（当前仅 Toast）",
+      "page": "/people 详情抽屉",
+      "note": ""
+    },
+    {
+      "module": "人员定位",
+      "name": "人员相关告警查询",
+      "method": "GET",
+      "path": "/personnel/{id}/alerts",
+      "request": {
+        "query": {
+          "limit": "number"
+        }
+      },
+      "response": {
+        "list": [
+          "AlertEvent 列表，结构同 /alerts"
+        ]
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "详情抽屉 @alerts（当前仅 Toast）",
+      "page": "/people",
+      "note": ""
+    },
+    {
+      "module": "人员定位",
+      "name": "模拟人员异常（演示器）",
+      "method": "POST",
+      "path": "/personnel/simulate-abnormal",
+      "request": {
+        "body": {
+          "id": "string",
+          "kind": "lowBattery"
+        }
+      },
+      "response": {
+        "person": "更新后的人员"
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "toggleDemo（赵磊低电量）",
+      "page": "/people",
+      "note": "SIMULATED"
+    },
+    {
+      "module": "电子围栏",
+      "name": "围栏列表",
+      "method": "GET",
+      "path": "/fences",
+      "request": {},
+      "response": {
+        "list": [
+          {
+            "id": "string",
+            "name": "string",
+            "kind": "危险区域|设备区域|临时围栏|预警区域|授权区域",
+            "area": "string",
+            "version": "string",
+            "status": "草稿|待评审|待发布|已生效|已停用|版本不一致",
+            "edgeSynced": "number",
+            "edgeTotal": "number",
+            "polygon": [
+              {
+                "x": "number",
+                "y": "number"
+              }
+            ]
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "FenceManagementView fences（4 条）",
+      "page": "/fences",
+      "note": ""
+    },
+    {
+      "module": "电子围栏",
+      "name": "围栏详情",
+      "method": "GET",
+      "path": "/fences/{id}",
+      "request": {},
+      "response": {
+        "id": "string",
+        "name": "string",
+        "kind": "string",
+        "area": "string",
+        "version": "string",
+        "status": "string",
+        "effectiveAt": "string",
+        "expiresAt": "string",
+        "teams": "string",
+        "approver": "string",
+        "polygon": [
+          {
+            "x": "number",
+            "y": "number"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "EDGE-xx",
+            "state": "pending|syncing|success|failed"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "FenceRecord",
+      "page": "/fences FenceDetailPanel",
+      "note": ""
+    },
+    {
+      "module": "电子围栏",
+      "name": "新建围栏（草稿/提交评审）",
+      "method": "POST",
+      "path": "/fences",
+      "request": {
+        "body": {
+          "name": "string",
+          "kind": "string",
+          "riskLevel": "一般|严重|紧急",
+          "teams": "string",
+          "startsAt": "ISO8601",
+          "endsAt": "ISO8601",
+          "polygon": [
+            {
+              "x": "number",
+              "y": "number"
+            }
+          ],
+          "submitReview": "boolean"
+        }
+      },
+      "response": {
+        "id": "string",
+        "version": "v1.0",
+        "status": "草稿|待评审"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "ensureDraft（FENCE-005）",
+      "page": "/fences 地图绘制+表单",
+      "note": "至少 3 个顶点校验前端已做"
+    },
+    {
+      "module": "电子围栏",
+      "name": "编辑围栏",
+      "method": "PUT",
+      "path": "/fences/{id}",
+      "request": {
+        "body": {
+          "name": "string",
+          "kind": "string",
+          "teams": "string",
+          "polygon": [
+            {
+              "x": "number",
+              "y": "number"
+            }
+          ]
+        }
+      },
+      "response": {
+        "fence": "更新后的围栏"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "ensureDraft(edit)",
+      "page": "/fences",
+      "note": ""
+    },
+    {
+      "module": "电子围栏",
+      "name": "围栏提交评审",
+      "method": "POST",
+      "path": "/fences/{id}/submit-review",
+      "request": {},
+      "response": {
+        "status": "待评审",
+        "approver": "string"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "submitSelectedReview",
+      "page": "/fences",
+      "note": ""
+    },
+    {
+      "module": "电子围栏",
+      "name": "围栏发布（边缘下发）",
+      "method": "POST",
+      "path": "/fences/{id}/publish",
+      "request": {
+        "body": {
+          "nodeIds": [
+            "EDGE-xx"
+          ]
+        }
+      },
+      "response": {
+        "status": "已生效",
+        "nodes": [
+          {
+            "id": "string",
+            "state": "success"
+          }
+        ],
+        "synced": "number",
+        "total": "number"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "FencePublishDialog @completed/published",
+      "page": "/fences",
+      "note": "Demo 用固定延时模拟 4/4 同步"
+    },
+    {
+      "module": "电子围栏",
+      "name": "围栏单节点重新下发",
+      "method": "POST",
+      "path": "/fences/{id}/redeliver",
+      "request": {
+        "body": {
+          "nodeId": "EDGE-03"
+        }
+      },
+      "response": {
+        "node": {
+          "id": "string",
+          "state": "success"
+        }
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "retry()（EDGE-03 failed→success）",
+      "page": "/fences",
+      "note": ""
+    },
+    {
+      "module": "电子围栏",
+      "name": "停用围栏",
+      "method": "POST",
+      "path": "/fences/{id}/disable",
+      "request": {},
+      "response": {
+        "status": "已停用"
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "前端预留（safety store setFenceEnabled）",
+      "page": "/fences",
+      "note": ""
+    },
+    {
+      "module": "电子围栏",
+      "name": "模拟边缘版本不一致（演示器）",
+      "method": "POST",
+      "path": "/fences/{id}/simulate-mismatch",
+      "request": {},
+      "response": {
+        "nodes": [
+          {
+            "id": "string",
+            "state": "failed"
+          }
+        ],
+        "status": "版本不一致"
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "simulateFail()",
+      "page": "/fences",
+      "note": "SIMULATED"
+    },
+    {
+      "module": "设备防碰撞",
+      "name": "防碰撞设备列表",
+      "method": "GET",
+      "path": "/collision/devices",
+      "request": {
+        "query": {
+          "type": "转运车辆|翻箱机|龙门吊"
+        }
+      },
+      "response": {
+        "list": [
+          {
+            "id": "string",
+            "name": "string",
+            "type": "string",
+            "area": "string",
+            "status": "string",
+            "speed": "number",
+            "direction": "string",
+            "controlStatus": "string",
+            "communication": "string",
+            "radarStatus": "string",
+            "risk": "安全|预警|严重|紧急|待确认",
+            "relatedEquipment": "string",
+            "latestAlert": "string"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "CollisionOverviewView.devices（4 台）",
+      "page": "/devices",
+      "note": ""
+    },
+    {
+      "module": "设备防碰撞",
+      "name": "设备详情",
+      "method": "GET",
+      "path": "/collision/devices/{id}",
+      "request": {},
+      "response": {
+        "device": "CollisionEquipment 全字段"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "EquipmentDetailDrawer",
+      "page": "/devices",
+      "note": ""
+    },
+    {
+      "module": "设备防碰撞",
+      "name": "设备对实时距离/速度",
+      "method": "GET",
+      "path": "/collision/pair",
+      "request": {
+        "query": {
+          "currentId": "string",
+          "relatedId": "string"
+        }
+      },
+      "response": {
+        "distance": "number(m)",
+        "relSpeed": "number(m/s)",
+        "direction": "string",
+        "radarQuality": "number%",
+        "risk": "安全|预警|严重|紧急|待确认",
+        "ts": "ISO8601"
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "distance ref（12.6→2.8 模拟）",
+      "page": "/devices",
+      "note": "真实毫米波雷达 SIMULATED，Demo 用模拟器推数"
+    },
+    {
+      "module": "设备防碰撞",
+      "name": "距离趋势序列",
+      "method": "GET",
+      "path": "/collision/devices/{id}/distance-trend",
+      "request": {
+        "query": {
+          "windowSec": "number"
+        }
+      },
+      "response": {
+        "points": [
+          {
+            "label": "string",
+            "value": "number"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "trendPoints / DistanceTrendChart",
+      "page": "/devices",
+      "note": ""
+    },
+    {
+      "module": "设备防碰撞",
+      "name": "人工接管确认（重点写操作）",
+      "method": "POST",
+      "path": "/collision/takeover",
+      "request": {
+        "body": {
+          "deviceId": "string",
+          "alertId": "string(可选)",
+          "operator": "string",
+          "note": "string"
+        }
+      },
+      "response": {
+        "plcStatus": "人工确认停机",
+        "state": "stopped",
+        "time": "ISO8601"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "confirmTakeover / ManualTakeoverDialog",
+      "page": "/devices",
+      "note": "PLC 回执失败后的人工兜底，必须落记录"
+    },
+    {
+      "module": "设备防碰撞",
+      "name": "申请解除运行限制",
+      "method": "POST",
+      "path": "/collision/release-request",
+      "request": {
+        "body": {
+          "deviceId": "string",
+          "checks": [
+            "string"
+          ],
+          "operator": "string"
+        }
+      },
+      "response": {
+        "requestId": "string",
+        "status": "待审批"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "requestRestrictionRelease / RiskReleaseDialog",
+      "page": "/devices",
+      "note": ""
+    },
+    {
+      "module": "设备防碰撞",
+      "name": "发起设备联动（减速/停机）",
+      "method": "POST",
+      "path": "/collision/linkage",
+      "request": {
+        "body": {
+          "deviceId": "string",
+          "steps": [
+            "detect,alarm,driver,slow,stop,plc"
+          ],
+          "mode": "success|fail(演示)"
+        }
+      },
+      "response": {
+        "steps": [
+          {
+            "id": "string",
+            "label": "string",
+            "state": "waiting|running|success|failed",
+            "detail": "string"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "SafetyLinkagePanel/runAutomaticStop/simulateFailure",
+      "page": "/devices",
+      "note": "真实 PLC SIMULATED"
+    },
+    {
+      "module": "设备防碰撞",
+      "name": "模拟接近/雷达断数/联动失败（演示器）",
+      "method": "POST",
+      "path": "/collision/simulate",
+      "request": {
+        "body": {
+          "scenario": "approach|radarDown|linkageFail"
+        }
+      },
+      "response": {
+        "steps": "联动步骤序列"
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "simulateApproach/toggleRadar/simulateFailure",
+      "page": "/devices",
+      "note": "SIMULATED"
+    },
+    {
+      "module": "AI违规",
+      "name": "AI 事件列表（筛选+指标）",
+      "method": "GET",
+      "path": "/ai-events",
+      "request": {
+        "query": {
+          "keyword": "string",
+          "type": "string",
+          "area": "string",
+          "camera": "string",
+          "status": "string",
+          "risk": "高|中|低",
+          "confidence": "high|mid|low",
+          "timeRange": "string",
+          "page": "number",
+          "pageSize": "number"
+        }
+      },
+      "response": {
+        "metrics": {
+          "today": "number",
+          "pending": "number",
+          "confirmed": "number",
+          "falsePositive": "number",
+          "cameraFault": "number"
+        },
+        "page": "number",
+        "pageSize": "number",
+        "total": "number",
+        "list": [
+          {
+            "id": "string",
+            "type": "string",
+            "camera": "string",
+            "cameraName": "string",
+            "area": "string",
+            "confidence": "number",
+            "durationSec": "number",
+            "model": "string",
+            "threshold": "number",
+            "time": "ISO8601",
+            "status": "ReviewStatus",
+            "risk": "高|中|低",
+            "health": "string",
+            "scene": "string",
+            "relatedPerson": "string"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "createInitialAiEvents（10+ 条）/AI_METRIC_BASE",
+      "page": "/ai",
+      "note": ""
+    },
+    {
+      "module": "AI违规",
+      "name": "AI 事件详情（检测框/时间线）",
+      "method": "GET",
+      "path": "/ai-events/{id}",
+      "request": {},
+      "response": {
+        "id": "string",
+        "imageUrl": "string",
+        "boxes": [
+          {
+            "id": "string",
+            "label": "PERSON/NO HELMET…",
+            "score": "number",
+            "x": "number%",
+            "y": "number%",
+            "w": "number%",
+            "h": "number%",
+            "tone": "person|violation|zone"
+          }
+        ],
+        "rule": "string",
+        "judgeText": "string",
+        "relatedPerson": "string",
+        "relatedDevice": "string",
+        "timeline": [
+          {
+            "time": "string",
+            "text": "string",
+            "state": "done|active|pending"
+          }
+        ],
+        "reviewer": "string",
+        "reviewTime": "string",
+        "falseReason": "string",
+        "assignee": "string"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "AiEvent 全量 / AIEventDrawer",
+      "page": "/ai",
+      "note": ""
+    },
+    {
+      "module": "AI违规",
+      "name": "确认违规（重点写操作）",
+      "method": "POST",
+      "path": "/ai-events/{id}/confirm",
+      "request": {
+        "body": {
+          "reviewer": "string"
+        }
+      },
+      "response": {
+        "status": "已确认违规",
+        "reviewer": "string",
+        "reviewTime": "ISO8601",
+        "timelineNode": "TimelineNode"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "confirmViolation",
+      "page": "/ai Drawer",
+      "note": "成功 Toast“事件已确认违规”"
+    },
+    {
+      "module": "AI违规",
+      "name": "标记误报（重点写操作）",
+      "method": "POST",
+      "path": "/ai-events/{id}/false-positive",
+      "request": {
+        "body": {
+          "reason": "遮挡误判|光照问题|目标识别错误|区域配置问题|其他",
+          "reviewer": "string"
+        }
+      },
+      "response": {
+        "status": "误报",
+        "falseReason": "string",
+        "reviewer": "string",
+        "reviewTime": "ISO8601"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "submitFalse / ReviewDialog",
+      "page": "/ai",
+      "note": "原因枚举前端已定"
+    },
+    {
+      "module": "AI违规",
+      "name": "标记不确定（转人工队列）",
+      "method": "POST",
+      "path": "/ai-events/{id}/uncertain",
+      "request": {
+        "body": {
+          "reviewer": "string"
+        }
+      },
+      "response": {
+        "status": "不确定"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "markUncertain",
+      "page": "/ai",
+      "note": ""
+    },
+    {
+      "module": "AI违规",
+      "name": "AI 事件派单",
+      "method": "POST",
+      "path": "/ai-events/{id}/assign",
+      "request": {
+        "body": {
+          "assignee": "string",
+          "priority": "普通|紧急",
+          "note": "string"
+        }
+      },
+      "response": {
+        "status": "已派单",
+        "assignee": "string",
+        "processStatus": "待处理"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "submitAssign / AssignmentDialog",
+      "page": "/ai",
+      "note": ""
+    },
+    {
+      "module": "AI违规",
+      "name": "AI 事件开始处理",
+      "method": "POST",
+      "path": "/ai-events/{id}/process",
+      "request": {
+        "body": {
+          "handler": "string"
+        }
+      },
+      "response": {
+        "status": "处理中",
+        "processStatus": "处理中"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "markProcessing",
+      "page": "/ai",
+      "note": ""
+    },
+    {
+      "module": "AI违规",
+      "name": "AI 事件关闭",
+      "method": "POST",
+      "path": "/ai-events/{id}/close",
+      "request": {
+        "body": {
+          "operator": "string"
+        }
+      },
+      "response": {
+        "status": "已关闭",
+        "processStatus": "已完成"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "closeEvent",
+      "page": "/ai",
+      "note": ""
+    },
+    {
+      "module": "AI违规",
+      "name": "摄像头健康列表",
+      "method": "GET",
+      "path": "/cameras",
+      "request": {},
+      "response": {
+        "list": [
+          {
+            "id": "CAM-xx",
+            "name": "string",
+            "area": "string",
+            "health": "正常|画面质量下降|离线"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "AiEvent.health / CameraHealthBadge",
+      "page": "/ai",
+      "note": "与运维设备健康存在重叠，见字段问题"
+    },
+    {
+      "module": "AI违规",
+      "name": "模拟 AI 事件/低置信度/摄像头异常（演示器）",
+      "method": "POST",
+      "path": "/ai-events/simulate",
+      "request": {
+        "body": {
+          "scenario": "new|lowConfidence|cameraFault"
+        }
+      },
+      "response": {
+        "event": "新建 AiEvent"
+      },
+      "priority": "P2",
+      "realtime": true,
+      "mockSource": "simulateEvent/simulateLowConfidence/simulateCameraFault",
+      "page": "/ai",
+      "note": "SIMULATED：真实 AI 推理/视频流不实现，由后端模拟器周期产生事件亦可"
+    },
+    {
+      "module": "告警中心",
+      "name": "告警顶部统计",
+      "method": "GET",
+      "path": "/alerts/metrics",
+      "request": {},
+      "response": {
+        "total": "number",
+        "pending": "number",
+        "active": "number",
+        "severe": "number",
+        "urgent": "number",
+        "closed": "number"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "ALERT_METRIC_BASE + 列表实时计算",
+      "page": "/alarms",
+      "note": ""
+    },
+    {
+      "module": "告警中心",
+      "name": "告警列表（多条件筛选+分页+SLA）",
+      "method": "GET",
+      "path": "/alerts",
+      "request": {
+        "query": {
+          "keyword": "string",
+          "timeRange": "string",
+          "area": "string",
+          "eventType": "string",
+          "risk": "一般|预警|严重|紧急",
+          "status": "AlertStatus",
+          "assignee": "string",
+          "source": "人员安全|设备防碰撞|AI违规|设备异常|系统异常",
+          "page": "number",
+          "pageSize": "number"
+        }
+      },
+      "response": {
+        "page": "number",
+        "pageSize": "number",
+        "total": "number",
+        "list": [
+          {
+            "id": "string",
+            "title": "string",
+            "risk": "string",
+            "eventType": "string",
+            "time": "ISO8601",
+            "area": "string",
+            "target": "string",
+            "source": "string",
+            "status": "AlertStatus",
+            "assignee": "string",
+            "slaDeadline": "ISO8601(替代前端走秒)",
+            "slaRemainingSec": "number",
+            "ruleId": "string",
+            "ruleVersion": "string",
+            "durationSec": "number"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": true,
+      "mockSource": "createInitialAlerts（12 条）",
+      "page": "/alarms AlertTable",
+      "note": "SLA 前端每秒本地递减，后端应返回 slaDeadline"
+    },
+    {
+      "module": "告警中心",
+      "name": "告警详情（证据/联动/时间线）",
+      "method": "GET",
+      "path": "/alerts/{id}",
+      "request": {},
+      "response": {
+        "id": "string",
+        "evidence": "AlertEvidence 联合(personnel|collision|ai|device-metric|system-metric)",
+        "linkageAvailable": "boolean",
+        "linkage": [
+          "LinkageStep"
+        ],
+        "timeline": [
+          "TimelineNode"
+        ],
+        "confirmUser": "string",
+        "treatment": "TreatmentResult",
+        "upgradedFrom": "string"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "AlertEvent 全量 / AlertDetailDrawer",
+      "page": "/alarms",
+      "note": "证据结构按 source 分 5 类，详见 types/alert.ts"
+    },
+    {
+      "module": "告警中心",
+      "name": "确认事件（重点写操作）",
+      "method": "POST",
+      "path": "/alerts/{id}/confirm",
+      "request": {
+        "body": {
+          "operator": "string"
+        }
+      },
+      "response": {
+        "status": "待派单",
+        "confirmUser": "string",
+        "confirmTime": "ISO8601",
+        "timelineNode": "TimelineNode"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "confirmEvent",
+      "page": "/alarms",
+      "note": "待确认→待派单"
+    },
+    {
+      "module": "告警中心",
+      "name": "派单（重点写操作）",
+      "method": "POST",
+      "path": "/alerts/{id}/assign",
+      "request": {
+        "body": {
+          "assignee": "string",
+          "priority": "普通|紧急",
+          "limitMin": "number",
+          "note": "string"
+        }
+      },
+      "response": {
+        "status": "待处理",
+        "assignee": "string",
+        "priority": "string",
+        "slaDeadline": "ISO8601",
+        "timelineNode": "TimelineNode"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "submitAssign / AlertAssignDialog",
+      "page": "/alarms",
+      "note": ""
+    },
+    {
+      "module": "告警中心",
+      "name": "转派（重点写操作）",
+      "method": "POST",
+      "path": "/alerts/{id}/transfer",
+      "request": {
+        "body": {
+          "assignee": "string",
+          "note": "string"
+        }
+      },
+      "response": {
+        "assignee": "string",
+        "timelineNode": "TimelineNode"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "openTransferDialog（同一 Dialog 转派模式）",
+      "page": "/alarms",
+      "note": ""
+    },
+    {
+      "module": "告警中心",
+      "name": "接单/开始处理（重点写操作）",
+      "method": "POST",
+      "path": "/alerts/{id}/start",
+      "request": {
+        "body": {
+          "handler": "string"
+        }
+      },
+      "response": {
+        "status": "处理中",
+        "acceptTime": "ISO8601",
+        "timelineNode": "TimelineNode"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "startProcess",
+      "page": "/alarms",
+      "note": ""
+    },
+    {
+      "module": "告警中心",
+      "name": "提交处置结果（重点写操作）",
+      "method": "POST",
+      "path": "/alerts/{id}/treatment",
+      "request": {
+        "body": {
+          "measures": [
+            "string"
+          ],
+          "result": "string",
+          "attachment": "string",
+          "note": "string"
+        }
+      },
+      "response": {
+        "status": "待复核",
+        "treatment": {
+          "measures": [
+            "string"
+          ],
+          "result": "string",
+          "note": "string",
+          "submitTime": "ISO8601",
+          "handler": "string"
+        }
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "submitTreatment / TreatmentDialog",
+      "page": "/alarms",
+      "note": "严重/紧急必须走复核"
+    },
+    {
+      "module": "告警中心",
+      "name": "复核通过并关闭（重点写操作）",
+      "method": "POST",
+      "path": "/alerts/{id}/review",
+      "request": {
+        "body": {
+          "reviewer": "string",
+          "note": "string"
+        }
+      },
+      "response": {
+        "status": "已关闭",
+        "reviewUser": "string",
+        "reviewTime": "ISO8601"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "approveClose / AlertReviewDialog（二次确认）",
+      "page": "/alarms",
+      "note": ""
+    },
+    {
+      "module": "告警中心",
+      "name": "复核驳回继续处理",
+      "method": "POST",
+      "path": "/alerts/{id}/review-reject",
+      "request": {
+        "body": {
+          "reason": "string"
+        }
+      },
+      "response": {
+        "status": "处理中",
+        "timelineNode": "TimelineNode"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "rejectContinue",
+      "page": "/alarms",
+      "note": ""
+    },
+    {
+      "module": "告警中心",
+      "name": "事件升级",
+      "method": "POST",
+      "path": "/alerts/{id}/escalate",
+      "request": {
+        "body": {
+          "reason": "string",
+          "level": "严重|紧急",
+          "targets": [
+            "调度员",
+            "管理人员"
+          ]
+        }
+      },
+      "response": {
+        "risk": "升级后等级",
+        "upgradedFrom": "原等级",
+        "timelineNode": "TimelineNode"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "移动端 MobileEscalateDialog（告警中心预留）",
+      "page": "/alarms、/mobile",
+      "note": ""
+    },
+    {
+      "module": "告警中心",
+      "name": "发起安全联动",
+      "method": "POST",
+      "path": "/alerts/{id}/linkage",
+      "request": {
+        "body": {
+          "mode": "success|fail(演示失败)"
+        }
+      },
+      "response": {
+        "steps": [
+          "LinkageStep（声光/手环/安全员/调度/减速/停机/PLC）"
+        ],
+        "finished": "boolean"
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "startLinkage/runStep",
+      "page": "/alarms",
+      "note": "真实联动/PLC SIMULATED，步骤推进可 WS 回推"
+    },
+    {
+      "module": "告警中心",
+      "name": "人工接管（重点写操作）",
+      "method": "POST",
+      "path": "/alerts/{id}/takeover",
+      "request": {
+        "body": {
+          "operator": "string",
+          "note": "string"
+        }
+      },
+      "response": {
+        "takeover": true,
+        "timelineNode": "TimelineNode"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "manualTakeover（PLC 失败兜底）",
+      "page": "/alarms",
+      "note": ""
+    },
+    {
+      "module": "统计分析",
+      "name": "统计聚合数据集（KPI+各图表）",
+      "method": "GET",
+      "path": "/analytics/dataset",
+      "request": {
+        "query": {
+          "period": "今日|本周|本月|自定义",
+          "from": "ISO8601",
+          "to": "ISO8601",
+          "area": "string",
+          "team": "string",
+          "type": "string",
+          "level": "string"
+        }
+      },
+      "response": {
+        "kpi": [
+          {
+            "key": "string",
+            "label": "string",
+            "value": "string",
+            "deltaPct": "number",
+            "direction": "up|down|flat",
+            "goodWhenDown": "boolean",
+            "hint": "string"
+          }
+        ],
+        "trend": [
+          {
+            "date": "string",
+            "total": "number",
+            "high": "number"
+          }
+        ],
+        "riskTypes": [
+          {
+            "type": "string",
+            "count": "number",
+            "high": "number"
+          }
+        ],
+        "areas": [
+          {
+            "area": "string",
+            "total": "number",
+            "high": "number"
+          }
+        ],
+        "teams": [
+          {
+            "team": "string",
+            "confirmSec": "number",
+            "arriveSec": "number",
+            "closeSec": "number",
+            "eventCount": "number"
+          }
+        ],
+        "devices": [
+          {
+            "deviceId": "string",
+            "name": "string",
+            "count": "number",
+            "primaryRisk": "string",
+            "primaryCount": "number",
+            "trend": "up|down|flat",
+            "recentRisk": "string",
+            "typeSplit": [
+              {
+                "type": "string",
+                "count": "number"
+              }
+            ]
+          }
+        ],
+        "persons": [
+          {
+            "personId": "string",
+            "name": "string",
+            "team": "string",
+            "count": "number",
+            "mainType": "string",
+            "recent": [
+              "string"
+            ]
+          }
+        ],
+        "levels": [
+          {
+            "level": "string",
+            "count": "number"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "buildDefaultDataset / buildSurgeDataset",
+      "page": "/analytics",
+      "note": "Demo 可单接口返回全部聚合块，减少联调成本"
+    },
+    {
+      "module": "统计分析",
+      "name": "事件明细（下钻表格+分页）",
+      "method": "GET",
+      "path": "/analytics/events",
+      "request": {
+        "query": {
+          "period": "string",
+          "area": "string",
+          "team": "string",
+          "type": "string",
+          "level": "string",
+          "deviceId": "string",
+          "person": "string",
+          "drillType": "string(图表下钻维度)",
+          "page": "number",
+          "pageSize": "number"
+        }
+      },
+      "response": {
+        "page": "number",
+        "pageSize": "number",
+        "total": "number",
+        "list": [
+          {
+            "id": "string",
+            "time": "ISO8601",
+            "type": "string",
+            "area": "string",
+            "target": "string",
+            "level": "string",
+            "status": "string",
+            "durationSec": "number|null",
+            "team": "string",
+            "deviceId": "string|null"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "AnalyticsDataset.events（18 条）",
+      "page": "/analytics EventDetailTable",
+      "note": "图表点击下钻即此接口带维度参数"
+    },
+    {
+      "module": "统计分析",
+      "name": "高频设备详情 Drawer",
+      "method": "GET",
+      "path": "/analytics/devices/{id}",
+      "request": {},
+      "response": {
+        "deviceId": "string",
+        "name": "string",
+        "count": "number",
+        "typeSplit": [
+          "对象"
+        ],
+        "recentEvents": [
+          {
+            "time": "string",
+            "type": "string",
+            "level": "string"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "HotDevice.recentEvents",
+      "page": "/analytics",
+      "note": ""
+    },
+    {
+      "module": "统计分析",
+      "name": "重复风险人员详情",
+      "method": "GET",
+      "path": "/analytics/persons/{id}",
+      "request": {},
+      "response": {
+        "personId": "string",
+        "name": "string",
+        "team": "string",
+        "mainType": "string",
+        "recent": [
+          "string"
+        ]
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "RepeatPerson",
+      "page": "/analytics",
+      "note": ""
+    },
+    {
+      "module": "统计分析",
+      "name": "切换风险场景（演示器）",
+      "method": "POST",
+      "path": "/analytics/simulate-surge",
+      "request": {
+        "body": {
+          "area": "装卸区 A",
+          "active": "boolean"
+        }
+      },
+      "response": {
+        "dataset": "AnalyticsDataset"
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "buildSurgeDataset / toggleScene",
+      "page": "/analytics",
+      "note": "SIMULATED"
+    },
+    {
+      "module": "规则配置",
+      "name": "规则 KPI",
+      "method": "GET",
+      "path": "/rules/metrics",
+      "request": {},
+      "response": {
+        "active": "number",
+        "review": "number",
+        "draft": "number",
+        "mismatch": "number",
+        "changedToday": "number"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "RuleConfigView.kpis",
+      "page": "/rules",
+      "note": ""
+    },
+    {
+      "module": "规则配置",
+      "name": "规则列表（分类/筛选）",
+      "method": "GET",
+      "path": "/rules",
+      "request": {
+        "query": {
+          "category": "人员安全|设备安全|AI识别|告警策略|联动策略|通知策略",
+          "keyword": "string",
+          "status": "RuleStatus",
+          "risk": "string"
+        }
+      },
+      "response": {
+        "list": [
+          {
+            "id": "RULE-xxx",
+            "name": "string",
+            "category": "string",
+            "areas": [
+              "string"
+            ],
+            "version": "string",
+            "platformVersion": "string",
+            "risk": "一般|预警|严重|紧急",
+            "status": "RuleStatus",
+            "updatedAt": "ISO8601",
+            "owner": "string",
+            "highRisk": "boolean"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "buildRules（23 条）",
+      "page": "/rules RuleTable",
+      "note": ""
+    },
+    {
+      "module": "规则配置",
+      "name": "规则详情（参数/动作/版本/边缘）",
+      "method": "GET",
+      "path": "/rules/{id}",
+      "request": {},
+      "response": {
+        "id": "string",
+        "params": [
+          {
+            "label": "string",
+            "value": "string",
+            "danger": "boolean"
+          }
+        ],
+        "actions": [
+          "string"
+        ],
+        "approver": "string",
+        "effectiveAt": "string",
+        "description": "string",
+        "relatedModules": [
+          "string"
+        ],
+        "versions": [
+          {
+            "version": "string",
+            "date": "string",
+            "note": "string",
+            "author": "string",
+            "state": "当前|历史版本",
+            "diffs": [
+              {
+                "label": "string",
+                "from": "string",
+                "to": "string"
+              }
+            ]
+          }
+        ],
+        "edgeNodes": [
+          {
+            "node": "EDGE-xx",
+            "version": "string",
+            "state": "synced|syncing|mismatch"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "SafetyRule 全量 / RuleDetailDrawer",
+      "page": "/rules",
+      "note": ""
+    },
+    {
+      "module": "规则配置",
+      "name": "新建规则（草稿/提交评审）",
+      "method": "POST",
+      "path": "/rules",
+      "request": {
+        "body": {
+          "name": "string",
+          "category": "RuleCategory",
+          "areas": [
+            "string"
+          ],
+          "risk": "RuleRisk",
+          "owner": "string",
+          "params": [
+            {
+              "label": "string",
+              "value": "string",
+              "danger": "boolean"
+            }
+          ],
+          "actions": [
+            "string"
+          ],
+          "highRisk": "boolean",
+          "submitReview": "boolean"
+        }
+      },
+      "response": {
+        "id": "string",
+        "version": "v1.0",
+        "status": "草稿|待评审"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "saveRule(create) / RuleFormDrawer",
+      "page": "/rules",
+      "note": "highRisk=true 时前端有二次确认"
+    },
+    {
+      "module": "规则配置",
+      "name": "编辑规则/新建版本",
+      "method": "PUT",
+      "path": "/rules/{id}",
+      "request": {
+        "body": {
+          "name": "string",
+          "category": "string",
+          "areas": [
+            "string"
+          ],
+          "risk": "string",
+          "params": [
+            "RuleParam"
+          ],
+          "actions": [
+            "string"
+          ],
+          "highRisk": "boolean",
+          "asNewVersion": "boolean",
+          "submitReview": "boolean"
+        }
+      },
+      "response": {
+        "rule": "更新后的 SafetyRule",
+        "version": "string"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "saveRule(edit/newVersion)",
+      "page": "/rules",
+      "note": ""
+    },
+    {
+      "module": "规则配置",
+      "name": "提交评审",
+      "method": "POST",
+      "path": "/rules/{id}/submit",
+      "request": {},
+      "response": {
+        "status": "待评审"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "handleAction(提交评审)",
+      "page": "/rules",
+      "note": "高危参数二次确认前端已做"
+    },
+    {
+      "module": "规则配置",
+      "name": "批准",
+      "method": "POST",
+      "path": "/rules/{id}/approve",
+      "request": {
+        "body": {
+          "approver": "string"
+        }
+      },
+      "response": {
+        "status": "已批准",
+        "approver": "string"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "handleAction(批准)",
+      "page": "/rules",
+      "note": ""
+    },
+    {
+      "module": "规则配置",
+      "name": "驳回（退回草稿）",
+      "method": "POST",
+      "path": "/rules/{id}/reject",
+      "request": {
+        "body": {
+          "reason": "string"
+        }
+      },
+      "response": {
+        "status": "草稿"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "handleAction(驳回)",
+      "page": "/rules",
+      "note": ""
+    },
+    {
+      "module": "规则配置",
+      "name": "发布（边缘同步，重点写操作）",
+      "method": "POST",
+      "path": "/rules/{id}/publish",
+      "request": {
+        "body": {
+          "nodeIds": [
+            "EDGE-xx"
+          ]
+        }
+      },
+      "response": {
+        "status": "已生效",
+        "version": "string",
+        "effectiveAt": "ISO8601",
+        "edgeNodes": [
+          {
+            "node": "string",
+            "version": "string",
+            "state": "synced"
+          }
+        ],
+        "syncedCount": "number"
+      },
+      "priority": "P0",
+      "realtime": true,
+      "mockSource": "RulePublishDialog/onPublished",
+      "page": "/rules",
+      "note": "Demo 模拟逐节点 4/4 同步过程"
+    },
+    {
+      "module": "规则配置",
+      "name": "边缘节点重新下发",
+      "method": "POST",
+      "path": "/rules/{id}/redeliver",
+      "request": {
+        "body": {
+          "nodeId": "EDGE-03"
+        }
+      },
+      "response": {
+        "edgeNodes": [
+          "EdgeNodeState"
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "simulateMismatch 后重新下发",
+      "page": "/rules",
+      "note": ""
+    },
+    {
+      "module": "规则配置",
+      "name": "规则回滚（生成新版本再走发布）",
+      "method": "POST",
+      "path": "/rules/{id}/rollback",
+      "request": {
+        "body": {
+          "targetVersion": "v3.2"
+        }
+      },
+      "response": {
+        "newVersion": "v3.4",
+        "status": "待评审",
+        "versions": [
+          "RuleVersion（来源：基于 targetVersion 回滚）"
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "onRollback / RuleRollbackDialog",
+      "page": "/rules",
+      "note": "不覆盖现版本，生成回滚新版本"
+    },
+    {
+      "module": "规则配置",
+      "name": "停用规则",
+      "method": "POST",
+      "path": "/rules/{id}/disable",
+      "request": {},
+      "response": {
+        "status": "已停用"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "handleAction(停用)",
+      "page": "/rules",
+      "note": ""
+    },
+    {
+      "module": "规则配置",
+      "name": "规则仿真",
+      "method": "POST",
+      "path": "/rules/simulate",
+      "request": {
+        "body": {
+          "ruleId": "string",
+          "distance": "number",
+          "relSpeed": "number",
+          "direction": "接近|远离|静止",
+          "radarQuality": "number",
+          "weather": "晴|小雨|雾天|夜间"
+        }
+      },
+      "response": {
+        "level": "安全|预警风险|严重风险|紧急风险",
+        "matchedRule": "string",
+        "thresholdNote": "string",
+        "actions": [
+          "string"
+        ],
+        "escalation": "string"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "runRuleSimulation / RuleSimulationDialog",
+      "page": "/rules",
+      "note": "纯计算 Mock，后端实现最简单的阈值判定即可"
+    },
+    {
+      "module": "规则配置",
+      "name": "规则冲突检查",
+      "method": "POST",
+      "path": "/rules/conflict-check",
+      "request": {},
+      "response": {
+        "conflicts": [
+          {
+            "ruleA": "string",
+            "ruleB": "string",
+            "field": "string",
+            "valueA": "string",
+            "valueB": "string",
+            "desc": "string",
+            "severity": "high|normal"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "mockConflicts / RuleConflictDialog",
+      "page": "/rules",
+      "note": "高危冲突不可直接忽略"
+    },
+    {
+      "module": "规则配置",
+      "name": "版本历史/差异",
+      "method": "GET",
+      "path": "/rules/{id}/versions",
+      "request": {},
+      "response": {
+        "versions": [
+          "RuleVersion"
+        ]
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "RuleVersionHistory",
+      "page": "/rules",
+      "note": ""
+    },
+    {
+      "module": "规则配置",
+      "name": "模拟版本异常（演示器）",
+      "method": "POST",
+      "path": "/rules/{id}/simulate-mismatch",
+      "request": {},
+      "response": {
+        "status": "版本异常",
+        "edgeNodes": [
+          "EdgeNodeState"
+        ]
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "simulateMismatch",
+      "page": "/rules",
+      "note": "SIMULATED"
+    },
+    {
+      "module": "运维监控",
+      "name": "运维总览 KPI",
+      "method": "GET",
+      "path": "/ops/overview",
+      "request": {},
+      "response": {
+        "platformState": "normal|degraded|offline",
+        "edgeOnline": "number",
+        "edgeTotal": "number",
+        "cameraOnline": "number",
+        "cameraTotal": "number",
+        "radarOnline": "number",
+        "radarTotal": "number",
+        "stationOnline": "number",
+        "stationTotal": "number",
+        "apiSuccessRate": "number",
+        "pendingUpload": "number"
+      },
+      "priority": "P0",
+      "realtime": true,
+      "mockSource": "OpsOverview.kpis/buildEdgeNodes 等",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "运维监控",
+      "name": "云边端拓扑",
+      "method": "GET",
+      "path": "/ops/topology",
+      "request": {},
+      "response": {
+        "cloud": [
+          {
+            "name": "事件中心|规则中心|数据服务",
+            "state": "HealthState"
+          }
+        ],
+        "edgeNodes": [
+          {
+            "id": "string",
+            "online": "boolean",
+            "autonomy": "boolean"
+          }
+        ],
+        "deviceGroups": [
+          {
+            "kind": "摄像头|雷达|定位基站|PLC接口|声光设备",
+            "online": "number",
+            "total": "number"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "SystemTopology + opsData",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "运维监控",
+      "name": "边缘节点列表",
+      "method": "GET",
+      "path": "/ops/edge-nodes",
+      "request": {},
+      "response": {
+        "list": [
+          {
+            "id": "string",
+            "name": "string",
+            "ip": "string",
+            "online": "boolean",
+            "autonomy": "boolean",
+            "cpu": "number%",
+            "memory": "number%",
+            "storage": "number%",
+            "cacheCapacity": "number",
+            "cacheEvents": "number",
+            "ruleVersion": "string",
+            "platformVersion": "string",
+            "timeOffsetMs": "number|null",
+            "lastHeartbeat": "ISO8601",
+            "localEventCount": "number",
+            "recentIssue": "string",
+            "cacheParts": [
+              {
+                "label": "string",
+                "percent": "number"
+              }
+            ]
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": true,
+      "mockSource": "buildEdgeNodes（EDGE-01~04）",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "运维监控",
+      "name": "边缘节点详情",
+      "method": "GET",
+      "path": "/ops/edge-nodes/{id}",
+      "request": {},
+      "response": {
+        "node": "EdgeNode 全字段"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "EdgeNodeDrawer",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "运维监控",
+      "name": "感知设备健康（分类）",
+      "method": "GET",
+      "path": "/ops/devices",
+      "request": {
+        "query": {
+          "kind": "摄像头|雷达|定位基站|PLC接口|声光设备"
+        }
+      },
+      "response": {
+        "categories": [
+          {
+            "kind": "string",
+            "total": "number",
+            "devices": [
+              {
+                "id": "string",
+                "name": "string",
+                "kind": "string",
+                "state": "HealthState",
+                "issue": "string",
+                "edgeId": "string"
+              }
+            ]
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "buildDeviceCategories",
+      "page": "/operations DeviceHealthPanel",
+      "note": ""
+    },
+    {
+      "module": "运维监控",
+      "name": "设备重连/诊断操作",
+      "method": "POST",
+      "path": "/ops/devices/{id}/reconnect",
+      "request": {
+        "body": {
+          "action": "reconnect|diagnose"
+        }
+      },
+      "response": {
+        "state": "normal",
+        "issue": ""
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "reconnectDevice / DeviceDiagnosticDialog",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "运维监控",
+      "name": "关键接口监控",
+      "method": "GET",
+      "path": "/ops/interfaces",
+      "request": {},
+      "response": {
+        "list": [
+          {
+            "id": "string",
+            "name": "string",
+            "state": "HealthState",
+            "latencyMs": "number",
+            "successRate": "number",
+            "lastCall": "ISO8601",
+            "errorCount": "number",
+            "cloudSide": "boolean"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "buildInterfaces（6 个接口）",
+      "page": "/operations InterfaceMonitor",
+      "note": ""
+    },
+    {
+      "module": "运维监控",
+      "name": "最近运维异常 Feed",
+      "method": "GET",
+      "path": "/ops/events",
+      "request": {
+        "query": {
+          "limit": "number"
+        }
+      },
+      "response": {
+        "list": [
+          {
+            "id": "string",
+            "time": "ISO8601",
+            "level": "info|warning|degraded|fault|offline",
+            "target": "string",
+            "text": "string"
+          }
+        ]
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "buildOpsEvents / OpsEventFeed",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "运维监控",
+      "name": "节点重连/校时/规则重下发",
+      "method": "POST",
+      "path": "/ops/edge-nodes/{id}/maintain",
+      "request": {
+        "body": {
+          "action": "reconnect|resyncTime|redeliverRule"
+        }
+      },
+      "response": {
+        "node": "更新后的 EdgeNode"
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "reconnectNode/resyncNodeTime/redeliverNode / EdgeNodeDrawer",
+      "page": "/operations",
+      "note": "日志下载保持 Mock"
+    },
+    {
+      "module": "运维监控",
+      "name": "模拟设备离线/缓存告警/时间偏差（演示器）",
+      "method": "POST",
+      "path": "/ops/simulate",
+      "request": {
+        "body": {
+          "scenario": "deviceFault|cacheAlert|timeDrift"
+        }
+      },
+      "response": {
+        "result": "对应状态变化"
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "simulateDeviceFault/simulateCacheAlert/simulateTimeDrift",
+      "page": "/operations",
+      "note": "SIMULATED"
+    },
+    {
+      "module": "云边自治",
+      "name": "云边链路状态（全局）",
+      "method": "GET",
+      "path": "/edge/link",
+      "request": {},
+      "response": {
+        "state": "online|link-error|disconnected|recovering"
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "operations store.linkState（当前仅前端）",
+      "page": "/operations、全局 Header、大屏",
+      "note": "状态被 Header/大屏共享，需要后端或 WS 给出权威状态"
+    },
+    {
+      "module": "云边自治",
+      "name": "断网/恢复演练开关（演示器）",
+      "method": "POST",
+      "path": "/edge/simulate-link",
+      "request": {
+        "body": {
+          "state": "disconnect|recover"
+        }
+      },
+      "response": {
+        "state": "string",
+        "steps": [
+          "RecoveryStep(恢复时)"
+        ]
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "simulateDisconnect/startRecover",
+      "page": "/operations",
+      "note": "SIMULATED 演练"
+    },
+    {
+      "module": "云边自治",
+      "name": "待补传本地事件队列",
+      "method": "GET",
+      "path": "/edge/local-events",
+      "request": {
+        "query": {
+          "node": "string(可选)",
+          "status": "待补传|补传中|已补传|重复"
+        }
+      },
+      "response": {
+        "list": [
+          {
+            "id": "EVT-EDGE-xxx",
+            "type": "string",
+            "node": "EDGE-xx",
+            "time": "ISO8601",
+            "risk": "string",
+            "status": "string",
+            "dedupKey": "string",
+            "localActions": [
+              "string"
+            ]
+          }
+        ],
+        "highCount": "number",
+        "earliestTime": "ISO8601",
+        "capacity": {
+          "used": "number",
+          "total": "number"
+        }
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "queue / LocalEventQueue",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "云边自治",
+      "name": "断网期间边缘本地事件上报（边缘→中心补传）",
+      "method": "POST",
+      "path": "/edge/local-events",
+      "request": {
+        "body": {
+          "events": [
+            "LocalEvent"
+          ]
+        }
+      },
+      "response": {
+        "uploaded": "number",
+        "duplicated": "number",
+        "failed": "number"
+      },
+      "priority": "P2",
+      "realtime": true,
+      "mockSource": "simulateLocalRisk/onUploadProgress",
+      "page": "/operations",
+      "note": "Demo 由模拟器生成；真实边缘上报后续实现，接口先占位"
+    },
+    {
+      "module": "云边自治",
+      "name": "网络恢复流程（补传/去重/对账）",
+      "method": "POST",
+      "path": "/edge/recover",
+      "request": {},
+      "response": {
+        "steps": [
+          {
+            "key": "network|upload|dedup|rule|time",
+            "label": "string",
+            "state": "wait|running|done|fail",
+            "detail": "string"
+          }
+        ],
+        "uploaded": "number",
+        "duplicated": "number"
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "RecoveryDialog/onRecoveryFinished",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "云边自治",
+      "name": "规则版本对账",
+      "method": "GET",
+      "path": "/edge/reconcile/rules",
+      "request": {},
+      "response": {
+        "platformVersion": "string",
+        "nodes": [
+          {
+            "node": "EDGE-xx",
+            "version": "string",
+            "matched": "boolean"
+          }
+        ],
+        "mismatchCount": "number"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "onRuleRedeliver（EDGE-03 v3.2≠v3.3）",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "云边自治",
+      "name": "对账后规则重新下发/保持",
+      "method": "POST",
+      "path": "/edge/reconcile/rules",
+      "request": {
+        "body": {
+          "action": "redeliver|keep",
+          "nodeId": "string"
+        }
+      },
+      "response": {
+        "nodes": [
+          "EdgeNodeState"
+        ]
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "onRuleRedeliver/onRuleKeep",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "云边自治",
+      "name": "时间同步对账/校时",
+      "method": "POST",
+      "path": "/edge/reconcile/time",
+      "request": {
+        "body": {
+          "nodeId": "EDGE-02"
+        }
+      },
+      "response": {
+        "timeOffsetMs": "number",
+        "state": "normal"
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "onTimeResync（+3.8s→32ms）",
+      "page": "/operations",
+      "note": ""
+    },
+    {
+      "module": "安全大屏",
+      "name": "大屏首屏聚合数据",
+      "method": "GET",
+      "path": "/screen/overview",
+      "request": {},
+      "response": {
+        "onDuty": "number",
+        "deviceOnline": "number",
+        "deviceTotal": "number",
+        "todayAlerts": "number",
+        "handling": "number",
+        "highRisk": "number",
+        "closeRate": "number",
+        "shift": "string",
+        "cloudLink": "string",
+        "deviceHealth": [
+          {
+            "kind": "string",
+            "online": "number",
+            "total": "number"
+          }
+        ],
+        "riskTypes": [
+          {
+            "type": "string",
+            "count": "number"
+          }
+        ],
+        "trend24h": [
+          {
+            "label": "string",
+            "total": "number",
+            "high": "number"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "BigScreenMetrics/DeviceHealth/Trend 内联",
+      "page": "/safety-screen",
+      "note": "尽量复用 overview/analytics 接口，此为大屏专用聚合"
+    },
+    {
+      "module": "安全大屏",
+      "name": "大屏态势地图",
+      "method": "GET",
+      "path": "/screen/map",
+      "request": {},
+      "response": "同 /overview/map",
+      "priority": "P0",
+      "realtime": true,
+      "mockSource": "BigScreenMap（拷贝人员/设备/围栏点位）",
+      "page": "/safety-screen",
+      "note": ""
+    },
+    {
+      "module": "安全大屏",
+      "name": "大屏实时事件流",
+      "method": "GET",
+      "path": "/screen/alerts/feed",
+      "request": {
+        "query": {
+          "limit": "number"
+        }
+      },
+      "response": {
+        "list": [
+          "精简告警(id/title/risk/summary/status/time)"
+        ]
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "BigScreenAlertFeed（incident store）",
+      "page": "/safety-screen",
+      "note": "优先 WS 推送"
+    },
+    {
+      "module": "安全大屏",
+      "name": "当前紧急事件（弹窗）",
+      "method": "GET",
+      "path": "/screen/critical",
+      "request": {},
+      "response": {
+        "incident": "MobileIncident 精简或 null"
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "incident store.criticalId / CriticalAlertPopup",
+      "page": "/safety-screen",
+      "note": ""
+    },
+    {
+      "module": "安全大屏",
+      "name": "紧急事件确认已读",
+      "method": "POST",
+      "path": "/screen/critical/{id}/ack",
+      "request": {
+        "body": {
+          "reader": "string"
+        }
+      },
+      "response": {
+        "acked": "boolean"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "acknowledgeCritical",
+      "page": "/safety-screen",
+      "note": "大屏只读，无处置类接口"
+    },
+    {
+      "module": "安全大屏",
+      "name": "模拟人员越界（演示器）",
+      "method": "POST",
+      "path": "/screen/simulate-breach",
+      "request": {
+        "body": {
+          "active": "boolean"
+        }
+      },
+      "response": {
+        "incident": "演示事件或 null"
+      },
+      "priority": "P2",
+      "realtime": true,
+      "mockSource": "triggerBreach/buildBreachIncident",
+      "page": "/safety-screen",
+      "note": "SIMULATED，且需同步推给移动端"
+    },
+    {
+      "module": "移动端告警",
+      "name": "移动端首页",
+      "method": "GET",
+      "path": "/mobile/home",
+      "request": {},
+      "response": {
+        "officer": {
+          "name": "string",
+          "role": "string",
+          "team": "string",
+          "shift": "string",
+          "online": "boolean"
+        },
+        "pending": "number",
+        "handling": "number",
+        "critical": "number",
+        "closedToday": "number",
+        "quickPending": [
+          "Incident 精简"
+        ],
+        "handlingList": [
+          "Incident 精简"
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "MobileHome（王建国/12 闭环）",
+      "page": "/mobile/home",
+      "note": ""
+    },
+    {
+      "module": "移动端告警",
+      "name": "移动端告警列表",
+      "method": "GET",
+      "path": "/mobile/incidents",
+      "request": {
+        "query": {
+          "tab": "all|pending|handling"
+        }
+      },
+      "response": {
+        "list": [
+          {
+            "id": "string",
+            "title": "string",
+            "risk": "string",
+            "source": "string",
+            "area": "string",
+            "target": "string",
+            "distanceM": "number",
+            "time": "ISO8601",
+            "status": "IncidentStatus"
+          }
+        ]
+      },
+      "priority": "P0",
+      "realtime": true,
+      "mockSource": "buildInitialIncidents（5 条）",
+      "page": "/mobile/alerts",
+      "note": ""
+    },
+    {
+      "module": "移动端告警",
+      "name": "移动端告警详情",
+      "method": "GET",
+      "path": "/mobile/incidents/{id}",
+      "request": {},
+      "response": {
+        "id": "string",
+        "pos": {
+          "x": "number",
+          "y": "number"
+        },
+        "evidence": "AlertEvidence",
+        "timeline": [
+          "TimelineNode"
+        ],
+        "linkage": {
+          "soundLight": "string",
+          "shutdown": "string",
+          "plc": "string"
+        },
+        "measures": [
+          "string"
+        ],
+        "siteNote": "string",
+        "riskCleared": "boolean|null",
+        "photos": [
+          "IncidentPhoto"
+        ]
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "MobileIncident 全量 / MobileAlertDetail",
+      "page": "/mobile/alert/:id",
+      "note": ""
+    },
+    {
+      "module": "移动端告警",
+      "name": "接单（重点写操作）",
+      "method": "POST",
+      "path": "/mobile/incidents/{id}/accept",
+      "request": {
+        "body": {
+          "officer": "string"
+        }
+      },
+      "response": {
+        "status": "已接单",
+        "assignee": "string",
+        "acceptTime": "ISO8601",
+        "timelineNode": "TimelineNode"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "incident.accept",
+      "page": "/mobile",
+      "note": ""
+    },
+    {
+      "module": "移动端告警",
+      "name": "确认到场（重点写操作）",
+      "method": "POST",
+      "path": "/mobile/incidents/{id}/arrive",
+      "request": {},
+      "response": {
+        "status": "已到场",
+        "arriveTime": "ISO8601"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "incident.arrive",
+      "page": "/mobile",
+      "note": ""
+    },
+    {
+      "module": "移动端告警",
+      "name": "开始处理（重点写操作）",
+      "method": "POST",
+      "path": "/mobile/incidents/{id}/start",
+      "request": {},
+      "response": {
+        "status": "处理中",
+        "handleTime": "ISO8601"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "incident.startHandle",
+      "page": "/mobile",
+      "note": ""
+    },
+    {
+      "module": "移动端告警",
+      "name": "提交处置结果（重点写操作，含照片）",
+      "method": "POST",
+      "path": "/mobile/incidents/{id}/treatment",
+      "request": {
+        "body": {
+          "measures": [
+            "人员已撤离…"
+          ],
+          "siteNote": "string",
+          "riskCleared": "boolean",
+          "note": "string",
+          "photos": [
+            {
+              "id": "string",
+              "name": "string",
+              "thumb": "dataURL/URL",
+              "time": "string"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": "待复核",
+        "submitTime": "ISO8601"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "incident.submitTreatment / MobileTreatmentForm",
+      "page": "/mobile",
+      "note": "Demo 阶段照片可直接收 dataURL；正式再改文件上传"
+    },
+    {
+      "module": "移动端告警",
+      "name": "复核通过关闭（演示）",
+      "method": "POST",
+      "path": "/mobile/incidents/{id}/review-close",
+      "request": {
+        "body": {
+          "reviewer": "string"
+        }
+      },
+      "response": {
+        "status": "已关闭"
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "incident.reviewClose",
+      "page": "/mobile",
+      "note": ""
+    },
+    {
+      "module": "移动端告警",
+      "name": "事件升级（重点写操作）",
+      "method": "POST",
+      "path": "/mobile/incidents/{id}/escalate",
+      "request": {
+        "body": {
+          "reason": "现场情况比预判严重|设备无法停止|出现人员受伤|需要多班组协同",
+          "level": "严重|紧急",
+          "targets": [
+            "string"
+          ]
+        }
+      },
+      "response": {
+        "risk": "升级后等级",
+        "timelineNode": "TimelineNode"
+      },
+      "priority": "P0",
+      "realtime": false,
+      "mockSource": "incident.escalate / MobileEscalateDialog",
+      "page": "/mobile",
+      "note": "升紧急时大屏应弹窗"
+    },
+    {
+      "module": "移动端告警",
+      "name": "请求紧急联动（只读请求，Mock 控制）",
+      "method": "POST",
+      "path": "/mobile/incidents/{id}/request-linkage",
+      "request": {},
+      "response": {
+        "linkage": {
+          "soundLight": "done",
+          "shutdown": "done",
+          "plc": "running→done"
+        }
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "incident.requestLinkage（1.4s PLC 回执）",
+      "page": "/mobile",
+      "note": "移动端不直接控设备"
+    },
+    {
+      "module": "移动端告警",
+      "name": "现场照片上传（Mock）",
+      "method": "POST",
+      "path": "/mobile/incidents/{id}/photos",
+      "request": {
+        "body": {
+          "format": "multipart/form-data 或 JSON {name,imageDataUrl}"
+        }
+      },
+      "response": {
+        "photo": {
+          "id": "string",
+          "name": "string",
+          "thumb": "string",
+          "time": "ISO8601"
+        }
+      },
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "MobileEvidenceUpload（SVG 占位/本地选图）",
+      "page": "/mobile",
+      "note": "SIMULATED 可继续本地 dataURL"
+    },
+    {
+      "module": "移动端告警",
+      "name": "离线缓存同步（恢复后批量提交）",
+      "method": "POST",
+      "path": "/mobile/sync",
+      "request": {
+        "body": {
+          "actions": [
+            {
+              "incidentId": "string",
+              "action": "accept|arrive|treatment",
+              "payload": "object",
+              "clientTs": "ISO8601"
+            }
+          ]
+        }
+      },
+      "response": {
+        "synced": "number",
+        "failed": "number"
+      },
+      "priority": "P2",
+      "realtime": false,
+      "mockSource": "MobileLayout 离线 Demo",
+      "page": "/mobile",
+      "note": "SIMULATED，PWA 离线缓存不做"
+    },
+    {
+      "module": "实时通道",
+      "name": "实时快照/事件推送 WebSocket",
+      "method": "WS",
+      "path": "/ws/live",
+      "request": {
+        "client→server": "{'type':'ping'} 心跳 20s"
+      },
+      "response": {
+        "snapshot": "消息1：SafetySnapshot 全量快照(含 schemaVersion/updatedAt)",
+        "delta": "消息2：增量事件 {'type':'alert.new|alert.changed|person.moved|ai.new|ops.event','data':{}}"
+      },
+      "priority": "P1",
+      "realtime": true,
+      "mockSource": "api/live.ts SafetyLiveClient（已实现断线重连/心跳）",
+      "page": "全局（App 挂载即连）",
+      "note": "前端已写好客户端，Demo 后端可先 1~3s 定时推快照/新告警，是大屏与联动演示的关键"
+    },
+    {
+      "module": "实时通道",
+      "name": "初始全量快照（既有契约，失败回退 Mock）",
+      "method": "GET",
+      "path": "/state",
+      "request": {},
+      "response": "SafetySnapshot（workPlan/people/fences/devices/aiEvents/alarms/rules/scenarios/auditLogs/system）",
+      "priority": "P1",
+      "realtime": false,
+      "mockSource": "demoSnapshot（safety store.initialize 已调用，失败 fallback）",
+      "page": "全局",
+      "note": "保留该聚合快照接口可让 App Header 立即跑通；各页面细化接口可后补"
+    }
+  ]
+}

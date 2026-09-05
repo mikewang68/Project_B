@@ -1,0 +1,34 @@
+# systemd Unit 模板 —— 装卸作业安全卡控系统 Backend Demo
+#
+# 部署步骤（bpoc-node4 / bpoc-node5 同一份 JAR）：
+#   1. sudo mkdir -p /opt/b-project/backend
+#   2. 上传 target/safety-gate-service.jar 到 /opt/b-project/backend/
+#   3. sudo cp deploy/backend/backend.env.example /etc/b-project/backend.env 并填写真实变量
+#   4. sudo cp deploy/backend/safety-control-backend.service.example \
+#        /etc/systemd/system/safety-control-backend.service
+#   5. sudo systemctl daemon-reload && sudo systemctl enable --now safety-control-backend
+#   6. journalctl -u safety-control-backend -f
+#
+# 注意：本文件只是模板，不会自动修改 /etc/systemd/system。
+
+[Unit]
+Description=B Project Safety Control Backend Demo
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=bproject
+Group=bproject
+WorkingDirectory=/opt/b-project/backend
+EnvironmentFile=/etc/b-project/backend.env
+ExecStart=/usr/bin/java $JAVA_OPTS -jar /opt/b-project/backend/safety-gate-service.jar --spring.profiles.active=server
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=40s
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
