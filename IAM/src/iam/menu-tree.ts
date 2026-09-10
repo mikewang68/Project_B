@@ -436,9 +436,30 @@ const iamSystem: MenuNode = {
   ],
 }
 
-/** 完整的六系统 + IAM 统一菜单树（顶级节点） */
+// 系统设置与维护（SYS）：独立模块，编码需与 SYS 工程 src/sys/sys-menu.ts 保持一致
+const sysSystem: MenuNode = {
+  id: 'sys',
+  name: '系统设置与维护',
+  system: 'sys',
+  icon: 'Setting',
+  children: [
+    group('sys-dict', '数据字典', 'sys', [
+      leaf('sys-dict-type', '字典分类', 'sys', 'sys:dict:type', ['view', 'add', 'edit', 'delete']),
+      leaf('sys-dict-item', '字典项', 'sys', 'sys:dict:item', ['view', 'add', 'edit', 'delete']),
+    ]),
+    group('sys-log', '操作日志', 'sys', [
+      leaf('sys-log-list', '日志查询', 'sys', 'sys:log:list', ['view', 'export']),
+    ]),
+    group('sys-config', '系统配置', 'sys', [
+      leaf('sys-config-list', '参数配置', 'sys', 'sys:config:list', ['view', 'edit']),
+    ]),
+  ],
+}
+
+/** 完整的六业务系统 + IAM + SYS 统一菜单树（顶级节点） */
 export const MENU_TREE: MenuNode[] = [
   iamSystem,
+  sysSystem,
   dtSystem,
   ppsSystem,
   wmsSystem,
