@@ -1,0 +1,200 @@
+// =====================================================
+// IAM 统一设计令牌：基础令牌 + 多皮肤 + 多布局
+// 皮肤通过 <html data-theme="..."> 切换；布局通过容器 data-layout="..." 切换。
+// 新增皮肤：复制一个 [data-theme='xxx'] 块、改色值，并在 preference store 的 THEME_OPTIONS 登记即可。
+// =====================================================
+
+:root {
+  // ── 字体 ──
+  --font-family: 'Source Han Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-mono: 'Roboto Mono', 'Consolas', monospace;
+
+  // ── 间距（4px 网格）──
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  // ── 圆角 ──
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  // ── 字号（PC 基线）──
+  --font-size-body: 14px;
+  --font-size-form: 14px;
+  --font-size-page-title: 24px;
+  --font-size-panel-title: 20px;
+
+  // ── 布局尺寸（三种布局共用，可被皮肤/布局微调）──
+  --iam-sidebar-width: 220px;
+  --iam-sidebar-collapsed: 64px;
+  --iam-topbar-height: 56px;
+
+  // ── 状态色（各皮肤通用）──
+  --status-ok: #10b981;
+  --status-warn: #f59e0b;
+  --status-serious: #f97316;
+  --status-error: #dc2626;
+  --status-offline: #6b7280;
+  --status-ai: #7c5cd8;
+}
+
+// =====================================================
+// 皮肤 1：科技蓝 tech-blue（默认，深海军蓝侧栏 + 青蓝主色 + 浅色内容）
+// =====================================================
+:root,
+[data-theme='tech-blue'] {
+  --iam-primary: #0e9fc4;
+  --iam-primary-hover: #0b86a6;
+  --iam-logo-from: #00b4d8;
+  --iam-logo-to: #0077b6;
+
+  --iam-sidebar-bg: #0d1424;
+  --iam-sidebar-text: #8aa8bd;
+  --iam-sidebar-active: #22d3ee;
+  --iam-sidebar-hover-bg: rgba(34, 211, 238, 0.08);
+  --iam-sidebar-active-bg: rgba(34, 211, 238, 0.12);
+  --iam-sidebar-divider: rgba(255, 255, 255, 0.06);
+
+  --iam-topbar-bg: #ffffff;
+  --iam-topbar-border: #e4e7ed;
+  --iam-content-bg: #f0f2f5;
+  --iam-card-bg: #ffffff;
+  --iam-card-border: #ebeef5;
+  --iam-text-strong: #1f2d3d;
+  --iam-text-base: #303133;
+  --iam-text-muted: #909399;
+
+  // Element Plus 主色及其混合阶梯
+  --el-color-primary: #0e9fc4;
+  --el-color-primary-light-3: #4db8d1;
+  --el-color-primary-light-5: #86d0e1;
+  --el-color-primary-light-7: #bfe5ef;
+  --el-color-primary-light-8: #d3edf4;
+  --el-color-primary-light-9: #e8f7fa;
+  --el-color-primary-dark-2: #0b7c99;
+}
+
+// =====================================================
+// 皮肤 2：护眼墨绿 forest-green（深墨绿侧栏 + 翠绿主色 + 浅色内容）
+// =====================================================
+[data-theme='forest-green'] {
+  --iam-primary: #10a368;
+  --iam-primary-hover: #0d8a57;
+  --iam-logo-from: #10b981;
+  --iam-logo-to: #047857;
+
+  --iam-sidebar-bg: #0b1f19;
+  --iam-sidebar-text: #93b7a8;
+  --iam-sidebar-active: #34d399;
+  --iam-sidebar-hover-bg: rgba(52, 211, 153, 0.08);
+  --iam-sidebar-active-bg: rgba(52, 211, 153, 0.13);
+  --iam-sidebar-divider: rgba(255, 255, 255, 0.06);
+
+  --iam-topbar-bg: #ffffff;
+  --iam-topbar-border: #e2ece7;
+  --iam-content-bg: #eef4f1;
+  --iam-card-bg: #ffffff;
+  --iam-card-border: #e3ede8;
+  --iam-text-strong: #14301f;
+  --iam-text-base: #274034;
+  --iam-text-muted: #8aa69a;
+
+  --el-color-primary: #10a368;
+  --el-color-primary-light-3: #4dbc8e;
+  --el-color-primary-light-5: #86d4b3;
+  --el-color-primary-light-7: #bfe8d7;
+  --el-color-primary-light-8: #d3f0e5;
+  --el-color-primary-light-9: #e9f8f2;
+  --el-color-primary-dark-2: #0d8053;
+}
+
+// =====================================================
+// 皮肤 3：典雅紫 purple-elegant（深紫侧栏 + 紫罗兰主色 + 浅色内容）
+// =====================================================
+[data-theme='purple-elegant'] {
+  --iam-primary: #7c5cf0;
+  --iam-primary-hover: #6a48e0;
+  --iam-logo-from: #8b5cf6;
+  --iam-logo-to: #6d28d9;
+
+  --iam-sidebar-bg: #171030;
+  --iam-sidebar-text: #aba1cc;
+  --iam-sidebar-active: #a78bfa;
+  --iam-sidebar-hover-bg: rgba(167, 139, 250, 0.09);
+  --iam-sidebar-active-bg: rgba(167, 139, 250, 0.14);
+  --iam-sidebar-divider: rgba(255, 255, 255, 0.06);
+
+  --iam-topbar-bg: #ffffff;
+  --iam-topbar-border: #e8e4f3;
+  --iam-content-bg: #f2f0fa;
+  --iam-card-bg: #ffffff;
+  --iam-card-border: #e9e5f5;
+  --iam-text-strong: #241a47;
+  --iam-text-base: #352b5c;
+  --iam-text-muted: #958db2;
+
+  --el-color-primary: #7c5cf0;
+  --el-color-primary-light-3: #9d85f4;
+  --el-color-primary-light-5: #beadf7;
+  --el-color-primary-light-7: #d8cffb;
+  --el-color-primary-light-8: #e5defc;
+  --el-color-primary-light-9: #f2eefe;
+  --el-color-primary-dark-2: #6242c4;
+}
+
+// =====================================================
+// 皮肤 4：暗夜黑 dark-pro（整体深色，侧栏/顶栏/内容/Element 表面全部转暗）
+// =====================================================
+[data-theme='dark-pro'] {
+  --iam-primary: #38bdf8;
+  --iam-primary-hover: #5cc9fa;
+  --iam-logo-from: #38bdf8;
+  --iam-logo-to: #0369a1;
+
+  --iam-sidebar-bg: #0b1220;
+  --iam-sidebar-text: #94a3b8;
+  --iam-sidebar-active: #7dd3fc;
+  --iam-sidebar-hover-bg: rgba(56, 189, 248, 0.1);
+  --iam-sidebar-active-bg: rgba(56, 189, 248, 0.16);
+  --iam-sidebar-divider: rgba(148, 163, 184, 0.12);
+
+  --iam-topbar-bg: #111c30;
+  --iam-topbar-border: #1e3049;
+  --iam-content-bg: #0f172a;
+  --iam-card-bg: #16263f;
+  --iam-card-border: #22385a;
+  --iam-text-strong: #e6edf6;
+  --iam-text-base: #cbd5e1;
+  --iam-text-muted: #8298b3;
+
+  --el-color-primary: #38bdf8;
+  --el-color-primary-light-3: #66cdfa;
+  --el-color-primary-light-5: #93defc;
+  --el-color-primary-light-7: #bfeafd;
+  --el-color-primary-light-8: #d4f1fe;
+  --el-color-primary-light-9: #e9f8ff;
+  --el-color-primary-dark-2: #0ea5e9;
+
+  // Element Plus 表面/文字/边框整体转暗，实现统一暗色
+  --el-bg-color: #16263f;
+  --el-bg-color-page: #0f172a;
+  --el-bg-color-overlay: #1a2c48;
+  --el-fill-color-blank: #16263f;
+  --el-fill-color-light: #1d3150;
+  --el-fill-color-lighter: #1a2c48;
+  --el-fill-color-extra-light: #182842;
+  --el-text-color-primary: #e6edf6;
+  --el-text-color-regular: #cbd5e1;
+  --el-text-color-secondary: #94a8c2;
+  --el-text-color-placeholder: #6b809c;
+  --el-border-color: #2c4569;
+  --el-border-color-light: #284062;
+  --el-border-color-lighter: #243b5b;
+  --el-border-color-extra-light: #203552;
+  --el-mask-color: rgba(7, 15, 28, 0.72);
+  --el-color-info: #94a3b8;
+}
