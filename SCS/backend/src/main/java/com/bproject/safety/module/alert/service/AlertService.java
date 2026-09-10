@@ -149,7 +149,7 @@ public class AlertService {
 
     /**
      * 移动端接单（Backend Demo 过渡设计）：主状态保持“待处理”，仅推进 mobileStage 至 ACCEPTED。
-     * 与管理端 start 区分：移动端需要“已接单→已到场→开始处理”的现场节奏。
+     * 与管理端 start 区分：移动端需要“已接单→已到场→处理中”的现场节奏。
      */
     public DemoAlert mobileAccept(String id, StartRequest req, String idemKey) {
         String operator = pickOperator(req == null ? null : firstNonBlank(req.handler(), req.operator()));
@@ -403,6 +403,80 @@ public class AlertService {
                 draft.target(), draft.ruleId(), draft.ruleVersion(), draft.durationSec(), draft.evidence(),
                 "AI 识别到" + draft.eventType(),
                 "AI 复核确认为真实违规（来源事件 " + draft.aiEventId() + "），生成安全告警"));
+    }
+
+    /**
+     * 边缘断网事件补传建单（任务书第二十二 / 二十四 / 二十五 / 二十六节）。
+     *
+     * <p>与实时建单的关键区别：</p>
+     * <ul>
+     *   <li>occurredAt / 展示 time 必须使用事件在边缘实际发生的时间，不能使用恢复补传时间；
+     *       syncedAt / 接收时间才是补传时刻，syncDelaySec 记录延迟；</li>
+     *   <li>Timeline 完整记录“边缘产生 → 边缘联动 → 云中断 → 入缓存 → 恢复 → 补传 → 平台接收”，
+     *       不伪造人工操作；</li>
+     *   <li>origin=EDGE_REPLAY 并携带 edgeReplay 元数据，不新建 EdgeAlert，仍是同一条 Alert 主链，
+     *       创建后同样广播 alert.new，五端看到同一个 alertId。</li>
+     * </ul>
+     * 幂等防重由 EdgeReplayService 在队列层兜底（同一 eventId / idempotencyKey 只消费一次）。
+     */
+    public synchronized DemoAlert createEdgeReplayAlert(EdgeReplayDraft draft) {
+        String id = nextAlertId();
+        OffsetDateTime occurredAt = draft.edgeOccurredAt();
+        OffsetDateTime syncedAt = OffsetDateTime.now(clock);
+        String occurredHms = occurredAt.format(HMS);
+        String syncedHms = syncedAt.format(HMS);
+        DemoAlert a = new DemoAlert();
+        a.id = id;
+        a.title = draft.title();
+        a.risk = draft.risk();
+        a.eventType = draft.eventType();
+        a.time = occurredHms;
+        a.area = draft.area();
+        a.target = draft.target();
+        a.source = draft.source();
+        a.origin = "EDGE_REPLAY";
+        a.status = AlertStatuses.PENDING_CONFIRM;
+        a.assignee = "待分配";
+        a.dedupKey = "EDGE-REPLAY:" + draft.edgeNodeId() + ":" + draft.offlineEventId();
+        a.ruleId = draft.ruleId();
+        a.ruleVersion = draft.ruleVersionUsed();
+        a.durationSec = draft.durationSec() == null ? 0 : draft.durationSec();
+        a.evidence = draft.evidence();
+        a.linkageAvailable = "严重".equals(a.risk) || "紧急".equals(a.risk);
+        a.linkage = AlertDemoSeeder.linkageTemplate();
+        a.occurredAt = occurredAt;
+        a.updatedAt = syncedAt;
+        long delaySec = Duration.between(occurredAt, syncedAt).getSeconds();
+        DemoAlert.EdgeReplayMeta meta = new DemoAlert.EdgeReplayMeta();
+        meta.edgeNodeId = draft.edgeNodeId();
+        meta.offlineEventId = draft.offlineEventId();
+        meta.offlineOccurred = true;
+        meta.syncDelaySec = Math.max(0, delaySec);
+        meta.ruleVersionUsed = draft.ruleVersionUsed();
+        meta.syncedAt = syncedAt;
+        a.edgeReplay = meta;
+        List<TimelineEvent> nodes = new ArrayList<>();
+        nodes.add(new TimelineEvent(occurredHms, occurredAt, "边缘本地产生风险判定：" + draft.localJudgement(), "done"));
+        nodes.add(new TimelineEvent(occurredHms, occurredAt, "边缘本地联动执行完成（" + draft.localLinkageText() + "）", "done"));
+        nodes.add(new TimelineEvent(occurredHms, occurredAt, "云连接中断，事件未上报中心", "done"));
+        nodes.add(new TimelineEvent(occurredHms, occurredAt, "事件进入边缘离线缓存（事件号 " + draft.offlineEventId() + "）", "done"));
+        nodes.add(new TimelineEvent(syncedHms, syncedAt, "云边链路恢复连接", "done"));
+        nodes.add(new TimelineEvent(syncedHms, syncedAt, "离线事件幂等补传成功", "done"));
+        nodes.add(new TimelineEvent(syncedHms, syncedAt,
+                "平台接收告警（边缘发生 " + occurredHms + "，补传延迟 " + Math.max(0, delaySec) + " 秒）", "active"));
+        a.timeline = nodes;
+        repository.save(a);
+        notifier.changed("new", a);
+        log.info("边缘补传生成告警 id={} edge={} offlineEvent={} delaySec={}",
+                id, draft.edgeNodeId(), draft.offlineEventId(), Math.max(0, delaySec));
+        return get(id);
+    }
+
+    /** 边缘补传建单入参（record，alert 模块不反向依赖 ops 模块）。 */
+    public record EdgeReplayDraft(String edgeNodeId, String offlineEventId, OffsetDateTime edgeOccurredAt,
+                                  String source, String title, String eventType, String risk, String area,
+                                  String target, String ruleId, String ruleVersionUsed, Integer durationSec,
+                                  AlertEvidence evidence, String localJudgement, String localLinkageText) {
     }
 
     /** 感知模块（人员/设备/AI）风险建单入参。 */

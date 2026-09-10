@@ -50,6 +50,15 @@ public final class LiveEventTypes {
     /** 规则边缘同步状态变化（版本异常 / 重新下发） */
     public static final String RULE_SYNC_CHANGED = "rule.sync.changed";
 
+    /** 运维：边缘节点状态变化（任务书第二十八节）。 */
+    public static final String OPS_NODE_CHANGED = "ops.node.changed";
+    /** 运维：规则 / 时间同步状态变化。 */
+    public static final String OPS_SYNC_CHANGED = "ops.sync.changed";
+    /** 运维：离线队列变化（入队 / 补传 / 失败 / 去重）。 */
+    public static final String OPS_QUEUE_CHANGED = "ops.queue.changed";
+    /** 运维：恢复流程阶段变化。 */
+    public static final String OPS_RECOVERY_CHANGED = "ops.recovery.changed";
+
     /** 客户端心跳请求 */
     public static final String PING = "ping";
     /** 服务端心跳响应 */
