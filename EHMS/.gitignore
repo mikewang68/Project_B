@@ -1,0 +1,26 @@
+# Real deployment secrets and local overrides
+.env
+.env.*
+!.env.example
+config/ehm-server.env
+config/*.local.*
+
+# Credentials and certificates
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+
+# Runtime and build output
+logs/
+run/
+source/backend/target/
+app/*.jar
+*.log
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

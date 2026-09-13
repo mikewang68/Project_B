@@ -1,0 +1,15 @@
+ehm:
+  cors:
+    allowed-origins: ${EHM_ALLOWED_ORIGINS}
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  data:
+    mongodb:
+      uri: ${EHM_MONGODB_URI}
+
+logging:
+  level:
+    root: INFO

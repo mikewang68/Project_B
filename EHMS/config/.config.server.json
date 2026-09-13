@@ -1,0 +1,81 @@
+{
+  "configVersion": "1.1.1-server",
+  "application": {
+    "name": "ehm",
+    "displayName": "设备健康管理系统",
+    "environment": "lab-server",
+    "timezone": "Asia/Shanghai",
+    "locale": "zh-CN"
+  },
+  "frontend": {
+    "frameworkTarget": "HTML/CSS/JavaScript轻客户端（后续可平滑迁移Vue 3）",
+    "currentPrototypeMode": "server-integration",
+    "mockDataEnabled": false,
+    "publicBasePath": "/ehm/",
+    "apiBaseUrl": "/api/ehm/v1",
+    "staticServer": {
+      "type": "Nginx",
+      "host": "node6.example.internal",
+      "publicUrl": "http://192.0.2.74:18090/ehm/"
+    }
+  },
+  "backend": {
+    "enabled": true,
+    "runtime": "Java 17",
+    "buildTool": "Maven 3.9.16",
+    "serviceName": "ehm-service",
+    "host": "node4.example.internal",
+    "port": 18083,
+    "contextPath": "/api/ehm/v1"
+  },
+  "datasources": {
+    "business": {
+      "enabled": true,
+      "type": "openGauss",
+      "version": "6.0.5",
+      "host": "node4.example.internal",
+      "port": 5432,
+      "database": "ehm",
+      "schema": "ehm",
+      "secretSource": "environment",
+      "usage": [
+        "设备台账与BOM",
+        "告警、健康评估和人工审核",
+        "维保计划、点检、缺陷和工单",
+        "备件库存、FMECA、规则、知识库、SLA和审计"
+      ]
+    },
+    "telemetry": {
+      "enabled": true,
+      "type": "openGemini",
+      "version": "1.5.2",
+      "protocol": "InfluxDB-v1-compatible HTTP",
+      "host": "node6.example.internal",
+      "port": 8086,
+      "database": "ehm_telemetry",
+      "usage": [
+        "设备测点原始采样",
+        "振动、温度、电流、压力与载荷时序",
+        "健康评分和劣化趋势",
+        "告警前后证据窗口",
+        "模型特征及推理结果时间线"
+      ]
+    }
+  },
+  "featureFlags": {
+    "useMockData": false,
+    "enableBackendApi": true,
+    "enableRealtimeTelemetry": true,
+    "enableAlarmEventBus": false,
+    "enablePredictiveMaintenance": true,
+    "enableAiAssistant": false,
+    "enableExternalIntegration": false
+  },
+  "deployment": {
+    "frontendNode": "node6.example.internal",
+    "applicationNode": "node4.example.internal",
+    "gateway": "Easegress待统一路由后切换",
+    "serverProfile": "server",
+    "containerRequired": false
+  }
+}

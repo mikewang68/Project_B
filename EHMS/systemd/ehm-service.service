@@ -1,0 +1,27 @@
+[Unit]
+Description=B Project Equipment Health Management Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ehm
+Group=ehm
+WorkingDirectory=/opt/b-project/ehm
+EnvironmentFile=/opt/b-project/ehm/config/ehm-server.env
+Environment=SPRING_PROFILES_ACTIVE=server
+ExecStart=/usr/bin/env java -XX:InitialRAMPercentage=10 -XX:MaxRAMPercentage=60 -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai -jar /opt/b-project/ehm/app/ehm-service.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=40
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/b-project/ehm/logs /opt/b-project/ehm/run
+StandardOutput=append:/opt/b-project/ehm/logs/ehm-service.out
+StandardError=append:/opt/b-project/ehm/logs/ehm-service.err
+
+[Install]
+WantedBy=multi-user.target

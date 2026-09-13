@@ -1,0 +1,46 @@
+server:
+  port: ${EHM_SERVER_PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: ehm-demo
+  data:
+    mongodb:
+      uri: ${EHM_MONGODB_URI:mongodb://ehm_admin:ehm_demo_change_me@localhost:27017/ehm?authSource=admin}
+      auto-index-creation: true
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: Asia/Shanghai
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+
+ehm:
+  config:
+    path: ${EHM_CONFIG_PATH:../.config.json}
+  ai:
+    enabled: ${EHM_AI_ENABLED:false}
+    base-url: ${EHM_AI_BASE_URL:}
+    api-key: ${EHM_AI_API_KEY:}
+    model: ${EHM_AI_MODEL:}
+    timeout-seconds: ${EHM_AI_TIMEOUT_SECONDS:60}
+  security:
+    jwt-enabled: ${EHM_JWT_ENABLED:false}
+    rbac-enabled: ${EHM_RBAC_ENABLED:false}
+    tls-enabled: ${EHM_TLS_ENABLED:false}
+
+logging:
+  level:
+    root: INFO
+    org.mongodb.driver: WARN

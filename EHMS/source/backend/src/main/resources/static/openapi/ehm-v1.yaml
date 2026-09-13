@@ -1,0 +1,1507 @@
+openapi: 3.0.3
+info:
+  title: 设备健康管理系统 API
+  version: 1.8.0
+  description: EHM可交付Demo契约，覆盖资产、监测、告警闭环、健康预测、维保点检、备件库存与可靠性治理，并增加openGemini时序历史、能力接入状态、交付就绪检查和接口操作审计。旧列表未携带page/size时暂返回兼容数组；新客户端必须显式分页。
+servers:
+  - url: /api/ehm/v1
+paths:
+  /devices:
+    get:
+      summary: 分页查询设备综合视图
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - {name: keyword, in: query, schema: {type: string}}
+        - {name: area, in: query, schema: {type: string}}
+        - {name: type, in: query, schema: {type: string}}
+      responses:
+        '200':
+          description: 设备分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevicePage'
+    post:
+      summary: 创建设备
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Device'}
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Device'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /devices/{code}:
+    parameters:
+      - {name: code, in: path, required: true, schema: {type: string}}
+    get:
+      summary: 查询设备
+      responses:
+        '200':
+          description: 设备综合视图
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Device'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      summary: 更新设备
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Device'}
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Device'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    delete:
+      summary: 归档设备
+      responses:
+        '204': {description: 已归档}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /assets/{assetCode}/components:
+    parameters:
+      - {name: assetCode, in: path, required: true, schema: {type: string}}
+    get:
+      summary: 分页查询设备BOM部件
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - {name: keyword, in: query, schema: {type: string}}
+      responses:
+        '200': {description: 部件分页, content: {application/json: {schema: {$ref: '#/components/schemas/ComponentPage'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      summary: 新建设备部件
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ComponentInput'}}}
+      responses:
+        '201': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/Component'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /components/{code}:
+    parameters:
+      - {name: code, in: path, required: true, schema: {type: string}}
+    get:
+      summary: 查询部件详情
+      responses:
+        '200': {description: 部件详情, content: {application/json: {schema: {$ref: '#/components/schemas/Component'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      summary: 更新部件
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ComponentInput'}}}
+      responses:
+        '200': {description: 更新成功, content: {application/json: {schema: {$ref: '#/components/schemas/Component'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+    delete:
+      summary: 归档无活动测点的部件
+      responses:
+        '204': {description: 已归档}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /assets/{assetCode}/measurement-points:
+    parameters:
+      - {name: assetCode, in: path, required: true, schema: {type: string}}
+    get:
+      summary: 分页查询设备测点配置
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - {name: keyword, in: query, schema: {type: string}}
+      responses:
+        '200': {description: 测点分页, content: {application/json: {schema: {$ref: '#/components/schemas/MeasurementPointPage'}}}}
+    post:
+      summary: 新建测点配置
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MeasurementPointInput'}}}
+      responses:
+        '201': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/MeasurementPoint'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /measurement-points/{code}:
+    parameters:
+      - {name: code, in: path, required: true, schema: {type: string}}
+    get:
+      summary: 查询测点配置
+      responses:
+        '200': {description: 测点详情, content: {application/json: {schema: {$ref: '#/components/schemas/MeasurementPoint'}}}}
+    put:
+      summary: 更新测点配置
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MeasurementPointInput'}}}
+      responses:
+        '200': {description: 更新成功, content: {application/json: {schema: {$ref: '#/components/schemas/MeasurementPoint'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+    delete:
+      summary: 归档测点
+      responses:
+        '204': {description: 已归档}
+  /data-quality/points:
+    get:
+      summary: 分页查询逐测点质量快照
+      parameters:
+        - {name: assetCode, in: query, required: true, schema: {type: string}}
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - {name: keyword, in: query, schema: {type: string}}
+      responses:
+        '200': {description: 质量快照分页, content: {application/json: {schema: {$ref: '#/components/schemas/DataQualityPointPage'}}}}
+  /data-quality/summary:
+    get:
+      summary: 获取设备测点质量汇总及健康评估门槛
+      parameters:
+        - {name: assetCode, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: 质量汇总, content: {application/json: {schema: {$ref: '#/components/schemas/DataQualitySummary'}}}}
+  /data-quality/points/{pointCode}/sample:
+    post:
+      summary: 写入一条Demo采样并执行质量判定
+      parameters:
+        - {name: pointCode, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/PointSampleInput'}}}
+      responses:
+        '200': {description: 判定结果, content: {application/json: {schema: {$ref: '#/components/schemas/DataQualityPoint'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /telemetry/points/{pointCode}/samples:
+    get:
+      summary: 查询测点在openGemini中的时序历史
+      parameters:
+        - {name: pointCode, in: path, required: true, schema: {type: string}}
+        - {name: from, in: query, schema: {type: string, format: date-time}}
+        - {name: to, in: query, schema: {type: string, format: date-time}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 2000, default: 500}}
+      responses:
+        '200':
+          description: 按时间倒序返回测点采样
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/TelemetrySample'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /alarms/{alarmNo}/case:
+    parameters:
+      - {name: alarmNo, in: path, required: true, schema: {type: string}}
+    get:
+      summary: 查询告警闭环档案
+      responses:
+        '200': {description: 闭环档案, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      summary: 冻结告警、数据质量和测点证据并建立闭环档案
+      responses:
+        '201': {description: 已建立档案, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+  /alarms/{alarmNo}/case/diagnoses:
+    post:
+      summary: 记录人工诊断结论和依据
+      parameters: [{name: alarmNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DiagnosisInput'}}}
+      responses:
+        '200': {description: 已记录诊断, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /alarms/{alarmNo}/case/work-order:
+    post:
+      summary: 根据人工诊断创建并关联维保工单
+      parameters: [{name: alarmNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/CaseWorkOrderInput'}}}
+      responses:
+        '200': {description: 已关联工单, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /work-orders/{orderNo}/case:
+    get:
+      summary: 按工单编号查询闭环档案
+      parameters: [{name: orderNo, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 闭环档案, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /work-orders/{orderNo}/case/execution-records:
+    post:
+      summary: 记录维修执行、安全确认和备件使用
+      parameters: [{name: orderNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ExecutionInput'}}}
+      responses:
+        '200': {description: 已记录执行过程, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /work-orders/{orderNo}/case/retests:
+    post:
+      summary: 提交维修前后量化复测和验收判据
+      parameters: [{name: orderNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/RetestInput'}}}
+      responses:
+        '200': {description: 已记录复测, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /work-orders/{orderNo}/case/close:
+    post:
+      summary: 复测通过后同步关闭工单、告警和闭环档案
+      parameters: [{name: orderNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CloseCaseInput'}}}
+      responses:
+        '200': {description: 闭环完成, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /devices/{assetCode}/health-assessments/run:
+    post:
+      summary: 在数据质量准入后生成可追溯健康评估与Demo RUL区间
+      parameters: [{name: assetCode, in: path, required: true, schema: {type: string}}]
+      responses:
+        '201': {description: 评估完成, content: {application/json: {schema: {$ref: '#/components/schemas/HealthAssessment'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /devices/{assetCode}/health-assessments/latest:
+    get:
+      summary: 查询设备最新健康评估
+      parameters: [{name: assetCode, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 最新评估, content: {application/json: {schema: {$ref: '#/components/schemas/HealthAssessment'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /devices/{assetCode}/health-assessments:
+    get:
+      summary: 查询设备健康评估历史
+      parameters:
+        - {name: assetCode, in: path, required: true, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200': {description: 评估历史, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/HealthAssessment'}}}}}
+  /health-assessments/{assessmentId}/review:
+    post:
+      summary: 对健康预测建议进行一次性人工审核
+      parameters: [{name: assessmentId, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/PredictionReviewInput'}}}
+      responses:
+        '200': {description: 审核已记录, content: {application/json: {schema: {$ref: '#/components/schemas/HealthAssessment'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /health-assessments/{assessmentId}/work-order:
+    post:
+      summary: 将人工接受的预测建议转为待审批工单
+      parameters: [{name: assessmentId, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/PredictionWorkOrderInput'}}}
+      responses:
+        '200': {description: 工单已创建并关联, content: {application/json: {schema: {$ref: '#/components/schemas/HealthAssessment'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /maintenance-plans:
+    get:
+      summary: 按设备查询维护策略与计划
+      parameters: [{name: assetCode, in: query, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 维护计划, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/MaintenancePlan'}}}}}
+    post:
+      summary: 新建包含标准检查项的维护计划
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MaintenancePlanInput'}}}
+      responses:
+        '201': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenancePlan'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /maintenance-plans/{planId}/inspection-tasks:
+    post:
+      summary: 从维护计划生成点检任务
+      parameters: [{name: planId, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/GenerateInspectionTaskInput'}}}
+      responses:
+        '201': {description: 任务已生成, content: {application/json: {schema: {$ref: '#/components/schemas/InspectionTask'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /inspection-tasks:
+    get:
+      summary: 按设备查询点检任务
+      parameters: [{name: assetCode, in: query, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 点检任务, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/InspectionTask'}}}}}
+  /inspection-tasks/{taskNo}:
+    get:
+      summary: 查询点检任务详情
+      parameters: [{name: taskNo, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 点检任务, content: {application/json: {schema: {$ref: '#/components/schemas/InspectionTask'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /inspection-tasks/{taskNo}/start:
+    patch:
+      summary: 开始待执行点检任务
+      parameters: [{name: taskNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/OperatorAction'}}}
+      responses:
+        '200': {description: 已开始, content: {application/json: {schema: {$ref: '#/components/schemas/InspectionTask'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /inspection-tasks/{taskNo}/submit:
+    post:
+      summary: 提交逐项点检结果并在异常时生成缺陷
+      parameters: [{name: taskNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InspectionSubmitInput'}}}
+      responses:
+        '200': {description: 点检已提交, content: {application/json: {schema: {$ref: '#/components/schemas/InspectionSubmissionResult'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /maintenance-defects:
+    get:
+      summary: 按设备查询点检缺陷
+      parameters: [{name: assetCode, in: query, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 缺陷列表, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/DefectRecord'}}}}}
+  /maintenance-defects/{defectNo}/work-order:
+    post:
+      summary: 将人工确认的点检缺陷转为待审批工单
+      parameters: [{name: defectNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/DefectWorkOrderInput'}}}
+      responses:
+        '200': {description: 已关联工单, content: {application/json: {schema: {$ref: '#/components/schemas/DefectRecord'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /spare-parts:
+    get:
+      summary: 查询备件台账及指定仓库实时库存
+      parameters: [{name: warehouseCode, in: query, schema: {type: string, default: MAIN}}]
+      responses:
+        '200': {description: 备件库存视图, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SparePartView'}}}}}
+    post:
+      summary: 新建备件台账
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateSparePartInput'}}}
+      responses:
+        '201': {description: 已建账, content: {application/json: {schema: {$ref: '#/components/schemas/SparePartView'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /spare-parts/{partCode}/receipt:
+    post:
+      summary: 备件到货入库并生成库存流水
+      parameters: [{name: partCode, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QuantityOperationInput'}}}
+      responses:
+        '200': {description: 已入库, content: {application/json: {schema: {$ref: '#/components/schemas/SpareOperationResult'}}}}
+  /spare-parts/{partCode}/return:
+    post:
+      summary: 工单余料退库并生成库存流水
+      parameters: [{name: partCode, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SpareReturnInput'}}}
+      responses:
+        '200': {description: 已退库, content: {application/json: {schema: {$ref: '#/components/schemas/SpareOperationResult'}}}}
+  /spare-stock/summary:
+    get:
+      summary: 获取库存种类、金额、预留和采购建议汇总
+      parameters: [{name: warehouseCode, in: query, schema: {type: string, default: MAIN}}]
+      responses:
+        '200': {description: 库存汇总, content: {application/json: {schema: {$ref: '#/components/schemas/SpareInventorySummary'}}}}
+  /spare-stock/alerts:
+    get:
+      summary: 查询低库存备件及建议采购数量和金额
+      parameters: [{name: warehouseCode, in: query, schema: {type: string, default: MAIN}}]
+      responses:
+        '200': {description: 低库存告警, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SparePartView'}}}}}
+  /spare-stock/transactions:
+    get:
+      summary: 查询不可变库存流水
+      parameters:
+        - {name: partCode, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        '200': {description: 库存流水, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/StockTransaction'}}}}}
+  /spare-reservations:
+    get:
+      summary: 查询工单备件预留
+      parameters: [{name: workOrderNo, in: query, schema: {type: string}}]
+      responses:
+        '200': {description: 预留记录, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SpareReservation'}}}}}
+  /work-orders/{orderNo}/spare-reservations:
+    post:
+      summary: 为有效工单预留适用备件
+      parameters: [{name: orderNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SpareReserveInput'}}}
+      responses:
+        '201': {description: 已预留, content: {application/json: {schema: {$ref: '#/components/schemas/SpareOperationResult'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /spare-reservations/{reservationNo}/issue:
+    post:
+      summary: 按预留数量受控领用备件
+      parameters: [{name: reservationNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SpareIssueInput'}}}
+      responses:
+        '200': {description: 已领用, content: {application/json: {schema: {$ref: '#/components/schemas/SpareOperationResult'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /spare-reservations/{reservationNo}/release:
+    post:
+      summary: 释放尚未领用的预留库存
+      parameters: [{name: reservationNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/ReleaseSpareInput'}}}
+      responses:
+        '200': {description: 已释放, content: {application/json: {schema: {$ref: '#/components/schemas/SpareOperationResult'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /system/capabilities:
+    get:
+      summary: 查询基础设施与外部能力接入状态
+      responses:
+        '200': {description: 能力状态列表, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SystemCapability'}}}}}
+  /system/delivery-readiness:
+    get:
+      summary: 查询演示交付结果与生产上线阻断项
+      responses:
+        '200': {description: 交付就绪检查, content: {application/json: {schema: {$ref: '#/components/schemas/DeliveryReadiness'}}}}
+  /system/audit-logs:
+    get:
+      summary: 查询最近的接口写操作审计
+      parameters: [{name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 100}}]
+      responses:
+        '200': {description: 审计记录, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AuditRecord'}}}}}
+  /reliability/failure-modes:
+    get:
+      summary: 查询FMECA失效模式与风险登记册
+      responses:
+        '200': {description: 失效模式列表, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/FailureMode'}}}}}
+    post:
+      summary: 新建FMECA失效模式并计算RPN
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/FailureModeInput'}}}
+      responses:
+        '201': {description: 已创建, content: {application/json: {schema: {$ref: '#/components/schemas/FailureMode'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /reliability/failure-modes/{id}:
+    put:
+      summary: 修订失效模式及S/O/D评分
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/FailureModeInput'}}}
+      responses:
+        '200': {description: 已修订, content: {application/json: {schema: {$ref: '#/components/schemas/FailureMode'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /reliability/fault-codes:
+    get:
+      summary: 查询由FMECA统一维护的故障编码
+      responses:
+        '200': {description: 故障编码及失效模式, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/FailureMode'}}}}}
+  /reliability/alarm-rules:
+    get:
+      summary: 查询告警规则及版本状态
+      responses:
+        '200': {description: 告警规则列表, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/ReliabilityAlarmRule'}}}}}
+    post:
+      summary: 新建草稿告警规则
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AlarmRuleInput'}}}
+      responses:
+        '201': {description: 草稿已创建, content: {application/json: {schema: {$ref: '#/components/schemas/ReliabilityAlarmRule'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /reliability/alarm-rules/{code}/publish:
+    post:
+      summary: 发布草稿告警规则
+      parameters: [{name: code, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/OperatorAction'}}}
+      responses:
+        '200': {description: 已发布, content: {application/json: {schema: {$ref: '#/components/schemas/ReliabilityAlarmRule'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /reliability/alarm-rules/{code}/disable:
+    post:
+      summary: 停用已发布规则并保留历史版本
+      parameters: [{name: code, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/OperatorAction'}}}
+      responses:
+        '200': {description: 已停用, content: {application/json: {schema: {$ref: '#/components/schemas/ReliabilityAlarmRule'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /reliability/knowledge-cases:
+    get:
+      summary: 查询故障知识案例
+      responses:
+        '200': {description: 知识案例列表, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/KnowledgeCase'}}}}}
+    post:
+      summary: 新建待审核知识案例
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/KnowledgeCaseInput'}}}
+      responses:
+        '201': {description: 草稿案例已创建, content: {application/json: {schema: {$ref: '#/components/schemas/KnowledgeCase'}}}}
+  /reliability/knowledge-cases/{caseNo}/verify:
+    post:
+      summary: 人工审核知识案例
+      parameters: [{name: caseNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/OperatorAction'}}}
+      responses:
+        '200': {description: 已审核, content: {application/json: {schema: {$ref: '#/components/schemas/KnowledgeCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /reliability/sla-policies:
+    get:
+      summary: 查询告警确认、分派、恢复与升级策略
+      responses:
+        '200': {description: SLA策略列表, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SlaPolicy'}}}}}
+  /reliability/sla-policies/{severity}:
+    put:
+      summary: 新增或修改指定等级SLA策略
+      parameters: [{name: severity, in: path, required: true, schema: {type: string, enum: [L1, L2, L3, L4, DATA]}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SlaPolicyInput'}}}
+      responses:
+        '200': {description: 已保存, content: {application/json: {schema: {$ref: '#/components/schemas/SlaPolicy'}}}}
+  /alarms:
+    get:
+      summary: 分页查询告警
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 告警分页
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AlarmPage'}
+  /alarms/{alarmNo}/acknowledge:
+    post:
+      summary: 人工确认告警
+      parameters:
+        - {name: alarmNo, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OperatorAction'}
+      responses:
+        '200':
+          description: 确认成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Alarm'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /alarms/{alarmNo}/close:
+    post:
+      summary: 关闭已确认告警
+      parameters:
+        - {name: alarmNo, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OperatorAction'}
+      responses:
+        '200':
+          description: 关闭成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Alarm'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /work-orders:
+    get:
+      summary: 分页查询工单
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 工单分页
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkOrderPage'}
+    post:
+      summary: 创建并提交工单
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateWorkOrder'}
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkOrder'}
+  /work-orders/{orderNo}/status:
+    patch:
+      summary: 按状态机推进工单
+      parameters:
+        - {name: orderNo, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/StatusAction'}
+      responses:
+        '200':
+          description: 推进成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/WorkOrder'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /dashboard/summary:
+    get:
+      summary: 获取驾驶舱聚合指标
+      responses:
+        '200': {description: 聚合指标}
+  /assistant/chat:
+    post:
+      summary: 运维辅助问答
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: {type: string}
+      responses:
+        '200': {description: AI或规则降级回答}
+components:
+  parameters:
+    Page: {name: page, in: query, required: true, schema: {type: integer, minimum: 0, default: 0}}
+    Size: {name: size, in: query, required: true, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+  schemas:
+    Page:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content: {type: array, items: {}}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+    DevicePage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content: {type: array, items: {$ref: '#/components/schemas/Device'}}
+    AlarmPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content: {type: array, items: {$ref: '#/components/schemas/Alarm'}}
+    WorkOrderPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content: {type: array, items: {$ref: '#/components/schemas/WorkOrder'}}
+    ComponentPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content: {type: array, items: {$ref: '#/components/schemas/Component'}}
+    MeasurementPointPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content: {type: array, items: {$ref: '#/components/schemas/MeasurementPoint'}}
+    DataQualityPointPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content: {type: array, items: {$ref: '#/components/schemas/DataQualityPoint'}}
+    Device:
+      type: object
+      required: [code, name]
+      properties:
+        code: {type: string, example: GT-01}
+        name: {type: string}
+        type: {type: string}
+        area: {type: string}
+        condition: {type: string}
+        health: {type: integer, nullable: true, minimum: 0, maximum: 100}
+        risk: {type: string}
+        riskClass: {type: string}
+        quality: {type: number, nullable: true}
+        ready: {type: string}
+        alarm: {type: string}
+        maintenanceDate: {type: string, nullable: true}
+        owner: {type: string}
+        temperature: {type: number, nullable: true}
+        vibration: {type: number, nullable: true}
+        current: {type: number, nullable: true}
+        rulDays: {type: integer, nullable: true}
+        updatedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64}
+    Alarm:
+      type: object
+      properties:
+        alarmNo: {type: string}
+        deviceCode: {type: string}
+        deviceName: {type: string}
+        component: {type: string}
+        level: {type: string}
+        levelClass: {type: string}
+        summary: {type: string}
+        status: {type: string, enum: [新建, 待确认, 已确认, 处理中, 待验证, 已关闭, 已抑制, 无效告警]}
+        history: {type: array, items: {type: object}}
+        version: {type: integer, format: int64}
+    WorkOrder:
+      type: object
+      properties:
+        orderNo: {type: string}
+        deviceCode: {type: string}
+        deviceName: {type: string}
+        title: {type: string}
+        priority: {type: string}
+        status: {type: string, enum: [草稿, 待审批, 待执行, 执行中, 待复测, 已关闭, 已驳回, 已取消, 已暂停]}
+        history: {type: array, items: {type: object}}
+        version: {type: integer, format: int64}
+    Component:
+      allOf:
+        - $ref: '#/components/schemas/ComponentInput'
+        - type: object
+          properties:
+            assetCode: {type: string}
+            updatedAt: {type: string, format: date-time}
+            version: {type: integer, format: int64}
+    ComponentInput:
+      type: object
+      required: [code, name]
+      properties:
+        code: {type: string, example: GT01-GEARBOX}
+        parentCode: {type: string, nullable: true}
+        name: {type: string}
+        category: {type: string}
+        manufacturer: {type: string}
+        model: {type: string}
+        serialNumber: {type: string}
+        criticality: {type: string, enum: [A类, B类, C类]}
+        position: {type: string}
+        installedOn: {type: string}
+        status: {type: string}
+    MeasurementPoint:
+      allOf:
+        - $ref: '#/components/schemas/MeasurementPointInput'
+        - type: object
+          properties:
+            assetCode: {type: string}
+            updatedAt: {type: string, format: date-time}
+            version: {type: integer, format: int64}
+    MeasurementPointInput:
+      type: object
+      required: [code, componentCode, name]
+      properties:
+        code: {type: string, example: GT01-VIB-RMS}
+        componentCode: {type: string}
+        name: {type: string}
+        metric: {type: string}
+        unit: {type: string}
+        sourceProtocol: {type: string}
+        sourceAddress: {type: string}
+        sampleIntervalSeconds: {type: integer, minimum: 1, maximum: 86400}
+        lowerLimit: {type: number, nullable: true}
+        upperLimit: {type: number, nullable: true}
+        enabled: {type: boolean}
+    DataQualityPoint:
+      type: object
+      properties:
+        pointCode: {type: string}
+        assetCode: {type: string}
+        componentCode: {type: string}
+        name: {type: string}
+        metric: {type: string}
+        unit: {type: string}
+        qualityStatus: {type: string, enum: [GOOD, DELAYED, MISSING, OUT_OF_RANGE, INVALID, DISABLED]}
+        qualityLabel: {type: string}
+        lastValue: {type: number, nullable: true}
+        sourceTimestamp: {type: string, format: date-time, nullable: true}
+        receivedAt: {type: string, format: date-time, nullable: true}
+        assessedAt: {type: string, format: date-time}
+        message: {type: string}
+        consecutiveFailures: {type: integer}
+    DataQualitySummary:
+      type: object
+      properties:
+        assetCode: {type: string}
+        totalPoints: {type: integer, format: int64}
+        enabledPoints: {type: integer, format: int64}
+        goodPoints: {type: integer, format: int64}
+        delayedPoints: {type: integer, format: int64}
+        missingPoints: {type: integer, format: int64}
+        outOfRangePoints: {type: integer, format: int64}
+        invalidPoints: {type: integer, format: int64}
+        disabledPoints: {type: integer, format: int64}
+        availabilityPercent: {type: number}
+        healthAssessmentAllowed: {type: boolean}
+        assessmentMessage: {type: string}
+        assessedAt: {type: string, format: date-time}
+    PointSampleInput:
+      type: object
+      required: [value, sourceTimestamp]
+      properties:
+        value: {type: number}
+        sourceTimestamp: {type: string, format: date-time}
+        receivedAt: {type: string, format: date-time, nullable: true}
+    TelemetrySample:
+      type: object
+      required: [pointCode, value]
+      properties:
+        pointCode: {type: string}
+        assetCode: {type: string, nullable: true}
+        metric: {type: string, nullable: true}
+        unit: {type: string, nullable: true}
+        value: {type: number, nullable: true}
+        quality: {type: string, nullable: true}
+        sourceTimestamp: {type: string, format: date-time, nullable: true}
+        receivedAt: {type: string, format: date-time, nullable: true}
+    MaintenanceCase:
+      type: object
+      properties:
+        alarmNo: {type: string}
+        deviceCode: {type: string}
+        deviceName: {type: string}
+        component: {type: string}
+        alarmLevel: {type: string}
+        alarmSummary: {type: string}
+        status: {type: string, enum: [待诊断, 已诊断, 已转工单, 处置中, 待复测, 复测通过, 已闭环]}
+        statusCode: {type: string, enum: [OPEN, DIAGNOSED, WORK_ORDER_CREATED, EXECUTING, WAITING_RETEST, VERIFIED, CLOSED]}
+        evidence: {type: array, items: {$ref: '#/components/schemas/EvidenceItem'}}
+        diagnoses: {type: array, items: {$ref: '#/components/schemas/DiagnosisRecord'}}
+        workOrderNo: {type: string, nullable: true}
+        executionRecords: {type: array, items: {$ref: '#/components/schemas/ExecutionRecord'}}
+        retests: {type: array, items: {$ref: '#/components/schemas/RetestRecord'}}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        closedAt: {type: string, format: date-time, nullable: true}
+        version: {type: integer, format: int64}
+    EvidenceItem:
+      type: object
+      properties:
+        type: {type: string}
+        title: {type: string}
+        content: {type: string}
+        sourceRef: {type: string}
+        capturedAt: {type: string, format: date-time}
+    DiagnosisRecord:
+      type: object
+      properties:
+        diagnosisId: {type: string}
+        conclusion: {type: string}
+        probableCause: {type: string}
+        confidence: {type: string}
+        evidence: {type: string}
+        operator: {type: string}
+        createdAt: {type: string, format: date-time}
+    ExecutionRecord:
+      type: object
+      properties:
+        recordId: {type: string}
+        action: {type: string}
+        result: {type: string}
+        safetyConfirmation: {type: string}
+        partsUsed: {type: string}
+        operator: {type: string}
+        executedAt: {type: string, format: date-time}
+    RetestRecord:
+      type: object
+      properties:
+        retestId: {type: string}
+        pointCode: {type: string}
+        beforeValue: {type: number}
+        afterValue: {type: number}
+        unit: {type: string}
+        criterion: {type: string}
+        passed: {type: boolean}
+        operator: {type: string}
+        testedAt: {type: string, format: date-time}
+    DiagnosisInput:
+      type: object
+      required: [conclusion, probableCause, evidence]
+      properties:
+        conclusion: {type: string}
+        probableCause: {type: string}
+        confidence: {type: string}
+        evidence: {type: string}
+        operator: {type: string}
+    CaseWorkOrderInput:
+      type: object
+      properties:
+        title: {type: string}
+        priority: {type: string}
+        assignee: {type: string}
+        description: {type: string}
+        plannedWindow: {type: string}
+        operator: {type: string}
+    ExecutionInput:
+      type: object
+      required: [action, result, safetyConfirmation]
+      properties:
+        action: {type: string}
+        result: {type: string}
+        safetyConfirmation: {type: string}
+        partsUsed: {type: string}
+        operator: {type: string}
+    RetestInput:
+      type: object
+      required: [pointCode, beforeValue, afterValue, criterion, passed]
+      properties:
+        pointCode: {type: string}
+        beforeValue: {type: number}
+        afterValue: {type: number}
+        unit: {type: string}
+        criterion: {type: string}
+        passed: {type: boolean}
+        operator: {type: string}
+    CloseCaseInput:
+      type: object
+      required: [conclusion]
+      properties:
+        conclusion: {type: string}
+        operator: {type: string}
+    HealthAssessment:
+      type: object
+      properties:
+        assessmentId: {type: string}
+        assetCode: {type: string}
+        assetName: {type: string}
+        healthScore: {type: integer, minimum: 0, maximum: 100}
+        healthGrade: {type: string, enum: [健康, 关注, 异常, 严重]}
+        confidencePercent: {type: number}
+        status: {type: string, enum: [COMPLETED]}
+        method: {type: string}
+        modelVersion: {type: string}
+        featureVersion: {type: string}
+        dataAvailabilityPercent: {type: number}
+        factors: {type: array, items: {$ref: '#/components/schemas/HealthFactor'}}
+        prediction: {$ref: '#/components/schemas/RulPrediction'}
+        limitations: {type: array, items: {type: string}}
+        inputWindowStart: {type: string, format: date-time}
+        inputWindowEnd: {type: string, format: date-time}
+        generatedAt: {type: string, format: date-time}
+        validUntil: {type: string, format: date-time}
+        review: {$ref: '#/components/schemas/PredictionReview', nullable: true}
+        workOrderNo: {type: string, nullable: true}
+        version: {type: integer, format: int64, nullable: true}
+    HealthFactor:
+      type: object
+      properties:
+        pointCode: {type: string}
+        metric: {type: string}
+        value: {type: number}
+        unit: {type: string}
+        referenceLimit: {type: number, nullable: true}
+        utilizationPercent: {type: number}
+        deduction: {type: number}
+        explanation: {type: string}
+    RulPrediction:
+      type: object
+      properties:
+        status: {type: string, enum: [DEMO_ESTIMATE, UNAVAILABLE]}
+        modelVersion: {type: string}
+        lowerDays: {type: integer, nullable: true}
+        expectedDays: {type: integer, nullable: true}
+        upperDays: {type: integer, nullable: true}
+        confidencePercent: {type: number}
+        riskLevel: {type: string}
+        faultMode: {type: string}
+        maintenanceWindow: {type: string}
+        recommendation: {type: string}
+        limitation: {type: string}
+    PredictionReview:
+      type: object
+      properties:
+        decision: {type: string, enum: [ACCEPTED, OBSERVE, REJECTED]}
+        comment: {type: string}
+        reviewer: {type: string}
+        reviewedAt: {type: string, format: date-time}
+    PredictionReviewInput:
+      type: object
+      required: [decision, comment]
+      properties:
+        decision: {type: string, enum: [ACCEPTED, OBSERVE, REJECTED]}
+        comment: {type: string}
+        reviewer: {type: string}
+    PredictionWorkOrderInput:
+      type: object
+      properties:
+        title: {type: string}
+        assignee: {type: string}
+        plannedWindow: {type: string}
+        operator: {type: string}
+    MaintenancePlan:
+      type: object
+      properties:
+        planId: {type: string}
+        assetCode: {type: string}
+        assetName: {type: string}
+        componentCode: {type: string}
+        name: {type: string}
+        strategyType: {type: string, enum: [PERIODIC, CONDITION_BASED, PREDICTIVE]}
+        cycleDays: {type: integer}
+        triggerCondition: {type: string}
+        checklistTemplate: {type: array, items: {$ref: '#/components/schemas/InspectionTemplateItem'}}
+        ownerTeam: {type: string}
+        nextDueAt: {type: string, format: date-time}
+        enabled: {type: boolean}
+        lastGeneratedAt: {type: string, format: date-time, nullable: true}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64, nullable: true}
+    InspectionTemplateItem:
+      type: object
+      required: [itemId, name, standard]
+      properties:
+        itemId: {type: string}
+        name: {type: string}
+        method: {type: string}
+        standard: {type: string}
+        unit: {type: string}
+        required: {type: boolean}
+    MaintenancePlanInput:
+      type: object
+      required: [assetCode, name, cycleDays, checklist]
+      properties:
+        assetCode: {type: string}
+        componentCode: {type: string}
+        name: {type: string}
+        strategyType: {type: string, enum: [PERIODIC, CONDITION_BASED, PREDICTIVE]}
+        cycleDays: {type: integer, minimum: 1, maximum: 3650}
+        triggerCondition: {type: string}
+        checklist: {type: array, minItems: 1, items: {$ref: '#/components/schemas/InspectionTemplateItem'}}
+        ownerTeam: {type: string}
+        nextDueAt: {type: string, format: date-time, nullable: true}
+    InspectionTask:
+      type: object
+      properties:
+        taskNo: {type: string}
+        planId: {type: string}
+        assetCode: {type: string}
+        assetName: {type: string}
+        componentCode: {type: string}
+        title: {type: string}
+        scheduledAt: {type: string, format: date-time}
+        assignee: {type: string}
+        status: {type: string, enum: [PLANNED, IN_PROGRESS, CLOSED, DEFECT_FOUND, CANCELLED]}
+        checklist: {type: array, items: {$ref: '#/components/schemas/InspectionItemResult'}}
+        startedAt: {type: string, format: date-time, nullable: true}
+        submittedAt: {type: string, format: date-time, nullable: true}
+        conclusion: {type: string, nullable: true}
+        operator: {type: string, nullable: true}
+        defectNo: {type: string, nullable: true}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64, nullable: true}
+    InspectionItemResult:
+      type: object
+      properties:
+        itemId: {type: string}
+        name: {type: string}
+        method: {type: string}
+        standard: {type: string}
+        unit: {type: string}
+        required: {type: boolean}
+        measuredValue: {type: string, nullable: true}
+        result: {type: string, enum: [PENDING, PASS, FAIL, NA]}
+        remark: {type: string, nullable: true}
+    GenerateInspectionTaskInput:
+      type: object
+      properties:
+        scheduledAt: {type: string, format: date-time, nullable: true}
+        assignee: {type: string}
+    InspectionSubmitInput:
+      type: object
+      required: [items, conclusion]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [itemId, result]
+            properties:
+              itemId: {type: string}
+              measuredValue: {type: string}
+              result: {type: string, enum: [PASS, FAIL, NA]}
+              remark: {type: string}
+        conclusion: {type: string}
+        operator: {type: string}
+        defectSeverity: {type: string}
+        defectDescription: {type: string}
+    InspectionSubmissionResult:
+      type: object
+      properties:
+        task: {$ref: '#/components/schemas/InspectionTask'}
+        defect: {$ref: '#/components/schemas/DefectRecord', nullable: true}
+    DefectRecord:
+      type: object
+      properties:
+        defectNo: {type: string}
+        taskNo: {type: string}
+        assetCode: {type: string}
+        assetName: {type: string}
+        componentCode: {type: string}
+        severity: {type: string}
+        description: {type: string}
+        evidenceSummary: {type: string}
+        status: {type: string, enum: [OPEN, WORK_ORDER_CREATED]}
+        workOrderNo: {type: string, nullable: true}
+        reporter: {type: string}
+        discoveredAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64, nullable: true}
+    DefectWorkOrderInput:
+      type: object
+      properties:
+        title: {type: string}
+        assignee: {type: string}
+        plannedWindow: {type: string}
+        operator: {type: string}
+    SparePartView:
+      type: object
+      properties:
+        partCode: {type: string}
+        name: {type: string}
+        specification: {type: string}
+        category: {type: string}
+        unit: {type: string}
+        compatibleAssets: {type: array, items: {type: string}}
+        safetyStock: {type: number}
+        reorderPoint: {type: number}
+        leadTimeDays: {type: integer}
+        unitCost: {type: number}
+        warehouseCode: {type: string}
+        onHandQuantity: {type: number}
+        reservedQuantity: {type: number}
+        availableQuantity: {type: number}
+        inTransitQuantity: {type: number}
+        lowStock: {type: boolean}
+        suggestedPurchaseQuantity: {type: number}
+        suggestedPurchaseAmount: {type: number}
+        suggestionReason: {type: string}
+        stockUpdatedAt: {type: string, format: date-time}
+    SpareInventorySummary:
+      type: object
+      properties:
+        partTypes: {type: integer}
+        lowStockPartTypes: {type: integer}
+        reservedPartTypes: {type: integer}
+        onHandValue: {type: number}
+        suggestedPurchaseAmount: {type: number}
+        activeReservations: {type: integer, format: int64}
+    StockBalance:
+      type: object
+      properties:
+        balanceId: {type: string}
+        warehouseCode: {type: string}
+        partCode: {type: string}
+        onHandQuantity: {type: number}
+        reservedQuantity: {type: number}
+        inTransitQuantity: {type: number}
+        updatedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64, nullable: true}
+    SpareReservation:
+      type: object
+      properties:
+        reservationNo: {type: string}
+        workOrderNo: {type: string}
+        assetCode: {type: string}
+        warehouseCode: {type: string}
+        partCode: {type: string}
+        partName: {type: string}
+        requestedQuantity: {type: number}
+        issuedQuantity: {type: number}
+        releasedQuantity: {type: number}
+        unit: {type: string}
+        purpose: {type: string}
+        status: {type: string, enum: [RESERVED, PARTIALLY_ISSUED, ISSUED, RELEASED]}
+        requester: {type: string}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64, nullable: true}
+    StockTransaction:
+      type: object
+      properties:
+        transactionNo: {type: string}
+        transactionType: {type: string, enum: [RECEIPT, RESERVE, ISSUE, RELEASE, RETURN]}
+        warehouseCode: {type: string}
+        partCode: {type: string}
+        workOrderNo: {type: string, nullable: true}
+        reservationNo: {type: string, nullable: true}
+        quantity: {type: number}
+        onHandAfter: {type: number}
+        reservedAfter: {type: number}
+        reason: {type: string}
+        operator: {type: string}
+        occurredAt: {type: string, format: date-time}
+    SpareOperationResult:
+      type: object
+      properties:
+        balance: {$ref: '#/components/schemas/StockBalance'}
+        reservation: {$ref: '#/components/schemas/SpareReservation', nullable: true}
+        transaction: {$ref: '#/components/schemas/StockTransaction'}
+    CreateSparePartInput:
+      type: object
+      required: [partCode, name]
+      properties:
+        partCode: {type: string}
+        name: {type: string}
+        specification: {type: string}
+        category: {type: string}
+        unit: {type: string}
+        compatibleAssets: {type: array, items: {type: string}}
+        safetyStock: {type: number, minimum: 0}
+        reorderPoint: {type: number, minimum: 0}
+        leadTimeDays: {type: integer, minimum: 0, maximum: 3650}
+        unitCost: {type: number, minimum: 0}
+        warehouseCode: {type: string}
+    QuantityOperationInput:
+      type: object
+      required: [quantity]
+      properties:
+        quantity: {type: number, minimum: 0.001}
+        warehouseCode: {type: string}
+        reason: {type: string}
+        operator: {type: string}
+    SpareReturnInput:
+      allOf:
+        - $ref: '#/components/schemas/QuantityOperationInput'
+        - type: object
+          properties:
+            workOrderNo: {type: string, nullable: true}
+    SpareReserveInput:
+      type: object
+      required: [partCode, quantity]
+      properties:
+        partCode: {type: string}
+        quantity: {type: number, minimum: 0.001}
+        warehouseCode: {type: string}
+        purpose: {type: string}
+        requester: {type: string}
+    SpareIssueInput:
+      type: object
+      required: [quantity]
+      properties:
+        quantity: {type: number, minimum: 0.001}
+        reason: {type: string}
+        operator: {type: string}
+    ReleaseSpareInput:
+      type: object
+      properties:
+        reason: {type: string}
+        operator: {type: string}
+    SystemCapability:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {type: string, enum: [ACTIVE, RESERVED, DISABLED, BLOCKED]}
+        condition: {type: string}
+        scope: {type: string}
+    DeliveryReadiness:
+      type: object
+      properties:
+        edition: {type: string}
+        demoDeliverable: {type: boolean}
+        productionReady: {type: boolean}
+        runtime: {type: string}
+        completedScope: {type: array, items: {type: string}}
+        productionBlockers: {type: array, items: {type: string}}
+        time: {type: string, format: date-time}
+    AuditRecord:
+      type: object
+      properties:
+        auditId: {type: string}
+        occurredAt: {type: string, format: date-time}
+        operator: {type: string}
+        role: {type: string}
+        method: {type: string}
+        path: {type: string}
+        statusCode: {type: integer}
+        outcome: {type: string, enum: [SUCCESS, FAILED]}
+        traceId: {type: string}
+        clientAddress: {type: string}
+        durationMs: {type: integer, format: int64}
+    FailureMode:
+      type: object
+      properties:
+        failureModeId: {type: string}
+        faultCode: {type: string}
+        assetType: {type: string}
+        component: {type: string}
+        failureName: {type: string}
+        failureEffect: {type: string}
+        failureCause: {type: string}
+        severity: {type: integer, minimum: 1, maximum: 10}
+        occurrence: {type: integer, minimum: 1, maximum: 10}
+        detectability: {type: integer, minimum: 1, maximum: 10}
+        rpn: {type: integer, minimum: 1, maximum: 1000}
+        currentControl: {type: string}
+        recommendedAction: {type: string}
+        owner: {type: string}
+        status: {type: string}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64, nullable: true}
+    FailureModeInput:
+      type: object
+      required: [faultCode, assetType, component, failureName, failureEffect, failureCause, severity, occurrence, detectability]
+      properties:
+        faultCode: {type: string}
+        assetType: {type: string}
+        component: {type: string}
+        failureName: {type: string}
+        failureEffect: {type: string}
+        failureCause: {type: string}
+        severity: {type: integer, minimum: 1, maximum: 10}
+        occurrence: {type: integer, minimum: 1, maximum: 10}
+        detectability: {type: integer, minimum: 1, maximum: 10}
+        currentControl: {type: string}
+        recommendedAction: {type: string}
+        owner: {type: string}
+    ReliabilityAlarmRule:
+      type: object
+      properties:
+        ruleCode: {type: string}
+        name: {type: string}
+        assetType: {type: string}
+        metric: {type: string}
+        conditionExpression: {type: string}
+        recoveryExpression: {type: string}
+        severity: {type: string, enum: [L1, L2, L3, L4, DATA]}
+        persistenceSeconds: {type: integer}
+        versionLabel: {type: string}
+        status: {type: string, enum: [DRAFT, PUBLISHED, DISABLED]}
+        hitCount: {type: integer, format: int64}
+        falsePositiveCount: {type: integer, format: int64}
+        owner: {type: string}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64, nullable: true}
+    AlarmRuleInput:
+      type: object
+      required: [ruleCode, name, assetType, metric, conditionExpression, severity]
+      properties:
+        ruleCode: {type: string}
+        name: {type: string}
+        assetType: {type: string}
+        metric: {type: string}
+        conditionExpression: {type: string}
+        recoveryExpression: {type: string}
+        severity: {type: string, enum: [L1, L2, L3, L4, DATA]}
+        persistenceSeconds: {type: integer, minimum: 0, maximum: 86400}
+        owner: {type: string}
+    KnowledgeCase:
+      type: object
+      properties:
+        caseNo: {type: string}
+        faultCode: {type: string}
+        assetType: {type: string}
+        component: {type: string}
+        title: {type: string}
+        symptom: {type: string}
+        confirmedCause: {type: string}
+        diagnosisSteps: {type: array, items: {type: string}}
+        remedy: {type: string}
+        verificationCriterion: {type: string}
+        sourceWorkOrderNo: {type: string}
+        status: {type: string, enum: [DRAFT, VERIFIED]}
+        verifiedBy: {type: string, nullable: true}
+        verifiedAt: {type: string, format: date-time, nullable: true}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64, nullable: true}
+    KnowledgeCaseInput:
+      type: object
+      required: [faultCode, assetType, component, title, symptom, confirmedCause, diagnosisSteps, remedy, verificationCriterion]
+      properties:
+        faultCode: {type: string}
+        assetType: {type: string}
+        component: {type: string}
+        title: {type: string}
+        symptom: {type: string}
+        confirmedCause: {type: string}
+        diagnosisSteps: {type: array, minItems: 1, items: {type: string}}
+        remedy: {type: string}
+        verificationCriterion: {type: string}
+        sourceWorkOrderNo: {type: string}
+    SlaPolicy:
+      type: object
+      properties:
+        severity: {type: string, enum: [L1, L2, L3, L4, DATA]}
+        acknowledgeMinutes: {type: integer}
+        assignMinutes: {type: integer}
+        recoverMinutes: {type: integer}
+        escalationRole: {type: string}
+        enabled: {type: boolean}
+        updatedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64, nullable: true}
+    SlaPolicyInput:
+      type: object
+      required: [acknowledgeMinutes, assignMinutes, recoverMinutes, escalationRole]
+      properties:
+        acknowledgeMinutes: {type: integer, minimum: 1}
+        assignMinutes: {type: integer, minimum: 1}
+        recoverMinutes: {type: integer, minimum: 1}
+        escalationRole: {type: string}
+    OperatorAction:
+      type: object
+      properties:
+        operator: {type: string}
+        reason: {type: string}
+    CreateWorkOrder:
+      type: object
+      required: [deviceCode, title]
+      properties:
+        deviceCode: {type: string}
+        title: {type: string}
+        priority: {type: string}
+        assignee: {type: string}
+        source: {type: string}
+        description: {type: string}
+        plannedWindow: {type: string}
+        operator: {type: string}
+    StatusAction:
+      type: object
+      required: [status]
+      properties:
+        status: {type: string}
+        operator: {type: string}
+        reason: {type: string}
+    ApiError:
+      type: object
+      properties:
+        code: {type: string}
+        message: {type: string}
+        details: {type: array, items: {type: string}}
+        traceId: {type: string}
+        timestamp: {type: string, format: date-time}
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiError'}
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiError'}
+    Conflict:
+      description: 状态冲突或版本冲突
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiError'}
