@@ -350,16 +350,20 @@ function toggleItem(row: DictItem) {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
+  border: 1px solid var(--app-border-color);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    box-shadow 0.2s;
   &:hover {
-    border-color: var(--iam-primary);
+    border-color: var(--app-card-hover-border);
+    background: var(--app-color-primary-light);
   }
   &.active {
     border-color: var(--iam-primary);
-    background: var(--el-color-primary-light-9);
+    background: var(--app-selected-bg);
   }
 }
 .type-main {

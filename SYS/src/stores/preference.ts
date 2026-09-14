@@ -28,10 +28,10 @@ export interface LayoutOption {
 }
 
 export const THEME_OPTIONS: ThemeOption[] = [
-  { id: 'tech-blue', name: '科技蓝', desc: '深海军蓝侧栏 · 青蓝主色', colors: ['#0d1424', '#0e9fc4'] },
-  { id: 'forest-green', name: '护眼墨绿', desc: '墨绿侧栏 · 翠绿主色', colors: ['#0b1f19', '#10a368'] },
-  { id: 'purple-elegant', name: '典雅紫', desc: '深紫侧栏 · 紫罗兰主色', colors: ['#171030', '#7c5cf0'] },
-  { id: 'dark-pro', name: '暗夜黑', desc: '整体深色 · 暗光护眼', colors: ['#0b1220', '#38bdf8'] },
+  { id: 'tech-blue', name: '科技蓝', desc: '深海军蓝导航 · 科技蓝主色（默认）', colors: ['#24364a', '#409eff'] },
+  { id: 'forest-green', name: '护眼墨绿', desc: '墨绿导航 · 统一科技蓝主色', colors: ['#20382f', '#409eff'] },
+  { id: 'purple-elegant', name: '雅致深灰', desc: '深灰导航 · 统一科技蓝主色', colors: ['#2c313a', '#409eff'] },
+  { id: 'dark-pro', name: '暗夜黑', desc: '深色海军蓝 · 暗光护眼', colors: ['#1f3043', '#409eff'] },
 ]
 
 export const LAYOUT_OPTIONS: LayoutOption[] = [
