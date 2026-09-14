@@ -26,8 +26,12 @@
 
 ## 尚未覆盖
 
-同组协调恢复、确定性的真实提交确认超时、强制退出后的租约竞争、真实仓库文件缺失/替换，以及完整真实页面写入流程仍待补齐。详见 [实施状态](../implementation-status.md)。
+同组协调恢复、确定性的真实提交确认超时、强制退出后的租约竞争，以及真实仓库文件缺失/替换仍待补齐。详见 [实施状态](../implementation-status.md)。
+
+## 新版本发布及真实页面写入 · 2026-09-14
+
+公开整理后的应用制品已启用；旧制品、摘要及私有回退说明已保存。19 条原有记录在发布前后保持一致。8 项真实页面回归及新增 10 项页面流程检查通过；实际完成 PDF/PNG 上传、JSON/CSV 导入、更正、历史回看、60/40 吨来源关联、附件下载和两份证据包导出。详见 [本轮发布与验收摘要](application-release-20260914.md)。业务数据仍为明确标记的模拟材料，存储和链登记为实际组件结果。
 
 ## 复现入口
 
-先按模块 README 配置环境。配置检查使用 `tests/test_deployment.py`；组件测试使用 `tests/component-real.py`，其输出可供 `tests/recovery-components.py` 使用；应用使用 `tests/cross-node-real.py`；前端目录执行 `pnpm test:e2e`。所有故障演练仅在专门的开发实例执行。
+先按模块 README 配置环境。配置检查使用 `tests/test_deployment.py`；组件测试使用 `tests/component-real.py`，其输出可供 `tests/recovery-components.py` 使用；应用使用 `tests/cross-node-real.py`；前端目录执行 `pnpm test:e2e`，页面写入执行 `pnpm test:e2e:write`。写入检查会新增模拟记录，失败后已接收记录也会保留。所有故障演练仅在专门的开发实例执行。

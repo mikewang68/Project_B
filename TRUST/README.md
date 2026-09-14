@@ -17,7 +17,9 @@ Project_B 的平台公共能力，版本 **0.1.0，开发联调版**。支持统
 
 2026-09-13 的独立开发环境中，100 吨钢材的十条模拟业务事件已全部真实归档并上链；60/40 吨两次发运可反查来源，两个实际证据包通过在线与离线核验。13 项真实接口/恢复检查与 8 项实际页面检查通过。业务样例和附件均明确标注为模拟材料。
 
-详见 [验证摘要](docs/test-results/README.md)、[实施状态](docs/implementation-status.md) 和 [逐条需求覆盖](docs/requirements-coverage.md)。协调备份恢复、特殊超时/异常退出、真实文件缺失替换，以及完整真实页面写入验收仍待补齐。
+2026-09-14 已从 Project_B/TRUST 发布新应用制品，原 19 条事件的摘要、CID 和交易关联保持一致。8 项真实页面回归及新增 10 项真实页面流程检查通过，覆盖附件上传、JSON/CSV 导入、更正、60/40 吨发运溯源、授权下载和在线核验后导出。详见 [本次发布与页面验收](docs/test-results/application-release-20260914.md)。
+
+详见 [验证摘要](docs/test-results/README.md)、[实施状态](docs/implementation-status.md) 和 [逐条需求覆盖](docs/requirements-coverage.md)。协调备份恢复、特殊超时/异常退出、真实仓库文件缺失替换仍待补齐。
 
 ## 工程与节点
 
@@ -115,6 +117,7 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 - `deploy/test-database.sh`：独立 trust_test 数据库的集成测试，外部服务使用故障注入。
 - `tests/cross-node-real.py`：实际应用样例、核验、权限与导出；加 `--faults` 会临时停止本工程依赖并验证恢复，只用于独立开发实例。
 - 前端目录 `pnpm test:e2e`：实际应用无界面页面检查；传入 `--preview` 需要另行提供明确的界面预览服务。
+- 前端目录 `pnpm test:e2e:write`：真实页面写入验收，默认使用私有账号文件中的录入员 `editor`；每次生成独立的 `UI-` 模拟批次，成功完成时新增 5 条事件与 2 份模拟附件。连接真实 IPFS/Fabric，只用于独立开发实例。结果输出到 `.local/test-results/UI-<本次标识>/`；失败时已提交记录会保留。可用 `TRUST_BASE_URL`、`TRUST_UI_ACCOUNT`、`TRUST_PYTHON` 指定应用入口、已有测试账号和离线核验所用 Python。
 - `tests/offline-export-test.py`：合成证据包的离线正常、替换、缺失和错误参考摘要分支。
 
 详细结果、截图和证据包默认保存在 `.local/test-results`，不提交 Git。公开目录仅保留日期、测试方式、结论和限制的摘要；历史原件由项目维护者本机保存。不得把模拟接口截图当作真实业务存证结果。
