@@ -1,0 +1,17 @@
+{
+  "backend/src/main/java/com/bproject/trust/ApiController.java": "21a0b5d73e8905090afd8b3187f55e9bfeeb93501ff807c8ea3a500afa702d6f",
+  "backend/src/main/java/com/bproject/trust/ApiError.java": "b85105b6951aca07bfb0d0a0bf2874b90b9b4c8b77ecd109e3499d458a5a8dbe",
+  "backend/src/main/java/com/bproject/trust/ArchiveWorker.java": "26676dfd2a7b35203d27e30c4f7c03f1697de94279593addd0abee51991c015e",
+  "backend/src/main/java/com/bproject/trust/EventInput.java": "fdee63f08feed13e2d99062174f9a76fc9b83c70d364ed285ed3c1847716abf3",
+  "backend/src/main/java/com/bproject/trust/EventService.java": "780c95881b14cdf5f04aeb4f8bb82a9eb425cbac5c78ed595b8b78373cf9a34e",
+  "backend/src/main/java/com/bproject/trust/EvidenceService.java": "239ca5a8c93f7b62c1a55ffee51ec0b7fd6b964f8db1ca240efe93449dd957c1",
+  "backend/src/main/java/com/bproject/trust/FabricClient.java": "5e7936bf8faa9c264020c211db06771857312a7bb22931dcc42f31d43d6be59d",
+  "backend/src/main/java/com/bproject/trust/IpfsClient.java": "4d1f173011082204a1ff28bf52f65dd825ee9ca304e7fa365e35421356cd5368",
+  "backend/src/main/java/com/bproject/trust/Json.java": "d2c3482533199d8b18d7a8a00599c4bcfc9b5c9ea44ca70117bb8c5b259182e7",
+  "backend/src/main/java/com/bproject/trust/Security.java": "9d1327eee07970a4daa48eeea2e7f93553256b124104e97b9ff971a17d9328f4",
+  "backend/src/main/java/com/bproject/trust/VerificationService.java": "00d38b0497e4e657ab1e65fdfe53f75de3a464eb7e2cdd9a7c91178fddf0270a",
+  "backend/src/test/java/com/bproject/trust/IntegrityTest.java": "1690a56fa97f918858886a2c32ddea4792643f7e045e020da0c80f47a771d7a6",
+  "backend/src/test/java/com/bproject/trust/DatabaseIntegrationTest.java": "4d302fa96482c8bd459051cff5dfcc8bf47e26eec6e2bdf0a2ba2a57f08c8985",
+  "frontend/src/api.ts": "feaa3b770d49e676093ab245ed9a3fcbb2e24898aa56c3791670c8103df19fc7",
+  "frontend/src/style.css": "cc83d2d4f0e441aa692ef6bd85c1f2eeed5ac2caa86ea552aac1b8f70251b288"
+}

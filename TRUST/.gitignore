@@ -1,0 +1,26 @@
+**/target/
+**/node_modules/
+**/dist/
+backend/src/main/resources/static/
+runtime/
+tools/
+artifacts/
+.local/
+**/__pycache__/
+*.log
+*.pid
+*.pem
+*.key
+*.env
+!*.env.example
+
+# Public repository retains summaries only; raw acceptance artifacts remain local.
+docs/test-results/**/*.json
+docs/test-results/**/*.png
+docs/test-results/**/*.zip
+*.p12
+*.pfx
+*.dump
+*.env.*
+!*.env.example
+!**/.env.example

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "isExample": true,
+  "sshUser": "trustdev",
+  "remoteRoot": "/home/trustdev/projects/b-project-trust",
+  "databaseOwner": "trustdev",
+  "operatorSource": "192.0.2.10",
+  "applicationSource": "192.0.2.16",
+  "nodes": {
+    "ipfs": {"sshAlias": "trust-ipfs", "address": "192.0.2.12"},
+    "database": {"sshAlias": "trust-database", "address": "192.0.2.14"},
+    "fabric": {"sshAlias": "trust-fabric", "address": "192.0.2.15"},
+    "application": {"sshAlias": "trust-application", "address": "192.0.2.16"}
+  }
+}

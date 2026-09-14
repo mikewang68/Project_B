@@ -1,0 +1,42 @@
+server:
+  address: 127.0.0.1
+  port: 28182
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: strict
+spring:
+  datasource:
+    url: ${TRUST_DB_URL:jdbc:opengauss://127.0.0.1:25432/trust}
+    username: ${TRUST_DB_USER:trust_app}
+    password: ${TRUST_DB_PASSWORD}
+    driver-class-name: org.opengauss.Driver
+    hikari:
+      schema: trust_data
+      maximum-pool-size: 8
+      connection-timeout: 5000
+  liquibase:
+    change-log: classpath:db/changelog.xml
+    default-schema: trust_data
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+trust:
+  root: ${TRUST_ROOT}
+  ipfs-url: ${TRUST_IPFS_URL:http://127.0.0.1:25001}
+  fabric-endpoint: ${TRUST_FABRIC_ENDPOINT:127.0.0.1:27051}
+  fabric-server-name: peer0.org1.trust
+  fabric-channel: trust
+  fabric-contract: evidence
+  storage-budget: 10737418240

@@ -1,0 +1,15 @@
+export const typeLabels: Record<string, string> = {
+  ARRIVAL: "到货",
+  ACCEPTANCE: "验收",
+  WEIGHING: "过磅",
+  UNLOADING: "卸货",
+  LOADING: "装车",
+  WAREHOUSE_IN: "入库",
+  TRANSFER: "移库",
+  DISPATCH: "发运交接",
+  ALARM: "安全告警",
+  MAINTENANCE: "设备维保",
+  ENERGY_READING: "能源采集",
+  PLAN: "调度计划",
+  HANDOVER: "交账",
+};
