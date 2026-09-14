@@ -257,6 +257,7 @@ const prefVisible = ref(false)
   align-items: center;
   gap: 10px;
   padding: 0 16px;
+  background: var(--iam-sidebar-bg-deep);
   border-bottom: 1px solid var(--iam-sidebar-divider);
   flex-shrink: 0;
 }
@@ -264,8 +265,8 @@ const prefVisible = ref(false)
 .logo-icon {
   width: 40px;
   height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--iam-logo-from), var(--iam-logo-to));
+  border-radius: var(--radius-sm);
+  background: var(--iam-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -314,7 +315,7 @@ const prefVisible = ref(false)
   :deep(.el-menu-item.is-active) {
     color: var(--iam-sidebar-active);
     background: var(--iam-sidebar-active-bg) !important;
-    border-right: 3px solid var(--iam-sidebar-active);
+    font-weight: 600;
   }
   // 折叠态 tooltip 与弹出菜单跟随
   :deep(.el-menu--collapse .el-menu-item) {
@@ -329,6 +330,7 @@ const prefVisible = ref(false)
   justify-content: center;
   color: var(--iam-sidebar-text);
   cursor: pointer;
+  background: var(--iam-sidebar-bg-deep);
   border-top: 1px solid var(--iam-sidebar-divider);
   transition: color 0.2s;
   &:hover {
@@ -430,7 +432,7 @@ const prefVisible = ref(false)
 }
 
 .user-avatar {
-  background: linear-gradient(135deg, var(--iam-logo-from), var(--iam-logo-to));
+  background: var(--iam-primary);
   color: #fff;
   font-weight: 600;
 }

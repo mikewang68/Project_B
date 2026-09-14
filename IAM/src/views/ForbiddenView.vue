@@ -41,23 +41,23 @@ function goLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #0d1424, #131f3a);
+  background: var(--app-page-bg);
 }
 
 .forbidden-card {
   text-align: center;
-  color: #e8f4f8;
   max-width: 480px;
-  padding: 40px;
+  padding: 48px 40px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--app-card-shadow);
 }
 
 .forbidden-code {
   font-size: 96px;
   font-weight: 800;
-  background: linear-gradient(135deg, #f56c6c, #e6a23c);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--app-color-primary);
   line-height: 1;
   margin-bottom: 16px;
 }
@@ -65,12 +65,12 @@ function goLogin() {
 h1 {
   font-size: 24px;
   margin: 0 0 12px;
-  color: #e8f4f8;
+  color: var(--app-text-title);
 }
 
 p {
   font-size: 14px;
-  color: #8aa8bd;
+  color: var(--app-text-regular);
   line-height: 1.6;
   margin: 0 0 24px;
 }
@@ -80,11 +80,12 @@ p {
   flex-direction: column;
   gap: 6px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
+  background: var(--app-surface-secondary);
+  border: 1px solid var(--app-divider-color);
+  border-radius: var(--radius-md);
   margin-bottom: 24px;
   font-size: 13px;
-  color: #7a9bb5;
+  color: var(--app-text-secondary);
 }
 
 .actions {

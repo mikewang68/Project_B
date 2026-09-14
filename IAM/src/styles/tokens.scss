@@ -1,7 +1,9 @@
 // =====================================================
-// IAM 统一设计令牌：基础令牌 + 多皮肤 + 多布局
+// 统一设计令牌（IAM / SYS 逐字一致）：基础令牌 + 统一品牌 Token + 多皮肤 + 多布局
+// 默认皮肤 tech-blue 严格对齐《六大模块前端统一视觉与交互规范》：
+// 深海军蓝导航 #24364A + 浅灰蓝页面 #F5F7FA + 白色内容容器 + 科技蓝主色 #409EFF。
 // 皮肤通过 <html data-theme="..."> 切换；布局通过容器 data-layout="..." 切换。
-// 新增皮肤：复制一个 [data-theme='xxx'] 块、改色值，并在 preference store 的 THEME_OPTIONS 登记即可。
+// 其余皮肤仅允许「有限辅助差异」（导航色调），核心品牌色与业务状态语义全皮肤统一。
 // =====================================================
 
 :root {
@@ -33,157 +35,250 @@
   --iam-sidebar-collapsed: 64px;
   --iam-topbar-height: 56px;
 
-  // ── 状态色（各皮肤通用）──
-  --status-ok: #10b981;
-  --status-warn: #f59e0b;
-  --status-serious: #f97316;
-  --status-error: #dc2626;
-  --status-offline: #6b7280;
-  --status-ai: #7c5cd8;
+  // ── 统一品牌色（规范第 7 节）──
+  --app-color-primary: #409eff;
+  --app-color-primary-hover: #66b1ff;
+  --app-color-primary-active: #337ecc;
+  --app-color-primary-light: #ecf5ff;
+
+  // ── 统一导航（规范第 8 节）──
+  --app-nav-bg: #24364a;
+  --app-nav-bg-deep: #1f3043;
+  --app-nav-text: #b8c7d9;
+  --app-nav-text-secondary: #8fa5bc;
+  --app-nav-text-active: #ffffff;
+  --app-nav-item-hover: rgba(64, 158, 255, 0.14);
+  --app-nav-item-active: #409eff;
+
+  // ── 页面 / 容器表面（规范第 9 节）──
+  --app-page-bg: #f5f7fa;
+  --app-surface: #ffffff;
+  --app-surface-secondary: #fafbfc;
+  --app-selected-bg: #ecf5ff;
+
+  // ── 文字层级（规范第 10 节）──
+  --app-text-title: #1f2937;
+  --app-text-primary: #303133;
+  --app-text-regular: #606266;
+  --app-text-secondary: #909399;
+  --app-text-disabled: #c0c4cc;
+
+  // ── 边框（规范第 11 节）──
+  --app-border-color: #dcdfe6;
+  --app-border-light: #e4e7ed;
+  --app-divider-color: #ebeef5;
+  --app-input-hover-border: #c0c4cc;
+
+  // ── 业务状态语义（规范第 15 节，全皮肤严格一致）──
+  --app-color-success: #67c23a;
+  --app-color-success-light: #f0f9eb;
+  --app-color-warning: #e6a23c;
+  --app-color-warning-light: #fdf6ec;
+  --app-color-danger: #f56c6c;
+  --app-color-danger-light: #fef0f0;
+  --app-color-info: #909399;
+  --app-color-info-light: #f4f4f5;
+  --app-color-processing: #409eff;
+  --app-color-processing-light: #ecf5ff;
+
+  // ── 交互 / 阴影（规范第 16 节，动画 150-250ms）──
+  --app-focus-shadow: 0 0 0 2px rgba(64, 158, 255, 0.12);
+  --app-card-shadow: 0 2px 10px rgba(31, 45, 61, 0.06);
+  --app-card-hover-shadow: 0 4px 14px rgba(31, 45, 61, 0.1);
+  --app-card-hover-border: #a0cfff;
+  --app-motion: 0.2s ease;
+
+  // ── 组件派生令牌（浅色默认；dark-pro 内覆盖）──
+  --app-table-header-bg: var(--app-surface-secondary);
+  --app-table-stripe-bg: #fafafa;
+  --app-hover-bg: #f5f7fa;
+  --app-clickable-hover-bg: var(--app-color-primary-light);
+
+  // Element Plus 语义状态色：与统一状态语义对齐（全皮肤一致）
+  --el-color-success: var(--app-color-success);
+  --el-color-warning: var(--app-color-warning);
+  --el-color-danger: var(--app-color-danger);
+  --el-color-error: var(--app-color-danger);
+  --el-color-info: var(--app-color-info);
+
+  // ── 旧状态变量名兼容映射（不再出现紫色 / 异构状态色）──
+  --status-ok: var(--app-color-success);
+  --status-warn: var(--app-color-warning);
+  --status-serious: var(--app-color-warning);
+  --status-error: var(--app-color-danger);
+  --status-offline: var(--app-color-info);
+  --status-ai: var(--app-color-primary);
 }
 
 // =====================================================
-// 皮肤 1：科技蓝 tech-blue（默认，深海军蓝侧栏 + 青蓝主色 + 浅色内容）
+// 皮肤 1：科技蓝 tech-blue（默认，严格符合统一规范）
+// 深海军蓝导航 + 浅灰蓝页面 + 白色容器 + #409EFF 科技蓝
 // =====================================================
 :root,
 [data-theme='tech-blue'] {
-  --iam-primary: #0e9fc4;
-  --iam-primary-hover: #0b86a6;
-  --iam-logo-from: #00b4d8;
-  --iam-logo-to: #0077b6;
+  --iam-primary: var(--app-color-primary);
+  --iam-primary-hover: var(--app-color-primary-hover);
+  --iam-logo-from: var(--app-color-primary);
+  --iam-logo-to: var(--app-color-primary-active);
 
-  --iam-sidebar-bg: #0d1424;
-  --iam-sidebar-text: #8aa8bd;
-  --iam-sidebar-active: #22d3ee;
-  --iam-sidebar-hover-bg: rgba(34, 211, 238, 0.08);
-  --iam-sidebar-active-bg: rgba(34, 211, 238, 0.12);
-  --iam-sidebar-divider: rgba(255, 255, 255, 0.06);
+  --iam-sidebar-bg: var(--app-nav-bg);
+  --iam-sidebar-bg-deep: var(--app-nav-bg-deep);
+  --iam-sidebar-text: var(--app-nav-text);
+  --iam-sidebar-active: var(--app-nav-text-active);
+  --iam-sidebar-hover-bg: var(--app-nav-item-hover);
+  --iam-sidebar-active-bg: var(--app-nav-item-active);
+  --iam-sidebar-divider: rgba(255, 255, 255, 0.08);
 
-  --iam-topbar-bg: #ffffff;
-  --iam-topbar-border: #e4e7ed;
-  --iam-content-bg: #f0f2f5;
-  --iam-card-bg: #ffffff;
-  --iam-card-border: #ebeef5;
-  --iam-text-strong: #1f2d3d;
-  --iam-text-base: #303133;
-  --iam-text-muted: #909399;
+  --iam-topbar-bg: var(--app-surface);
+  --iam-topbar-border: var(--app-border-light);
+  --iam-content-bg: var(--app-page-bg);
+  --iam-card-bg: var(--app-surface);
+  --iam-card-border: var(--app-border-light);
+  --iam-text-strong: var(--app-text-title);
+  --iam-text-base: var(--app-text-primary);
+  --iam-text-muted: var(--app-text-secondary);
 
-  // Element Plus 主色及其混合阶梯
-  --el-color-primary: #0e9fc4;
-  --el-color-primary-light-3: #4db8d1;
-  --el-color-primary-light-5: #86d0e1;
-  --el-color-primary-light-7: #bfe5ef;
-  --el-color-primary-light-8: #d3edf4;
-  --el-color-primary-light-9: #e8f7fa;
-  --el-color-primary-dark-2: #0b7c99;
+  // Element Plus 主色阶梯（#409EFF 官方混合阶梯，light-9 即选中浅底 #ECF5FF）
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #337ecc;
 }
 
 // =====================================================
-// 皮肤 2：护眼墨绿 forest-green（深墨绿侧栏 + 翠绿主色 + 浅色内容）
+// 皮肤 2：护眼墨绿 forest-green（辅助差异仅限深墨绿导航；品牌色/页面/状态全统一）
 // =====================================================
 [data-theme='forest-green'] {
-  --iam-primary: #10a368;
-  --iam-primary-hover: #0d8a57;
-  --iam-logo-from: #10b981;
-  --iam-logo-to: #047857;
+  --iam-primary: var(--app-color-primary);
+  --iam-primary-hover: var(--app-color-primary-hover);
+  --iam-logo-from: var(--app-color-primary);
+  --iam-logo-to: var(--app-color-primary-active);
 
-  --iam-sidebar-bg: #0b1f19;
-  --iam-sidebar-text: #93b7a8;
-  --iam-sidebar-active: #34d399;
-  --iam-sidebar-hover-bg: rgba(52, 211, 153, 0.08);
-  --iam-sidebar-active-bg: rgba(52, 211, 153, 0.13);
-  --iam-sidebar-divider: rgba(255, 255, 255, 0.06);
+  --iam-sidebar-bg: #20382f;
+  --iam-sidebar-bg-deep: #1a2e27;
+  --iam-sidebar-text: #bccfc7;
+  --iam-sidebar-active: var(--app-nav-text-active);
+  --iam-sidebar-hover-bg: var(--app-nav-item-hover);
+  --iam-sidebar-active-bg: var(--app-nav-item-active);
+  --iam-sidebar-divider: rgba(255, 255, 255, 0.08);
 
-  --iam-topbar-bg: #ffffff;
-  --iam-topbar-border: #e2ece7;
-  --iam-content-bg: #eef4f1;
-  --iam-card-bg: #ffffff;
-  --iam-card-border: #e3ede8;
-  --iam-text-strong: #14301f;
-  --iam-text-base: #274034;
-  --iam-text-muted: #8aa69a;
+  --iam-topbar-bg: var(--app-surface);
+  --iam-topbar-border: var(--app-border-light);
+  --iam-content-bg: var(--app-page-bg);
+  --iam-card-bg: var(--app-surface);
+  --iam-card-border: var(--app-border-light);
+  --iam-text-strong: var(--app-text-title);
+  --iam-text-base: var(--app-text-primary);
+  --iam-text-muted: var(--app-text-secondary);
 
-  --el-color-primary: #10a368;
-  --el-color-primary-light-3: #4dbc8e;
-  --el-color-primary-light-5: #86d4b3;
-  --el-color-primary-light-7: #bfe8d7;
-  --el-color-primary-light-8: #d3f0e5;
-  --el-color-primary-light-9: #e9f8f2;
-  --el-color-primary-dark-2: #0d8053;
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #337ecc;
 }
 
 // =====================================================
-// 皮肤 3：典雅紫 purple-elegant（深紫侧栏 + 紫罗兰主色 + 浅色内容）
+// 皮肤 3：雅致深灰 purple-elegant（保留皮肤 id 与切换能力；
+// 原大面积紫色已按规范收敛为中性深灰导航，品牌色/页面/状态全统一）
 // =====================================================
 [data-theme='purple-elegant'] {
-  --iam-primary: #7c5cf0;
-  --iam-primary-hover: #6a48e0;
-  --iam-logo-from: #8b5cf6;
-  --iam-logo-to: #6d28d9;
+  --iam-primary: var(--app-color-primary);
+  --iam-primary-hover: var(--app-color-primary-hover);
+  --iam-logo-from: var(--app-color-primary);
+  --iam-logo-to: var(--app-color-primary-active);
 
-  --iam-sidebar-bg: #171030;
-  --iam-sidebar-text: #aba1cc;
-  --iam-sidebar-active: #a78bfa;
-  --iam-sidebar-hover-bg: rgba(167, 139, 250, 0.09);
-  --iam-sidebar-active-bg: rgba(167, 139, 250, 0.14);
-  --iam-sidebar-divider: rgba(255, 255, 255, 0.06);
+  --iam-sidebar-bg: #2c313a;
+  --iam-sidebar-bg-deep: #242932;
+  --iam-sidebar-text: #c0c7d1;
+  --iam-sidebar-active: var(--app-nav-text-active);
+  --iam-sidebar-hover-bg: var(--app-nav-item-hover);
+  --iam-sidebar-active-bg: var(--app-nav-item-active);
+  --iam-sidebar-divider: rgba(255, 255, 255, 0.08);
 
-  --iam-topbar-bg: #ffffff;
-  --iam-topbar-border: #e8e4f3;
-  --iam-content-bg: #f2f0fa;
-  --iam-card-bg: #ffffff;
-  --iam-card-border: #e9e5f5;
-  --iam-text-strong: #241a47;
-  --iam-text-base: #352b5c;
-  --iam-text-muted: #958db2;
+  --iam-topbar-bg: var(--app-surface);
+  --iam-topbar-border: var(--app-border-light);
+  --iam-content-bg: var(--app-page-bg);
+  --iam-card-bg: var(--app-surface);
+  --iam-card-border: var(--app-border-light);
+  --iam-text-strong: var(--app-text-title);
+  --iam-text-base: var(--app-text-primary);
+  --iam-text-muted: var(--app-text-secondary);
 
-  --el-color-primary: #7c5cf0;
-  --el-color-primary-light-3: #9d85f4;
-  --el-color-primary-light-5: #beadf7;
-  --el-color-primary-light-7: #d8cffb;
-  --el-color-primary-light-8: #e5defc;
-  --el-color-primary-light-9: #f2eefe;
-  --el-color-primary-dark-2: #6242c4;
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #337ecc;
 }
 
 // =====================================================
-// 皮肤 4：暗夜黑 dark-pro（整体深色，侧栏/顶栏/内容/Element 表面全部转暗）
+// 皮肤 4：暗夜黑 dark-pro（整体深色，导航转为深海军蓝；
+// 品牌主色与状态语义仍与统一规范一致，Element 表面/文字/边框整体转暗）
 // =====================================================
 [data-theme='dark-pro'] {
-  --iam-primary: #38bdf8;
-  --iam-primary-hover: #5cc9fa;
-  --iam-logo-from: #38bdf8;
-  --iam-logo-to: #0369a1;
+  --iam-primary: var(--app-color-primary);
+  --iam-primary-hover: var(--app-color-primary-hover);
+  --iam-logo-from: var(--app-color-primary);
+  --iam-logo-to: var(--app-color-primary-active);
 
-  --iam-sidebar-bg: #0b1220;
-  --iam-sidebar-text: #94a3b8;
-  --iam-sidebar-active: #7dd3fc;
-  --iam-sidebar-hover-bg: rgba(56, 189, 248, 0.1);
-  --iam-sidebar-active-bg: rgba(56, 189, 248, 0.16);
+  --iam-sidebar-bg: #1f3043;
+  --iam-sidebar-bg-deep: #1a293b;
+  --iam-sidebar-text: #9fb2c8;
+  --iam-sidebar-active: var(--app-nav-text-active);
+  --iam-sidebar-hover-bg: rgba(64, 158, 255, 0.16);
+  --iam-sidebar-active-bg: var(--app-nav-item-active);
   --iam-sidebar-divider: rgba(148, 163, 184, 0.12);
 
-  --iam-topbar-bg: #111c30;
-  --iam-topbar-border: #1e3049;
-  --iam-content-bg: #0f172a;
-  --iam-card-bg: #16263f;
-  --iam-card-border: #22385a;
+  --iam-topbar-bg: #16233a;
+  --iam-topbar-border: #243b5b;
+  --iam-content-bg: #0f1a2b;
+  --iam-card-bg: #16233a;
+  --iam-card-border: #243b5b;
   --iam-text-strong: #e6edf6;
   --iam-text-base: #cbd5e1;
-  --iam-text-muted: #8298b3;
+  --iam-text-muted: #8fa3bd;
 
-  --el-color-primary: #38bdf8;
-  --el-color-primary-light-3: #66cdfa;
-  --el-color-primary-light-5: #93defc;
-  --el-color-primary-light-7: #bfeafd;
-  --el-color-primary-light-8: #d4f1fe;
-  --el-color-primary-light-9: #e9f8ff;
-  --el-color-primary-dark-2: #0ea5e9;
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #337ecc;
+
+  // 深色派生令牌
+  --app-page-bg: #0f1a2b;
+  --app-surface: #16233a;
+  --app-surface-secondary: #1a2c48;
+  --app-selected-bg: rgba(64, 158, 255, 0.16);
+  --app-text-title: #e6edf6;
+  --app-text-primary: #cbd5e1;
+  --app-text-regular: #b6c4d4;
+  --app-text-secondary: #8fa3bd;
+  --app-border-color: #2c4569;
+  --app-border-light: #284062;
+  --app-divider-color: #243b5b;
+  --app-input-hover-border: #4a658a;
+  --app-table-header-bg: #1a2c48;
+  --app-table-stripe-bg: #182842;
+  --app-hover-bg: #1d3150;
+  --app-clickable-hover-bg: rgba(64, 158, 255, 0.16);
+  --app-card-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  --app-card-hover-shadow: 0 4px 14px rgba(0, 0, 0, 0.36);
 
   // Element Plus 表面/文字/边框整体转暗，实现统一暗色
-  --el-bg-color: #16263f;
-  --el-bg-color-page: #0f172a;
-  --el-bg-color-overlay: #1a2c48;
-  --el-fill-color-blank: #16263f;
+  --el-bg-color: #16233a;
+  --el-bg-color-page: #0f1a2b;
+  --el-bg-color-overlay: #1b2c47;
+  --el-fill-color-blank: #16233a;
   --el-fill-color-light: #1d3150;
   --el-fill-color-lighter: #1a2c48;
   --el-fill-color-extra-light: #182842;

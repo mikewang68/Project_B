@@ -291,7 +291,7 @@ const canAssignPerm = computed(() =>
             <el-option label="启用" value="active" />
             <el-option label="停用" value="disabled" />
           </el-select>
-          <div v-if="form.code === 'super_admin'" style="font-size:11px;color:#e6a23c;line-height:1.4">内置系统管理员角色不可停用</div>
+          <div v-if="form.code === 'super_admin'" style="font-size:11px;color:var(--app-color-warning);line-height:1.4">内置系统管理员角色不可停用</div>
         </el-form-item>
       </el-form>
       <template #footer>

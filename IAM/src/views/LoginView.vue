@@ -142,16 +142,17 @@ async function handleLogin() {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: #0a0e1a;
+  background: var(--app-page-bg);
 }
 
+/* 左侧深海军蓝品牌区（统一导航色 #24364A → #1F3043 同族渐变） */
 .login-brand {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 48px 56px;
-  background: linear-gradient(135deg, #0d1424 0%, #131f3a 50%, #0a1628 100%);
+  background: linear-gradient(135deg, #24364a 0%, #1f3043 100%);
   position: relative;
   overflow: hidden;
 
@@ -162,7 +163,7 @@ async function handleLogin() {
     right: -30%;
     width: 80%;
     height: 200%;
-    background: radial-gradient(ellipse, rgba(0, 180, 216, 0.08) 0%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(64, 158, 255, 0.07) 0%, transparent 70%);
     pointer-events: none;
   }
 }
@@ -178,8 +179,8 @@ async function handleLogin() {
 .logo-icon {
   width: 56px;
   height: 56px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--iam-logo-from), var(--iam-logo-to));
+  border-radius: var(--radius-md);
+  background: var(--app-color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -187,19 +188,19 @@ async function handleLogin() {
   font-weight: 700;
   color: #fff;
   letter-spacing: 1px;
-  box-shadow: 0 4px 20px rgba(0, 180, 216, 0.3);
+  box-shadow: 0 4px 14px rgba(31, 45, 61, 0.28);
 }
 
 .logo-text h1 {
   font-size: 22px;
-  color: #e8f4f8;
+  color: #ffffff;
   margin: 0;
   font-weight: 600;
 }
 
 .logo-text p {
   font-size: 13px;
-  color: #7a9bb5;
+  color: var(--app-nav-text);
   margin: 4px 0 0;
 }
 
@@ -215,7 +216,7 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #b8d4e3;
+  color: var(--app-nav-text);
   font-size: 15px;
 }
 
@@ -223,47 +224,51 @@ async function handleLogin() {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--iam-primary);
-  box-shadow: 0 0 8px var(--iam-primary);
+  background: var(--app-color-primary);
   flex-shrink: 0;
 }
 
 .feature-dot-reserved {
-  background: #f4a261;
-  box-shadow: 0 0 8px rgba(244, 162, 97, 0.5);
+  background: var(--app-color-warning);
 }
 
 .brand-footer {
   position: relative;
   z-index: 1;
-  color: #4a6a80;
+  color: var(--app-nav-text-secondary);
   font-size: 12px;
 }
 
+/* 右侧浅灰蓝底 + 白色登录卡片 */
 .login-form-wrap {
   width: 480px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background: #0f1524;
+  background: var(--app-page-bg);
 }
 
 .login-card {
   width: 100%;
   max-width: 400px;
+  padding: 36px 32px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--app-card-shadow);
 }
 
 .login-card h2 {
   font-size: 26px;
-  color: #e8f4f8;
+  color: var(--app-text-title);
   margin: 0 0 8px;
   font-weight: 600;
 }
 
 .login-subtitle {
   font-size: 13px;
-  color: #6a8aa0;
+  color: var(--app-text-secondary);
   margin: 0 0 28px;
 }
 
@@ -272,23 +277,17 @@ async function handleLogin() {
   height: 44px;
   font-size: 16px;
   letter-spacing: 4px;
-  background: linear-gradient(135deg, var(--iam-logo-from), var(--iam-logo-to));
-  border: none;
-
-  &:hover {
-    opacity: 0.9;
-  }
 }
 
 .demo-section {
   margin-top: 28px;
   padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--app-divider-color);
 }
 
 .demo-title {
   font-size: 12px;
-  color: #5a7a90;
+  color: var(--app-text-secondary);
   margin-bottom: 12px;
 }
 
@@ -300,47 +299,35 @@ async function handleLogin() {
 
 .demo-account {
   padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  background: var(--app-surface-secondary);
+  border: 1px solid var(--app-border-light);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 
   &:hover {
-    background: var(--iam-sidebar-active-bg, rgba(0, 180, 216, 0.1));
-    border-color: var(--iam-primary);
+    background: var(--app-color-primary-light);
+    border-color: var(--app-color-primary);
   }
 }
 
 .demo-acc-name {
   font-size: 13px;
-  color: #c8e0ec;
+  color: var(--app-text-primary);
   font-weight: 500;
 }
 
 .demo-acc-user {
   font-size: 11px;
-  color: var(--iam-primary);
+  color: var(--app-color-primary);
   margin: 2px 0;
   font-family: monospace;
 }
 
 .demo-acc-desc {
   font-size: 11px;
-  color: #5a7a90;
-}
-
-/* 覆盖 element-plus 深色输入框 */
-:deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-}
-
-:deep(.el-input__inner) {
-  color: #d0e8f0;
-}
-
-:deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--iam-primary) inset;
+  color: var(--app-text-secondary);
 }
 </style>

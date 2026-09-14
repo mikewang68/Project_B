@@ -21,8 +21,8 @@ const OP_LABELS: Record<PermOp, string> = {
 }
 
 const OP_COLORS: Record<PermOp, string> = {
-  view: 'var(--iam-text-muted)', add: '#67c23a', edit: '#e6a23c', delete: '#f56c6c',
-  execute: '#409eff', export: 'var(--iam-text-muted)', import: 'var(--iam-text-muted)', approve: '#8e44ad',
+  view: 'var(--app-text-secondary)', add: '#67c23a', edit: '#e6a23c', delete: '#f56c6c',
+  execute: '#409eff', export: 'var(--app-text-secondary)', import: 'var(--app-text-secondary)', approve: '#409eff',
 }
 
 interface MenuTreeNode {
@@ -162,7 +162,7 @@ const systemStats = computed(() => {
     <el-card shadow="never" class="tree-card">
       <template #header>
         <div class="tree-header">
-          <span class="card-title">六系统功能菜单与权限点</span>
+          <span class="card-title">各系统功能菜单与权限点</span>
           <div class="tree-actions">
             <el-input v-model="searchKeyword" placeholder="搜索菜单/权限编码" clearable style="width:220px" size="default" />
             <el-checkbox v-model="showOnlyMine">只看我有权限的</el-checkbox>

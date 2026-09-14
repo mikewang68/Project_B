@@ -331,7 +331,7 @@ const canResetPwd = computed(() =>
                 <el-option label="启用" value="active" />
                 <el-option label="停用" value="disabled" />
               </el-select>
-              <div v-if="isEditingSelf" style="font-size:11px;color:#e6a23c;line-height:1.4">不能停用当前登录账号</div>
+              <div v-if="isEditingSelf" style="font-size:11px;color:var(--app-color-warning);line-height:1.4">不能停用当前登录账号</div>
             </el-form-item>
           </el-col>
           <el-col :span="24">
