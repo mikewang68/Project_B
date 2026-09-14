@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { Connection, Monitor, VideoPlay } from '@element-plus/icons-vue'
+import { Connection, Monitor, VideoPlay, Back } from '@element-plus/icons-vue'
 import { useLiveStore } from '@/stores/live'
 
 const props = defineProps<{ breachActive: boolean }>()
@@ -35,6 +35,9 @@ function fmt(d: Date): string {
       <p>{{ fmt(now) }} ｜ 当前班次：夜班 22:00-06:00</p>
     </div>
     <div class="bs-header__side bs-header__side--right">
+      <RouterLink to="/overview" class="bs-back-btn" title="返回管理后台">
+        <el-icon><Back /></el-icon>返回后台
+      </RouterLink>
       <button type="button" class="bs-demo-btn" :class="{ 'is-active': props.breachActive }" @click="emit('toggleDemo')">
         <el-icon><VideoPlay /></el-icon>{{ props.breachActive ? '确认已读紧急事件' : '演示模式 · 定位紧急事件' }}
       </button>

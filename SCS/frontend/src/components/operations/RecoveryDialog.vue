@@ -1,138 +1,152 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ElDialog, ElMessage } from 'element-plus'
+import { ElDialog } from 'element-plus'
 import { CircleCheckFilled, Loading } from '@element-plus/icons-vue'
-import { operationsApi, type BackendEdgeNode } from '@/api/operations'
-import { toRecoverySteps } from '@/adapters/operations'
-import type { RecoveryStep } from '@/types/operations'
+import type { EdgeNode, LocalEvent } from '@/types/operations'
 
-/**
- * 云边链路恢复对话框：步骤完全由后端恢复状态机驱动
- * CONNECTIVITY → CLOCK_RECONCILIATION → RULE_RECONCILIATION → EVENT_REPLAY → FINAL_CHECK → ONLINE。
- * 前端只在阻塞点（时间对账 / 规则对账 / 补传失败重试）发起对应 API，不做本地定时器动画。
- */
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   modelValue: boolean
-  /** 恢复节点，默认 EDGE-03（断网自治演示节点） */
-  nodeId?: string
-}>(), { nodeId: 'EDGE-03' })
-
+  queue: LocalEvent[]
+  nodes: EdgeNode[]
+  /** 是否存在时间偏差待处理 */
+  timeDrift: boolean
+}>()
 const emit = defineEmits<{
   'update:modelValue': [v: boolean]
-  /** 任一步推进后通知父组件局部刷新节点 / 队列 */
-  changed: []
+  /** 补传进度：index 之前的事件均已处理 */
+  progress: [doneCount: number]
+  /** EDGE-03 重新下发规则 */
+  ruleRedeliver: []
+  /** 保持 EDGE-03 当前版本 */
+  ruleKeep: []
+  /** 重新同步时间 */
+  timeResync: []
   finished: []
 }>()
 
-type WaitPhase = 'running' | 'time-wait' | 'rule-wait' | 'replay-wait' | 'done'
-const phase = ref<WaitPhase>('running')
-const steps = ref<RecoveryStep[]>([])
-const busy = ref(false)
-const lastNode = ref<BackendEdgeNode | null>(null)
+interface Step { key: string; label: string; state: 'wait' | 'running' | 'done' | 'fail'; detail: string }
+const steps = ref<Step[]>([])
+const phase = ref<'running' | 'rule-wait' | 'time-wait' | 'done'>('running')
+const uploadTotal = ref(0)
+const uploadDone = ref(0)
+const duplicateCount = 2
 const ruleDiffOpen = ref(false)
+const ruleKept = ref(false)
+let timers: number[] = []
 
-const mismatchVersion = computed(() => {
-  const n = lastNode.value
-  return n && n.activeRuleVersion !== n.expectedRuleVersion
-    ? { edge: n.activeRuleVersion, expected: n.expectedRuleVersion }
-    : null
-})
+const mismatchNode = computed(() => props.nodes.find((n) => n.ruleVersion !== n.platformVersion))
+const successCount = computed(() => Math.max(uploadTotal.value - duplicateCount, 0))
 const allDone = computed(() => phase.value === 'done')
 
-const STATIC_STEPS: { key: string; label: string }[] = [
-  { key: 'CONNECTIVITY', label: '恢复连接' },
-  { key: 'CLOCK_RECONCILIATION', label: '时间对账' },
-  { key: 'RULE_RECONCILIATION', label: '规则版本对账' },
-  { key: 'EVENT_REPLAY', label: '缓存事件补传' },
-  { key: 'FINAL_CHECK', label: '最终检查' },
-  { key: 'ONLINE', label: '恢复在线' },
-]
-
 function reset(): void {
+  timers.forEach((t) => window.clearTimeout(t))
+  timers = []
+  uploadTotal.value = props.queue.length
+  uploadDone.value = 0
+  ruleDiffOpen.value = false
+  ruleKept.value = false
   phase.value = 'running'
-  busy.value = false
-  ruleDiffOpen.value = false
-  lastNode.value = null
-  steps.value = STATIC_STEPS.map((s) => ({ key: s.key, label: s.label, state: 'wait', detail: '等待执行' }))
+  steps.value = [
+    { key: 'net', label: '网络恢复', state: 'wait', detail: '等待中心链路重新建立' },
+    { key: 'stable', label: '链路稳定性检测', state: 'wait', detail: '检测丢包率与抖动' },
+    { key: 'upload', label: '补传本地事件', state: 'wait', detail: `待补传 ${uploadTotal.value} 条` },
+    { key: 'dedup', label: '事件对账去重', state: 'wait', detail: '按事件唯一编号比对' },
+    { key: 'rule', label: '规则版本对账', state: 'wait', detail: '比对平台与边缘规则版本' },
+    { key: 'time', label: '时间同步', state: 'wait', detail: props.timeDrift ? 'EDGE-02 存在时间偏差' : 'NTP 偏差检查' },
+    { key: 'online', label: '恢复在线', state: 'wait', detail: '边缘节点切回在线模式' },
+  ]
 }
 
-/** 用后端节点状态渲染步骤，并判断停在哪个阻塞点 */
-function applyNode(node: BackendEdgeNode): void {
-  lastNode.value = node
-  const backendSteps = toRecoverySteps(node.recoveryPhases)
-  steps.value = STATIC_STEPS.map((s) => {
-    const hit = backendSteps.find((b) => b.key === s.key)
-    return hit ?? { key: s.key, label: s.label, state: 'wait', detail: '等待执行' }
+function setStep(key: string, patch: Partial<Step>): void {
+  const s = steps.value.find((x) => x.key === key)
+  if (s) Object.assign(s, patch)
+}
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const t = window.setTimeout(resolve, ms)
+    timers.push(t)
   })
-  emit('changed')
-  if (node.status === 'ONLINE') {
-    const online = steps.value.find((s) => s.key === 'ONLINE')
-    if (online) { online.state = 'done'; online.detail = '全部完成，系统恢复在线运行' }
-    phase.value = 'done'
-    emit('finished')
+}
+
+async function run(): Promise<void> {
+  setStep('net', { state: 'running', detail: '正在建立中心链路…' })
+  await delay(650)
+  setStep('net', { state: 'done', detail: '中心链路已恢复' })
+
+  setStep('stable', { state: 'running', detail: '稳定性检测中…' })
+  await delay(900)
+  setStep('stable', { state: 'done', detail: '丢包率 0.2%，链路稳定' })
+
+  // 补传：分批推进
+  setStep('upload', { state: 'running', detail: `补传中 0 / ${uploadTotal.value}` })
+  const batch = Math.max(1, Math.ceil(uploadTotal.value / 4))
+  while (uploadDone.value < uploadTotal.value) {
+    await delay(420)
+    uploadDone.value = Math.min(uploadDone.value + batch, uploadTotal.value)
+    setStep('upload', { detail: `补传中 ${uploadDone.value} / ${uploadTotal.value}` })
+    emit('progress', uploadDone.value)
+  }
+  setStep('upload', { state: 'done', detail: `补传完成 ${uploadTotal.value} / ${uploadTotal.value}` })
+
+  // 去重
+  setStep('dedup', { state: 'running', detail: '正在比对事件唯一编号…' })
+  await delay(700)
+  setStep('dedup', {
+    state: 'done',
+    detail: `补传成功 ${successCount.value} 条 · 重复 ${duplicateCount} 条（已去重，未生成重复告警）· 失败 0`,
+  })
+
+  // 规则对账
+  setStep('rule', { state: 'running', detail: '正在比对 4 个边缘节点规则版本…' })
+  await delay(800)
+  if (mismatchNode.value && !ruleKept.value) {
+    setStep('rule', { state: 'fail', detail: `发现 1 个节点版本异常：${mismatchNode.value.id} ${mismatchNode.value.ruleVersion} → 平台 ${mismatchNode.value.platformVersion}` })
+    phase.value = 'rule-wait'
     return
   }
-  const blocked = node.recoveryPhases?.find((p) => p.status === 'BLOCKED' || p.status === 'FAILED')
-  if (!blocked) {
-    phase.value = 'running'
+  await afterRule()
+}
+
+async function afterRule(): Promise<void> {
+  if (!ruleKept.value) setStep('rule', { state: 'done', detail: '4 / 4 节点规则版本一致' })
+  // 时间同步
+  setStep('time', { state: 'running', detail: '正在校时…' })
+  await delay(500)
+  if (props.timeDrift) {
+    setStep('time', { state: 'fail', detail: 'EDGE-02 时间偏差 +3.8s，请完成时间同步后再结束恢复流程' })
+    phase.value = 'time-wait'
     return
   }
-  if (blocked.key === 'CLOCK_RECONCILIATION') phase.value = 'time-wait'
-  else if (blocked.key === 'RULE_RECONCILIATION') phase.value = 'rule-wait'
-  else if (blocked.key === 'EVENT_REPLAY') phase.value = 'replay-wait'
-  else phase.value = 'running'
+  await finish()
 }
 
-async function drive(): Promise<void> {
-  if (busy.value) return
-  busy.value = true
-  try {
-    const node = await operationsApi.recover(props.nodeId)
-    applyNode(node)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '恢复流程执行失败')
-  } finally {
-    busy.value = false
-  }
-}
-
-async function resyncTime(): Promise<void> {
-  if (busy.value) return
-  busy.value = true
-  try {
-    const node = await operationsApi.reconcileTime(props.nodeId)
-    ElMessage.success('时间对账完成，偏差回到正常范围')
-    applyNode(node)
-  } finally {
-    busy.value = false
-  }
-}
-
-async function redeliverRule(): Promise<void> {
+function redeliverRule(): void {
+  emit('ruleRedeliver')
   ruleDiffOpen.value = false
-  if (busy.value) return
-  busy.value = true
-  try {
-    const node = await operationsApi.reconcileRules('redeliver', props.nodeId)
-    ElMessage.success('规则重新下发完成，边缘与平台版本一致')
-    applyNode(node)
-  } finally {
-    busy.value = false
-  }
+  setStep('rule', { state: 'running', detail: `${mismatchNode.value?.id} 规则重新下发中…` })
+  window.setTimeout(() => { void afterRule() }, 1100)
 }
-
-async function keepRule(): Promise<void> {
-  if (busy.value) return
-  busy.value = true
-  try {
-    const node = await operationsApi.reconcileRules('keep', props.nodeId)
-    ElMessage.warning('已保持边缘当前版本，登记为待人工处理')
-    applyNode(node)
-  } finally {
-    busy.value = false
-  }
+function keepRule(): void {
+  emit('ruleKeep')
+  ruleKept.value = true
+  setStep('rule', { state: 'done', detail: `已保持 ${mismatchNode.value?.id} 当前版本，登记待人工处理` })
+  void afterRule()
 }
-
+function resyncTime(): void {
+  emit('timeResync')
+  setStep('time', { state: 'running', detail: 'EDGE-02 重新校时中…' })
+  window.setTimeout(() => {
+    setStep('time', { state: 'done', detail: '校时完成，偏差 32ms · 正常' })
+    void finish()
+  }, 900)
+}
+async function finish(): Promise<void> {
+  setStep('online', { state: 'running', detail: '边缘节点切换在线模式…' })
+  await delay(700)
+  setStep('online', { state: 'done', detail: '全部完成，系统恢复在线运行' })
+  phase.value = 'done'
+  emit('finished')
+}
 function close(): void {
   emit('update:modelValue', false)
 }
@@ -140,10 +154,7 @@ function close(): void {
 watch(
   () => props.modelValue,
   (v) => {
-    if (v) {
-      reset()
-      void drive()
-    }
+    if (v) { reset(); void run() }
   },
 )
 </script>
@@ -159,7 +170,7 @@ watch(
   >
     <template #header>
       <div class="ops-dialog-heading">
-        <span>RECOVERY WORKFLOW · SIMULATED EDGE AUTONOMY</span>
+        <span>RECOVERY WORKFLOW</span>
         <h2>云边链路恢复</h2>
       </div>
     </template>
@@ -176,36 +187,28 @@ watch(
           <b>{{ s.label }}</b>
           <p>{{ s.detail }}</p>
 
-          <!-- 规则版本对账操作（后端 RULE_RECONCILIATION 阻塞时出现） -->
-          <div v-if="s.key === 'RULE_RECONCILIATION' && phase === 'rule-wait'" class="recovery-actions">
+          <!-- 规则版本对账操作 -->
+          <div v-if="s.key === 'rule' && phase === 'rule-wait'" class="recovery-actions">
             <div class="recovery-versions">
-              <span :data-mismatch="true" v-if="lastNode">
-                {{ lastNode.id }} <b class="mono">{{ lastNode.activeRuleVersion }}</b>
-                → 平台 <b class="mono">{{ lastNode.expectedRuleVersion }}</b>
+              <span v-for="n in nodes" :key="n.id" :data-mismatch="n.ruleVersion !== n.platformVersion">
+                {{ n.id }} <b class="mono">{{ n.ruleVersion }}</b>
               </span>
             </div>
             <div class="recovery-actions__btns">
               <button type="button" class="ops-btn small" @click="ruleDiffOpen = !ruleDiffOpen">查看差异</button>
-              <button type="button" class="ops-btn small primary" :disabled="busy" @click="redeliverRule">重新下发</button>
-              <button type="button" class="ops-btn small ghost" :disabled="busy" @click="keepRule">保持当前版本</button>
+              <button type="button" class="ops-btn small primary" @click="redeliverRule">重新下发</button>
+              <button type="button" class="ops-btn small ghost" @click="keepRule">保持当前版本</button>
             </div>
-            <div v-if="ruleDiffOpen && mismatchVersion" class="recovery-diff">
-              <p class="mono">RULE-PER-001：{{ mismatchVersion.edge }} → {{ mismatchVersion.expected }}</p>
-              <p>以平台最新已生效版本为准，重新下发规则与参数到边缘节点</p>
-            </div>
-          </div>
-
-          <!-- 时间对账操作（后端 CLOCK_RECONCILIATION 阻塞时出现） -->
-          <div v-if="s.key === 'CLOCK_RECONCILIATION' && phase === 'time-wait'" class="recovery-actions">
-            <div class="recovery-actions__btns">
-              <button type="button" class="ops-btn small primary" :disabled="busy" @click="resyncTime">重新同步时间</button>
+            <div v-if="ruleDiffOpen" class="recovery-diff">
+              <p class="mono">RULE-PER-001：v3.2 → v3.3</p>
+              <p>紧急撤离时限 20 秒 → 15 秒；动态禁区采样 2 次 → 3 次</p>
             </div>
           </div>
 
-          <!-- 补传失败重试（后端 EVENT_REPLAY 阻塞时出现） -->
-          <div v-if="s.key === 'EVENT_REPLAY' && phase === 'replay-wait'" class="recovery-actions">
+          <!-- 时间同步操作 -->
+          <div v-if="s.key === 'time' && phase === 'time-wait'" class="recovery-actions">
             <div class="recovery-actions__btns">
-              <button type="button" class="ops-btn small primary" :disabled="busy" @click="drive">重试补传</button>
+              <button type="button" class="ops-btn small primary" @click="resyncTime">重新同步</button>
             </div>
           </div>
         </div>

@@ -1,42 +1,190 @@
+/* =====================================================================
+ * 统一 Design Tokens —— 依据《六大模块前端统一视觉与交互规范》
+ * 标准业务页：深海军蓝导航 + 浅灰蓝页面 + 白色容器 + 科技蓝主色。
+ * 同时保留历史 --color-* 变量名作为别名，让既有模块样式自动跟随新色板。
+ * ===================================================================== */
 :root {
-  --color-primary: #315fa8;
-  --color-primary-hover: #284f8d;
-  --color-primary-soft: #edf3fc;
-  --color-primary-faint: #f5f8fd;
-  --color-page: #f3f6f9;
-  --color-surface: #ffffff;
-  --color-text: #172033;
-  --color-text-secondary: #647085;
-  --color-text-tertiary: #929bad;
-  --color-border: #e6eaf0;
-  --color-border-strong: #d9dfe8;
-  --color-success: #2d8b6f;
-  --color-success-soft: #edf8f4;
-  --color-warning: #c58a2a;
-  --color-warning-soft: #fff8ea;
-  --color-danger: #d6474f;
-  --color-danger-soft: #fff1f2;
+  /* ---------- Brand 品牌主色 ---------- */
+  --app-color-primary: #409eff;
+  --app-color-primary-hover: #66b1ff;
+  --app-color-primary-active: #337ecc;
+  --app-color-primary-light: #ecf5ff;
+
+  /* ---------- Navigation 深色导航 ---------- */
+  --app-nav-bg: #24364a;
+  --app-nav-bg-deep: #1f3043;
+  --app-nav-text: #b8c7d9;
+  --app-nav-text-secondary: #8fa5bc;
+  --app-nav-text-active: #ffffff;
+  --app-nav-item-hover: rgb(64 158 255 / 14%);
+  --app-nav-item-active: #409eff;
+  --app-nav-border: rgb(255 255 255 / 8%);
+
+  /* ---------- Surface 页面与容器 ---------- */
+  --app-page-bg: #f5f7fa;
+  --app-surface: #ffffff;
+  --app-surface-secondary: #fafbfc;
+  --app-selected-bg: #ecf5ff;
+  --app-mask-bg: rgb(15 23 42 / 45%);
+
+  /* ---------- Text 文字层级 ---------- */
+  --app-text-title: #1f2937;
+  --app-text-primary: #303133;
+  --app-text-regular: #606266;
+  --app-text-secondary: #909399;
+  --app-text-disabled: #c0c4cc;
+
+  /* ---------- Border 边框分隔 ---------- */
+  --app-border-color: #dcdfe6;
+  --app-border-light: #e4e7ed;
+  --app-divider-color: #ebeef5;
+
+  /* ---------- Status 状态语义色 ---------- */
+  --app-color-success: #67c23a;
+  --app-color-success-light: #f0f9eb;
+  --app-color-warning: #e6a23c;
+  --app-color-warning-light: #fdf6ec;
+  --app-color-danger: #f56c6c;
+  --app-color-danger-hover: #f78989;
+  --app-color-danger-light: #fef0f0;
+  --app-color-info: #909399;
+  --app-color-info-light: #f4f4f5;
+
+  /* ---------- Interaction 交互反馈 ---------- */
+  --app-hover-bg: #f5f7fa;
+  --app-clickable-hover-bg: #ecf5ff;
+  --app-clickable-hover-border: #a0cfff;
+  --app-focus-shadow: 0 0 0 2px rgb(64 158 255 / 12%);
+  --app-transition: 0.18s ease;
+
+  /* ---------- 阴影 / 圆角（企业级克制风格） ---------- */
+  --app-card-shadow: 0 2px 10px rgb(31 45 61 / 6%);
+  --app-card-hover-shadow: 0 4px 14px rgb(31 45 61 / 10%);
+  --app-float-shadow: 0 8px 24px rgb(31 45 61 / 12%);
+  --app-radius-button: 8px;
+  --app-radius-card: 12px;
+  --app-radius-large: 14px;
+
+  /* ---------- ECharts 统一色序 ---------- */
+  --app-chart-1: #409eff;
+  --app-chart-2: #67c23a;
+  --app-chart-3: #e6a23c;
+  --app-chart-4: #f56c6c;
+  --app-chart-5: #909399;
+  --app-chart-6: #79bbff;
+  --app-chart-7: #95d475;
+  --app-chart-8: #eebe77;
+
+  /* =====================================================================
+   * 历史变量别名（保持既有模块 SCSS 引用不变，值统一到新规范）
+   * ===================================================================== */
+  --color-primary: var(--app-color-primary);
+  --color-primary-hover: var(--app-color-primary-hover);
+  --color-primary-active: var(--app-color-primary-active);
+  --color-primary-soft: var(--app-color-primary-light);
+  --color-primary-faint: #f5faff;
+  --color-page: var(--app-page-bg);
+  --color-surface: var(--app-surface);
+  --color-text: var(--app-text-primary);
+  --color-text-title: var(--app-text-title);
+  --color-text-secondary: var(--app-text-regular);
+  --color-text-tertiary: var(--app-text-secondary);
+  --color-border: var(--app-border-light);
+  --color-border-strong: var(--app-border-color);
+  --color-divider: var(--app-divider-color);
+  --color-success: var(--app-color-success);
+  --color-success-soft: var(--app-color-success-light);
+  --color-warning: var(--app-color-warning);
+  --color-warning-soft: var(--app-color-warning-light);
+  --color-danger: var(--app-color-danger);
+  --color-danger-soft: var(--app-color-danger-light);
+  --color-info: var(--app-color-info);
+
+  /* 布局尺寸（沿用，不在视觉阶段改动信息架构） */
   --sidebar-width: 252px;
   --header-height: 96px;
-  --radius-button: 11px;
-  --radius-card: 18px;
-  --radius-large: 22px;
-  --shadow-card: 0 10px 30px rgb(31 45 67 / 6%);
-  --shadow-float: 0 18px 45px rgb(31 45 67 / 12%);
-  --el-color-primary: var(--color-primary);
-  --el-color-primary-light-3: #6485ba;
-  --el-color-primary-light-5: #91aad0;
-  --el-color-primary-light-8: #e3ebf7;
-  --el-color-primary-light-9: #f2f6fb;
-  --el-border-radius-base: var(--radius-button);
+  --radius-button: var(--app-radius-button);
+  --radius-card: var(--app-radius-card);
+  --radius-large: var(--app-radius-large);
+  --shadow-card: var(--app-card-shadow);
+  --shadow-float: var(--app-float-shadow);
+
+  /* =====================================================================
+   * Element Plus 主题统一（经官方 CSS 变量通道，避免逐组件暴力覆盖）
+   * ===================================================================== */
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #337ecc;
+
+  --el-color-success: #67c23a;
+  --el-color-success-light-3: #95d475;
+  --el-color-success-light-5: #b3e19d;
+  --el-color-success-light-7: #d1edc4;
+  --el-color-success-light-8: #e1f3d8;
+  --el-color-success-light-9: #f0f9eb;
+
+  --el-color-warning: #e6a23c;
+  --el-color-warning-light-3: #eebe77;
+  --el-color-warning-light-5: #f3d19e;
+  --el-color-warning-light-7: #f8e3c5;
+  --el-color-warning-light-8: #faecd8;
+  --el-color-warning-light-9: #fdf6ec;
+
+  --el-color-danger: #f56c6c;
+  --el-color-danger-light-3: #f89898;
+  --el-color-danger-light-5: #fab3b3;
+  --el-color-danger-light-7: #fcd3d3;
+  --el-color-danger-light-8: #fddede;
+  --el-color-danger-light-9: #fef0f0;
+  --el-color-error: #f56c6c;
+  --el-color-error-light-3: #f89898;
+  --el-color-error-light-5: #fab3b3;
+  --el-color-error-light-7: #fcd3d3;
+  --el-color-error-light-8: #fddede;
+  --el-color-error-light-9: #fef0f0;
+
+  --el-color-info: #909399;
+  --el-color-info-light-3: #b1b3b8;
+  --el-color-info-light-5: #c8c9cc;
+  --el-color-info-light-7: #dedfe0;
+  --el-color-info-light-8: #e9e9eb;
+  --el-color-info-light-9: #f4f4f5;
+
+  --el-text-color-primary: #303133;
+  --el-text-color-regular: #606266;
+  --el-text-color-secondary: #909399;
+  --el-text-color-placeholder: #c0c4cc;
+  --el-text-color-disabled: #c0c4cc;
+
+  --el-border-color: #dcdfe6;
+  --el-border-color-hover: #c0c4cc;
+  --el-border-color-light: #e4e7ed;
+  --el-border-color-lighter: #ebeef5;
+  --el-border-color-extra-light: #f2f6fc;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #f5f7fa;
+  --el-fill-color-lighter: #fafbfc;
+  --el-color-white: #ffffff;
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #f5f7fa;
+  --el-border-radius-base: 6px;
+  --el-border-radius-small: 4px;
   --el-font-size-base: 14px;
+  --el-box-shadow: 0 2px 10px rgb(31 45 61 / 6%);
+  --el-box-shadow-light: 0 2px 10px rgb(31 45 61 / 6%);
+  --el-box-shadow-lighter: 0 1px 6px rgb(31 45 61 / 5%);
+  --el-box-shadow-dark: 0 8px 24px rgb(31 45 61 / 12%);
 }
 
 * { box-sizing: border-box; }
 html, body, #app { min-height: 100%; margin: 0; }
 body {
-  color: var(--color-text);
-  background: var(--color-page);
+  color: var(--app-text-primary);
+  background: var(--app-page-bg);
   font-family: Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
@@ -45,3 +193,19 @@ button, input, select { font: inherit; }
 button { color: inherit; }
 a { color: inherit; text-decoration: none; }
 b, strong { font-weight: 650; }
+
+/* ---------- Element Plus 组件级统一（轻覆盖，不重写组件） ---------- */
+.el-button { font-weight: 500; transition: border-color var(--app-transition), background-color var(--app-transition), color var(--app-transition); }
+.el-button:focus-visible,
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus,
+.el-select__wrapper.is-focused { box-shadow: var(--app-focus-shadow) !important; }
+.el-button--primary { --el-button-bg-color: var(--app-color-primary); --el-button-border-color: var(--app-color-primary); --el-button-hover-bg-color: var(--app-color-primary-hover); --el-button-hover-border-color: var(--app-color-primary-hover); --el-button-active-bg-color: var(--app-color-primary-active); --el-button-active-border-color: var(--app-color-primary-active); }
+.el-button--danger { --el-button-bg-color: var(--app-color-danger); --el-button-border-color: var(--app-color-danger); --el-button-hover-bg-color: var(--app-color-danger-hover); --el-button-hover-border-color: var(--app-color-danger-hover); }
+.el-button--warning { --el-button-bg-color: var(--app-color-warning); --el-button-border-color: var(--app-color-warning); }
+.el-table { --el-table-header-bg-color: #fafbfc; --el-table-header-text-color: #909399; --el-table-text-color: #606266; --el-table-border-color: #ebeef5; --el-table-row-hover-bg-color: #ecf5ff; --el-table-current-row-bg-color: #ecf5ff; }
+.el-table th.el-table__cell { font-weight: 600; }
+.el-dialog, .el-drawer { border-radius: var(--app-radius-card); overflow: hidden; }
+.el-pagination { --el-pagination-button-bg-color: #fff; --el-pagination-hover-color: var(--app-color-primary); }
+.el-tag { border-radius: 6px; font-weight: 500; }
+.el-message-box { border-radius: var(--app-radius-card); }

@@ -20,12 +20,12 @@ function nowTime(): string {
 function mockShot(): void {
   const time = nowTime()
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160">
-    <rect width="240" height="160" fill="#dfe7f2"/>
-    <rect x="0" y="112" width="240" height="48" fill="#c4d0e2"/>
-    <circle cx="60" cy="70" r="26" fill="#aebfd6"/>
-    <rect x="110" y="46" width="96" height="64" rx="6" fill="#b7c7dd"/>
-    <text x="12" y="26" font-size="13" fill="#315fa8" font-family="sans-serif">现场证据（Mock）</text>
-    <text x="12" y="146" font-size="12" fill="#4a5a72" font-family="sans-serif">${time}</text>
+    <rect width="240" height="160" fill="#f5f7fa"/>
+    <rect x="0" y="112" width="240" height="48" fill="#ebeef5"/>
+    <circle cx="60" cy="70" r="26" fill="#c0c4cc"/>
+    <rect x="110" y="46" width="96" height="64" rx="6" fill="#dcdfe6"/>
+    <text x="12" y="26" font-size="13" fill="#409eff" font-family="sans-serif">现场证据（Mock）</text>
+    <text x="12" y="146" font-size="12" fill="#606266" font-family="sans-serif">${time}</text>
   </svg>`
   const thumb = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
   emit('add', { id: `ph-${Date.now()}`, name: `现场照片-${props.photos.length + 1}.jpg`, thumb, time })

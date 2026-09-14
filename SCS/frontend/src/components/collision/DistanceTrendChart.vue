@@ -20,7 +20,7 @@ const y = (value: number): number => height - (value / max) * height
     <div class="collision-chart-stage">
       <div class="chart-y-labels"><span>18m</span><span>12m</span><span>6m</span><span>0m</span></div>
       <svg viewBox="0 0 720 178" preserveAspectRatio="none" aria-label="最近30秒距离趋势图">
-        <defs><linearGradient id="collisionTrendArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#315fa8" stop-opacity=".16"/><stop offset="1" stop-color="#315fa8" stop-opacity="0"/></linearGradient></defs>
+        <defs><linearGradient id="collisionTrendArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#409eff" stop-opacity=".16"/><stop offset="1" stop-color="#409eff" stop-opacity="0"/></linearGradient></defs>
         <rect x="0" :y="y(10)" width="720" :height="y(6)-y(10)" class="threshold-zone warning" />
         <rect x="0" :y="y(6)" width="720" :height="y(3)-y(6)" class="threshold-zone severe" />
         <rect x="0" :y="y(3)" width="720" :height="y(0)-y(3)" class="threshold-zone emergency" />

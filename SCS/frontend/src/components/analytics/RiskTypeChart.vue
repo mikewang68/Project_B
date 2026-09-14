@@ -34,7 +34,7 @@ const option = computed(() => ({
     type: 'category',
     data: sorted.value.map((x) => x.type),
     axisLine: { show: false }, axisTick: { show: false },
-    axisLabel: { color: '#4d5a70', fontSize: 10.5 },
+    axisLabel: { color: '#606266', fontSize: 10.5 },
   },
   series: [
     {
@@ -44,11 +44,11 @@ const option = computed(() => ({
         value: x.count,
         itemStyle: {
           borderRadius: [0, 7, 7, 0],
-          color: props.activeType === x.type ? CHART_COLORS.primary : '#b9cbe6',
+          color: props.activeType === x.type ? CHART_COLORS.primary : '#c6e2ff',
         },
       })),
       label: {
-        show: true, position: 'right', color: '#4d5a70', fontSize: 10.5, fontWeight: 700,
+        show: true, position: 'right', color: '#606266', fontSize: 10.5, fontWeight: 700,
         formatter: (p: { value: number }) => `${p.value}`,
       },
       emphasis: { itemStyle: { color: CHART_COLORS.primary } },

@@ -14,12 +14,12 @@ onMounted(() => {
   if (!element.value) return
   chart = init(element.value)
   chart.setOption({
-    color: ['#065A82', '#F5B84C', '#EF4444'],
+    color: ['#eebe77', '#f56c6c', '#d63b3b'],
     tooltip: { trigger: 'axis' },
-    legend: { right: 8, textStyle: { color: '#64748b' } },
+    legend: { right: 8, textStyle: { color: '#909399' } },
     grid: { left: 42, right: 20, top: 42, bottom: 28 },
-    xAxis: { type: 'category', data: ['08/20', '08/21', '08/22', '08/23', '08/24', '08/25', '08/26'], axisLine: { lineStyle: { color: '#d8e2ec' } } },
-    yAxis: { type: 'value', splitLine: { lineStyle: { color: '#edf2f7' } } },
+    xAxis: { type: 'category', data: ['08/20', '08/21', '08/22', '08/23', '08/24', '08/25', '08/26'], axisLine: { lineStyle: { color: '#dcdfe6' } }, axisLabel: { color: '#909399' } },
+    yAxis: { type: 'value', axisLabel: { color: '#909399' }, splitLine: { lineStyle: { color: '#ebeef5' } } },
     series: [
       { name: '一般', type: 'line', smooth: true, data: [12, 9, 15, 11, 8, 13, 7], areaStyle: { opacity: 0.07 } },
       { name: '严重', type: 'line', smooth: true, data: [4, 6, 3, 5, 2, 4, 3] },

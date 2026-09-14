@@ -33,13 +33,13 @@ const trendPoints = computed(() => {
     <template v-if="evidence.kind === 'personnel'">
       <div class="evidence-track">
         <svg viewBox="0 0 320 160" preserveAspectRatio="none">
-          <rect x="0" y="0" width="320" height="160" fill="#eef2f5" />
-          <rect x="150" y="18" width="140" height="110" rx="6" fill="rgb(214 71 79 / 6%)" stroke="#d4676d" stroke-width="1.4" stroke-dasharray="6 4" />
-          <text x="158" y="34" fill="#b65a60" font-size="9" font-weight="700">危险区域边界</text>
-          <polyline :points="trackPoints" fill="none" stroke="#315fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0" />
+          <rect x="0" y="0" width="320" height="160" fill="#f5f7fa" />
+          <rect x="150" y="18" width="140" height="110" rx="6" fill="rgb(245 108 108 / 6%)" stroke="#f78989" stroke-width="1.4" stroke-dasharray="6 4" />
+          <text x="158" y="34" fill="#c45656" font-size="9" font-weight="700">危险区域边界</text>
+          <polyline :points="trackPoints" fill="none" stroke="#409eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0" />
           <g v-if="trackHead">
-            <circle :cx="trackHead.x" :cy="trackHead.y" r="9" fill="rgb(49 95 168 / 18%)" />
-            <circle :cx="trackHead.x" :cy="trackHead.y" r="4.5" fill="#315fa8" stroke="#fff" stroke-width="1.5" />
+            <circle :cx="trackHead.x" :cy="trackHead.y" r="9" fill="rgb(64 158 255 / 18%)" />
+            <circle :cx="trackHead.x" :cy="trackHead.y" r="4.5" fill="#409eff" stroke="#fff" stroke-width="1.5" />
           </g>
         </svg>
         <span class="evidence-track__tag">人员移动轨迹</span>
@@ -63,8 +63,8 @@ const trendPoints = computed(() => {
         <div class="evidence-trend">
           <small>风险距离趋势（m，持续收敛）</small>
           <svg viewBox="0 0 300 70" preserveAspectRatio="none">
-            <line x1="0" y1="35" x2="300" y2="35" stroke="#e6c98a" stroke-width="1" stroke-dasharray="4 3" />
-            <polyline :points="trendPoints" fill="none" stroke="#d6474f" stroke-width="2" stroke-linecap="round" />
+            <line x1="0" y1="35" x2="300" y2="35" stroke="#eebe77" stroke-width="1" stroke-dasharray="4 3" />
+            <polyline :points="trendPoints" fill="none" stroke="#f56c6c" stroke-width="2" stroke-linecap="round" />
           </svg>
         </div>
         <p class="evidence-radar">雷达状态：{{ evidence.radar }}</p>

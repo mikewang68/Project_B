@@ -1,25 +1,5 @@
 # 本机开发环境只读检查报告
 
-## 2026-09-05 D 盘工程副本清理更新
-
-本节是对下方 2026-09-04 只读快照的后续状态更新。为缩减 `D:\claude-code-workspace\Project b\Project_B\SCS` 的体积，已永久删除以下可重建依赖目录：
-
-| 已删除目录 | 删除前大小 | 恢复方式 |
-|---|---:|---|
-| `SCS\node_modules` | 1193.92 MB | 在 SCS 根目录按锁文件安装 |
-| `SCS\frontend\node_modules` | 178.61 MB | 同一次 pnpm workspace 安装恢复 |
-
-本次共释放约 1372.53 MB。`package.json`、`frontend/package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`、前后端源码、配置和 `frontend/dist` 均未删除，已经部署到服务器的服务不受影响。
-
-恢复依赖时必须使用项目锁定的 pnpm 10.34.5；当前电脑全局 pnpm 11.19.0 不符合前端声明的 `<11` 约束。在 PowerShell 中执行：
-
-```powershell
-cd "D:\claude-code-workspace\Project b\Project_B\SCS"
-corepack pnpm@10.34.5 install --frozen-lockfile
-```
-
-该命令会依据根目录 `pnpm-lock.yaml` 恢复整个 workspace 的依赖。不要逐个安装依赖，也不要删除或重写原有锁文件。以下报告仍保留初次检查时的路径、版本和环境信息；凡涉及 `node_modules` 当前状态的内容，以本更新为准。
-
 - 项目：智慧货场 S3「装卸作业安全卡控系统」（b-project-safety-gate，v0.2.0）
 - 工程实际根目录：`C:\Users\xis\Desktop\项目开发\code\project B`
 - 检查时间：2026-09-04（UTC+8）
@@ -212,8 +192,8 @@ corepack pnpm@10.34.5 install --frozen-lockfile
 
 | 项 | 结果 |
 |---|---|
-| 根 `node_modules` | **已于 2026-09-05 清理；可根据锁文件恢复** |
-| `frontend/node_modules` | **已于 2026-09-05 清理；由 workspace 安装恢复** |
+| 根 `node_modules` | 存在（`.pnpm` 下 416 个包目录，依赖已安装） |
+| `frontend/node_modules` | 存在 |
 | `frontend/dist` | 存在（已执行过构建） |
 | `pnpm-lock.yaml` | **仅根目录一份**，lockfileVersion 9.0 |
 | `package-lock.json` | 不存在 |
@@ -221,7 +201,7 @@ corepack pnpm@10.34.5 install --frozen-lockfile
 | 多 lock 冲突风险 | **无**（只有 pnpm 一种锁文件） |
 
 - 环境变量样例：仅 `frontend/.env.production.example`（样例文件）；**不存在真实 `.env` / `.env.production`**。
-- 结论：**Vue3 + TS 工程可被正确识别且曾成功构建；依赖目录已清理，重新执行锁定安装后可恢复开发与构建。**
+- 结论：**Vue3 + TS 工程可被正确识别，依赖已安装、曾成功构建；用工程 Node24.18 + pnpm-local 即 READY。**
 
 ---
 
@@ -366,8 +346,7 @@ project B/
 │  └─ .env.production.example      # 仅样例
 ├─ deploy/ (backend service、easegress 模板、nginx 模板、scripts)
 ├─ docs/ (backend-demo-api-inventory.json、backend-demo-api-requirements.md)
-├─ package.json、pnpm-lock.yaml、pnpm-workspace.yaml
-├─ node_modules/                    # 2026-09-05 已清理，可按锁文件恢复
+├─ node_modules/、package.json、pnpm-lock.yaml、pnpm-workspace.yaml
 ├─ README.md、.gitignore
 ├─ .config.example.json
 └─ .config.json                    # 隐藏文件（敏感配置，仅报告存在，未读取内容）
@@ -436,7 +415,7 @@ project B/
 |---|---|---|---|
 | Node | D:\nodejs **v24.13.0**，低于 engines `>=24.18.0` | **v24.18.0** | 全局 VERSION MISMATCH（偏低）；工程内 **READY** |
 | pnpm | PATH 命中**其他项目残留 shim 且会崩溃**，无正常全局安装 | **pnpm-local 10.34.5** | 全局 MISSING/BROKEN；工程内 **READY** |
-| Vue3/TS 依赖 | — | 版本由锁文件固定，`node_modules` 已清理，dist 仍保留 | **恢复依赖后 READY** |
+| Vue3/TS 依赖 | — | 已安装（Vue 3.5.41 / TS 5.9.3 / Vite 7.3.6），dist 已构建 | **READY** |
 
 ### 18.3 总体结论
 
@@ -503,13 +482,12 @@ java -jar .\backend\target\safety-gate-service-0.2.0.jar
 # 访问：http://127.0.0.1:8080/actuator/health、http://127.0.0.1:8080/swagger-ui.html
 ```
 
-前端（PowerShell，使用工程 Node + pnpm-local；`node_modules` 已于 2026-09-05 清理，首次运行前必须重新安装）：
+前端（PowerShell，使用工程 Node + pnpm-local；node_modules 已存在，通常无需重新 install）：
 
 ```powershell
 # 用工程 Node 运行工程 pnpm 10.34.5
 $pnpm = '.\.tools\pnpm-local\node_modules\pnpm\bin\pnpm.cjs'
 $node = '.\.tools\node-v24.18.0-win-x64\node.exe'
-& $node $pnpm install --frozen-lockfile
 & $node $pnpm --dir .\frontend dev      # 启动 Vite，http://localhost:5173（后端 CORS 已放行）
 # 其它：& $node $pnpm --dir .\frontend typecheck / build / test / lint
 ```
@@ -528,7 +506,7 @@ $node = '.\.tools\node-v24.18.0-win-x64\node.exe'
 | **Maven 可构建** | 全局 **3.6.1**（不达标）；工程自带 **3.9.16**，已有构建产物与成功启动记录 | Maven ≥3.9（[3.9,4)） | **用 .tools 满足** |
 | **Spring Boot** | 工程已存在，parent **3.5.5**，fat jar 已产出并成功跑通过 | Spring Boot 3.5.5 | **满足（工程已存在）** |
 | **Node.js** | 全局 **24.13.0**（偏低）；工程自带 **24.18.0**；另有会话注入 20.20.2（非用户安装） | ≥24.18.0 <25 | **用 .tools 满足；全局偏低** |
-| **Vue3 / TS** | Vue 3.5.41、TypeScript 5.9.3、Vite 7.3.6、ECharts 6.1.0 由锁文件固定；依赖目录已清理，dist 保留 | Vue3 + TypeScript | **恢复依赖后满足** |
+| **Vue3 / TS** | Vue 3.5.41、TypeScript 5.9.3、Vite 7.3.6、ECharts 6.1.0，依赖已装、dist 已构建 | Vue3 + TypeScript | **满足（工程可识别）** |
 | **pnpm** | 全局为外部残留 shim（崩溃，BROKEN）；工程 **pnpm-local 10.34.5** 正常 | pnpm ≥10.34.5 <11 | **用 .tools 满足；全局缺失** |
 | **Git** | **2.45.1.windows.1**（单份，含 Git Bash） | 版本控制 | **满足** |
 | **Docker（可选）** | 客户端 29.7.2 / Compose v5.5.0，**守护进程未启动**，podman 无 | 可选 | **已装未运行（可选）** |

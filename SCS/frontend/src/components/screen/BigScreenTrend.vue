@@ -25,18 +25,18 @@ const option = computed<EChartsCoreOption>(() => {
     tooltip: { ...softTooltip, trigger: 'axis' },
     legend: {
       right: 8, top: 2, itemWidth: 10, itemHeight: 10, icon: 'roundRect',
-      textStyle: { color: '#647085', fontSize: 11 },
+      textStyle: { color: '#afc2d8', fontSize: 11 },
     },
     xAxis: {
       type: 'category', data: hours, boundaryGap: false,
-      axisLine: { lineStyle: { color: CHART_COLORS.softGrid } },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.18)' } },
       axisTick: { show: false },
-      axisLabel: { color: CHART_COLORS.axisLabel, fontSize: 10, interval: 3 },
+      axisLabel: { color: '#afc2d8', fontSize: 10, interval: 3 },
     },
     yAxis: {
       type: 'value', minInterval: 1,
-      splitLine: { lineStyle: { color: CHART_COLORS.softGrid } },
-      axisLabel: { color: CHART_COLORS.axisLabel, fontSize: 10 },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.10)' } },
+      axisLabel: { color: '#afc2d8', fontSize: 10 },
     },
     series: [
       {
@@ -44,7 +44,7 @@ const option = computed<EChartsCoreOption>(() => {
         data: baseAll.map((v, i) => (raised && i >= 20 ? v + 2 : v)),
         lineStyle: { color: CHART_COLORS.primary, width: 2 },
         itemStyle: { color: CHART_COLORS.primary },
-        areaStyle: { color: 'rgba(49,95,168,0.08)' },
+        areaStyle: { color: 'rgba(64,158,255,0.14)' },
       },
       {
         name: '严重 / 紧急', type: 'line', smooth: true, symbol: 'none',

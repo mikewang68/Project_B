@@ -4,8 +4,8 @@ import type { OverviewDistributionDto } from '@/types/overview'
 
 const props = defineProps<{ items: OverviewDistributionDto['items'] }>()
 
-// 克制的同色系色阶（不使用荧光色，不超过 4 个主色层级）
-const PALETTE = ['#315fa8', '#5f84bc', '#879bb8', '#c58a2a', '#aeb9c8', '#c7d2e2']
+// 统一 ECharts/图表色序（规范第 12 节），同一业务语义同一颜色
+const PALETTE = ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#79bbff']
 const max = computed(() => Math.max(1, ...props.items.map((i) => i.count)))
 const rows = computed(() => props.items.slice(0, 6).map((item, index) => ({
   ...item,

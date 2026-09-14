@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CloudLink, EdgeNode } from '@/types/operations'
 import type { DeviceCategory } from '@/types/operations'
-import { onlineCount } from '@/adapters/operations'
+import { onlineCount } from '@/mock/opsData'
 
 const props = defineProps<{
   link: CloudLink

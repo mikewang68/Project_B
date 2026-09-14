@@ -1,8 +1,4 @@
-/**
- * 运维监控 Mock 数据工厂（FIXTURE，已退出主数据流）。
- * 运维页主数据已切换到 Backend（/api/v1/ops、/api/v1/edge），见 api/operations.ts + adapters/operations.ts；
- * 本文件仅保留离线 fixture 与纯工具函数，供测试 / 独立预览使用，不再被 OperationsView 引用。
- */
+/** 运维监控 Mock 数据工厂（纯前端演示，刷新重置） */
 import type {
   DeviceCategory,
   DeviceKind,

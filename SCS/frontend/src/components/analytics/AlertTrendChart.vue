@@ -34,7 +34,7 @@ const option = computed(() => ({
     type: 'category',
     boundaryGap: false,
     data: props.points.map((p) => p.date),
-    axisLine: { lineStyle: { color: '#e2e7ee' } },
+    axisLine: { lineStyle: { color: '#dcdfe6' } },
     axisTick: { show: false },
     axisLabel: { color: CHART_COLORS.axisLabel, fontSize: 10 },
   },

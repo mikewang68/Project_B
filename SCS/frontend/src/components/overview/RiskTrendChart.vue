@@ -33,7 +33,7 @@ const area = computed(() => (points.value.length ? `${line.value} L 620 168 L 20
       <div class="trend-y-axis"><span>20</span><span>15</span><span>10</span><span>5</span><span>0</span></div>
       <svg viewBox="0 0 640 190" preserveAspectRatio="none" aria-label="告警趋势折线图">
         <defs>
-          <linearGradient id="trendArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#315fa8" stop-opacity=".16" /><stop offset="1" stop-color="#315fa8" stop-opacity="0" /></linearGradient>
+          <linearGradient id="trendArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#409eff" stop-opacity=".16" /><stop offset="1" stop-color="#409eff" stop-opacity="0" /></linearGradient>
         </defs>
         <path class="trend-area" :d="area" />
         <path class="trend-line" :d="line" />

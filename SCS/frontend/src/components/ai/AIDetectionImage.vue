@@ -92,7 +92,7 @@ function labelText(b: DetectionBox): string {
       <g v-for="b in boxes" :key="b.id" class="det-box" :data-tone="b.tone">
         <template v-if="b.tone === 'zone'">
           <rect :x="px(b.x)" :y="py(b.y)" :width="px(b.w)" :height="py(b.h)" rx="3"
-            fill="rgb(197 138 42 / 5%)" stroke="#c58a2a" stroke-width="1.4" stroke-dasharray="6 4" />
+            fill="rgb(230 162 60 / 6%)" stroke="#e6a23c" stroke-width="1.4" stroke-dasharray="6 4" />
         </template>
         <template v-else>
           <rect :x="px(b.x)" :y="py(b.y)" :width="px(b.w)" :height="py(b.h)" fill="none" stroke-width="1.6" />

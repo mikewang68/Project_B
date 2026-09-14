@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
-import { Bell, Connection, House, Loading } from '@element-plus/icons-vue'
+import { Bell, Back, Connection, House, Loading } from '@element-plus/icons-vue'
 import { useIncidentStore } from '@/stores/incident'
 import { useLiveStore } from '@/stores/live'
 
@@ -31,6 +31,9 @@ const reconnecting = computed(() => liveStore.status === 'reconnecting' || liveS
       <div class="mobile-statusbar">
         <span>{{ clock }}</span>
         <span class="mobile-statusbar__right">
+          <RouterLink to="/overview" class="mobile-back-console" title="返回管理后台">
+            <el-icon :size="13"><Back /></el-icon>后台
+          </RouterLink>
           <span class="mobile-net" :data-online="liveStore.online">
             <el-icon><component :is="reconnecting ? Loading : Connection" /></el-icon>
             {{ liveStore.online ? '在线' : reconnecting ? '重连中' : '实时连接断开' }}
