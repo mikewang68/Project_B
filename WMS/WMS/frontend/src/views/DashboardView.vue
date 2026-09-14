@@ -39,7 +39,7 @@ onMounted(load)
         <article class="warning"><span>库存预警</span><strong>{{ summary.inventoryAlertCount }}</strong><small>按货品上下限实时计算</small></article>
       </section>
       <section class="panel empty-panel">
-        <div class="empty-symbol">WMS</div>
+        <div class="empty-symbol">仓储</div>
         <div><h2>仓储经营模块已连接</h2><p>当前数据源：{{ summary.dataSource }}。基础资料、库存、入出库、财务统计与数据交换已使用同一租户上下文。</p></div>
       </section>
     </template>

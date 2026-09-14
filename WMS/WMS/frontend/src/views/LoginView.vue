@@ -36,14 +36,14 @@ async function submit(): Promise<void> {
 <template>
   <main class="login-page">
     <section class="login-intro">
-      <div class="login-brand"><span>W</span><strong>MT-WMS</strong></div>
+      <div class="login-brand"><span>W</span><strong>仓储管理系统</strong></div>
       <p class="eyebrow">WAREHOUSE MANAGEMENT</p>
       <h1>让仓储作业清晰、可靠、可追踪</h1>
       <p>统一管理基础资料、库存、入出库、财务统计与数据交换，核心业务已完成重构。</p>
       <ul><li>公司、仓库、货主三级业务上下文</li><li>服务端 Session 与细粒度权限校验</li><li>openGauss 持久化与可重复迁移</li></ul>
     </section>
     <section class="login-card" aria-labelledby="login-title">
-      <div><p class="eyebrow">欢迎回来</p><h2 id="login-title">登录仓储系统</h2><p class="login-help">请输入公司、账号和密码</p></div>
+      <div><p class="eyebrow">欢迎回来</p><h2 id="login-title">登录仓储管理系统</h2><p class="login-help">请输入公司、账号和密码</p></div>
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="submit">
         <el-form-item label="公司代码" prop="company"><el-input v-model="form.company" autocomplete="organization" placeholder="例如：default" /></el-form-item>
         <el-form-item label="账号" prop="username"><el-input v-model="form.username" autocomplete="username" placeholder="用户名或手机号" /></el-form-item>

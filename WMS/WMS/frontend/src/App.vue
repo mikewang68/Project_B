@@ -61,14 +61,14 @@ async function signOut(): Promise<void> {
 <template>
   <RouterView v-if="isLogin" />
   <div v-else class="app-shell">
-    <aside class="sidebar" aria-label="仓储系统导航">
-      <div class="brand"><span class="brand-mark">W</span><div><strong>MT-WMS</strong><small>物资进出存云仓库</small></div></div>
+    <aside class="sidebar" aria-label="仓储管理系统导航">
+      <div class="brand"><span class="brand-mark">W</span><strong>仓储管理系统</strong></div>
       <nav><RouterLink v-for="menu in auth.user?.menus" :key="menu.code" :to="menu.path" :class="{ active: route.path === menu.path }">{{ menu.name }}</RouterLink></nav>
       <div class="sidebar-status"><span></span> openGauss 已连接</div>
     </aside>
     <main class="main-area">
       <header class="topbar">
-        <div><strong>{{ route.meta.title }}</strong><small>MT-WMS / {{ auth.user?.companyName }}</small></div>
+        <div><strong>{{ route.meta.title }}</strong><small>仓储管理系统 / {{ auth.user?.companyName }}</small></div>
         <div class="topbar-actions">
           <button class="tenant" type="button" @click="tenantDialog = true">{{ auth.user?.tenant.currentWarehouse.name }} · {{ auth.user?.tenant.currentOwner.name }}</button>
           <el-dropdown trigger="click"><button class="user-trigger" type="button">{{ auth.user?.displayName }} ▾</button><template #dropdown><el-dropdown-menu><el-dropdown-item @click="passwordDialog = true">修改密码</el-dropdown-item><el-dropdown-item divided @click="signOut">退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown>
