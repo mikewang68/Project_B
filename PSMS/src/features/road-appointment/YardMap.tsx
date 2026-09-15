@@ -108,14 +108,14 @@ export default function YardMap(props: YardMapProps) {
               vehicles: { type: 'geojson', data: vehicleData },
             },
             layers: [
-              { id: '背景', type: 'background', paint: { 'background-color': '#edf3f5' } },
-              { id: '场区', type: 'fill', source: 'yard', paint: { 'fill-color': '#dce8e8', 'fill-opacity': 0.9 } },
-              { id: '场区边界', type: 'line', source: 'yard', paint: { 'line-color': '#52717a', 'line-width': 2 } },
-              { id: '车辆路线', type: 'line', source: 'route', paint: { 'line-color': '#178c84', 'line-width': 4, 'line-dasharray': [2, 2] } },
+              { id: '背景', type: 'background', paint: { 'background-color': '#F5F7FA' } },
+              { id: '场区', type: 'fill', source: 'yard', paint: { 'fill-color': '#E4E7ED', 'fill-opacity': 0.9 } },
+              { id: '场区边界', type: 'line', source: 'yard', paint: { 'line-color': '#909399', 'line-width': 2 } },
+              { id: '车辆路线', type: 'line', source: 'route', paint: { 'line-color': '#409EFF', 'line-width': 4, 'line-dasharray': [2, 2] } },
               {
                 id: '车辆', type: 'circle', source: 'vehicles',
                 paint: {
-                  'circle-color': ['case', ['==', ['get', 'selected'], 1], '#d4380d', '#176b8d'],
+                  'circle-color': ['case', ['==', ['get', 'selected'], 1], '#F56C6C', '#409EFF'],
                   'circle-radius': ['case', ['==', ['get', 'selected'], 1], 9, 7],
                   'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2,
                 },

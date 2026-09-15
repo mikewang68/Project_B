@@ -60,7 +60,7 @@
 
 .exception-handling-page[data-demo-active='true'] .exception-ledger-button[aria-pressed='true'],
 .exception-handling-page[data-demo-active='true'] .exception-ledger-button.ant-btn-primary {
-  box-shadow: 0 10px 26px rgba(22, 119, 255, .18);
+  box-shadow: 0 10px 26px rgba(64, 158, 255, 0.18);
   transform: translateX(3px);
 }
 

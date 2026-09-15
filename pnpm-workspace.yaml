@@ -1,0 +1,8 @@
+packages:
+  - 'PSMS'
+  - 'IAM'
+  - 'SCS'
+  - 'SYS'
+allowBuilds:
+  '@parcel/watcher': false
+  msw: false
