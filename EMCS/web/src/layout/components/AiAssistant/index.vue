@@ -366,24 +366,24 @@ onBeforeUnmount(() => { currentAbort?.abort() })
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  border: 1px solid rgba(56, 189, 248, 0.55);
-  background: linear-gradient(135deg, #0284C7 0%, #7C3AED 100%);
+  border: 1px solid rgba(64, 158, 255, 0.55);
+  background: var(--app-color-primary);
   color: #fff;
-  font-family: "Songti SC", "SimSun", serif;
+  font-family: var(--app-font);
   font-weight: 600;
   letter-spacing: 0.08em;
-  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.32);
+  box-shadow: var(--app-card-shadow);
   cursor: pointer;
   z-index: 2000;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 180ms, box-shadow 180ms;
 }
-.ai-fab:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(124, 58, 237, 0.4); }
-.ai-fab.is-open { transform: scale(0.9); opacity: 0.85; }
+.ai-fab:hover { background: var(--app-color-primary-hover); box-shadow: var(--app-card-hover-shadow); }
+.ai-fab.is-open { background: var(--app-color-primary-active); }
 .ai-fab__label { font-size: 16px; }
 .ai-fab__pulse {
   position: absolute; inset: -4px;
   border-radius: 50%;
-  border: 2px solid rgba(56, 189, 248, 0.55);
+  border: 2px solid rgba(64, 158, 255, 0.55);
   animation: aiPulse 1.4s ease-out infinite;
 }
 @keyframes aiPulse {
@@ -415,7 +415,7 @@ onBeforeUnmount(() => { currentAbort?.abort() })
   justify-content: space-between;
   padding: 14px 18px;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  background: var(--panel);
 }
 .ai-drawer .ai-head__title { display: flex; flex-direction: column; gap: 4px; }
 .ai-drawer .ai-head__title .eyebrow {

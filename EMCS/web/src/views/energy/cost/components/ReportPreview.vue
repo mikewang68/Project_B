@@ -98,21 +98,21 @@ const display = (value) => JSON.stringify(value, null, 2)
 .preview-head{display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--bg);border:1px solid var(--line);color:var(--ink)}
 .head-left{display:flex;flex-direction:column;gap:4px}
 .head-left b{font-family:var(--serif);font-size:15px;letter-spacing:.06em}
-.head-left small{color:var(--ink-3);font:10px var(--mono)}
+.head-left small{color:var(--ink-3);font:12px var(--mono)}
 .frozen-tag{background:var(--lime-tint)!important;border-color:var(--lime)!important;color:var(--lime)!important;width:fit-content}
 .signature{text-align:right;display:flex;flex-direction:column;gap:4px}
-.signature span{color:var(--ink-3);font:10px var(--mono)}
+.signature span{color:var(--ink-3);font:12px var(--mono)}
 .signature b{color:var(--cyan);font-family:var(--mono);font-size:14px;letter-spacing:.05em}
 .version-strip,.report-section{padding:14px 16px;background:var(--panel);border:1px solid var(--line);color:var(--ink)}
 .version-strip{display:flex;flex-direction:column;gap:4px}
 .version-strip b{font-family:var(--serif);font-size:13px;letter-spacing:.06em}
-.version-strip small{color:var(--ink-3);font:10px var(--mono)}
+.version-strip small{color:var(--ink-3);font:12px var(--mono)}
 .version-strip code{display:block;margin-top:8px;white-space:pre-wrap;color:var(--ink-2);background:var(--panel-2);border:1px solid var(--line);padding:10px;font-family:var(--mono);font-size:11px}
-.report-section>header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px dashed var(--line);padding-bottom:8px}
+.report-section>header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid var(--line);padding-bottom:8px}
 .report-section>header b{font-family:var(--serif);font-size:14px;letter-spacing:.06em;color:var(--ink)}
 .section-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:0 0 12px}
 .section-meta div{background:var(--panel-2);padding:10px;border:1px solid var(--line)}
-.section-meta dt{color:var(--ink-3);font:10px var(--mono)}
+.section-meta dt{color:var(--ink-3);font:12px var(--mono)}
 .section-meta dd{margin:5px 0 0;color:var(--ink);white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:12px}
 .diff-heading{margin:12px 0 6px;font-family:var(--serif);font-size:12px;color:var(--ink-2);letter-spacing:.05em}
 .report-section pre{white-space:pre-wrap;max-height:360px;overflow:auto;background:var(--panel-2);color:var(--ink-2);border:1px solid var(--line);padding:10px;font-family:var(--mono);font-size:11px}

@@ -1,0 +1,195 @@
+// 用户提供的《六大模块前端统一视觉与交互规范》§5–14。
+// 仅统一现有页面的视觉表达，业务 REQ 锚点保留在各页面。
+:root, html.dark {
+  --app-color-primary: #409eff;
+  --app-color-primary-hover: #66b1ff;
+  --app-color-primary-active: #337ecc;
+  --app-color-primary-light: #ecf5ff;
+  --app-nav-bg: #24364a;
+  --app-nav-bg-deep: #1f3043;
+  --app-nav-text: #b8c7d9;
+  --app-nav-text-secondary: #8fa5bc;
+  --app-nav-text-active: #ffffff;
+  --app-nav-item-hover: rgba(64, 158, 255, 0.14);
+  --app-nav-item-active: #409eff;
+  --app-page-bg: #f5f7fa;
+  --app-surface: #ffffff;
+  --app-surface-secondary: #fafbfc;
+  --app-selected-bg: #ecf5ff;
+  --app-text-title: #1f2937;
+  --app-text-primary: #303133;
+  --app-text-regular: #606266;
+  --app-text-secondary: #909399;
+  --app-text-disabled: #c0c4cc;
+  --app-border-color: #dcdfe6;
+  --app-border-light: #e4e7ed;
+  --app-divider-color: #ebeef5;
+  --app-color-success: #67c23a;
+  --app-color-warning: #e6a23c;
+  --app-color-danger: #f56c6c;
+  --app-color-info: #909399;
+  --app-hover-bg: #f5f7fa;
+  --app-clickable-hover-bg: #ecf5ff;
+  --app-focus-shadow: 0 0 0 2px rgba(64, 158, 255, 0.12);
+  --app-card-shadow: 0 2px 10px rgba(31, 45, 61, 0.06);
+  --app-card-hover-shadow: 0 4px 14px rgba(31, 45, 61, 0.10);
+  --app-font: "Helvetica Neue", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  --el-color-primary: var(--app-color-primary);
+  --el-color-primary-light-3: var(--app-color-primary-hover);
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: var(--app-color-primary-light);
+  --el-color-primary-dark-2: var(--app-color-primary-active);
+  --el-color-success: var(--app-color-success);
+  --el-color-warning: var(--app-color-warning);
+  --el-color-danger: var(--app-color-danger);
+  --el-color-error: var(--app-color-danger);
+  --el-color-info: var(--app-color-info);
+  --el-bg-color-page: var(--app-page-bg);
+  --el-bg-color: var(--app-surface);
+  --el-bg-color-overlay: var(--app-surface);
+  --el-fill-color-blank: var(--app-surface);
+  --el-fill-color-light: var(--app-hover-bg);
+  --el-fill-color-lighter: #fafafa;
+  --el-fill-color: var(--app-hover-bg);
+  --el-fill-color-dark: var(--app-border-light);
+  --el-text-color-primary: var(--app-text-primary);
+  --el-text-color-regular: var(--app-text-regular);
+  --el-text-color-secondary: var(--app-text-secondary);
+  --el-text-color-placeholder: var(--app-text-disabled);
+  --el-text-color-disabled: var(--app-text-disabled);
+  --el-border-color: var(--app-border-color);
+  --el-border-color-light: var(--app-border-light);
+  --el-border-color-lighter: var(--app-divider-color);
+  --el-mask-color: rgba(15, 23, 42, 0.45);
+  --el-overlay-color-lighter: rgba(15, 23, 42, 0.45);
+  --el-font-family: var(--app-font);
+  --el-box-shadow-light: var(--app-card-shadow);
+  --sidebar-bg: var(--app-nav-bg);
+  --sidebar-text: var(--app-nav-text);
+  --menu-hover: var(--app-nav-item-hover);
+  --menu-active-text: var(--app-nav-text-active);
+  --navbar-bg: var(--app-surface);
+  --navbar-text: var(--app-text-primary);
+  --navbar-hover: var(--app-hover-bg);
+  --tags-bg: var(--app-surface);
+  --tags-item-bg: var(--app-surface);
+  --tags-item-border: var(--app-border-light);
+  --tags-item-text: var(--app-text-regular);
+  --tags-item-hover: var(--app-selected-bg);
+  --tags-close-hover: var(--app-color-primary-hover);
+  --splitpanes-default-bg: var(--app-surface);
+  --splitpanes-bg: var(--app-surface);
+  --splitpanes-border: var(--app-border-light);
+  --splitpanes-splitter-bg: var(--app-page-bg);
+  --splitpanes-splitter-hover-bg: var(--app-selected-bg);
+}
+
+// 夜览仍采用规范允许的深蓝工作区和同一组品牌、状态色。
+html.dark {
+  --app-page-bg: #0f1b2d;
+  --app-surface: #17263a;
+  --app-surface-secondary: #1f3043;
+  --app-selected-bg: rgba(64, 158, 255, 0.14);
+  --app-text-title: #ffffff;
+  --app-text-primary: #ffffff;
+  --app-text-regular: #afc2d8;
+  --app-text-secondary: #afc2d8;
+  --app-border-color: #3b5775;
+  --app-border-light: rgba(64, 158, 255, 0.28);
+  --app-divider-color: rgba(64, 158, 255, 0.28);
+  --app-hover-bg: #1f3043;
+  --app-clickable-hover-bg: rgba(64, 158, 255, 0.14);
+  --el-fill-color-lighter: #1f3043;
+}
+
+body, .app-main { background: var(--app-page-bg); color: var(--app-text-regular); }
+label { font-weight: 500; }
+.el-overlay { background-color: rgba(15, 23, 42, 0.45); }
+.el-card { --el-card-border-color: var(--app-border-light); }
+.el-button, .el-input__wrapper, .el-select__wrapper, .el-textarea__inner {
+  transition: background-color 180ms, color 180ms, border-color 180ms, box-shadow 180ms;
+}
+.el-button:where(:not([class*="el-button--"])) {
+  --el-button-text-color: var(--app-text-regular);
+  --el-button-bg-color: var(--app-surface);
+  --el-button-border-color: var(--app-border-color);
+  --el-button-hover-text-color: var(--app-color-primary);
+  --el-button-hover-border-color: var(--app-color-primary);
+  --el-button-hover-bg-color: var(--app-selected-bg);
+}
+.el-button--primary:not(.is-plain):not(.is-text):not(.is-link) {
+  --el-button-hover-bg-color: var(--app-color-primary-hover);
+  --el-button-hover-border-color: var(--app-color-primary-hover);
+  --el-button-active-bg-color: var(--app-color-primary-active);
+  --el-button-active-border-color: var(--app-color-primary-active);
+}
+.el-button--danger { --el-button-hover-bg-color: #f78989; --el-button-hover-border-color: #f78989; }
+.el-input__wrapper.is-focus, .el-select__wrapper.is-focused,
+.el-textarea__inner:focus, .el-range-editor.is-active {
+  box-shadow: 0 0 0 1px var(--app-color-primary) inset, var(--app-focus-shadow);
+}
+.el-form-item.is-error :is(.el-input__wrapper, .el-select__wrapper, .el-textarea__inner) {
+  box-shadow: 0 0 0 1px var(--app-color-danger) inset;
+}
+.el-input.is-disabled .el-input__wrapper, .el-select__wrapper.is-disabled {
+  background: var(--app-hover-bg);
+  box-shadow: 0 0 0 1px var(--app-border-light) inset;
+}
+.el-select-dropdown__item.is-selected { background: var(--app-selected-bg); }
+.el-tree--highlight-current .el-tree-node.is-current > .el-tree-node__content {
+  background: var(--app-selected-bg) !important;
+}
+html .el-table {
+  --el-table-bg-color: var(--app-surface);
+  --el-table-tr-bg-color: var(--app-surface);
+  --el-table-header-bg-color: var(--app-surface-secondary) !important;
+  --el-table-header-text-color: var(--app-text-secondary) !important;
+  --el-table-text-color: var(--app-text-regular);
+  --el-table-border-color: var(--app-divider-color) !important;
+  --el-table-row-hover-bg-color: var(--app-selected-bg) !important;
+  --el-table-current-row-bg-color: var(--app-selected-bg);
+  .el-table__header-wrapper th.el-table__cell {
+    background: var(--app-surface-secondary) !important;
+    color: var(--app-text-secondary);
+    font-weight: 600;
+  }
+}
+
+// 同时覆盖骨架 scoped 导航规则和折叠后传送至 body 的菜单。
+#app .sidebar-container {
+  background: var(--app-nav-bg) !important;
+  .sidebar-logo-container, .scrollbar-wrapper, .el-menu { background: var(--app-nav-bg) !important; }
+  .sidebar-title { color: var(--app-nav-text-active); }
+  .el-menu-item, .el-sub-menu__title, .menu-title { color: var(--app-nav-text) !important; }
+  .nest-menu .el-sub-menu > .el-sub-menu__title, .el-sub-menu .el-menu-item {
+    background: var(--app-nav-bg-deep) !important;
+  }
+  .el-menu-item:hover, .el-sub-menu__title:hover { background: var(--app-nav-item-hover) !important; }
+  .el-menu-item.is-active {
+    background: var(--app-nav-item-active) !important;
+    color: var(--app-nav-text-active) !important;
+    span, .svg-icon { color: inherit !important; }
+  }
+}
+.cockpit-page {
+  .panel, .kpi, .stat-card, .filters, .ov-filters, .finding {
+    border-radius: 6px;
+    box-shadow: var(--app-card-shadow);
+  }
+  .panel-title { font-weight: 600; letter-spacing: normal; }
+  .equipment-card, .report-item, .link-row {
+    transition: background-color 180ms, border-color 180ms, box-shadow 180ms;
+    &:hover { border-color: #a0cfff; box-shadow: var(--app-card-hover-shadow); }
+    &:focus-visible { outline: 2px solid var(--app-color-primary); outline-offset: 2px; }
+  }
+  .equipment-card.active { border-color: var(--app-color-primary); }
+}
+:where(a, button, [role="button"], .el-menu-item):focus-visible {
+  outline: 2px solid var(--app-color-primary);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cockpit-page *, .ai-drawer *, .ai-fab { animation: none !important; transition: none !important; }
+}

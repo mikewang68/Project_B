@@ -17,10 +17,10 @@ export const equipmentStateLabels = Object.freeze({
 })
 
 const stateColors = Object.freeze({
-  running: '#4ADE80',
-  standby: '#F5A524',
-  stopped: '#5A6E84',
-  maintenance: '#60A5FA'
+  running: '#409EFF',
+  standby: '#E6A23C',
+  stopped: '#909399',
+  maintenance: '#E6A23C'
 })
 
 export function validateTransition(toStatus, form = {}) {

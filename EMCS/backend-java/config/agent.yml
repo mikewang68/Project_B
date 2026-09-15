@@ -1,0 +1,12 @@
+# 云端模型配置。以 backend-java 为工作目录启动时自动读取。
+# 仅支持 OpenAI-compatible Chat Completions 协议；base-url 填到 /v1 等 API 根路径。
+# 密钥通过环境变量设置，不填写到仓库文件。
+b-demo:
+  agent:
+    enabled: ${LLM_ENABLED:false}
+    base-url: ${LLM_BASE_URL:}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:}
+    timeout-seconds: ${LLM_TIMEOUT_SECONDS:60}
+    max-tokens: ${LLM_MAX_TOKENS:2048}
+    temperature: ${LLM_TEMPERATURE:0.2}

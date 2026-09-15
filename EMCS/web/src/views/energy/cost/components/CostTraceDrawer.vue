@@ -5,7 +5,7 @@
     size="min(860px, 94vw)"
     title="成本三步反查"
     destroy-on-close
-    custom-class="cockpit-modal cost-trace-modal"
+    class="cockpit-modal cost-trace-modal"
     @close="$emit('update:modelValue', false)"
   >
     <div v-loading="loading" class="trace-body">
@@ -100,7 +100,7 @@ const periodLabel = (value) => ({ peak: '峰段', flat: '平段', valley: '谷�
 .cost-trace-modal .trace-body{min-height:300px}
 .cost-trace-modal .trace-head{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
 .cost-trace-modal .trace-head div{padding:12px;background:var(--panel-2);border:1px solid var(--line)}
-.cost-trace-modal .trace-head span{display:block;color:var(--ink-3);font:10px var(--mono)}
+.cost-trace-modal .trace-head span{display:block;color:var(--ink-3);font:12px var(--mono)}
 .cost-trace-modal .trace-head b{display:block;color:var(--ink);margin-top:6px;font-family:var(--serif);font-size:15px;letter-spacing:.05em}
 .cost-trace-modal .mono{font-family:var(--mono)!important;word-break:break-all}
 .cost-trace-modal .version-picker{display:flex;align-items:center;gap:12px;margin-bottom:16px;color:var(--ink-2);font:11px var(--mono)}
@@ -115,9 +115,9 @@ const periodLabel = (value) => ({ peak: '峰段', flat: '平段', valley: '谷�
 .cost-trace-modal .trace-steps .el-step__head.is-success,
 .cost-trace-modal .trace-steps .el-step__head.is-process{color:var(--cyan);border-color:var(--cyan)}
 .cost-trace-modal .trace-steps .el-step__line{background:var(--line)}
-.cost-trace-modal .snapshot-label{color:var(--ink-3);font:9px var(--mono);letter-spacing:.08em;margin-top:8px}
+.cost-trace-modal .snapshot-label{color:var(--ink-3);font:12px var(--mono);letter-spacing:.08em;margin-top:8px}
 .cost-trace-modal .trace-steps pre{white-space:pre-wrap;background:var(--panel-2);color:var(--ink-2);border:1px solid var(--line);padding:10px;margin-top:4px;max-height:200px;overflow:auto;font-family:var(--mono);font-size:11px}
-.cost-trace-modal .evidence-row{padding:8px 0;color:var(--ink-2);font-family:var(--mono);font-size:11px;border-bottom:1px dashed var(--line)}
+.cost-trace-modal .evidence-row{padding:8px 0;color:var(--ink-2);font-family:var(--mono);font-size:11px;border-bottom:1px solid var(--line)}
 .cost-trace-modal .trace-section{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .cost-trace-modal .trace-section>b{display:block;color:var(--ink);font-family:var(--serif);letter-spacing:.06em;margin-bottom:8px}
 .cost-trace-modal .chain-row{color:var(--ink-2);font:11px var(--mono);padding:6px 0}

@@ -183,7 +183,7 @@
       width="640px"
       append-to-body
       :close-on-click-modal="false"
-      custom-class="cockpit-modal"
+      class="cockpit-modal"
     >
       <el-alert type="info" :closable="false" title="财务窄授权：可信成本版本、口径签名与关联差异由服务端二次校验" />
       <el-form label-position="top" class="suggestion-form">
@@ -358,18 +358,18 @@ watch(() => route.query, (query) => load(costFiltersFromRoute(query, {})), { dee
 /* 色板与 Element Plus 通用 :deep 覆盖由 cockpit-tokens.scss 通过 .cockpit-page 提供，此处只写 layout */
 .act5-page{
   min-height:calc(100vh - 84px);margin:-16px -16px 0;padding:16px 20px 40px;color:var(--ink);
-  background:radial-gradient(900px 420px at 100% 0,var(--amber-tint),transparent 60%),var(--bg);
+  background:var(--bg);
 }
 .page-head{display:flex;justify-content:space-between;align-items:flex-end;padding:8px 0 14px;border-bottom:1px solid var(--line)}
 .page-title{display:flex;flex-direction:column;gap:4px}
-.page-title .eyebrow{color:var(--amber);font:10px var(--mono);letter-spacing:.14em}
+.page-title .eyebrow{color:var(--amber);font:12px var(--mono);letter-spacing:.14em}
 .page-title b{font-family:var(--serif);font-size:22px;letter-spacing:.08em;color:var(--ink)}
 .page-title small{color:var(--ink-3);font:11px var(--mono);letter-spacing:.06em}
-.page-tag{color:var(--amber);border:1px solid var(--amber);background:var(--amber-tint);padding:6px 10px;font:10px var(--mono)}
+.page-tag{color:var(--amber);border:1px solid var(--amber);background:var(--amber-tint);padding:6px 10px;font:12px var(--mono)}
 .filter-bar{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);margin-top:12px;flex-wrap:wrap}
 .filter-title{margin-right:auto;display:flex;flex-direction:column}
 .filter-title b{font-family:var(--serif);font-size:15px;letter-spacing:.06em;color:var(--ink)}
-.filter-title span,.panel-sub,.count-label{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.08em}
+.filter-title span,.panel-sub,.count-label{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.08em}
 .filter-bar :deep(.el-select){width:150px}
 .filter-bar :deep(.el-date-editor){width:160px}
 .period-alert{margin-top:12px}
@@ -377,28 +377,28 @@ watch(() => route.query, (query) => load(costFiltersFromRoute(query, {})), { dee
 .summary-cell{border:1px solid var(--line);border-left:2px solid var(--cyan);background:var(--panel);padding:12px 14px;display:grid;grid-template-columns:1fr;gap:4px}
 .summary-cell span{color:var(--ink-2);font:11px var(--mono)}
 .summary-cell b{font:24px var(--mono);color:var(--ink)}
-.summary-cell small{color:var(--ink-3);font:10px var(--mono)}
+.summary-cell small{color:var(--ink-3);font:12px var(--mono)}
 .summary-cell.version-cell{border-left-color:var(--amber)}
 .anomaly-evidence{margin-top:12px;padding:14px 16px;background:var(--panel);border:1px solid var(--red);border-left:2px solid var(--red)}
 .anomaly-evidence header{display:flex;justify-content:space-between;align-items:center}
 .anomaly-evidence header b{font-family:var(--serif);color:var(--red);letter-spacing:.06em}
-.anomaly-evidence header span{color:var(--ink-3);font:10px var(--mono)}
+.anomaly-evidence header span{color:var(--ink-3);font:12px var(--mono)}
 .evidence-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
 .evidence-grid article{background:var(--panel-2);padding:10px 12px;border:1px solid var(--line)}
-.evidence-grid span,.evidence-grid small{color:var(--ink-3);font:10px var(--mono);display:block}
+.evidence-grid span,.evidence-grid small{color:var(--ink-3);font:12px var(--mono);display:block}
 .evidence-grid b{color:var(--ink);font:20px var(--mono);display:block;margin-top:4px}
 .evidence-grid .rise b{color:var(--red)}
 .two-column,.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
 .panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px}
-.panel-head{display:flex;align-items:center;gap:10px;border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:10px}
+.panel-head{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px}
 .panel-title{font-family:var(--serif);font-size:15px;letter-spacing:.06em;color:var(--ink);margin-right:auto}
 .count-label{margin-left:auto}
 .cost-warnings-panel{display:flex;flex-direction:column;gap:8px}
 .section-heading{margin:12px 0 4px;font-family:var(--serif);font-size:13px;letter-spacing:.05em;color:var(--ink-2)}
-.peak-windows-sub{display:block;color:var(--ink-3);font:10px var(--mono);margin:0 0 8px}
-.cost-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--line);color:var(--ink)}
+.peak-windows-sub{display:block;color:var(--ink-3);font:12px var(--mono);margin:0 0 8px}
+.cost-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);color:var(--ink)}
 .cost-row span{color:var(--ink-2);font-family:var(--mono);font-size:11px}
-.empty-line{padding:14px;text-align:center;color:var(--ink-3);border:1px dashed var(--line);font:10px var(--mono)}
+.empty-line{padding:14px;text-align:center;color:var(--ink-3);border:1px dashed var(--line);font:12px var(--mono)}
 .table-panel{margin-top:12px}
 .pending-output{margin:12px 0}
 .suggestion-form{margin-top:14px}

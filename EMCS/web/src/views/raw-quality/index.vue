@@ -36,6 +36,7 @@
       <span class="right">签名 {{ payload.signature.version }} · SEED {{ payload.signature.seed }} · sig:{{ payload.signature.sigId }}</span>
     </div>
 
+    <el-alert v-if="loadError" :title="loadError" type="error" :closable="false" show-icon style="margin-top:16px"><el-button @click="loadSummary" :loading="loading">重新加载</el-button></el-alert>
     <div v-if="loading && !payload" class="rq-loading">正在拉取数据…</div>
 
     <div v-if="payload" class="rq-main">
@@ -261,8 +262,8 @@
                 <tr v-for="b in payload.backfillBatches" :key="b.batchId">
                   <td>{{ b.batchId }}</td>
                   <td>{{ b.triggeredBy }}</td>
-                  <td>{{ b.triggeredAt.slice(11, 16) }}</td>
-                  <td>{{ b.cacheStart.slice(11, 16) }} → {{ b.cacheEnd.slice(11, 16) }}</td>
+                  <td>{{ b.triggeredAt?.slice(11, 16) || '—' }}</td>
+                  <td>{{ b.cacheStart?.slice(11, 16) || '—' }} → {{ b.cacheEnd?.slice(11, 16) || '—' }}</td>
                   <td>{{ b.pointIds.length }}</td>
                   <td>{{ b.recordsIngested }} / {{ b.dupHandledCount }}</td>
                   <td>
@@ -290,7 +291,7 @@
       v-model="showBackfill"
       title="执行补传 · REQ-014"
       width="480px"
-      custom-class="cockpit-modal"
+      class="cockpit-modal"
       align-center
     >
       <div class="bf-form">
@@ -344,25 +345,33 @@ const filters = reactive({ zone: 'ALL', energyType: 'ELEC', pointId: null })
 // -------- 数据 --------
 const payload = ref(null)
 const loading = ref(false)
+const loadError = ref('')
+let requestSequence = 0
 // 一次性自愈 guard：首屏 pointId 命中不了时自动选 points[0]，只触发一次避免循环
 let hasAutoSelected = false
 
 async function loadSummary() {
+  const sequence = ++requestSequence
   loading.value = true
+  loadError.value = ''
   try {
     const resp = await getRawQualitySummary({ ...filters })
+    if (sequence !== requestSequence) return
     payload.value = resp.data
     // A（QA 2026-07-14 联调复检裁决）：命中不到点位时自动选第一个
     if (!hasAutoSelected && !payload.value?.selected && payload.value?.points?.length) {
       hasAutoSelected = true
       filters.pointId = payload.value.points[0].pointId
       const resp2 = await getRawQualitySummary({ ...filters })
+      if (sequence !== requestSequence) return
       payload.value = resp2.data
     }
     await nextTick()
     renderTrend()
+  } catch (error) {
+    if (sequence === requestSequence) loadError.value = error.message || '数据加载失败，请重试'
   } finally {
-    loading.value = false
+    if (sequence === requestSequence) loading.value = false
   }
 }
 
@@ -459,15 +468,13 @@ function formatOutageWindow(window) {
 const trendChartEl = ref(null)
 let trendChart = null
 
-// 质量色 tokens（响应主题：亮色降饱和/暗色荧光）
-// fix/jump/dup/frozen 语义色未进 cockpit-tokens，本页双写维护
+// 质量色沿用统一主题，运行蓝、待机/维护黄、停机灰。
 const qualityColorMap = computed(() => {
   const t = theme.value
-  const isDark = t.bg === '#0B0F14'
   return {
     ok: t.lime, miss: t.red, late: t.amber, est: t.violet,
-    fix: isDark ? '#60A5FA' : '#2563EB',
-    jump: isDark ? '#F97316' : '#EA580C',
+    fix: t.cyan,
+    jump: t.amber,
     dup: t.ink3, frozen: t.ink3
   }
 })
@@ -490,12 +497,11 @@ const isStatusPointReactive = computed(() => {
 const chartLegend = computed(() => {
   if (isStatusPointReactive.value) {
     const t = theme.value
-    const isDark = t.bg === '#0B0F14'
     return [
-      { key: 'running', label: '运行', color: t.lime },
+      { key: 'running', label: '运行', color: t.cyan },
       { key: 'standby', label: '待机', color: t.amber },
       { key: 'stopped', label: '停机', color: t.ink3 },
-      { key: 'maintenance', label: '维护', color: isDark ? '#60A5FA' : '#2563EB' }
+      { key: 'maintenance', label: '维护', color: t.amber }
     ]
   }
   return qualityColors.map((q) => ({ ...q, color: qualityColorMap.value[q.key] }))
@@ -523,10 +529,9 @@ function computeMissAreas(readings) {
 // #24-2 状态点位（*-STATUS）色带渲染：响应主题
 const statusColorMap = computed(() => {
   const t = theme.value
-  const isDark = t.bg === '#0B0F14'
   return {
-    running: t.lime, standby: t.amber, stopped: t.ink3,
-    maintenance: isDark ? '#60A5FA' : '#2563EB'
+    running: t.cyan, standby: t.amber, stopped: t.violet,
+    maintenance: t.amber
   }
 })
 const statusLabel = (v) => ({
@@ -776,14 +781,11 @@ watch(() => filters.energyType, () => {
 /* .rq-dark 只负责布局特化与页专色；主题 token 由 .cockpit-page 提供 */
 .rq-dark{
   /* 页专色（cockpit-tokens 未覆盖，页级双主题双写） */
-  --orange:#EA580C;
-  --blue:#2563EB;
+  --orange:var(--amber);
+  --blue:var(--cyan);
 
   min-height:calc(100vh - 84px);
-  background:
-    radial-gradient(1200px 500px at 10% -10%, var(--cyan-tint), transparent 60%),
-    radial-gradient(900px 400px at 100% 0%, var(--amber-tint), transparent 60%),
-    var(--bg);
+  background:var(--bg);
   color:var(--ink);
   padding:16px 20px 40px;
   margin:-16px -16px 0;
@@ -791,8 +793,8 @@ watch(() => filters.energyType, () => {
   font-size:13px; line-height:1.5; letter-spacing:.01em;
 }
 html.dark .rq-dark{
-  --orange:#F97316;
-  --blue:#60A5FA;
+  --orange:var(--amber);
+  --blue:var(--cyan);
 }
 .rq-dark :deep(.el-segmented){
   --el-segmented-bg-color:var(--panel-2);
@@ -816,10 +818,10 @@ html.dark .rq-dark{
   border:1px solid var(--line); border-radius:2px;
 }
 .fg{display:flex; align-items:center; gap:8px;}
-.fg-label{font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--ink-3); text-transform:uppercase;}
+.fg-label{font-family:var(--mono); font-size:12px; letter-spacing:.14em; color:var(--ink-3); text-transform:uppercase;}
 .fg-static{font-family:var(--mono); font-size:11px; color:var(--ink-2); padding:4px 10px; border:1px solid var(--line-strong); border-radius:2px; background:var(--panel-2);}
 .fg-end{margin-left:auto; display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; color:var(--ink-2);}
-.refresh-dot{width:6px; height:6px; border-radius:50%; background:var(--lime); box-shadow:0 0 10px var(--lime);}
+.refresh-dot{width:6px; height:6px; border-radius:50%; background:var(--lime); box-shadow:none;}
 .refresh-dot.pulsing{animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1} 50%{opacity:.35}}
 @media (prefers-reduced-motion: reduce){
@@ -832,7 +834,7 @@ html.dark .rq-dark{
   margin-top:12px; padding:8px 14px;
   background:var(--amber-tint); border:1px solid color-mix(in srgb, var(--amber) 25%, transparent);
   border-radius:2px; display:flex; justify-content:space-between; align-items:center;
-  font-family:var(--mono); font-size:10px; letter-spacing:.08em; color:var(--amber);
+  font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--amber);
   flex-wrap:wrap; gap:8px;
 }
 .rq-banner .left b{color:var(--ink); font-family:"PingFang SC",system-ui,sans-serif; font-weight:400;}
@@ -845,9 +847,9 @@ html.dark .rq-dark{
 .rq-content{display:flex; flex-direction:column; gap:12px; min-width:0;}
 
 /* ==================== 点位树 ==================== */
-.tree-head{display:flex; justify-content:space-between; align-items:baseline; padding-bottom:8px; border-bottom:1px dashed var(--line); margin-bottom:8px;}
+.tree-head{display:flex; justify-content:space-between; align-items:baseline; padding-bottom:8px; border-bottom:1px solid var(--line); margin-bottom:8px;}
 .tree-title{font-family:var(--serif); font-size:14px; color:var(--ink); letter-spacing:.06em;}
-.tree-sub{font-family:var(--mono); font-size:10px; color:var(--ink-3); letter-spacing:.08em;}
+.tree-sub{font-family:var(--mono); font-size:12px; color:var(--ink-3); letter-spacing:.08em;}
 .tree-body{display:flex; flex-direction:column; gap:12px;}
 .tree-group{}
 .tree-device{
@@ -855,9 +857,9 @@ html.dark .rq-dark{
   font-size:12px; color:var(--ink); margin-bottom:4px;
   padding:4px 0; border-bottom:1px solid var(--line);
 }
-.tree-device small{margin-left:auto; color:var(--ink-3); font-family:var(--mono); font-size:10px;}
+.tree-device small{margin-left:auto; color:var(--ink-3); font-family:var(--mono); font-size:12px;}
 .tree-zone{
-  padding:0 5px; font-family:var(--mono); font-size:9px; letter-spacing:.1em;
+  padding:0 5px; font-family:var(--mono); font-size:12px; letter-spacing:.1em;
   border:1px solid var(--line-strong); border-radius:1px; color:var(--ink-2);
 }
 .tree-zone.zone-a{color:var(--cyan); border-color:color-mix(in srgb, var(--cyan) 40%, transparent); background:var(--cyan-tint);}
@@ -870,9 +872,9 @@ html.dark .rq-dark{
 }
 .tree-points li:hover{background:var(--panel-2);}
 .tree-points li.active{background:var(--cyan-tint); box-shadow:inset 2px 0 0 var(--cyan);}
-.pt-id{font-family:var(--mono); font-size:10px; color:var(--ink-2); letter-spacing:.06em;}
+.pt-id{font-family:var(--mono); font-size:12px; color:var(--ink-2); letter-spacing:.06em;}
 .pt-name{font-size:12px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.pt-int{font-family:var(--mono); font-size:9px; color:var(--ink-3); text-align:right;}
+.pt-int{font-family:var(--mono); font-size:12px; color:var(--ink-3); text-align:right;}
 .tree-empty{
   padding:20px 12px; text-align:center;
   color:var(--ink-2); font-size:12px; line-height:1.7;
@@ -880,7 +882,7 @@ html.dark .rq-dark{
   background:var(--cyan-tint);
 }
 .tree-empty b{color:var(--amber); font-weight:400; font-family:var(--mono);}
-.te-hint{margin-top:6px; font-family:var(--mono); font-size:10px; color:var(--ink-3); letter-spacing:.06em;}
+.te-hint{margin-top:6px; font-family:var(--mono); font-size:12px; color:var(--ink-3); letter-spacing:.06em;}
 
 /* ==================== 覆盖率 + 质量分布 ==================== */
 .rq-summary{display:grid; grid-template-columns:220px 1fr; gap:12px;}
@@ -888,21 +890,21 @@ html.dark .rq-dark{
 .cov-card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--lime);}
 .cov-card.band-degraded::before{background:var(--amber);}
 .cov-card.band-insufficient::before{background:var(--red);}
-.cov-head{display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--ink-3); text-transform:uppercase; margin-bottom:8px;}
+.cov-head{display:flex; justify-content:space-between; font-family:var(--mono); font-size:12px; letter-spacing:.14em; color:var(--ink-3); text-transform:uppercase; margin-bottom:8px;}
 .cov-band{padding:1px 6px; border:1px solid var(--line-strong); border-radius:1px; color:var(--ink-2);}
 .band-degraded .cov-band{color:var(--amber); border-color:color-mix(in srgb, var(--amber) 35%, transparent); background:var(--amber-tint);}
 .band-insufficient .cov-band{color:var(--red); border-color:color-mix(in srgb, var(--red) 40%, transparent); background:var(--red-tint);}
 .cov-val{font-family:var(--mono); font-size:32px; color:var(--ink); display:flex; align-items:baseline; gap:6px; font-variant-numeric:tabular-nums;}
 .cov-unit{font-size:11px; color:var(--ink-3);}
-.cov-label{font-family:var(--mono); font-size:10px; color:var(--ink-3); margin-top:8px; letter-spacing:.04em;}
+.cov-label{font-family:var(--mono); font-size:12px; color:var(--ink-3); margin-top:8px; letter-spacing:.04em;}
 
 .q-bar-card{background:var(--panel); border:1px solid var(--line); border-radius:2px; padding:14px;}
 .q-bar-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
 .q-bar-title{font-family:var(--serif); font-size:14px; color:var(--ink); letter-spacing:.04em;}
-.q-bar-sub{font-family:var(--mono); font-size:10px; color:var(--ink-3); letter-spacing:.08em;}
+.q-bar-sub{font-family:var(--mono); font-size:12px; color:var(--ink-3); letter-spacing:.08em;}
 .q-bar-track{display:flex; height:14px; border:1px solid var(--line); border-radius:1px; overflow:hidden; margin-bottom:10px;}
 .q-bar-seg{display:flex; align-items:center; justify-content:center; overflow:hidden;}
-.seg-txt{font-family:var(--mono); font-size:9px; color:color-mix(in srgb, var(--bg) 70%, transparent); letter-spacing:.04em;}
+.seg-txt{font-family:var(--mono); font-size:12px; color:color-mix(in srgb, var(--bg) 70%, transparent); letter-spacing:.04em;}
 .seg-ok{background:var(--lime);}
 .seg-miss{background:var(--red);}
 .seg-late{background:var(--amber);}
@@ -910,11 +912,11 @@ html.dark .rq-dark{
 .seg-fix{background:var(--blue);}
 .seg-jump{background:var(--orange);}
 .seg-dup, .seg-frozen{background:var(--ink-3);}
-.q-bar-legend{display:flex; gap:12px; flex-wrap:wrap; font-family:var(--mono); font-size:10px; color:var(--ink-2); letter-spacing:.05em;}
+.q-bar-legend{display:flex; gap:12px; flex-wrap:wrap; font-family:var(--mono); font-size:12px; color:var(--ink-2); letter-spacing:.05em;}
 .lg-item{display:flex; align-items:center; gap:5px;}
 .lg-item b{color:var(--ink); font-weight:400;}
 .lg-dot{width:8px; height:8px; border-radius:1px;}
-.sw-ok{background:var(--lime); box-shadow:0 0 4px var(--lime);}
+.sw-ok{background:var(--lime); box-shadow:none;}
 .sw-miss{background:var(--red);}
 .sw-late{background:var(--amber);}
 .sw-est{background:var(--violet);}
@@ -933,29 +935,29 @@ html.dark .rq-dark{
 .rc-icon{color:var(--amber); font-weight:600;}
 .rc-done .rc-icon{color:var(--lime);}
 .rc-title{font-size:13px; color:var(--ink);}
-.rc-title small{margin-left:8px; font-family:var(--mono); font-size:10px; color:var(--ink-3); letter-spacing:.06em;}
+.rc-title small{margin-left:8px; font-family:var(--mono); font-size:12px; color:var(--ink-3); letter-spacing:.06em;}
 .rc-diff{font-family:var(--mono); font-size:11px; color:var(--ink-2); letter-spacing:.04em; margin-top:4px;}
 .rc-diff b{color:var(--ink);}
 .rc-delta{color:var(--red); margin-left:8px;}
 
 /* ==================== Panel ==================== */
 .panel{background:var(--panel); border:1px solid var(--line); border-radius:2px; padding:16px 18px 12px;}
-.panel-head{display:flex; align-items:center; gap:12px; padding-bottom:8px; border-bottom:1px dashed var(--line); margin-bottom:10px;}
+.panel-head{display:flex; align-items:center; gap:12px; padding-bottom:8px; border-bottom:1px solid var(--line); margin-bottom:10px;}
 .panel-title{font-family:var(--serif); font-size:15px; color:var(--ink); letter-spacing:.06em;}
-.panel-sub{font-family:var(--mono); font-size:10px; color:var(--ink-3); letter-spacing:.12em; text-transform:uppercase; margin-top:2px;}
+.panel-sub{font-family:var(--mono); font-size:12px; color:var(--ink-3); letter-spacing:.12em; text-transform:uppercase; margin-top:2px;}
 .head-side{margin-left:auto; display:flex; align-items:center; gap:10px;}
 .panel-foot{
   margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);
   display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px;
-  font-family:var(--mono); font-size:10px; color:var(--ink-3); letter-spacing:.05em;
+  font-family:var(--mono); font-size:12px; color:var(--ink-3); letter-spacing:.05em;
 }
-.task-state{padding:3px 8px; border:1px solid var(--line-strong); border-radius:1px; font-family:var(--mono); font-size:10px; letter-spacing:.08em;}
+.task-state{padding:3px 8px; border:1px solid var(--line-strong); border-radius:1px; font-family:var(--mono); font-size:12px; letter-spacing:.08em;}
 .task-state.ts-running{color:var(--lime); border-color:color-mix(in srgb, var(--lime) 35%, transparent); background:var(--lime-tint);}
 .task-state.ts-degraded{color:var(--amber); border-color:color-mix(in srgb, var(--amber) 35%, transparent); background:var(--amber-tint);}
 .task-state.ts-failed{color:var(--red); border-color:color-mix(in srgb, var(--red) 40%, transparent); background:var(--red-tint);}
 
 /* ==================== 曲线图例 ==================== */
-.q-legend{display:flex; gap:14px; padding:6px 0 8px; font-family:var(--mono); font-size:10px; color:var(--ink-2); letter-spacing:.06em; flex-wrap:wrap;}
+.q-legend{display:flex; gap:14px; padding:6px 0 8px; font-family:var(--mono); font-size:12px; color:var(--ink-2); letter-spacing:.06em; flex-wrap:wrap;}
 .lg{display:flex; align-items:center; gap:5px;}
 .lg-sw{width:10px; height:10px; border-radius:50%;}
 .trend-chart{width:100%; height:300px;}
@@ -974,16 +976,16 @@ html.dark .rq-dark{
 /* ==================== 表格 ==================== */
 .tbl-wrap{overflow-x:auto;}
 .rq-tbl{width:100%; border-collapse:collapse; font-size:12px;}
-.rq-tbl th, .rq-tbl td{padding:8px 10px; text-align:left; border-bottom:1px dashed var(--line);}
-.rq-tbl th{font-family:var(--mono); font-size:10px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.12em; font-weight:400;}
+.rq-tbl th, .rq-tbl td{padding:8px 10px; text-align:left; border-bottom:1px solid var(--line);}
+.rq-tbl th{font-family:var(--mono); font-size:12px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.12em; font-weight:400;}
 .rq-tbl td{color:var(--ink);}
 .rq-tbl .tk-name{color:var(--ink);}
-.rq-tbl .tk-id{font-family:var(--mono); font-size:10px; color:var(--ink-3); margin-top:2px;}
-.tk-state{padding:1px 6px; border:1px solid var(--line-strong); border-radius:1px; font-family:var(--mono); font-size:10px; letter-spacing:.08em;}
+.rq-tbl .tk-id{font-family:var(--mono); font-size:12px; color:var(--ink-3); margin-top:2px;}
+.tk-state{padding:1px 6px; border:1px solid var(--line-strong); border-radius:1px; font-family:var(--mono); font-size:12px; letter-spacing:.08em;}
 .tk-state.ts-running{color:var(--lime); border-color:color-mix(in srgb, var(--lime) 35%, transparent); background:var(--lime-tint);}
 .tk-state.ts-degraded{color:var(--amber); border-color:color-mix(in srgb, var(--amber) 35%, transparent); background:var(--amber-tint);}
 .tk-state.ts-failed{color:var(--red); border-color:color-mix(in srgb, var(--red) 40%, transparent); background:var(--red-tint);}
-.bf-status{padding:1px 6px; border:1px solid var(--line-strong); border-radius:1px; font-family:var(--mono); font-size:10px; letter-spacing:.08em;}
+.bf-status{padding:1px 6px; border:1px solid var(--line-strong); border-radius:1px; font-family:var(--mono); font-size:12px; letter-spacing:.08em;}
 .bs-succeeded{color:var(--lime); border-color:color-mix(in srgb, var(--lime) 35%, transparent); background:var(--lime-tint);}
 .bs-failed{color:var(--red); border-color:color-mix(in srgb, var(--red) 40%, transparent); background:var(--red-tint);}
 .bs-running, .bs-queued{color:var(--cyan); border-color:color-mix(in srgb, var(--cyan) 40%, transparent); background:var(--cyan-tint);}
@@ -993,13 +995,13 @@ html.dark .rq-dark{
 .rq-footer{
   margin-top:8px; padding:12px 4px 0; border-top:1px solid var(--line);
   display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
-  font-family:var(--mono); font-size:10px; color:var(--ink-3); letter-spacing:.08em;
+  font-family:var(--mono); font-size:12px; color:var(--ink-3); letter-spacing:.08em;
 }
 
 /* ==================== 弹窗 ==================== */
 /* el-dialog 皮由 cockpit-tokens.scss 的 .cockpit-modal 统一供，不再页级覆盖 */
 .bf-form{display:flex; flex-direction:column; gap:10px;}
-.bf-row{display:grid; grid-template-columns:110px 1fr; gap:12px; padding:6px 0; border-bottom:1px dashed var(--line);}
+.bf-row{display:grid; grid-template-columns:110px 1fr; gap:12px; padding:6px 0; border-bottom:1px solid var(--line);}
 .bf-row label{font-family:var(--mono); font-size:11px; color:var(--ink-3); letter-spacing:.08em;}
 .bf-row span{font-size:12px; color:var(--ink);}
 .bf-hint{margin-top:8px; padding:10px; background:var(--panel-2); border:1px solid var(--line); border-radius:2px; font-size:11px; color:var(--ink-2); line-height:1.5;}

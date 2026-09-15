@@ -13,52 +13,54 @@ import useSettingsStore from '@/store/modules/settings'
 
 // 亮色 palette（与 .cockpit-page 缺省值同源）
 const LIGHT = Object.freeze({
-  bg: '#F4F7FA',
+  bg: '#F5F7FA',
   panel: '#FFFFFF',
-  panel2: '#F1F5F9',
-  line: '#E2E8F0',
-  lineStrong: '#CBD5E1',
-  ink: '#0F172A',
-  ink2: '#475569',
-  ink3: '#64748B',
-  cyan: '#0284C7',
-  amber: '#B45309',
-  red: '#DC2626',
-  lime: '#16A34A',
-  violet: '#7C3AED',
-  splitLine: 'rgba(15, 23, 42, 0.08)',
-  areaTint: 'rgba(2, 132, 199, 0.08)',
-  redTint: 'rgba(220, 38, 38, 0.08)',
-  amberTint: 'rgba(180, 83, 9, 0.08)',
-  limeTint: 'rgba(22, 163, 74, 0.08)',
+  panel2: '#FAFBFC',
+  line: '#E4E7ED',
+  lineStrong: '#DCDFE6',
+  ink: '#1F2937',
+  ink2: '#606266',
+  ink3: '#909399',
+  cyan: '#409EFF',
+  amber: '#E6A23C',
+  red: '#F56C6C',
+  lime: '#67C23A',
+  violet: '#909399',
+  palette: ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399', '#79BBFF', '#95D475', '#EEBE77'],
+  splitLine: '#EBEEF5',
+  areaTint: '#ECF5FF',
+  redTint: '#FEF0F0',
+  amberTint: '#FDF6EC',
+  limeTint: '#F0F9EB',
   tooltipBg: '#FFFFFF',
-  tooltipBorder: '#CBD5E1',
-  tooltipInk: '#0F172A'
+  tooltipBorder: '#DCDFE6',
+  tooltipInk: '#303133'
 })
 
 // 暗色 palette（与 html.dark .cockpit-page 覆盖值同源）
 const DARK = Object.freeze({
-  bg: '#0B0F14',
-  panel: '#131922',
-  panel2: '#1A222E',
-  line: '#233042',
-  lineStrong: '#324256',
-  ink: '#E7ECF3',
-  ink2: '#93A6BC',
-  ink3: '#5A6E84',
-  cyan: '#38BDF8',
-  amber: '#F5A524',
-  red: '#EF4444',
-  lime: '#4ADE80',
-  violet: '#A78BFA',
-  splitLine: 'rgba(56, 189, 248, 0.08)',
-  areaTint: 'rgba(56, 189, 248, 0.08)',
-  redTint: 'rgba(239, 68, 68, 0.06)',
-  amberTint: 'rgba(245, 165, 36, 0.07)',
-  limeTint: 'rgba(74, 222, 128, 0.05)',
-  tooltipBg: '#131922',
-  tooltipBorder: '#324256',
-  tooltipInk: '#E7ECF3'
+  bg: '#0F1B2D',
+  panel: '#17263A',
+  panel2: '#1F3043',
+  line: 'rgba(64, 158, 255, 0.28)',
+  lineStrong: '#3B5775',
+  ink: '#FFFFFF',
+  ink2: '#AFC2D8',
+  ink3: '#AFC2D8',
+  cyan: '#409EFF',
+  amber: '#E6A23C',
+  red: '#F56C6C',
+  lime: '#67C23A',
+  violet: '#909399',
+  palette: ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399', '#79BBFF', '#95D475', '#EEBE77'],
+  splitLine: 'rgba(64, 158, 255, 0.14)',
+  areaTint: 'rgba(64, 158, 255, 0.14)',
+  redTint: 'rgba(245, 108, 108, 0.14)',
+  amberTint: 'rgba(230, 162, 60, 0.14)',
+  limeTint: 'rgba(103, 194, 58, 0.14)',
+  tooltipBg: '#17263A',
+  tooltipBorder: '#3B5775',
+  tooltipInk: '#FFFFFF'
 })
 
 // 响应式返回当前主题 palette；组件消费 theme.value.xxx
@@ -70,7 +72,7 @@ export function useChartTheme() {
 // 语义→系列色的稳定映射（peak/flat/valley/anomaly/normal），页面直接消费避免散乱记色号
 export function chartSeriesColors(theme) {
   return {
-    peak: theme.red,
+    peak: theme.amber,
     flat: theme.cyan,
     valley: theme.lime,
     anomaly: theme.red,
@@ -84,7 +86,7 @@ export function chartSeriesColors(theme) {
 export function chartAxisTheme(theme) {
   return {
     axisLine: { lineStyle: { color: theme.lineStrong } },
-    axisLabel: { color: theme.ink3, fontSize: 10 },
+    axisLabel: { color: theme.ink3, fontSize: 12 },
     splitLine: { lineStyle: { color: theme.splitLine } }
   }
 }

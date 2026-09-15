@@ -434,8 +434,8 @@ onMounted(() => { if (access.value) loadList() })
   border-left: 4px solid var(--cyan);
   padding: 12px 14px;
 }
-.finding.sev-high { border-left-color: var(--red); background: linear-gradient(90deg, var(--red-tint), var(--panel) 40%); }
-.finding.sev-mid { border-left-color: var(--amber); background: linear-gradient(90deg, var(--amber-tint), var(--panel) 40%); }
+.finding.sev-high { border-left-color: var(--red); background: var(--red-tint); }
+.finding.sev-mid { border-left-color: var(--amber); background: var(--amber-tint); }
 .finding.sev-low { border-left-color: var(--lime); }
 
 .finding-head { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }

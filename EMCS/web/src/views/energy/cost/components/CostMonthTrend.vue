@@ -75,16 +75,16 @@ onBeforeUnmount(() => chart?.dispose())
 
 <style scoped>
 .panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px;color:var(--ink);margin-top:12px}
-.panel-head{display:flex;align-items:center;gap:10px;border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:10px}
+.panel-head{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px}
 .panel-title{font-family:var(--serif);font-size:15px;letter-spacing:.06em;color:var(--ink);margin-right:auto}
-.panel-sub{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.08em}
+.panel-sub{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.08em}
 .trend-chart{height:240px}
 .month-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px}
 .month-card{appearance:none;background:var(--panel-2);border:1px solid var(--line);padding:12px;text-align:left;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;gap:4px;transition:border-color .16s,transform .16s}
 .month-card:hover{border-color:var(--line-strong);transform:translateY(-1px)}
-.card-month{color:var(--ink-2);font:10px var(--mono);letter-spacing:.06em}
+.card-month{color:var(--ink-2);font:12px var(--mono);letter-spacing:.06em}
 .card-cost{font:20px var(--mono);color:var(--ink)}
-.card-meta{color:var(--ink-3);font:10px var(--mono)}
-.card-anomaly{color:var(--red);font-style:normal;font:10px var(--mono);margin-top:4px}
+.card-meta{color:var(--ink-3);font:12px var(--mono)}
+.card-anomaly{color:var(--red);font-style:normal;font:12px var(--mono);margin-top:4px}
 .month-card.anomaly{border-color:var(--red);background:var(--red-tint)}
 </style>

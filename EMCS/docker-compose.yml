@@ -1,6 +1,7 @@
 # 基础设施容器化：只跑 MySQL + Redis（Spring Boot 使用 Redis 做验证码/会话支撑）。
 # 应用代码（Spring Boot / Vite）本机跑；数据库镜像、库名和数据卷在重构中保持不变。
-# 重置演示数据：docker compose down -v && docker compose up -d && python datagen/generate_demo_data.py
+# 首次创建 MySQL 数据卷时，自动按文件名顺序导入 sql/ 中的固定 SQL。
+# 已有数据卷不会重复导入；手动重置方法见 README（会清空项目表）。
 services:
   mysql:
     image: mysql:8.4
@@ -18,6 +19,7 @@ services:
       - --default-time-zone=+08:00
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pbdemo_root"]
       interval: 5s

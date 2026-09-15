@@ -2,7 +2,8 @@ import defaultSettings from '@/settings'
 import { useDark, useToggle } from '@vueuse/core'
 import { useDynamicTitle } from '@/utils/dynamicTitle'
 
-const isDark = useDark()
+// 统一规范默认浅色；使用独立存储键，避免继承旧版的系统深色偏好。
+const isDark = useDark({ storageKey: 'bdemo-color-scheme', initialValue: 'light' })
 const toggleDark = useToggle(isDark)
 
 const { sideTheme, showSettings, navType, tagsView, tagsIcon, fixedHeader, sidebarLogo, dynamicTitle, footerVisible, footerContent } = defaultSettings
@@ -14,7 +15,7 @@ const useSettingsStore = defineStore(
   {
     state: () => ({
       title: '',
-      theme: storageSetting.theme || '#409EFF',
+      theme: '#409EFF',
       sideTheme: storageSetting.sideTheme || sideTheme,
       showSettings: showSettings,
       navType: storageSetting.navType === undefined ? navType : storageSetting.navType,
