@@ -19,7 +19,9 @@ Project_B 的平台公共能力，版本 **0.1.0，开发联调版**。支持统
 
 2026-09-14 已从 Project_B/TRUST 发布新应用制品，原 19 条事件的摘要、CID 和交易关联保持一致。8 项真实页面回归及新增 10 项真实页面流程检查通过，覆盖附件上传、JSON/CSV 导入、更正、60/40 吨发运溯源、授权下载和在线核验后导出。详见 [本次发布与页面验收](docs/test-results/application-release-20260914.md)。
 
-详见 [验证摘要](docs/test-results/README.md)、[实施状态](docs/implementation-status.md) 和 [逐条需求覆盖](docs/requirements-coverage.md)。协调备份恢复、特殊超时/异常退出、真实仓库文件缺失替换仍待补齐。
+2026-09-15 同组备份恢复、真实链确认超时、强制退出后双进程接管、真实证据缺失/替换及恢复等 7 项检查通过。原开发应用的 29 条事件保持一致；隔离恢复库新增 2 条模拟故障事件，真实交易和证据保留。详见 [恢复与故障验收](docs/test-results/recovery-acceptance-20260915.md)。
+
+详见 [验证摘要](docs/test-results/README.md)、[实施状态](docs/implementation-status.md) 和 [逐条需求覆盖](docs/requirements-coverage.md)。带待办任务的检查点恢复、全联盟灾难恢复及生产高可用仍待验证。
 
 ## 工程与节点
 
@@ -77,6 +79,8 @@ PowerShell 默认使用 PATH 中的 `python`，也可设置 `TRUST_PYTHON` 指�
 
 独立启动 Fabric 时使用 `start` 和 `start-contract`，保留已有账本；不要用重新初始化代替日常启动。所有路径、账号和服务器地址以私有配置为准。
 
+IPFS 启动会等待 RPC 就绪并核对仓库路径。既有仓库升级离线配置时，在 IPFS 节点执行 `bash deploy/ipfs.sh configure-offline`，重启 IPFS 后生效；工具保留旧配置。当前脚本尚未安装开机自启或进程守护。
+
 ## 构建与日常开发
 
 ```powershell
@@ -108,6 +112,8 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 
 统一 API 前缀为 `/api/v1`，使用登录会话与 CSRF 校验。详见 [接口语义](docs/api.md) 和 [OpenAPI](docs/openapi.json)。组织范围由服务端账号确定，查询、下载和导出都执行鉴权及审计。
 
+后续真实仓储接入的源码依据与缺口见 [WMS 接入准备评估](docs/wms-integration-readiness.md)，目前尚未接入正式业务来源。
+
 离线工具验证包内文件及参考摘要的一致性；导出的普通交易 JSON 不是独立链上密码学证明，链上真实性仍通过在线查询核验。
 
 ## 测试与运行资料
@@ -119,12 +125,13 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 - 前端目录 `pnpm test:e2e`：实际应用无界面页面检查；传入 `--preview` 需要另行提供明确的界面预览服务。
 - 前端目录 `pnpm test:e2e:write`：真实页面写入验收，默认使用私有账号文件中的录入员 `editor`；每次生成独立的 `UI-` 模拟批次，成功完成时新增 5 条事件与 2 份模拟附件。连接真实 IPFS/Fabric，只用于独立开发实例。结果输出到 `.local/test-results/UI-<本次标识>/`；失败时已提交记录会保留。可用 `TRUST_BASE_URL`、`TRUST_UI_ACCOUNT`、`TRUST_PYTHON` 指定应用入口、已有测试账号和离线核验所用 Python。
 - `tests/offline-export-test.py`：合成证据包的离线正常、替换、缺失和错误参考摘要分支。
+- `tests/recovery/run.py`：同组冷备份恢复、真实链确认超时、强制退出后双进程接管及真实证据异常检查。会临时停止本工程应用/IPFS，创建隔离恢复库并增加真实开发链交易；准备、执行和中断恢复方法见 [专项验收说明](docs/test-results/recovery-acceptance-20260915.md)。
 
 详细结果、截图和证据包默认保存在 `.local/test-results`，不提交 Git。公开目录仅保留日期、测试方式、结论和限制的摘要；历史原件由项目维护者本机保存。不得把模拟接口截图当作真实业务存证结果。
 
 单文件上限 20 MiB，导入上限 200 行 / 1 MiB，IPFS 开发预算 10 GiB；不自动删除固定保存的证据。任务并行度 4，采用持久任务、租约和退避策略。
 
-`scripts/backup.ps1` 编排应用暂存、IPFS 与数据库备份，`-DryRun` 只校验配置；单组件恢复工具位于 deploy。协调备份恢复仍待完整验收。凭据、备份和原始运行数据不存入 Git，备份不等同于在线多副本。
+`scripts/backup.ps1` 编排应用暂存、IPFS 与数据库备份，`-DryRun` 只校验配置；单组件恢复工具位于 deploy。2026-09-15 的同组恢复通过专项协调器 `tests/recovery/run.py` 验证，前提是暂停写入且任务已完成，Fabric 保留原账本；不代表日常备份脚本的所有路径均完成验收。凭据、备份和原始运行数据不存入 Git，备份不等同于在线多副本。
 
 ## 参考
 
