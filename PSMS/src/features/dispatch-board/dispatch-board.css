@@ -72,9 +72,9 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  color: #0958d9;
+  color: #409EFF;
   font-weight: 700;
-  background: #e6f4ff;
+  background: #ECF5FF;
   border-radius: 50%;
 }
 
@@ -96,8 +96,8 @@
 }
 
 .dispatch-board-page[data-demo-active='true'] .dispatch-resource-option:has(input:checked) {
-  border-color: #13c2c2;
-  box-shadow: 0 8px 22px rgba(19, 194, 194, .16);
+  border-color: #409EFF;
+  box-shadow: 0 8px 22px rgba(64, 158, 255, 0.16);
   transform: translateX(3px);
 }
 

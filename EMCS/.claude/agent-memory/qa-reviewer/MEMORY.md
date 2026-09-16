@@ -1,2 +1,0 @@
-- [规则编号用 demo 表](feedback_rule_id_uses_demo_table.md) — 代码/mock 里的 R01-R11 按 PRD §7.2 判据，禁用 K.7 编号做结论
-- [契约事实来源与优先级](reference_contract_sources.md) — PRD §5/§7 > mock-contracts.md > REQ 基线；主控裁决段落是最新事实

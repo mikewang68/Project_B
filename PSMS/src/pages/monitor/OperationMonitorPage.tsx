@@ -123,7 +123,7 @@ export default function OperationMonitorPage() {
         <Card size="small"><Statistic title="执行中工单" value={activeOrders.length} suffix="项" /></Card>
         <Card size="small"><Statistic title="已完成工序" value={completed} suffix="项" /></Card>
         <Card size="small"><Statistic title="可用资源" value={resourceAvailable} suffix={`/ ${resources.length}`} /></Card>
-        <Card size="small"><Statistic title="风险工序" value={riskCount} suffix="项" valueStyle={{ color: riskCount ? '#b83232' : '#4f8f5b' }} /></Card>
+        <Card size="small"><Statistic title="风险工序" value={riskCount} suffix="项" valueStyle={{ color: riskCount ? '#F56C6C' : '#67C23A' }} /></Card>
       </section>
 
       <section className="operation-main-grid">

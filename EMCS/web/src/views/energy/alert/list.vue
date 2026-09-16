@@ -93,7 +93,7 @@
       />
     </section>
 
-    <el-drawer v-model="detailVisible" size="min(920px, 92vw)" custom-class="cockpit-modal" destroy-on-close @closed="clearDetailQuery">
+    <el-drawer v-model="detailVisible" size="min(920px, 92vw)" class="cockpit-modal" destroy-on-close @closed="clearDetailQuery">
       <template #header>
         <div v-if="detail" class="drawer-title">
           <span class="level-tag" :class="`level-${detail.event.level}`">{{ levelLabels[detail.event.level] }}</span>
@@ -441,23 +441,23 @@ onBeforeUnmount(() => {
 /* 页面布局：主题 token 由 .cockpit-page 提供；.act3-page 只做布局特化。 */
 .act3-page{
   min-height:calc(100vh - 84px);margin:-16px -16px 0;padding:16px 20px 40px;color:var(--ink);
-  background:radial-gradient(900px 420px at 100% 0,var(--red-tint),transparent 60%),var(--bg);
+  background:var(--bg);
   font-family:"PingFang SC",system-ui,sans-serif;font-size:13px;
 }
 .filter-bar{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);}
-.filter-title{margin-right:auto;display:flex;flex-direction:column}.filter-title b{font-family:var(--serif);font-size:17px;letter-spacing:.08em}.filter-title span,.panel-sub{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.1em}
+.filter-title{margin-right:auto;display:flex;flex-direction:column}.filter-title b{font-family:var(--serif);font-size:17px;letter-spacing:.08em}.filter-title span,.panel-sub{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.1em}
 .filter-bar :deep(.el-select){width:120px}.filter-bar :deep(.el-input){width:120px}
 /* el-input/select 皮由 cockpit-tokens 通用块统一供，不再页级覆盖 */
-.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}.metric{border:1px solid var(--line);border-left:2px solid var(--cyan);background:var(--panel);padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:4px}.metric-ok{border-left-color:var(--lime)}.metric-warn{border-left-color:var(--amber)}.metric span{color:var(--ink-2)}.metric b{font:24px var(--mono)}.metric small{grid-column:1/-1;color:var(--ink-3);font:10px var(--mono)}
-.panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px}.list-panel{margin-top:12px}.panel-head{display:flex;align-items:center;border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:10px}.panel-title{font-family:var(--serif);font-size:15px;letter-spacing:.06em}.count-label{margin-left:auto;color:var(--ink-3);font:10px var(--mono)}
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}.metric{border:1px solid var(--line);border-left:2px solid var(--cyan);background:var(--panel);padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:4px}.metric-ok{border-left-color:var(--lime)}.metric-warn{border-left-color:var(--amber)}.metric span{color:var(--ink-2)}.metric b{font:24px var(--mono)}.metric small{grid-column:1/-1;color:var(--ink-3);font:12px var(--mono)}
+.panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px}.list-panel{margin-top:12px}.panel-head{display:flex;align-items:center;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px}.panel-title{font-family:var(--serif);font-size:15px;letter-spacing:.06em}.count-label{margin-left:auto;color:var(--ink-3);font:12px var(--mono)}
 /* .dark-table 由 cockpit-tokens 通用块提供变量映射；此处只补页面级 hover 指针 */
-.dark-table{cursor:pointer}.primary-cell{color:var(--ink)}.secondary-cell{color:var(--ink-3);font:10px var(--mono);margin-top:2px}.mono-cell{font-family:var(--mono)}
-.level-tag,.status-tag{display:inline-block;padding:2px 7px;border:1px solid var(--line-strong);font:10px var(--mono)}.level-severe{color:var(--red);border-color:color-mix(in srgb, var(--red) 45%, transparent);background:var(--red-tint)}.level-normal{color:var(--amber);border-color:color-mix(in srgb, var(--amber) 40%, transparent);background:var(--amber-tint)}.level-notice{color:var(--cyan);border-color:color-mix(in srgb, var(--cyan) 40%, transparent);background:var(--cyan-tint)}.status-tag{color:var(--ink-2)}
+.dark-table{cursor:pointer}.primary-cell{color:var(--ink)}.secondary-cell{color:var(--ink-3);font:12px var(--mono);margin-top:2px}.mono-cell{font-family:var(--mono)}
+.level-tag,.status-tag{display:inline-block;padding:2px 7px;border:1px solid var(--line-strong);font:12px var(--mono)}.level-severe{color:var(--red);border-color:color-mix(in srgb, var(--red) 45%, transparent);background:var(--red-tint)}.level-normal{color:var(--amber);border-color:color-mix(in srgb, var(--amber) 40%, transparent);background:var(--amber-tint)}.level-notice{color:var(--cyan);border-color:color-mix(in srgb, var(--cyan) 40%, transparent);background:var(--cyan-tint)}.status-tag{color:var(--ink-2)}
 .pager{justify-content:flex-end;margin-top:12px}.pager :deep(button),.pager :deep(.number){background:var(--panel-2)!important;color:var(--ink-2)!important}
-.drawer-title{display:flex;align-items:center;gap:12px}.drawer-title div{display:flex;flex-direction:column}.drawer-title b{color:var(--ink);font-family:var(--serif);font-size:17px}.drawer-title small{color:var(--ink-3);font:10px var(--mono);margin-top:3px}.detail-body{display:flex;flex-direction:column;gap:12px}.detail-actions{display:flex;gap:8px;flex-wrap:wrap}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0}.facts div{border-bottom:1px dashed var(--line);padding-bottom:6px}.facts .wide{grid-column:1/-1}.facts dt{color:var(--ink-3);font:10px var(--mono)}.facts dd{margin:3px 0 0;color:var(--ink)}
-.suggestion-unavailable{align-self:center;color:var(--ink-3);font:10px var(--mono)}
-.match-state{margin-top:12px;padding:8px;border:1px solid color-mix(in srgb, var(--lime) 35%, transparent);color:var(--lime);font-family:var(--mono)}.match-state.missed{border-color:color-mix(in srgb, var(--red) 40%, transparent);color:var(--red);background:var(--red-tint)}.compact-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}.compact-row b{color:var(--ink)}.compact-row span{color:var(--ink-3);font:10px var(--mono);text-align:right}.curve-chart{height:260px}.empty-state{padding:24px;text-align:center;color:var(--ink-3);border:1px dashed var(--line)}.timeline-meta{color:var(--ink-3);font-size:11px;margin-top:3px}.close-note{padding:10px 12px;border:1px solid var(--line-strong);color:var(--ink-2);font-family:var(--mono)}
+.drawer-title{display:flex;align-items:center;gap:12px}.drawer-title div{display:flex;flex-direction:column}.drawer-title b{color:var(--ink);font-family:var(--serif);font-size:17px}.drawer-title small{color:var(--ink-3);font:12px var(--mono);margin-top:3px}.detail-body{display:flex;flex-direction:column;gap:12px}.detail-actions{display:flex;gap:8px;flex-wrap:wrap}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0}.facts div{border-bottom:1px solid var(--line);padding-bottom:6px}.facts .wide{grid-column:1/-1}.facts dt{color:var(--ink-3);font:12px var(--mono)}.facts dd{margin:3px 0 0;color:var(--ink)}
+.suggestion-unavailable{align-self:center;color:var(--ink-3);font:12px var(--mono)}
+.match-state{margin-top:12px;padding:8px;border:1px solid color-mix(in srgb, var(--lime) 35%, transparent);color:var(--lime);font-family:var(--mono)}.match-state.missed{border-color:color-mix(in srgb, var(--red) 40%, transparent);color:var(--red);background:var(--red-tint)}.compact-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}.compact-row b{color:var(--ink)}.compact-row span{color:var(--ink-3);font:12px var(--mono);text-align:right}.curve-chart{height:260px}.empty-state{padding:24px;text-align:center;color:var(--ink-3);border:1px dashed var(--line)}.timeline-meta{color:var(--ink-3);font-size:11px;margin-top:3px}.close-note{padding:10px 12px;border:1px solid var(--line-strong);color:var(--ink-2);font-family:var(--mono)}
 @media(max-width:900px){.metric-grid,.detail-grid{grid-template-columns:1fr 1fr}.filter-title{width:100%}.filter-bar{flex-wrap:wrap}}
 </style>
 
-<!-- 抽屉皮已迁至 cockpit-tokens.scss 的 .cockpit-modal，本页 <el-drawer custom-class="cockpit-modal" /> 直接消费，页级 <style> 全局皮删除 -->
+<!-- 抽屉皮已迁至 cockpit-tokens.scss 的 .cockpit-modal，本页 <el-drawer class="cockpit-modal" /> 直接消费，页级 <style> 全局皮删除 -->

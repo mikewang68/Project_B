@@ -5,135 +5,63 @@
 // （ECharts 主题色的 JS 镜像），改一处必改两处。
 
 @mixin cockpit-tokens-light {
-  --bg: #F4F7FA;
+  --bg: #F5F7FA;
   --panel: #FFFFFF;
-  --panel-2: #F1F5F9;
-  --line: #E2E8F0;
-  --line-strong: #CBD5E1;
+  --panel-2: #FAFBFC;
+  --line: #E4E7ED;
+  --line-strong: #DCDFE6;
 
-  --ink: #0F172A;
-  --ink-2: #475569;
-  --ink-3: #64748B;
+  --ink: #1F2937;
+  --ink-2: #606266;
+  --ink-3: #909399;
 
-  --cyan: #0284C7;
-  --amber: #B45309;
-  --red: #DC2626;
-  --lime: #16A34A;
-  --violet: #7C3AED;
+  --cyan: #409EFF;
+  --amber: #E6A23C;
+  --red: #F56C6C;
+  --lime: #67C23A;
+  --violet: #909399;
 
-  --cyan-tint: rgba(2, 132, 199, 0.08);
-  --amber-tint: rgba(180, 83, 9, 0.08);
-  --red-tint: rgba(220, 38, 38, 0.06);
-  --lime-tint: rgba(22, 163, 74, 0.08);
+  --cyan-tint: #ECF5FF;
+  --amber-tint: #FDF6EC;
+  --red-tint: #FEF0F0;
+  --lime-tint: #F0F9EB;
 
-  --serif: "Songti SC", "SimSun", serif;
+  --serif: "PingFang SC", "Microsoft YaHei", sans-serif;
   --mono: "SF Mono", "Menlo", "Consolas", monospace;
 
-  --hero-glow: radial-gradient(900px 420px at 100% 0, rgba(2, 132, 199, 0.05), transparent 60%);
+  --hero-glow: none;
 }
 
 @mixin cockpit-tokens-dark {
-  --bg: #0B0F14;
-  --panel: #131922;
-  --panel-2: #1A222E;
-  --line: #233042;
-  --line-strong: #324256;
+  --bg: #0F1B2D;
+  --panel: #17263A;
+  --panel-2: #1F3043;
+  --line: rgba(64, 158, 255, 0.28);
+  --line-strong: #3B5775;
 
-  --ink: #E7ECF3;
-  --ink-2: #93A6BC;
-  --ink-3: #5A6E84;
+  --ink: #FFFFFF;
+  --ink-2: #AFC2D8;
+  --ink-3: #AFC2D8;
 
-  --cyan: #38BDF8;
-  --amber: #F5A524;
-  --red: #EF4444;
-  --lime: #4ADE80;
-  --violet: #A78BFA;
+  --cyan: #409EFF;
+  --amber: #E6A23C;
+  --red: #F56C6C;
+  --lime: #67C23A;
+  --violet: #909399;
 
-  --cyan-tint: rgba(56, 189, 248, 0.08);
-  --amber-tint: rgba(245, 165, 36, 0.07);
-  --red-tint: rgba(239, 68, 68, 0.06);
-  --lime-tint: rgba(74, 222, 128, 0.05);
+  --cyan-tint: rgba(64, 158, 255, 0.14);
+  --amber-tint: rgba(230, 162, 60, 0.14);
+  --red-tint: rgba(245, 108, 108, 0.14);
+  --lime-tint: rgba(103, 194, 58, 0.14);
 
-  --hero-glow: radial-gradient(900px 420px at 100% 0, rgba(56, 189, 248, 0.06), transparent 60%);
+  --hero-glow: none;
 }
 
 .cockpit-page { @include cockpit-tokens-light; }
 html.dark .cockpit-page { @include cockpit-tokens-dark; }
 
-// Element Plus 组件的通用 :deep 覆盖（引用 token，自动双主题）
-.cockpit-page {
-  .el-input__wrapper,
-  .el-select__wrapper,
-  .el-textarea__inner {
-    background: var(--panel-2) !important;
-    box-shadow: 0 0 0 1px var(--line-strong) inset;
-    color: var(--ink-2);
-  }
-  .el-input__inner,
-  .el-select__placeholder,
-  .el-range-input,
-  .el-range-separator {
-    color: var(--ink-2);
-  }
-  .el-input-number .el-input__wrapper {
-    background: var(--panel-2) !important;
-  }
-
-  .el-button:not(.el-button--primary) {
-    background: var(--panel-2);
-    border-color: var(--line-strong);
-    color: var(--ink-2);
-  }
-  .el-button:not(.el-button--primary):hover {
-    color: var(--cyan);
-    border-color: var(--cyan);
-  }
-  .el-tag {
-    background: var(--panel-2);
-    border-color: var(--line-strong);
-    color: var(--ink-2);
-  }
-
-  .el-alert {
-    background: var(--panel-2);
-    border: 1px solid var(--line-strong);
-    color: var(--ink-2);
-  }
-  .el-alert--warning {
-    background: var(--amber-tint);
-    border-color: var(--amber);
-    color: var(--amber);
-  }
-  .el-alert--error {
-    background: var(--red-tint);
-    border-color: var(--red);
-    color: var(--red);
-  }
-  .el-alert--info {
-    background: var(--cyan-tint);
-    border-color: var(--cyan);
-    color: var(--cyan);
-  }
-  .el-alert__title {
-    color: inherit;
-  }
-  .el-empty__description p {
-    color: var(--ink-2);
-  }
-
-  .dark-table {
-    --el-table-bg-color: transparent;
-    --el-table-tr-bg-color: transparent;
-    --el-table-header-bg-color: var(--panel-2);
-    --el-table-row-hover-bg-color: var(--cyan-tint);
-    --el-table-border-color: var(--line);
-    --el-table-text-color: var(--ink-2);
-    --el-table-header-text-color: var(--ink-3);
-  }
-}
-
 // 抽屉与对话框脱 scoped：Element Plus teleport 到 body，变量必须在 modal 根重新声明
-// 用法：<el-drawer custom-class="cockpit-modal">（可与业务特化类叠加，例如 cost-trace-modal）
+// 用法：<el-drawer class="cockpit-modal">（可与业务特化类叠加，例如 cost-trace-modal）
 .cockpit-modal.el-drawer,
 .cockpit-modal.el-dialog {
   @include cockpit-tokens-light;
@@ -161,59 +89,11 @@ html.dark .cockpit-modal.el-dialog {
     color: var(--ink-2);
     background: var(--panel);
   }
-  .el-input__wrapper,
-  .el-select__wrapper,
-  .el-textarea__inner {
-    background: var(--panel-2) !important;
-    box-shadow: 0 0 0 1px var(--line-strong) inset;
-    color: var(--ink);
-  }
-  .el-input__inner,
-  .el-select__placeholder,
-  .el-range-input,
-  .el-range-separator {
-    color: var(--ink);
-  }
   .el-form-item__label {
     color: var(--ink-2) !important;
   }
   .el-drawer__close-btn,
   .el-dialog__headerbtn .el-dialog__close {
     color: var(--ink-3);
-  }
-  .el-alert {
-    background: var(--panel-2);
-    border: 1px solid var(--line-strong);
-    color: var(--ink-2);
-  }
-  .el-alert--info {
-    background: var(--cyan-tint);
-    border-color: var(--cyan);
-    color: var(--cyan);
-  }
-  .el-alert--warning {
-    background: var(--amber-tint);
-    border-color: var(--amber);
-    color: var(--amber);
-  }
-  .el-alert--error {
-    background: var(--red-tint);
-    border-color: var(--red);
-    color: var(--red);
-  }
-  .el-alert__title {
-    color: inherit;
-  }
-  .el-empty__description p {
-    color: var(--ink-2);
-  }
-  .el-table {
-    --el-table-bg-color: transparent;
-    --el-table-tr-bg-color: transparent;
-    --el-table-header-bg-color: var(--panel-2);
-    --el-table-row-hover-bg-color: var(--cyan-tint);
-    --el-table-border-color: var(--line);
-    --el-table-text-color: var(--ink-2);
-    --el-table-header-text-color: var(--ink-3);
   }
 }

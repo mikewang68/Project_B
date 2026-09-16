@@ -1,0 +1,12 @@
+{
+  "name": "project-b",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter production-dispatch-demo dev",
+    "psms": "pnpm --filter production-dispatch-demo",
+    "iam": "pnpm --filter iam-admin",
+    "scs": "pnpm --filter b-project-safety-gate",
+    "sys": "pnpm --filter sys-admin"
+  }
+}

@@ -19,11 +19,11 @@ web/dist/
 !.env.example
 .mcp.json
 
-# 数据与产物（构造数据用脚本再生，不入库大文件）
-datagen/output/
+# 数据与产物（固定初始化 SQL 位于 sql/，纳入版本管理）
 *.sql.gz
 *.xlsx
-!datagen/seeds/*.csv
+!/sql/
+!/sql/*.sql
 
 # Docker 卷（compose 用 named volume，此处兜底）
 mysql-data/
@@ -35,11 +35,35 @@ redis-data/
 .vscode/
 *.swp
 
-# Claude Code 本地态
-.claude/settings.local.json
-
-# 后端运行时产物（RuoYi 骨架启动即建目录）
-backend/logs/
-backend/caches/
-backend/vf_admin/
+# 后端运行时产物
 backend-java/target/
+/logs/
+/caches/
+/vf_admin/
+
+# 旧 Python 后端：仅作本地备份，当前后端为 backend-java
+/backend/
+
+# 旧造数目录不再参与项目
+/datagen/
+
+# 本地项目文档（保留第三方许可证声明）
+/doc/
+/docs/*
+!/docs/LICENSE*
+
+# 本地 AI 开发配置、技能和记忆
+.agents/
+.claude/
+.codex/
+.superpowers/
+[Aa][Gg][Ee][Nn][Tt].md
+[Aa][Gg][Ee][Nn][Tt][Ss].md
+[Cc][Ll][Aa][Uu][Dd][Ee].md
+.mcp.json.*
+mcp.json
+mcp.json.*
+.mcp/
+
+# Python 静态检查缓存
+.ruff_cache/

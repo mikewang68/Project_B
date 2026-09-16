@@ -32,7 +32,7 @@
       size="min(920px,95vw)"
       title="报表归档证据"
       destroy-on-close
-      custom-class="cockpit-modal archive-preview-modal"
+      class="cockpit-modal archive-preview-modal"
     >
       <ReportPreview :snapshot="detail" frozen />
     </el-drawer>
@@ -69,9 +69,9 @@ defineExpose({ refresh: load })
 
 <style scoped>
 .panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px;color:var(--ink)}
-.panel-head{display:flex;align-items:center;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:10px}
+.panel-head{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px}
 .head-title{margin-right:auto;display:flex;flex-direction:column}
 .head-title b{font-family:var(--serif);font-size:15px;letter-spacing:.06em;color:var(--ink)}
-.head-title small{color:var(--ink-3);font:10px var(--mono);margin-top:4px}
+.head-title small{color:var(--ink-3);font:12px var(--mono);margin-top:4px}
 code{color:var(--cyan);font-family:var(--mono);font-size:11px}
 </style>

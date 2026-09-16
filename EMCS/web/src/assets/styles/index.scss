@@ -5,6 +5,7 @@
 @use './btn.scss';
 @use './ruoyi.scss';
 @use './cockpit-tokens.scss';
+@use './app-theme.scss';
 
 body {
   height: 100%;
@@ -16,7 +17,7 @@ body {
 }
 
 label {
-  font-weight: 700;
+  font-weight: 500;
 }
 
 html {

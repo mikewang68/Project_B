@@ -16,7 +16,8 @@ it is not part of the runtime or deployment path.
 
 ```bash
 docker compose up -d
-backend/.venv/bin/python datagen/generate_demo_data.py --reset
+# On a fresh MySQL volume, Compose automatically imports sql/.
+# Wait for MySQL initialization to finish before starting the backend.
 cd backend-java
 mvn spring-boot:run
 ```

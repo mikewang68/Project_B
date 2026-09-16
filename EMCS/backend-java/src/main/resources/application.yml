@@ -4,6 +4,8 @@ server:
     context-path: ${APP_ROOT_PATH:}
 
 spring:
+  config:
+    import: "classpath:agent-defaults.yml,optional:file:./config/agent.yml"
   application:
     name: b-demo-server
   datasource:

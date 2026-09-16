@@ -170,15 +170,15 @@ onMounted(() => { if(access.value.report)loadTemplates() })
 }
 .page-head{display:flex;justify-content:space-between;align-items:flex-end;padding:8px 0 14px;border-bottom:1px solid var(--line)}
 .page-title{display:flex;flex-direction:column;gap:4px}
-.page-title .eyebrow{color:var(--cyan);font:10px var(--mono);letter-spacing:.14em}
+.page-title .eyebrow{color:var(--cyan);font:12px var(--mono);letter-spacing:.14em}
 .page-title b{font-family:var(--serif);font-size:22px;letter-spacing:.08em;color:var(--ink)}
 .page-title small{color:var(--ink-3);font:11px var(--mono);letter-spacing:.06em}
 .report-form{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);padding:12px 14px;margin-top:12px}
 .form-title{margin-right:auto;display:flex;flex-direction:column}
 .form-title b{font-family:var(--serif);font-size:15px;letter-spacing:.06em;color:var(--ink)}
-.form-title span{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.08em}
+.form-title span{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.08em}
 .report-form :deep(.el-select),.report-form :deep(.el-date-editor){width:190px}
-.option-hint{margin-left:12px;color:var(--ink-3);font-family:var(--mono);font-size:10px}
+.option-hint{margin-left:12px;color:var(--ink-3);font-family:var(--mono);font-size:12px}
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;margin-top:12px}
 .layout aside{display:grid;align-content:start;gap:12px}
 .guide{padding:14px 16px;background:var(--panel);border:1px solid var(--line);border-left:2px solid var(--cyan)}

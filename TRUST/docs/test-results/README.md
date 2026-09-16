@@ -26,7 +26,7 @@
 
 ## 尚未覆盖
 
-同组协调恢复、确定性的真实提交确认超时、强制退出后的租约竞争，以及真实仓库文件缺失/替换仍待补齐。详见 [实施状态](../implementation-status.md)。
+带待办任务的检查点恢复、全联盟账本灾难恢复、热备、多副本切换、长期迁移及生产 RPO/RTO 尚未覆盖。尚未配置开机自启和进程守护。详见 [实施状态](../implementation-status.md)。
 
 ## 新版本发布及真实页面写入 · 2026-09-14
 
@@ -34,4 +34,8 @@
 
 ## 复现入口
 
-先按模块 README 配置环境。配置检查使用 `tests/test_deployment.py`；组件测试使用 `tests/component-real.py`，其输出可供 `tests/recovery-components.py` 使用；应用使用 `tests/cross-node-real.py`；前端目录执行 `pnpm test:e2e`，页面写入执行 `pnpm test:e2e:write`。写入检查会新增模拟记录，失败后已接收记录也会保留。所有故障演练仅在专门的开发实例执行。
+先按模块 README 配置环境。配置检查使用 `tests/test_deployment.py`；组件测试使用 `tests/component-real.py`，其输出可供 `tests/recovery-components.py` 使用；应用使用 `tests/cross-node-real.py`；前端目录执行 `pnpm test:e2e`，页面写入执行 `pnpm test:e2e:write`。写入检查会新增模拟记录，失败后已接收记录也会保留。同组恢复与特殊故障使用 `tests/recovery/run.py`，执行条件及中断恢复见 [专项说明](recovery-acceptance-20260915.md)。所有故障演练仅在专门的开发实例执行。
+
+## 同组恢复及特殊故障 · 2026-09-15
+
+7 项真实组件检查通过：应用暂存、数据库和 IPFS 同组恢复并与原账本核验；真实提交确认超时后查链完成；强制退出后双进程等待租约到期接管；真实文件缺失、替换和恢复；两条故障事件导出核验。原开发应用的 29 条事件未变，隔离库最终 31 条事件。详情、部署修正、证据保存及范围限制见 [本轮验收摘要](recovery-acceptance-20260915.md)。

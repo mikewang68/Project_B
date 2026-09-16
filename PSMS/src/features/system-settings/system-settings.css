@@ -1,16 +1,16 @@
 .system-settings-page {
-  --settings-ink: #172236;
-  --settings-muted: #65738a;
-  --settings-line: #dce3ec;
-  --settings-soft: #f5f7fa;
-  --settings-accent: #1d5fd1;
+  --settings-ink: #303133;
+  --settings-muted: #909399;
+  --settings-line: #DCDFE6;
+  --settings-soft: #F5F7FA;
+  --settings-accent: #409EFF;
   color: var(--settings-ink);
   min-width: 0;
 }
 
 .system-settings-context {
   align-items: start;
-  background: linear-gradient(125deg, #15233b, #244a7f 62%, #2e68a4);
+  background: linear-gradient(125deg, #24364A, #337ECC 62%, #409EFF);
   border-radius: 16px;
   color: white;
   display: grid;
@@ -53,14 +53,14 @@
 }
 
 .system-settings-id {
-  background: #d9e8ff !important;
-  border-color: #d9e8ff !important;
-  color: #164f9f;
+  background: #ECF5FF !important;
+  border-color: #ECF5FF !important;
+  color: #409EFF;
   font-weight: 800;
 }
 
 .system-settings-disclosure {
-  color: #d9e7fb;
+  color: #B8C7D9;
   margin: 0;
 }
 
@@ -75,9 +75,9 @@
   padding: 10px 14px;
 }
 
-.settings-banner.is-success { background: #eef9f3; border-color: #b9e1ca; }
-.settings-banner.is-error { background: #fff2f0; border-color: #ffc5bd; }
-.settings-banner.is-loading { background: #eef5ff; border-color: #bfd5fa; }
+.settings-banner.is-success { background: #F0F9EB; border-color: #C2E7B0; }
+.settings-banner.is-error { background: #FEF0F0; border-color: #FBC4C4; }
+.settings-banner.is-loading { background: #ECF5FF; border-color: #B3D8FF; }
 
 .system-settings-layout {
   align-items: start;
@@ -94,7 +94,7 @@
   background: white;
   border: 1px solid var(--settings-line);
   border-radius: 14px;
-  box-shadow: 0 8px 22px rgb(31 48 76 / 6%);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
   min-width: 0;
 }
 
@@ -129,7 +129,7 @@
   margin-top: 4px;
 }
 
-.system-settings-groups button.is-active { background: #eaf2ff; color: #174f9d; }
+.system-settings-groups button.is-active { background: #ECF5FF; color: #409EFF; }
 
 .system-settings-detail { min-height: 420px; padding: 20px; }
 .system-settings-detail h3,
@@ -154,7 +154,7 @@
 .settings-field-grid select,
 .settings-reason-field textarea {
   background: white;
-  border: 1px solid #bbc6d5;
+  border: 1px solid #DCDFE6;
   border-radius: 8px;
   color: var(--settings-ink);
   font: inherit;
@@ -166,7 +166,7 @@
 .settings-read-row,
 .settings-toggle-row {
   background: var(--settings-soft);
-  border: 1px solid #e5eaf0;
+  border: 1px solid #E4E7ED;
   border-radius: 9px;
   display: flex;
   gap: 10px;
@@ -188,8 +188,8 @@
 }
 
 .settings-boundary-note {
-  background: #fff8e8;
-  border: 1px solid #f1ddb0;
+  background: #FDF6EC;
+  border: 1px solid #F5DAB1;
   border-radius: 9px;
   margin-top: 16px;
   padding: 11px 12px;
@@ -216,22 +216,22 @@
 .settings-change-list strong { grid-column: 1 / -1; }
 .settings-change-list span { overflow-wrap: anywhere; }
 .settings-field-error,
-.settings-form-error { color: #b42318; font-size: 12px; margin: 0; }
+.settings-form-error { color: #F56C6C; font-size: 12px; margin: 0; }
 .settings-field-errors {
-  background: #fff4f2;
-  border: 1px solid #f3c1b9;
+  background: #FEF0F0;
+  border: 1px solid #FBC4C4;
   border-radius: 8px;
   display: grid;
   gap: 5px;
   margin-top: 10px;
   padding: 10px;
 }
-.settings-field-errors strong { color: #8f2117; font-size: 12px; }
+.settings-field-errors strong { color: #F56C6C; font-size: 12px; }
 .settings-actions { display: flex; gap: 8px; margin-top: 12px; }
 .settings-actions button,
 .settings-edit-button,
 .settings-reset-boundary button {
-  border: 1px solid #b6c1cf;
+  border: 1px solid #DCDFE6;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 750;
@@ -252,8 +252,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   overflow-wrap: anywhere;
   padding: 11px;
 }
-.settings-command-feedback.is-success { background: #eaf8f0; border: 1px solid #acd9bf; }
-.settings-command-feedback.is-error { background: #fff0ee; border: 1px solid #f3b7ae; }
+.settings-command-feedback.is-success { background: #F0F9EB; border: 1px solid #C2E7B0; }
+.settings-command-feedback.is-error { background: #FEF0F0; border: 1px solid #FBC4C4; }
 .settings-command-feedback p { margin: 0; }
 
 .system-settings-state {

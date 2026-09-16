@@ -68,7 +68,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="createVisible" title="发起完整月成本重算" width="520px" append-to-body custom-class="cockpit-modal">
+    <el-dialog v-model="createVisible" title="发起完整月成本重算" width="520px" append-to-body class="cockpit-modal">
       <el-form label-position="top">
         <el-form-item label="统计月"><el-input :model-value="statMonth" disabled /></el-form-item>
         <el-form-item label="介质"><el-input :model-value="energyTypeLabels[energyType] || energyType" disabled /></el-form-item>
@@ -82,7 +82,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="reviewVisible" title="财务复核" width="500px" append-to-body custom-class="cockpit-modal">
+    <el-dialog v-model="reviewVisible" title="财务复核" width="500px" append-to-body class="cockpit-modal">
       <el-form label-position="top">
         <el-form-item label="复核结论">
           <el-radio-group v-model="reviewForm.action">
@@ -171,12 +171,12 @@ defineExpose({ refresh: load })
 
 <style scoped>
 .panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px;color:var(--ink);margin-top:12px}
-.panel-head{display:flex;align-items:center;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:10px}
+.panel-head{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px}
 .head-title{margin-right:auto;display:flex;flex-direction:column}
 .head-title b{font-family:var(--serif);font-size:15px;letter-spacing:.06em;color:var(--ink)}
-.head-title small{color:var(--ink-3);font:10px var(--mono);margin-top:4px}
+.head-title small{color:var(--ink-3);font:12px var(--mono);margin-top:4px}
 .dark-table.nested{margin-top:8px}
 .diff-expand{padding:8px 12px;background:var(--panel-2)}
-.diff-caption{color:var(--ink-3);font:10px var(--mono);letter-spacing:.08em;margin-bottom:4px}
-.trace-links{margin-top:10px;color:var(--ink-2);font:10px var(--mono)}
+.diff-caption{color:var(--ink-3);font:12px var(--mono);letter-spacing:.08em;margin-bottom:4px}
+.trace-links{margin-top:10px;color:var(--ink-2);font:12px var(--mono)}
 </style>

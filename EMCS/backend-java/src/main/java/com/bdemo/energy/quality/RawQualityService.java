@@ -156,7 +156,7 @@ public class RawQualityService {
             "triggeredAt", format(row.get("actual_ingest_time")), "cacheStart", format(row.get("outage_start")),
             "cacheEnd", format(row.get("outage_end")), "pointIds", split(row.get("point_scope")),
             "recordsIngested", row.get("affected_point_count"), "dupHandledCount", 0,
-            "failureReason", row.get("failure_reason"), "status", "succeeded", "affectedPeriods", periods(row.get("outage_start")))).toList(); }
+            "failureReason", row.get("failure_reason"), "status", "backfilled".equals(row.get("task_status")) ? "succeeded" : "failed", "affectedPeriods", periods(row.get("outage_start")))).toList(); }
     private List<Map<String, Object>> recomputeHints() { return jdbc.queryForList("SELECT * FROM e_recompute_log WHERE new_version_no IS NULL ORDER BY created_at DESC LIMIT 20")
             .stream().map(row -> { Map<String, Object> key = jsonObject(row.get("target_key_json")); return map("id", row.get("id"),
                     "periodKey", fallback(key.get("periodKey"), key.get("period_key")), "scope", String.valueOf(row.get("target_table")).endsWith("day") ? "day" : "month",

@@ -9,10 +9,10 @@ $yellow: #FEC171;
 $panGreen: #30B08F;
 
 // 默认主题变量
-$menuText: #bfcbd9;
+$menuText: #B8C7D9;
 $menuActiveText: #409eff;
-$menuBg: #304156;
-$menuHover: #263445;
+$menuBg: #24364A;
+$menuHover: rgba(64, 158, 255, 0.14);
 
 // 浅色主题theme-light
 $menuLightBg: #ffffff;
@@ -25,11 +25,11 @@ $base-sidebar-width: 200px;
 $sideBarWidth: 200px;
 
 // 菜单暗色变量
-$base-menu-color: #bfcbd9;
+$base-menu-color: #B8C7D9;
 $base-menu-color-active: #f4f4f5;
-$base-menu-background: #304156;
-$base-sub-menu-background: #1f2d3d;
-$base-sub-menu-hover: #001528;
+$base-menu-background: #24364A;
+$base-sub-menu-background: #1F3043;
+$base-sub-menu-hover: rgba(64, 158, 255, 0.14);
 
 // 组件变量
 $--color-primary: #409EFF;
@@ -76,7 +76,7 @@ $--color-info: #909399;
   --navbar-text: #303133;
   
   /* splitpanes default-theme 变量 */
-  --splitpanes-default-bg: #ffffff;
+  --splitpanes-default-bg: var(--app-surface);
 
 }
 
@@ -105,18 +105,18 @@ html.dark {
   --navbar-hover: #141414;
 
   /* 标签栏 */
-  --tags-bg: #141414;
-  --tags-item-bg: #1d1e1f;
-  --tags-item-border: #303030;
-  --tags-item-text: #d0d0d0;
-  --tags-item-hover: #2d2d2d;
-  --tags-close-hover: #64666a;
+  --tags-bg: var(--app-surface);
+  --tags-item-bg: var(--app-surface);
+  --tags-item-border: var(--app-border-light);
+  --tags-item-text: var(--app-text-regular);
+  --tags-item-hover: var(--app-selected-bg);
+  --tags-close-hover: var(--app-color-primary-hover);
 
   /* splitpanes 组件暗黑模式变量 */
-  --splitpanes-bg: #141414;
-  --splitpanes-border: #303030;
-  --splitpanes-splitter-bg: #1d1e1f;
-  --splitpanes-splitter-hover-bg: #2d2d2d;
+  --splitpanes-bg: var(--app-surface);
+  --splitpanes-border: var(--app-border-light);
+  --splitpanes-splitter-bg: var(--app-page-bg);
+  --splitpanes-splitter-hover-bg: var(--app-selected-bg);
 
   /* blockquote 暗黑模式变量 */
   --blockquote-bg: #1d1e1f;
@@ -127,7 +127,7 @@ html.dark {
   --cron-border: #303030;
 
   /* splitpanes default-theme 暗黑模式变量 */
-  --splitpanes-default-bg: #141414;
+  --splitpanes-default-bg: var(--app-surface);
 
   /* 侧边栏菜单覆盖 */
   .sidebar-container {

@@ -77,7 +77,7 @@ test('REQ-033: state segments become ECharts mark areas without inventing values
     {
       xAxis: 'segment-start',
       name: '待机',
-      itemStyle: { color: '#F5A524', opacity: 0.14 }
+      itemStyle: { color: '#E6A23C', opacity: 0.14 }
     },
     { xAxis: 'segment-end' }
   ]])

@@ -75,9 +75,9 @@ onBeforeUnmount(() => chart?.dispose())
 
 <style scoped>
 .panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px;color:var(--ink)}
-.panel-head{display:flex;align-items:center;gap:10px;border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:10px}
+.panel-head{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px}
 .panel-title{font-family:var(--serif);font-size:15px;letter-spacing:.06em;color:var(--ink);margin-right:auto}
-.panel-sub{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.08em}
+.panel-sub{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.08em}
 .tou-chart{height:260px}
 .tou-legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;color:var(--ink-2);font-family:var(--mono);font-size:11px}
 .tou-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
@@ -85,5 +85,5 @@ onBeforeUnmount(() => chart?.dispose())
 .flat-card span,.flat-card b,.flat-card small{display:block}
 .flat-card span{color:var(--ink-2);font-family:var(--mono);font-size:11px}
 .flat-card b{color:var(--ink);font:28px var(--mono);margin:6px 0}
-.flat-card small{color:var(--ink-3);font:10px var(--mono)}
+.flat-card small{color:var(--ink-3);font:12px var(--mono)}
 </style>

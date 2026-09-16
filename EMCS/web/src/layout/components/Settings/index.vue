@@ -49,7 +49,7 @@
     <div class="drawer-item">
       <span>主题颜色</span>
       <span class="comp-style">
-        <el-color-picker v-model="theme" :predefine="predefineColors" @change="themeChange"/>
+        <el-tag type="primary">品牌蓝 #409EFF</el-tag>
       </span>
     </div>
     <el-divider />
@@ -121,17 +121,12 @@ const navType = ref(settingsStore.navType)
 const theme = ref(settingsStore.theme);
 const sideTheme = ref(settingsStore.sideTheme);
 const storeSettings = computed(() => settingsStore);
-const predefineColors = ref(["#409EFF", "#ff4500", "#ff8c00", "#ffd700", "#90ee90", "#00ced1", "#1e90ff", "#c71585"]);
 
 /** 是否需要dynamicTitle */
 function dynamicTitleChange() {
   useSettingsStore().setTitle(useSettingsStore().title)
 }
 
-function themeChange(val) {
-  settingsStore.theme = val;
-  handleThemeStyle(val);
-}
 
 function handleTheme(val) {
   settingsStore.sideTheme = val;

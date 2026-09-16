@@ -30,7 +30,7 @@
         <template #default="{row}">{{ row.effectiveTo || '长期有效' }}</template>
       </el-table-column>
     </el-table>
-    <el-dialog v-model="visible" title="新增不可变单价版本" width="580px" append-to-body custom-class="cockpit-modal">
+    <el-dialog v-model="visible" title="新增不可变单价版本" width="580px" append-to-body class="cockpit-modal">
       <el-form label-position="top">
         <el-form-item label="介质">
           <el-select v-model="form.energyType">
@@ -117,8 +117,8 @@ defineExpose({ refresh: load })
 
 <style scoped>
 .panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px;color:var(--ink)}
-.panel-head{display:flex;align-items:center;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:10px}
+.panel-head{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px}
 .head-title{margin-right:auto;display:flex;flex-direction:column}
 .head-title b{font-family:var(--serif);font-size:15px;letter-spacing:.06em;color:var(--ink)}
-.head-title small{color:var(--ink-3);font:10px var(--mono);margin-top:4px}
+.head-title small{color:var(--ink-3);font:12px var(--mono);margin-top:4px}
 </style>

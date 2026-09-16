@@ -1,11 +1,10 @@
 // 处理主题样式
 export function handleThemeStyle(theme) {
-	document.documentElement.style.setProperty('--el-color-primary', theme)
+	// 品牌主色由 app-theme.scss 统一管理，清理旧版内联主题残留。
+	document.documentElement.style.removeProperty('--el-color-primary')
 	for (let i = 1; i <= 9; i++) {
-		document.documentElement.style.setProperty(`--el-color-primary-light-${i}`, `${getLightColor(theme, i / 10)}`)
-	}
-	for (let i = 1; i <= 9; i++) {
-		document.documentElement.style.setProperty(`--el-color-primary-dark-${i}`, `${getDarkColor(theme, i / 10)}`)
+		document.documentElement.style.removeProperty(`--el-color-primary-light-${i}`)
+		document.documentElement.style.removeProperty(`--el-color-primary-dark-${i}`)
 	}
 }
 

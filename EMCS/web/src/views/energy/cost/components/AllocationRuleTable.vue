@@ -36,7 +36,7 @@
         <template #default="{row}">{{ row.affectedMeters?.length || 0 }} 个</template>
       </el-table-column>
     </el-table>
-    <el-dialog v-model="visible" title="新增不可变分摊规则" width="620px" append-to-body custom-class="cockpit-modal">
+    <el-dialog v-model="visible" title="新增不可变分摊规则" width="620px" append-to-body class="cockpit-modal">
       <el-form label-position="top">
         <el-form-item label="规则名称"><el-input v-model="form.ruleName" /></el-form-item>
         <el-form-item label="适用范围"><el-input v-model="form.scope" placeholder="area / equipment / meter" /></el-form-item>
@@ -102,9 +102,9 @@ defineExpose({ refresh: load })
 
 <style scoped>
 .panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px;color:var(--ink)}
-.panel-head{display:flex;align-items:center;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:8px;margin-bottom:10px}
+.panel-head{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px}
 .head-title{margin-right:auto;display:flex;flex-direction:column}
 .head-title b{font-family:var(--serif);font-size:15px;letter-spacing:.06em;color:var(--ink)}
-.head-title small{color:var(--ink-3);font:10px var(--mono);margin-top:4px}
+.head-title small{color:var(--ink-3);font:12px var(--mono);margin-top:4px}
 code{color:var(--ink-2);font-family:var(--mono);font-size:11px}
 </style>

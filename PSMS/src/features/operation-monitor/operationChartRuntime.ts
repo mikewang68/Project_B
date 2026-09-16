@@ -9,13 +9,13 @@ import type { TimelineItem } from './model';
 use([BarChart, GridComponent, LegendComponent, TooltipComponent, SVGRenderer]);
 
 const statusColor: Record<string, string> = {
-  WAITING: '#9aaab1',
-  READY: '#3b82a0',
-  IN_PROGRESS: '#178c84',
-  COMPLETED: '#4f8f5b',
-  SKIPPED: '#b98932',
-  BLOCKED: '#d05b45',
-  FAILED: '#b83232',
+  WAITING: '#909399',
+  READY: '#66B1FF',
+  IN_PROGRESS: '#409EFF',
+  COMPLETED: '#67C23A',
+  SKIPPED: '#E6A23C',
+  BLOCKED: '#F56C6C',
+  FAILED: '#F56C6C',
 };
 
 export function createOperationTimelineChart(element: HTMLElement, items: readonly TimelineItem[]) {

@@ -66,13 +66,13 @@
   padding: 14px;
   border: 1px solid rgba(5, 5, 5, 0.1);
   border-radius: 10px;
-  background: linear-gradient(135deg, #fff 0%, #f8fbff 100%);
+  background: linear-gradient(135deg, #fff 0%, #FAFBFC 100%);
   transition: border-color 260ms ease, box-shadow 260ms ease, transform 260ms ease;
 }
 
 .task-tree-row-demo-current {
-  border-color: #36cfc9;
-  box-shadow: 0 10px 26px rgba(19, 194, 194, 0.16);
+  border-color: #409EFF;
+  box-shadow: 0 10px 26px rgba(64, 158, 255, 0.16);
   transform: translateX(4px);
 }
 
@@ -81,9 +81,9 @@
   place-items: center;
   width: 34px;
   height: 34px;
-  color: #0958d9;
+  color: #409EFF;
   font-weight: 700;
-  background: #e6f4ff;
+  background: #ECF5FF;
   border-radius: 50%;
 }
 
@@ -117,8 +117,8 @@
 
 .task-decomposition-next-step {
   padding: 14px 16px;
-  background: #f6ffed;
-  border: 1px solid #b7eb8f;
+  background: #F0F9EB;
+  border: 1px solid #C2E7B0;
   border-radius: 10px;
 }
 
