@@ -80,6 +80,30 @@ public class DemoAlert {
     public OffsetDateTime slaDeadline;
     public OffsetDateTime updatedAt;
 
+    /**
+     * 边缘断网补传元数据（任务书第二十六节，仅补传 Alert 非空；不新建 EdgeAlert，仍是现有 Alert）。
+     * source 仍保留业务来源（人员安全 / 设备防碰撞），origin 统一标记 EDGE_REPLAY。
+     */
+    public EdgeReplayMeta edgeReplay;
+
+    /** 边缘补传来源标记（普通实时告警为 null，补传告警为 EDGE_REPLAY）。 */
+    public String origin;
+
+    /** 边缘补传 Demo 元数据。 */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class EdgeReplayMeta {
+        public String edgeNodeId;
+        public String offlineEventId;
+        /** 是否为离线期间发生（补传告警恒为 true）。 */
+        public boolean offlineOccurred;
+        /** 补传延迟秒数 = 平台接收时间 - 边缘发生时间。 */
+        public Long syncDelaySec;
+        /** 离线事件发生时使用的规则版本（审计，不回改）。 */
+        public String ruleVersionUsed;
+        /** 平台接收到补传的时间。 */
+        public OffsetDateTime syncedAt;
+    }
+
     public DemoAlert copy() {
         DemoAlert a = new DemoAlert();
         a.id = id;
@@ -120,6 +144,8 @@ public class DemoAlert {
         a.occurredAt = occurredAt;
         a.slaDeadline = slaDeadline;
         a.updatedAt = updatedAt;
+        a.edgeReplay = edgeReplay;
+        a.origin = origin;
         return a;
     }
 }
