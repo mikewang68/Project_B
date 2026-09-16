@@ -1,5 +1,5 @@
 // 可靠性治理扩展：FMECA、故障编码、告警规则、知识案例与SLA配置。
-// 所有变更均经Java后端写入MongoDB；现场告警引擎和统一通知渠道尚待对接。
+// 所有变更均经Java后端写入openGauss；现场告警引擎和统一通知渠道尚待对接。
 const RELIABILITY_PAGES=new Set(['fmeca','alarm-rules','knowledge','fault-codes','sla']);
 state.reliability={failureModes:[],rules:[],cases:[],slas:[],loading:false,error:'',requestSeq:0};
 
@@ -11,7 +11,7 @@ async function loadReliability(showMessage=false){
       apiRequest('/reliability/knowledge-cases'),apiRequest('/reliability/sla-policies')]);
     if(seq!==state.reliability.requestSeq)return;
     Object.assign(state.reliability,{failureModes:failureModes||[],rules:rules||[],cases:cases||[],slas:slas||[],loading:false,error:''});
-    if(RELIABILITY_PAGES.has(state.page))renderPage();if(showMessage)toast('可靠性治理数据已从MongoDB刷新。');
+    if(RELIABILITY_PAGES.has(state.page))renderPage();if(showMessage)toast('可靠性治理数据已从openGauss刷新。');
   }catch(error){if(seq!==state.reliability.requestSeq)return;state.reliability.loading=false;state.reliability.error=error.message;if(RELIABILITY_PAGES.has(state.page))renderPage();if(showMessage)toast('可靠性治理数据加载失败：'+error.message);}
 }
 
@@ -34,7 +34,7 @@ function renderReliabilityGovernance(){
     sla:['SLA与升级策略','按告警等级设置确认、分派、恢复时限和超时升级角色。']};
   const current=titles[state.page]||titles.fmeca;const primary=state.page==='fmeca'?button('新建失效模式','newFailureMode','primary'):state.page==='alarm-rules'?button('新建规则','newAlarmRule','primary'):state.page==='knowledge'?button('新建案例','newKnowledgeCase','primary'):'';
   const pending=reliabilityPending();
-  return `<div class="page">${pageHead(current[0],current[1],`${button('刷新','reloadReliability')}${primary}`)}${reliabilityTabs()}${reliabilityFlow()}<div class="notice-bar"><strong>可靠性治理闭环</strong><span>当前模块保存治理主数据；规则尚未下发现场PLC，告警引擎接入后才会实际触发通知。</span>${tag('MongoDB持久化','good')}</div>${pending||`${reliabilitySummary()}${renderReliabilityBody()}`}</div>`;
+  return `<div class="page">${pageHead(current[0],current[1],`${button('刷新','reloadReliability')}${primary}`)}${reliabilityTabs()}${reliabilityFlow()}<div class="notice-bar"><strong>可靠性治理闭环</strong><span>当前模块保存治理主数据；规则尚未下发现场PLC，告警引擎接入后才会实际触发通知。</span>${tag('openGauss持久化','good')}</div>${pending||`${reliabilitySummary()}${renderReliabilityBody()}`}</div>`;
 }
 function renderReliabilityBody(){if(state.page==='fmeca')return failureModeTable();if(state.page==='alarm-rules')return alarmRuleTable();if(state.page==='knowledge')return knowledgeCaseList();if(state.page==='fault-codes')return faultCodeTable();return slaPolicyTable();}
 

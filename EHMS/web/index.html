@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>B项目 · 设备健康管理系统（EHM）</title>
   <meta name="description" content="设备健康管理系统亮色工业级交互原型" />
-  <link rel="stylesheet" href="./styles.css?v=4.0" />
+  <link rel="stylesheet" href="./styles.css?v=5.0" />
   <link rel="stylesheet" href="./closed-loop.css?v=1.0" />
   <link rel="stylesheet" href="./health-prediction.css?v=1.0" />
   <link rel="stylesheet" href="./maintenance-program.css?v=1.0" />
   <link rel="stylesheet" href="./spares-inventory.css?v=1.0" />
   <link rel="stylesheet" href="./reliability-governance.css?v=1.0" />
   <link rel="stylesheet" href="./delivery-console.css?v=1.0" />
+  <link rel="stylesheet" href="./unified-theme.css?v=1.0" />
 </head>
 <body>
   <div class="app-shell">
@@ -20,7 +21,7 @@
         <div class="brand-mark">EHM</div>
         <div>
           <strong>设备健康管理系统</strong>
-          <span>B项目 · 可交付演示版 1.0.0</span>
+          <span>B项目 · 可交付演示版 1.2.0</span>
         </div>
       </div>
 
@@ -126,14 +127,17 @@
   <script src="./spares-inventory.js?v=1.0"></script>
   <script src="./reliability-governance.js?v=1.0"></script>
   <script src="./delivery-console.js?v=1.0"></script>
+  <script src="./crud-console.js?v=1.0"></script>
   <script id="prototype-fallback">
     document.addEventListener('click', function(event){
       const button = event.target.closest('button');
       if(!button || button.dataset.action || button.dataset.goto || button.dataset.page || button.id || button.classList.contains('nav-parent') || button.closest('.assistant-prompts')) return;
-      if(typeof toast === 'function'){
+      if(typeof handleUnwiredButton === 'function'){
+        handleUnwiredButton(button);
+      } else if(typeof toast === 'function'){
         const label = button.textContent.trim() || '当前按钮';
         if(button.closest('.pagination-buttons')) toast('已切换演示分页；当前原型仅内置第一页虚拟数据。');
-        else toast('“' + label + '”已响应；真实业务将在后端接口接入后执行。');
+        else toast('“' + label + '”尚未纳入本轮可操作范围。');
       }
     });
   </script>

@@ -60,12 +60,18 @@ JAVA_BIN=/实际路径/bin/java。systemd模板中的用户和安装路径也必
     curl -fsS http://127.0.0.1:18083/health/live
     curl -fsS http://127.0.0.1:18083/health/ready
     curl -fsS http://127.0.0.1:18083/api/ehm/v1/system/status
+    chmod +x bin/*.sh
+    ./bin/smoke-crud.sh
 
 就绪结果必须同时显示openGauss与openGemini为UP。浏览器进入系统运行页时应显示：
 
 - 业务存储：openGauss
 - 时序存储：openGemini
 - 联合就绪：openGauss+openGemini
+
+`smoke-crud.sh` 会建立一组带时间戳的临时设备、部件和测点，验证新增、查询、
+编辑、时序样本写入、质量判定和归档，结束后自动清理。出现 `CRUD_SMOKE_OK`
+才表示基础业务链路通过。
 
 ## 7. 当前边界
 

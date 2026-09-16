@@ -88,11 +88,14 @@ function fallbackSummary(){
 async function loadBackendData(showMessage=false){
   try{
     const [summary,devices,alarms,orders]=await Promise.all([apiRequest('/dashboard/summary'),apiRequest('/devices'),apiRequest('/alarms'),apiRequest('/work-orders')]);
-    state.summary=summary;EQUIPMENT=devices.map(mapDevice);ALARMS=alarms;WORK_ORDERS=orders;state.backendConnected=true;state.backendError='';
+    const deviceItems=Array.isArray(devices)?devices:(devices?.content||[]);
+    const alarmItems=Array.isArray(alarms)?alarms:(alarms?.content||[]);
+    const orderItems=Array.isArray(orders)?orders:(orders?.content||[]);
+    state.summary=summary;EQUIPMENT=deviceItems.map(mapDevice);ALARMS=alarmItems;WORK_ORDERS=orderItems;state.backendConnected=true;state.backendError='';
     const status=$('#runtimeStatus');if(status){status.classList.add('connected');status.innerHTML='<span></span>Demo后端已连接';}
     const assistantBadge=$('#assistantEntry i');if(assistantBadge)assistantBadge.textContent='数据已接入';
     renderPage();
-    if(showMessage)toast('已从MongoDB刷新设备、告警和工单数据。');
+    if(showMessage)toast('已从openGauss刷新设备、告警和工单数据。');
   }catch(error){
     state.backendConnected=false;state.backendError=error.message;
     const status=$('#runtimeStatus');if(status){status.classList.remove('connected');status.innerHTML='<span></span>离线演示模式';}
@@ -156,9 +159,9 @@ function renderDashboard(){
   </tr>`).join('');
   return `<div class="page dashboard-page">
     ${pageHead('综合驾驶舱','面向设备管理、运维和调度岗位，集中展示设备风险、数据可信度与待闭环事项。',`${gotoButton('查看设备群态势','fleet')}${button('生成班组交接','handover')}`)}
-    <div class="notice-bar"><strong>${state.backendConnected?'MongoDB实时数据':'离线演示数据'}</strong><span>共登记${s.totalDevices}台Demo设备；现场设备清单、测点和接口仍待甲方确认。EHM只做监测、诊断建议和风险上报，不直接控制PLC。</span>${tag(state.backendConnected?'后端已连接':'本地降级',state.backendConnected?'good':'warn')}</div>
+    <div class="notice-bar"><strong>${state.backendConnected?'openGauss业务数据':'离线演示数据'}</strong><span>共登记${s.totalDevices}台Demo设备；现场设备清单、测点和接口仍待甲方确认。EHM只做监测、诊断建议和风险上报，不直接控制PLC。</span>${tag(state.backendConnected?'后端已连接':'本地降级',state.backendConnected?'good':'warn')}</div>
     <div class="grid kpi-grid">
-      ${metric('登记设备',String(s.totalDevices),'台','MongoDB设备台账','')}
+      ${metric('登记设备',String(s.totalDevices),'台','openGauss设备台账','')}
       ${metric('在线率',String(s.onlineRate),'%',s.onlineDevices+' / '+s.totalDevices+' 在线','good')}
       ${metric('健康设备',String(s.healthyDevices),'台','评分≥80且数据可信','good')}
       ${metric('高风险设备',String(s.highRiskDevices),'台','按当前风险状态','risk')}
@@ -359,9 +362,9 @@ function renderAlarmCenterLive(){
   const alarms=ALARMS.map(normalizeAlarm);
   const rows=alarms.map(a=>{const when=a.occurredAt?new Date(a.occurredAt).toLocaleString('zh-CN',{hour12:false}):'—';const actions=[`<button class="table-action" data-action="openEvidence">证据</button>`];if(!['已确认','处理中','待验证','已关闭'].includes(a.status))actions.push(`<button class="table-action" data-action="ackAlarm" data-id="${esc(a.alarmNo)}">确认</button>`);if(['已确认','处理中','待验证'].includes(a.status))actions.push(`<button class="table-action" data-action="closeAlarm" data-id="${esc(a.alarmNo)}">关闭</button>`);actions.push(`<button class="table-action" data-action="createWork" data-device="${esc(a.deviceCode)}">转工单</button>`);return `<tr class="${a.levelClass==='severe'?'row-alert':a.levelClass==='limited'?'row-limited':''}"><td><input type="checkbox"/></td><td><button class="table-link" data-action="openEvidence"><strong>${esc(a.alarmNo)}</strong><small>${esc(when)}</small></button></td><td><strong>${esc(a.deviceCode)}</strong><small>${esc(a.component)}</small></td><td>${tag(a.level,a.levelClass,true)}</td><td>${esc(a.summary)}</td><td>${tag(a.status,a.status==='处理中'?'info':a.status==='已确认'?'good':a.status==='待验证'?'warn':a.status==='已关闭'?'good':'offline')}</td><td class="${String(a.slaText).includes('超')?'text-danger':''}">${esc(a.slaText)}</td><td>${esc(a.triggerMethod)}</td><td>${actions.join('')}</td></tr>`;}).join('');
   const count=status=>alarms.filter(a=>a.status===status).length;
-  return `<div class="page">${pageHead('实时告警中心','告警数据已接入MongoDB，支持人工确认、关闭和转工单。',`${button('刷新数据','refreshBackend')}${button('受控批量分派','batchAssign')}`)}
+  return `<div class="page">${pageHead('实时告警中心','告警业务数据已接入openGauss，支持人工确认、关闭和转工单。',`${button('刷新数据','refreshBackend')}${button('受控批量分派','batchAssign')}`)}
     <div class="grid cols-4 mb-12">${metric('新建',String(count('新建')+count('待确认')),'项','等待人工确认','risk')}${metric('处理中',String(count('处理中')),'项','已进入处置','warn')}${metric('待验证',String(count('待验证')),'项','需维修后复测')}${metric('已关闭',String(count('已关闭')),'项','本次Demo数据','good')}</div>
-    <section class="panel"><div class="table-tools"><div class="filters"><input class="control search" placeholder="告警编号 / 设备 / 部件"/><select class="control"><option>全部等级</option><option>L3严重</option><option>L2警告</option></select><select class="control"><option>全部状态</option><option>新建</option><option>已确认</option><option>处理中</option><option>待验证</option><option>已关闭</option></select></div><div>${mini(state.backendConnected?'MongoDB已连接':'离线降级',state.backendConnected?'ready':'pending')}</div></div><div class="table-wrap"><table class="data-table"><thead><tr><th></th><th>告警编号 / 时间</th><th>设备 / 部件</th><th>等级</th><th>触发摘要</th><th>状态</th><th>SLA</th><th>触发方法</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>${pager(String(alarms.length))}</section></div>`;
+    <section class="panel"><div class="table-tools"><div class="filters"><input class="control search" placeholder="告警编号 / 设备 / 部件"/><select class="control"><option>全部等级</option><option>L3严重</option><option>L2警告</option></select><select class="control"><option>全部状态</option><option>新建</option><option>已确认</option><option>处理中</option><option>待验证</option><option>已关闭</option></select></div><div>${mini(state.backendConnected?'openGauss已连接':'离线降级',state.backendConnected?'ready':'pending')}</div></div><div class="table-wrap"><table class="data-table"><thead><tr><th></th><th>告警编号 / 时间</th><th>设备 / 部件</th><th>等级</th><th>触发摘要</th><th>状态</th><th>SLA</th><th>触发方法</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>${pager(String(alarms.length))}</section></div>`;
 }
 
 function renderMaintenanceLive(){
@@ -369,11 +372,11 @@ function renderMaintenanceLive(){
   const nextStatus={待审批:'待执行',待执行:'执行中',执行中:'待复测',待复测:'已关闭'};
   const cards=(status)=>WORK_ORDERS.filter(w=>w.status===status).map(w=>`<article class="work-card ${w.priority?.includes('P1')?'overdue':''}"><b>${esc(w.orderNo)} · ${esc(w.title)}</b><p>设备：${esc(w.deviceCode)} ${esc(w.deviceName||'')} · 来源：${esc(w.source)}</p><small>计划窗口：${esc(w.plannedWindow||'待确认')}</small><div class="work-meta">${tag(w.priority,w.priority?.includes('P1')?'critical':'warn',true)}<span>${esc(w.assignee)}</span></div>${nextStatus[status]?`<button class="table-action work-advance" data-action="advanceWork" data-id="${esc(w.orderNo)}" data-status="${nextStatus[status]}">推进到${nextStatus[status]}</button>`:''}</article>`).join('')||'<div class="empty-state">暂无工单</div>';
   const pending=WORK_ORDERS.filter(w=>['待审批','待执行'].includes(w.status)).length;
-  return `<div class="page">${pageHead('维保计划与工单中心','MongoDB工单看板已接通，可创建工单并推进审批、执行、复测和关闭状态。',`${button('刷新数据','refreshBackend')}${button('新建工单','newWork','primary')}`)}
+  return `<div class="page">${pageHead('维保计划与工单中心','openGauss工单看板已接通，可创建工单并推进审批、执行、复测和关闭状态。',`${button('刷新数据','refreshBackend')}${button('新建工单','newWork','primary')}`)}
     <div class="notice-bar"><strong>Demo闭环已可操作</strong><span>告警/点检异常 → 创建工单 → 审批 → 执行 → 复测 → 关闭。当前不自动改变生产计划。</span>${tag(state.backendConnected?'持久化已启用':'离线演示',state.backendConnected?'good':'warn')}</div>
     <div class="grid cols-4 mb-12">${metric('待审批',String(WORK_ORDERS.filter(w=>w.status==='待审批').length),'单','等待确认','warn')}${metric('待执行',String(WORK_ORDERS.filter(w=>w.status==='待执行').length),'单','可派工')}${metric('执行中',String(WORK_ORDERS.filter(w=>w.status==='执行中').length),'单','现场执行','good')}${metric('待复测',String(WORK_ORDERS.filter(w=>w.status==='待复测').length),'单','需独立验收','risk')}</div>
     <section class="kanban">${columns.map(c=>`<div class="kanban-col"><div class="kanban-head"><span>${c[0]}</span><b>${WORK_ORDERS.filter(w=>w.status===c[0]).length}</b></div><p class="muted">${c[1]}</p>${cards(c[0])}</div>`).join('')}</section>
-    <div class="grid cols-2 mt-12">${panel('当前数据状态',`<p class="muted no-margin">共${WORK_ORDERS.length}张工单，待审批/待执行${pending}张。每次状态推进会写回MongoDB，刷新页面后仍保留。</p>`)}${panel('后续接入',`<p class="muted no-margin">后续可通过RocketMQ发布工单事件，与调度窗口、库存备件和移动端执行记录联动。</p>`)}</div></div>`;
+    <div class="grid cols-2 mt-12">${panel('当前数据状态',`<p class="muted no-margin">共${WORK_ORDERS.length}张工单，待审批/待执行${pending}张。每次状态推进会写回openGauss，刷新页面后仍保留。</p>`)}${panel('后续接入',`<p class="muted no-margin">后续可通过RocketMQ发布工单事件，与调度窗口、库存备件和移动端执行记录联动。</p>`)}</div></div>`;
 }
 
 function renderPage(){
@@ -405,7 +408,7 @@ function handleAction(e){
   else if(a==='advanceWork')advanceWorkOrder(b.dataset.id,b.dataset.status);
   else if(a==='newAsset')openNewAsset();
   else if(a==='generateReport')toast('已生成演示月报任务；真实报告需等待统计周期与指标口径冻结。');
-  else toast('已执行“'+b.textContent.trim()+'”的原型交互。');
+  else toast('“'+b.textContent.trim()+'”尚未纳入本轮可操作闭环，未执行数据变更。');
 }
 
 function openDrawer(eyebrow,title,body,foot=''){
@@ -418,7 +421,7 @@ function openEvidence(){
 }
 
 function openModal(eyebrow,title,body,confirmText,onConfirm){
-  $('#modalEyebrow').textContent=eyebrow;$('#modalTitle').textContent=title;$('#modalBody').innerHTML=body;$('#modalActions').innerHTML=`<button class="button" id="modalCancel">取消</button><button class="button primary" id="modalConfirm">${confirmText}</button>`;$('#modal').classList.add('open');$('#modal').setAttribute('aria-hidden','false');$('#modalCancel').onclick=closeModal;$('#modalConfirm').onclick=()=>{closeModal();onConfirm&&onConfirm();};
+  $('#modalEyebrow').textContent=eyebrow;$('#modalTitle').textContent=title;$('#modalBody').innerHTML=body;$('#modalActions').innerHTML=`<button class="button" id="modalCancel">取消</button><button class="button primary" id="modalConfirm">${confirmText}</button>`;$('#modal').classList.add('open');$('#modal').setAttribute('aria-hidden','false');$('#modalCancel').onclick=closeModal;$('#modalConfirm').onclick=async()=>{const confirm=$('#modalConfirm');confirm.disabled=true;confirm.textContent='处理中…';try{const result=onConfirm?await onConfirm():true;if(result!==false)closeModal();else{confirm.disabled=false;confirm.textContent=confirmText;}}catch(error){confirm.disabled=false;confirm.textContent=confirmText;toast('操作失败：'+error.message);}};
 }
 function closeModal(){$('#modal').classList.remove('open');$('#modal').setAttribute('aria-hidden','true');}
 function openCreateWork(){
@@ -449,7 +452,7 @@ function assistantAnswer(q){
 
 async function acknowledgeAlarm(alarmNo){
   if(!state.backendConnected){toast('后端未连接，不能持久化告警状态。');return;}
-  try{await apiRequest('/alarms/'+encodeURIComponent(alarmNo)+'/acknowledge',{method:'POST',body:JSON.stringify({operator:'Demo设备管理员'})});await loadBackendData();toast('告警已确认并写入MongoDB。');}catch(error){toast('确认失败：'+error.message);}
+  try{await apiRequest('/alarms/'+encodeURIComponent(alarmNo)+'/acknowledge',{method:'POST',body:JSON.stringify({operator:'Demo设备管理员'})});await loadBackendData();toast('告警已确认并写入openGauss。');}catch(error){toast('确认失败：'+error.message);}
 }
 async function closeAlarmAction(alarmNo){
   if(!state.backendConnected){toast('后端未连接，不能关闭告警。');return;}
@@ -470,7 +473,7 @@ function openNewAsset(){
 async function createDeviceFromForm(){
   if(!state.backendConnected){toast('后端未连接，不能保存设备。');return;}
   const payload={code:$('#assetCode')?.value,name:$('#assetName')?.value,type:$('#assetType')?.value,area:$('#assetArea')?.value,owner:$('#assetOwner')?.value,ready:$('#assetReady')?.value,condition:'待接入',risk:'待评估',riskClass:'limited',alarm:'无活动告警'};
-  try{const created=await apiRequest('/devices',{method:'POST',body:JSON.stringify(payload)});await loadBackendData();state.asset=created.code;setPage('asset-detail');toast('设备 '+created.code+' 已写入MongoDB。');}catch(error){toast('保存设备失败：'+error.message);}
+  try{const created=await apiRequest('/devices',{method:'POST',body:JSON.stringify(payload)});await loadBackendData();state.asset=created.code;setPage('asset-detail');toast('设备 '+created.code+' 已写入openGauss。');}catch(error){toast('保存设备失败：'+error.message);}
 }
 
 function init(){
