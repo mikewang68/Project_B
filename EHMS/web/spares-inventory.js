@@ -27,7 +27,7 @@ function renderSpareInventory(){
   const s=state.spares,m=s.summary||{};
   const pending=s.loading?`<div class="empty-state"><b>正在读取备件库存与流水…</b></div>`:s.error?`<div class="callout warning"><h3>后端数据暂不可用</h3><p>${esc(s.error)}</p>${button('重新加载','reloadSpares')}</div>`:'';
   return `<div class="page">${pageHead('备件库存与需求建议','用工单约束备件预留和领用，实时区分账面、预留、可用和在途数量，并按补货点生成采购建议。',`${button('刷新','reloadSpares')}${button('新建备件','newSparePart')}${s.parts.length?'':button('生成Demo台账','seedSpareDemo','primary')}`)}
-    <div class="notice-bar"><strong>受控库存</strong><span>前端不能直接修改库存余额；入库、预留、领用、释放和退库都由后端校验并写入流水。</span>${tag('MongoDB持久化','good')}</div>
+    <div class="notice-bar"><strong>受控库存</strong><span>前端不能直接修改库存余额；入库、预留、领用、释放和退库都由后端校验并写入流水。</span>${tag('openGauss持久化','good')}</div>
     ${pending||`<div class="grid cols-4 mb-12">${metric('备件种类',String(m.partTypes||0),'种','主仓 MAIN')}${metric('低库存',String(m.lowStockPartTypes||0),'种','低于补货点','risk')}${metric('在库金额',spareMoney(m.onHandValue),'','按台账单价计算')}${metric('活动预留',String(m.activeReservations||0),'条',`涉及${m.reservedPartTypes||0}种备件`,'warn')}</div>
     ${spareStockTable()}<div class="grid cols-2 mt-12"><div>${spareReservationTable()}</div><div>${sparePurchaseAdvice()}</div></div><div class="mt-12">${spareTransactionTable()}</div>`}
   </div>`;

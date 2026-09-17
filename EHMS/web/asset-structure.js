@@ -63,7 +63,7 @@ function structureLoadState(){
 function structureHeader(title, description, primaryAction, primaryLabel){
   const asset=currentStructureAsset();
   return `${pageHead(title,description,`${structureAssetSelector()}${button('刷新','reloadStructure')}${button(primaryLabel,primaryAction,'primary')}`)}
-    <div class="notice-bar"><strong>当前设备：${esc(asset.code)}</strong><span>${esc(asset.name)} · 数据来自MongoDB Demo适配器；字段、层级和接口契约可直接迁移到后续openGauss适配器。</span>${tag(state.structure.loadedAssetCode===asset.code?'结构已加载':'等待加载',state.structure.loadedAssetCode===asset.code?'good':'warn')}</div>`;
+    <div class="notice-bar"><strong>当前设备：${esc(asset.code)}</strong><span>${esc(asset.name)} · 业务配置由openGauss持久化，遥测样本由openGemini存储；页面只依赖稳定业务接口。</span>${tag(state.structure.loadedAssetCode===asset.code?'结构已加载':'等待加载',state.structure.loadedAssetCode===asset.code?'good':'warn')}</div>`;
 }
 
 function renderBomLive(){
@@ -128,7 +128,7 @@ function renderDataQualityLive(){
     <div class="notice-bar ${s.healthAssessmentAllowed?'':'warning'}"><strong>${s.healthAssessmentAllowed?'允许健康评估':'健康评估受限'}</strong><span>${esc(s.assessmentMessage||'尚未形成质量结论')}</span>${tag(s.healthAssessmentAllowed?'门槛通过':'需处置',s.healthAssessmentAllowed?'good':'limited')}</div>
     <div class="grid cols-4 mb-12">${metric('可用率',String(s.availabilityPercent??0),'%',`${s.goodPoints??0} / ${s.enabledPoints??0} 正常`,s.healthAssessmentAllowed?'good':'risk')}${metric('断流',String(s.missingPoints??0),'点','超过新鲜度窗口','risk')}${metric('延迟',String(s.delayedPoints??0),'点','链路延迟超阈值','warn')}${metric('越界 / 无效',String((s.outOfRangePoints??0)+(s.invalidPoints??0)),'点','量程、时间或内容异常','purple')}</div>
     <section class="panel"><div class="panel-head"><h2>逐测点质量快照</h2><span class="mini-badge">采样后立即判定</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>测点</th><th>部件</th><th>最新值</th><th>质量</th><th>源时间</th><th>接收时间</th><th>判定说明</th><th>连续异常</th><th>操作</th></tr></thead><tbody>${rows||'<tr><td colspan="9">当前设备没有可评价测点。</td></tr>'}</tbody></table></div>${pager(String(state.structure.qualityPoints.length))}</section>
-    <div class="grid cols-3 mt-12">${panel('判定顺序','<ol class="condition-list"><li>测点是否启用、值和时间戳是否完整。</li><li>源时间是否晚于接收时间。</li><li>是否超过5个采样周期或30秒新鲜度窗口。</li><li>链路延迟是否超过3个采样周期。</li><li>数值是否超出配置量程。</li></ol>')}${panel('健康评估门槛','<p class="muted no-margin">启用测点可用率需达到95%，且不能存在断流或无效数据；未通过时暂停评分或降低置信度。</p>')}${panel('生产化路径','<p class="muted no-margin">当前为Mongo快照适配器；生产环境将原始时序写入openGemini，质量事件通过RocketMQ发布，页面仍使用同一业务接口。</p>')}</div>
+    <div class="grid cols-3 mt-12">${panel('判定顺序','<ol class="condition-list"><li>测点是否启用、值和时间戳是否完整。</li><li>源时间是否晚于接收时间。</li><li>是否超过5个采样周期或30秒新鲜度窗口。</li><li>链路延迟是否超过3个采样周期。</li><li>数值是否超出配置量程。</li></ol>')}${panel('健康评估门槛','<p class="muted no-margin">启用测点可用率需达到95%，且不能存在断流或无效数据；未通过时暂停评分或降低置信度。</p>')}${panel('数据落点','<p class="muted no-margin">原始时序写入openGemini，设备、BOM、测点配置和质量事件写入openGauss；质量事件可通过RocketMQ发布，页面接口保持不变。</p>')}</div>
   </div>`;
 }
 
