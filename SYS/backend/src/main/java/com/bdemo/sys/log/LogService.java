@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,9 +38,8 @@ public class LogService {
 
     public PageResult<SysLog> query(String kind, String module, String result, String keyword,
                                     String begin, String end, Integer pageNum, Integer pageSize) {
-        LocalDateTime beginTs = begin == null || begin.isBlank() ? null : LocalDate.parse(begin).atStartOfDay();
-        LocalDateTime endTs = end == null || end.isBlank() ? null
-                : LocalDate.parse(end).atTime(23, 59, 59);
+        LocalDateTime beginTs = parseDayStart(begin);
+        LocalDateTime endTs = parseDayEnd(end);
         String kw = keyword == null || keyword.isBlank() ? null : "%" + keyword.trim() + "%";
         if (pageNum == null || pageSize == null || pageSize <= 0) {
             List<SysLog> all = mapper.selectLogs(kind, module, result, keyword, kw,
@@ -81,9 +81,39 @@ public class LogService {
 
     private String[] csv(String[] cells) {
         for (int i = 0; i < cells.length; i++) {
-            cells[i] = "\"" + cells[i].replace("\"", "\"\"") + "\"";
+            String v = cells[i] == null ? "" : cells[i];
+            // 防 CSV 公式注入（CWE-1236）：以 = + - @ 或 Tab/回车/换行开头的内容，前置单引号使其按文本处理
+            if (!v.isEmpty()) {
+                char c = v.charAt(0);
+                if (c == '=' || c == '+' || c == '-' || c == '@' || c == '\t' || c == '\r' || c == '\n') {
+                    v = "'" + v;
+                }
+            }
+            cells[i] = "\"" + v.replace("\"", "\"\"") + "\"";
         }
         return cells;
+    }
+
+    private LocalDateTime parseDayStart(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(s.trim()).atStartOfDay();
+        } catch (DateTimeParseException e) {
+            throw BizException.badRequest("开始日期格式应为 yyyy-MM-dd");
+        }
+    }
+
+    private LocalDateTime parseDayEnd(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(s.trim()).atTime(23, 59, 59);
+        } catch (DateTimeParseException e) {
+            throw BizException.badRequest("结束日期格式应为 yyyy-MM-dd");
+        }
     }
 
     public void record(LoginUser user, String kind, String moduleName, String action,
