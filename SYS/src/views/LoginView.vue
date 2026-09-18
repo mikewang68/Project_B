@@ -31,13 +31,11 @@ function fillAccount(acc: { username: string; password: string }) {
 
 async function handleLogin() {
   if (!formRef.value) return
-  await formRef.value.validate((valid) => {
+  await formRef.value.validate(async (valid) => {
     if (!valid) return
     loading.value = true
-    // 模拟网络延迟
-    setTimeout(() => {
-      const result = auth.login({ username: form.username, password: form.password })
-      loading.value = false
+    try {
+      const result = await auth.login({ username: form.username, password: form.password })
       if (result.success) {
         ElMessage.success(`欢迎，${result.user?.name}`)
         // 优先跳回原目标页；但需校验该页当前用户是否有权限，避免"登录即 403"；
@@ -54,7 +52,9 @@ async function handleLogin() {
       } else {
         ElMessage.error(result.message || '登录失败')
       }
-    }, 400)
+    } finally {
+      loading.value = false
+    }
   })
 }
 </script>

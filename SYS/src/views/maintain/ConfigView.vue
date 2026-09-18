@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, computed } from 'vue'
+import { reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useSysStore } from '@/stores/sys'
 import { useAuthStore } from '@/stores/auth'
@@ -9,9 +9,19 @@ const sys = useSysStore()
 const auth = useAuthStore()
 const canEdit = computed(() => auth.isSuperAdmin || auth.permCodes.has('sys:config:list:edit'))
 
-// 编辑草稿（统一字符串存储），初始取当前配置
+// 编辑草稿（统一字符串存储），配置加载后取当前值
 const draft = reactive<Record<string, string>>({})
-sys.configs.forEach((c) => (draft[c.key] = c.value))
+
+onMounted(async () => {
+  try {
+    await sys.bootstrap()
+    sys.configs.forEach((c) => {
+      if (draft[c.key] === undefined) draft[c.key] = c.value
+    })
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '系统配置加载失败')
+  }
+})
 
 const GROUP_ORDER = ['基础设置', '安全策略', '会话设置']
 const groups = computed(() =>
@@ -36,11 +46,17 @@ function groupDirty(items: SysConfigItem[]) {
   return items.some((c) => draft[c.key] !== c.value)
 }
 
-function saveGroup(groupName: string, items: SysConfigItem[]) {
+async function saveGroup(groupName: string, items: SysConfigItem[]) {
   const entries = items.map((c) => ({ key: c.key, value: draft[c.key] ?? c.value }))
-  const n = sys.saveConfigGroup(entries)
-  if (n === 0) ElMessage.info('配置没有变化')
-  else ElMessage.success(`「${groupName}」已保存，更新 ${n} 项`)
+  try {
+    const n = await sys.saveConfigGroup(entries)
+    // 保存后以后端返回值为准同步草稿
+    sys.configs.forEach((c) => (draft[c.key] = c.value))
+    if (n === 0) ElMessage.info('配置没有变化')
+    else ElMessage.success(`「${groupName}」已保存，更新 ${n} 项`)
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '保存失败')
+  }
 }
 </script>
 

@@ -1,118 +1,131 @@
 /**
  * 系统设置与维护业务 Store：数据字典、系统配置、日志读取。
- * 所有写操作同步持久化到 localStorage，并写入一条操作日志。
+ * 已接入 SYS 后端 REST API（/api/v1/sys/*）；操作日志由后端统一落库。
  */
 
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { DictType, DictItem, SysConfigItem, SysLog } from '@/sys/types'
-import {
-  getDictTypes, saveDictTypes,
-  getDictItems, saveDictItems,
-  getConfigs, saveConfigs,
-  getLogs, addLog, uid, now,
-} from '@/sys/mock-data'
-import { useAuthStore } from './auth'
+import { sysApi } from '@/api/sys'
 
 export const useSysStore = defineStore('sys', () => {
-  const auth = useAuthStore()
-  const dictTypes = ref<DictType[]>(getDictTypes())
-  const dictItems = ref<DictItem[]>(getDictItems())
-  const configs = ref<SysConfigItem[]>(getConfigs())
-  const logs = ref<SysLog[]>(getLogs())
+  const dictTypes = ref<DictType[]>([])
+  const dictItems = ref<DictItem[]>([])
+  const configs = ref<SysConfigItem[]>([])
+  const logs = ref<SysLog[]>([])
+  const loading = ref(false)
 
-  const me = () => auth.currentUser?.username || 'anonymous'
-
-  function log(action: string, target: string, detail: string) {
-    addLog({ kind: 'operation', username: me(), module: 'dict', action, target, detail, result: 'success' })
+  /** 首次进入页面时加载字典与配置（日志在日志页激活时单独加载） */
+  async function bootstrap() {
+    if (dictTypes.value.length === 0) await reloadDict()
+    if (configs.value.length === 0) await reloadConfigs()
   }
 
-  function reloadLogs() {
-    logs.value = getLogs()
+  async function reloadDict() {
+    loading.value = true
+    try {
+      const [types, items] = await Promise.all([
+        sysApi.listDictTypes(),
+        sysApi.listDictItems(),
+      ])
+      dictTypes.value = types
+      dictItems.value = items
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function reloadConfigs() {
+    configs.value = await sysApi.listConfigs()
+  }
+
+  async function reloadLogs() {
+    const page = await sysApi.listLogs()
+    logs.value = page.list
   }
 
   // ---------------- 字典分类 ----------------
-  function persistTypes() {
-    dictTypes.value = [...dictTypes.value]
-    saveDictTypes(dictTypes.value)
+  async function addType(data: Omit<DictType, 'id' | 'createdAt' | 'updatedAt'>) {
+    const created = await sysApi.createDictType(data)
+    dictTypes.value.push(created)
+    return created
   }
-  function addType(data: Omit<DictType, 'id' | 'createdAt' | 'updatedAt'>) {
-    const t = now()
-    dictTypes.value.push({ ...data, id: uid(), createdAt: t, updatedAt: t })
-    persistTypes()
-    log('add', data.code, `新增字典分类「${data.name}」`)
-  }
-  function updateType(id: string, data: Partial<DictType>) {
+
+  async function updateType(id: string, data: Partial<DictType>) {
+    const existing = dictTypes.value.find((x) => x.id === id)
+    const updated = await sysApi.updateDictType(id, {
+      name: data.name ?? existing?.name ?? '',
+      status: data.status ?? existing?.status ?? 'active',
+      remark: data.remark ?? existing?.remark ?? '',
+    })
     const idx = dictTypes.value.findIndex((x) => x.id === id)
-    if (idx === -1) return
-    dictTypes.value[idx] = { ...dictTypes.value[idx], ...data, updatedAt: now() }
-    persistTypes()
-    log('edit', dictTypes.value[idx].code, `编辑字典分类「${dictTypes.value[idx].name}」`)
+    if (idx >= 0) dictTypes.value[idx] = updated
+    return updated
   }
-  /** 删除分类，同时删除其下全部字典项 */
-  function removeType(id: string) {
+
+  /** 删除分类（后端事务内同时逻辑删除其下字典项） */
+  async function removeType(id: string) {
     const target = dictTypes.value.find((x) => x.id === id)
-    if (!target) return
+    await sysApi.deleteDictType(id)
     dictTypes.value = dictTypes.value.filter((x) => x.id !== id)
-    dictItems.value = dictItems.value.filter((x) => x.typeCode !== target.code)
-    persistTypes()
-    saveDictItems(dictItems.value)
-    log('delete', target.code, `删除字典分类「${target.name}」及其字典项`)
+    if (target) dictItems.value = dictItems.value.filter((x) => x.typeCode !== target.code)
   }
 
   // ---------------- 字典项 ----------------
-  function persistItems() {
-    dictItems.value = [...dictItems.value]
-    saveDictItems(dictItems.value)
-  }
   function itemsOf(typeCode: string) {
     return dictItems.value
       .filter((x) => x.typeCode === typeCode)
+      .slice()
       .sort((a, b) => a.sort - b.sort)
   }
-  function addItem(data: Omit<DictItem, 'id' | 'createdAt' | 'updatedAt'>) {
-    const t = now()
-    dictItems.value.push({ ...data, id: uid(), createdAt: t, updatedAt: t })
-    persistItems()
-    log('add', `${data.typeCode}.${data.value}`, `新增字典项「${data.label}」`)
+
+  async function addItem(data: Omit<DictItem, 'id' | 'createdAt' | 'updatedAt'>) {
+    const created = await sysApi.createDictItem({
+      typeCode: data.typeCode,
+      label: data.label,
+      value: data.value,
+      sort: data.sort,
+      status: data.status,
+      tagType: data.tagType ?? '',
+      remark: data.remark,
+    })
+    dictItems.value.push(created)
+    return created
   }
-  function updateItem(id: string, data: Partial<DictItem>) {
+
+  async function updateItem(id: string, data: Partial<DictItem>) {
+    const existing = dictItems.value.find((x) => x.id === id)
+    const updated = await sysApi.updateDictItem(id, {
+      label: data.label ?? existing?.label ?? '',
+      value: existing?.value ?? '',
+      sort: data.sort ?? existing?.sort ?? 0,
+      status: data.status ?? existing?.status ?? 'active',
+      tagType: (data.tagType ?? existing?.tagType ?? '') as DictItem['tagType'] | '',
+      remark: data.remark ?? existing?.remark ?? '',
+    })
     const idx = dictItems.value.findIndex((x) => x.id === id)
-    if (idx === -1) return
-    dictItems.value[idx] = { ...dictItems.value[idx], ...data, updatedAt: now() }
-    persistItems()
-    log('edit', dictItems.value[idx].value, `编辑字典项「${dictItems.value[idx].label}」`)
+    if (idx >= 0) dictItems.value[idx] = updated
+    return updated
   }
-  function removeItem(id: string) {
-    const target = dictItems.value.find((x) => x.id === id)
-    if (!target) return
+
+  async function removeItem(id: string) {
+    await sysApi.deleteDictItem(id)
     dictItems.value = dictItems.value.filter((x) => x.id !== id)
-    persistItems()
-    log('delete', `${target.typeCode}.${target.value}`, `删除字典项「${target.label}」`)
   }
 
   // ---------------- 系统配置 ----------------
   /** 批量保存配置（一次编辑一组），返回更新条数 */
-  function saveConfigGroup(entries: Array<{ key: string; value: string }>) {
-    let n = 0
-    for (const e of entries) {
-      const idx = configs.value.findIndex((c) => c.key === e.key)
-      if (idx !== -1 && configs.value[idx].value !== e.value) {
-        configs.value[idx] = { ...configs.value[idx], value: e.value, updatedAt: now() }
-        n += 1
-      }
-    }
-    configs.value = [...configs.value]
-    saveConfigs(configs.value)
-    if (n > 0) {
-      addLog({ kind: 'operation', username: me(), module: 'config', action: 'edit', target: '系统配置', detail: `保存系统配置，更新 ${n} 项参数`, result: 'success' })
-    }
-    return n
+  async function saveConfigGroup(entries: Array<{ key: string; value: string }>) {
+    const group = configs.value.find((c) => c.key === entries[0]?.key)?.group
+    if (!group) return 0
+    const result = await sysApi.saveConfigGroup(group, entries)
+    if (result.updated > 0) await reloadConfigs()
+    return result.updated
   }
 
   return {
-    dictTypes, dictItems, configs, logs,
-    reloadLogs,
+    dictTypes, dictItems, configs, logs, loading,
+    bootstrap, reloadDict, reloadConfigs, reloadLogs,
     addType, updateType, removeType,
     addItem, updateItem, removeItem, itemsOf,
     saveConfigGroup,

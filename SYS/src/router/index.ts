@@ -53,8 +53,13 @@ const router = createRouter({
 
 const WHITE_LIST = ['/login']
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
+
+  // 页面刷新后若本地仍有 token，先通过 SYS /auth/me 恢复会话
+  if (!auth.hydrated) {
+    await auth.restoreFromSession()
+  }
 
   if (to.path === '/login' && auth.isLoggedIn) {
     next(auth.landingPath)
@@ -77,6 +82,14 @@ router.beforeEach((to, _from, next) => {
 
 router.afterEach((to) => {
   document.title = to.meta.title ? `${to.meta.title} | SYS系统设置` : '系统设置与维护系统'
+})
+
+// 任意请求返回 401：清理后回到登录页（带当前路径用于登录后跳回）
+window.addEventListener('app:unauthorized', () => {
+  const current = router.currentRoute.value
+  if (current.path !== '/login') {
+    router.replace({ path: '/login', query: { redirect: current.fullPath } })
+  }
 })
 
 export default router

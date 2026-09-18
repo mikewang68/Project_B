@@ -45,7 +45,7 @@ async function handleLogout() {
       cancelButtonText: '取消',
       type: 'warning',
     })
-    auth.logout()
+    await auth.logout()
     router.push('/login')
   } catch {
     /* 取消 */

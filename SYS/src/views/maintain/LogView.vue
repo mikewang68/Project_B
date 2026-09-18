@@ -3,14 +3,16 @@ import { ref, computed, onActivated } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useSysStore } from '@/stores/sys'
 import { useAuthStore } from '@/stores/auth'
-import { addLog } from '@/sys/mock-data'
-import type { SysLog, LogKind } from '@/sys/types'
+import { sysApi } from '@/api/sys'
+import type { LogKind } from '@/sys/types'
 
 const sys = useSysStore()
 const auth = useAuthStore()
 const can = (code: string) => auth.isSuperAdmin || auth.permCodes.has(code)
 
-onActivated(() => sys.reloadLogs())
+onActivated(() => {
+  sys.reloadLogs().catch((e) => ElMessage.error(e instanceof Error ? e.message : '日志加载失败'))
+})
 
 const filters = ref({
   kind: '' as '' | LogKind,
@@ -22,9 +24,11 @@ const filters = ref({
 
 const MODULE_LABEL: Record<string, string> = {
   auth: '登录认证', dict: '数据字典', config: '系统配置', log: '日志管理',
+  user: '用户管理', role: '角色管理',
 }
 const ACTION_LABEL: Record<string, string> = {
   login: '登录', logout: '退出', add: '新增', edit: '编辑', delete: '删除', export: '导出',
+  status: '启停用', resetPassword: '重置密码', assignRoles: '分配角色', assignPerms: '分配权限',
 }
 const moduleOptions = Object.entries(MODULE_LABEL).map(([v, l]) => ({ v, l }))
 
@@ -56,44 +60,33 @@ function fmtTime(iso: string) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
-/** 导出当前筛选结果为 CSV（带 BOM，Excel 中文不乱码） */
-function exportCsv() {
-  const rows = filteredLogs.value
-  if (rows.length === 0) {
+/** 导出当前筛选结果为 CSV：由后端按筛选条件生成（带 BOM，Excel 中文不乱码），后端自记导出日志 */
+async function exportCsv() {
+  if (filteredLogs.value.length === 0) {
     ElMessage.warning('当前没有可导出的日志')
     return
   }
-  const head = ['时间', '类别', '用户名', '模块', '动作', '对象', '详情', 'IP', '结果']
-  const esc = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`
-  const lines = rows.map((l: SysLog) =>
-    [
-      fmtTime(l.createdAt),
-      l.kind === 'login' ? '登录日志' : '操作日志',
-      l.username,
-      MODULE_LABEL[l.module] || l.module,
-      ACTION_LABEL[l.action] || l.action,
-      l.target || '',
-      l.detail || '',
-      l.ip || '',
-      l.result === 'success' ? '成功' : '失败',
-    ].map(esc).join(','),
-  )
-  const csv = '﻿' + [head.map(esc).join(','), ...lines].join('\r\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `系统日志_${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-  addLog({
-    kind: 'operation',
-    username: auth.currentUser?.username || 'anonymous',
-    module: 'log', action: 'export', target: '操作日志',
-    detail: `导出 ${rows.length} 条日志 CSV`, result: 'success',
-  })
-  sys.reloadLogs()
-  ElMessage.success(`已导出 ${rows.length} 条日志`)
+  try {
+    const resp = await sysApi.exportLogs({
+      kind: filters.value.kind || undefined,
+      module: filters.value.module || undefined,
+      result: filters.value.result || undefined,
+      keyword: filters.value.keyword || undefined,
+      begin: filters.value.range?.[0] || undefined,
+      end: filters.value.range?.[1] || undefined,
+    })
+    const blob = await resp.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `系统日志_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success(`已导出 ${filteredLogs.value.length} 条日志`)
+    sys.reloadLogs().catch(() => undefined)
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '导出失败')
+  }
 }
 </script>
 

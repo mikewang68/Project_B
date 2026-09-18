@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useSysStore } from '@/stores/sys'
 import { useAuthStore } from '@/stores/auth'
@@ -9,6 +9,17 @@ const sys = useSysStore()
 const auth = useAuthStore()
 const can = (code: string) => auth.isSuperAdmin || auth.permCodes.has(code)
 
+onMounted(async () => {
+  try {
+    await sys.bootstrap()
+    if (!currentTypeCode.value && sys.dictTypes.length > 0) {
+      currentTypeCode.value = sys.dictTypes.slice().sort((a, b) => a.code.localeCompare(b.code))[0].code
+    }
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '字典数据加载失败')
+  }
+})
+
 // ============ 左侧：字典分类 ============
 const typeKeyword = ref('')
 const filteredTypes = computed(() =>
@@ -17,7 +28,7 @@ const filteredTypes = computed(() =>
     .slice()
     .sort((a, b) => a.code.localeCompare(b.code)),
 )
-const currentTypeCode = ref<string>(sys.dictTypes[0]?.code || '')
+const currentTypeCode = ref<string>('')
 const currentType = computed(() => sys.dictTypes.find((t) => t.code === currentTypeCode.value))
 function selectType(code: string) {
   currentTypeCode.value = code
@@ -54,26 +65,40 @@ function openTypeEdit(row: DictType) {
 }
 async function submitType() {
   await typeFormRef.value?.validate()
-  if (typeEditing.value) {
-    sys.updateType(typeEditing.value.id, { name: typeForm.name, status: typeForm.status, remark: typeForm.remark })
-    ElMessage.success('分类已更新')
-  } else {
-    sys.addType({ code: typeForm.code, name: typeForm.name, status: typeForm.status, remark: typeForm.remark })
-    currentTypeCode.value = typeForm.code
-    ElMessage.success('分类已新增')
+  try {
+    if (typeEditing.value) {
+      await sys.updateType(typeEditing.value.id, { name: typeForm.name, status: typeForm.status, remark: typeForm.remark })
+      ElMessage.success('分类已更新')
+    } else {
+      const created = await sys.addType({ code: typeForm.code, name: typeForm.name, status: typeForm.status, remark: typeForm.remark })
+      currentTypeCode.value = created.code
+      ElMessage.success('分类已新增')
+    }
+    typeDialog.value = false
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '保存失败')
   }
-  typeDialog.value = false
 }
 async function removeType(row: DictType) {
   const n = sys.dictItems.filter((i) => i.typeCode === row.code).length
-  await ElMessageBox.confirm(
-    `删除分类「${row.name}」将同时删除其下 ${n} 个字典项，且不可恢复，确认删除？`,
-    '删除字典分类',
-    { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' },
-  )
-  sys.removeType(row.id)
-  if (currentTypeCode.value === row.code) currentTypeCode.value = sys.dictTypes[0]?.code || ''
-  ElMessage.success('分类已删除')
+  try {
+    await ElMessageBox.confirm(
+      `删除分类「${row.name}」将同时删除其下 ${n} 个字典项，且不可恢复，确认删除？`,
+      '删除字典分类',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    await sys.removeType(row.id)
+    if (currentTypeCode.value === row.code) {
+      currentTypeCode.value = sys.dictTypes.slice().sort((a, b) => a.code.localeCompare(b.code))[0]?.code || ''
+    }
+    ElMessage.success('分类已删除')
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '删除失败')
+  }
 }
 
 // ============ 右侧：字典项 ============
@@ -140,24 +165,40 @@ async function submitItem() {
     tagType: itemForm.tagType,
     remark: itemForm.remark,
   }
-  if (itemEditing.value) {
-    sys.updateItem(itemEditing.value.id, payload)
-    ElMessage.success('字典项已更新')
-  } else {
-    sys.addItem(payload)
-    ElMessage.success('字典项已新增')
+  try {
+    if (itemEditing.value) {
+      await sys.updateItem(itemEditing.value.id, payload)
+      ElMessage.success('字典项已更新')
+    } else {
+      await sys.addItem(payload)
+      ElMessage.success('字典项已新增')
+    }
+    itemDialog.value = false
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '保存失败')
   }
-  itemDialog.value = false
 }
 async function removeItem(row: DictItem) {
-  await ElMessageBox.confirm(`确认删除字典项「${row.label}」？`, '删除字典项', {
-    type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消',
-  })
-  sys.removeItem(row.id)
-  ElMessage.success('已删除')
+  try {
+    await ElMessageBox.confirm(`确认删除字典项「${row.label}」？`, '删除字典项', {
+      type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  try {
+    await sys.removeItem(row.id)
+    ElMessage.success('已删除')
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '删除失败')
+  }
 }
-function toggleItem(row: DictItem) {
-  sys.updateItem(row.id, { status: row.status === 'active' ? 'disabled' : 'active' })
+async function toggleItem(row: DictItem) {
+  try {
+    await sys.updateItem(row.id, { status: row.status === 'active' ? 'disabled' : 'active' })
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '操作失败')
+  }
 }
 </script>
 

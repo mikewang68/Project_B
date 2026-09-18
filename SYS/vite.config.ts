@@ -26,9 +26,14 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0', // 允许通过服务器 IP 访问进行联调
       port: 5175, // IAM=5174、数字孪生=5173，SYS 用 5175 避免本地同时启动冲突
       proxy: {
-        // 开发环境把同源 /api 转发到后端网关；生产环境改由 Nginx 反代
-        '/api': {
-          target: env.VITE_DEV_API_TARGET || 'http://127.0.0.1:8080',
+        // 登录/登出走 IAM 认证中心（8081）
+        '/api/v1/iam': {
+          target: env.VITE_DEV_IAM_TARGET || 'http://127.0.0.1:8081',
+          changeOrigin: true,
+        },
+        // SYS 业务接口（8082）
+        '/api/v1/sys': {
+          target: env.VITE_DEV_SYS_TARGET || 'http://127.0.0.1:8082',
           changeOrigin: true,
         },
       },
