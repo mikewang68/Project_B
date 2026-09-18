@@ -1,6 +1,7 @@
 package com.bdemo.iam.user.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
 import java.util.List;
 
@@ -12,7 +13,7 @@ public record UserUpsertRequest(
         String password,
         List<String> roleIds,
         List<String> orgCodes,
-        String status,
+        @Pattern(regexp = "active|disabled", message = "状态值非法") String status,
         String blockchainId,
         String blockchainAddress) {
 }

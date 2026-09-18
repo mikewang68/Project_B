@@ -11,5 +11,5 @@ public record RoleUpsertRequest(
         String code,
         String description,
         List<String> permCodes,
-        String status) {
+        @Pattern(regexp = "active|inactive", message = "状态值非法") String status) {
 }

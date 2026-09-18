@@ -45,6 +45,10 @@ public class RoleService {
 
     @Transactional
     public Role create(String name, String code, String description, List<String> permCodes, String status) {
+        code = code == null ? null : code.trim();
+        if (code == null || code.isBlank()) {
+            throw BizException.badRequest("请输入角色编码");
+        }
         if (roleMapper.countByCode(code) > 0) {
             throw BizException.conflict("角色编码已存在：" + code);
         }

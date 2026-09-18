@@ -45,7 +45,7 @@ public class RoleController {
     }
 
     @GetMapping("/{id}/permissions")
-    @RequirePerm({"iam:role:perm:view", "iam:role:perm:edit"})
+    @RequirePerm({"iam:role:perm:edit", "iam:role:perm:execute"})
     public R<List<String>> permissions(@PathVariable String id) {
         return R.ok(roleService.get(id).getPermCodes());
     }

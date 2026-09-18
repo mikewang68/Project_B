@@ -58,11 +58,11 @@ public interface UserMapper {
             INSERT INTO iam_user
               (id, username, password_hash, display_name, phone, email, status,
                zone, company, dept, group_name, zone_code, company_code, dept_code, group_code,
-               org_path, blockchain_id, blockchain_address, created_at, updated_at, deleted)
+               org_path, org_codes, blockchain_id, blockchain_address, created_at, updated_at, deleted)
             VALUES
               (#{id}, #{username}, #{passwordHash}, #{name}, #{phone}, #{email}, #{status},
                #{zone}, #{company}, #{dept}, #{group}, #{zoneCode}, #{companyCode}, #{deptCode}, #{groupCode},
-               #{orgPath}, #{blockchainId}, #{blockchainAddress}, #{now}, #{now}, 0)
+               #{orgPath}, #{orgCodesText}, #{blockchainId}, #{blockchainAddress}, #{now}, #{now}, 0)
             """)
     int insert(@Param("id") String id,
                @Param("username") String username,
@@ -80,6 +80,7 @@ public interface UserMapper {
                @Param("deptCode") String deptCode,
                @Param("groupCode") String groupCode,
                @Param("orgPath") String orgPath,
+               @Param("orgCodesText") String orgCodesText,
                @Param("blockchainId") String blockchainId,
                @Param("blockchainAddress") String blockchainAddress,
                @Param("now") LocalDateTime now);
@@ -101,6 +102,7 @@ public interface UserMapper {
               dept_code = #{deptCode},
               group_code = #{groupCode},
               org_path = #{orgPath},
+              org_codes = #{orgCodesText},
               blockchain_id = #{blockchainId},
               blockchain_address = #{blockchainAddress},
               <if test="passwordHash != null and passwordHash != ''"> password_hash = #{passwordHash}, </if>
@@ -123,6 +125,7 @@ public interface UserMapper {
                @Param("deptCode") String deptCode,
                @Param("groupCode") String groupCode,
                @Param("orgPath") String orgPath,
+               @Param("orgCodesText") String orgCodesText,
                @Param("blockchainId") String blockchainId,
                @Param("blockchainAddress") String blockchainAddress,
                @Param("passwordHash") String passwordHash,

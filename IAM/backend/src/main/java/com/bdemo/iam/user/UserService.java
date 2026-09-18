@@ -76,6 +76,16 @@ public class UserService implements LoginUserLoader {
     public User create(String username, String name, String phone, String email, String rawPassword,
                        List<String> roleIds, List<String> orgCodes, String status,
                        String blockchainId, String blockchainAddress) {
+        username = username == null ? null : username.trim();
+        if (username == null || username.isBlank()) {
+            throw BizException.badRequest("请输入用户名");
+        }
+        if (username.length() < 3 || username.length() > 64) {
+            throw BizException.badRequest("用户名长度需为 3-64 位");
+        }
+        if (!username.matches("^[A-Za-z0-9_.-]+$")) {
+            throw BizException.badRequest("用户名仅支持字母、数字、下划线、点和连字符");
+        }
         if (rawPassword == null || rawPassword.length() < 6) {
             throw BizException.badRequest("密码至少 6 位");
         }
@@ -90,6 +100,7 @@ public class UserService implements LoginUserLoader {
                 emptyToNull(phone), emptyToNull(email), status == null ? "active" : status,
                 org.zone, org.company, org.dept, org.group,
                 org.zoneCode, org.companyCode, org.deptCode, org.groupCode, org.orgPath,
+                joinOrgCodes(orgCodes, org),
                 emptyToNull(blockchainId), emptyToNull(blockchainAddress), now);
         replaceRoles(id, roleIds);
         return get(id);
@@ -119,6 +130,7 @@ public class UserService implements LoginUserLoader {
                 status == null ? existing.getStatus() : status,
                 org.zone, org.company, org.dept, org.group,
                 org.zoneCode, org.companyCode, org.deptCode, org.groupCode, org.orgPath,
+                joinOrgCodes(orgCodes, org),
                 emptyToNull(blockchainId), emptyToNull(blockchainAddress), passwordHash, LocalDateTime.now());
         replaceRoles(id, roleIds);
         return get(id);
@@ -192,12 +204,13 @@ public class UserService implements LoginUserLoader {
         return new LoginUser(u.getId(), u.getUsername(), u.getName(), superAdmin, perms);
     }
 
-    /** 登录成功后组装用户拥有的完整角色对象（前端需要角色名展示） */
+    /** 登录成功后组装用户拥有的完整角色对象（前端需要角色名展示）；停用角色不返回，其权限本就不生效。 */
     public List<Role> loadRoles(String userId) {
         List<String> roleIds = userMapper.selectRoleIds(userId);
         return roleIds.stream()
                 .map(roleMapper::selectById)
                 .filter(java.util.Objects::nonNull)
+                .filter(r -> "active".equals(r.getStatus()))
                 .toList();
     }
 
@@ -247,5 +260,18 @@ public class UserService implements LoginUserLoader {
 
     private String emptyToNull(String s) {
         return s == null || s.isBlank() ? null : s;
+    }
+
+    /**
+     * 拼接 org_codes 冗余列（逗号分隔，无空格），与种子格式及 zone/company/dept/group 四个 code 列严格同源，
+     * 不直接信任入参（非法组织编码在 resolve 阶段已被忽略）。
+     */
+    private String joinOrgCodes(List<String> requested, OrgService.OrgResolveResult org) {
+        List<String> codes = new java.util.ArrayList<>();
+        if (org.zoneCode != null) codes.add(org.zoneCode);
+        if (org.companyCode != null) codes.add(org.companyCode);
+        if (org.deptCode != null) codes.add(org.deptCode);
+        if (org.groupCode != null) codes.add(org.groupCode);
+        return codes.isEmpty() ? null : String.join(",", codes);
     }
 }
