@@ -87,3 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_sys_config_group ON sys_config(config_group);
 -- ============================================================================
 GRANT USAGE ON SCHEMA sys TO iam_app;
 GRANT SELECT, INSERT ON sys_operation_log TO iam_app;
+
+-- SYS application account: full DML on its own schema
+GRANT USAGE ON SCHEMA sys TO sys_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA sys TO sys_app;

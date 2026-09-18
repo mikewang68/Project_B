@@ -14,7 +14,7 @@ import java.util.Map;
 public interface IamIdentityMapper {
 
     @Select("""
-            SELECT id, username, display_name AS displayName, status
+            SELECT id, username, display_name AS "displayName", status
             FROM iam.iam_user
             WHERE id = #{userId} AND deleted = 0
             """)

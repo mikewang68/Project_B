@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useSysStore } from '@/stores/sys'
 import { useAuthStore } from '@/stores/auth'
@@ -10,9 +10,14 @@ const sys = useSysStore()
 const auth = useAuthStore()
 const can = (code: string) => auth.isSuperAdmin || auth.permCodes.has(code)
 
-onActivated(() => {
+function loadLogs() {
   sys.reloadLogs().catch((e) => ElMessage.error(e instanceof Error ? e.message : '日志加载失败'))
-})
+}
+// 无 keep-alive 时 onActivated 不会触发，必须在 onMounted 首次加载；
+// 若后续启用 keep-alive，跳过挂载后的首次 activated 避免重复请求
+let mountedOnce = false
+onMounted(() => { mountedOnce = true; loadLogs() })
+onActivated(() => { if (!mountedOnce) return; loadLogs() })
 
 const filters = ref({
   kind: '' as '' | LogKind,

@@ -49,11 +49,11 @@ VALUES
 INSERT INTO sys_operation_log
   (id, kind, username, user_id, module, action, target, detail, request_method, request_uri, ip, result, duration_ms, created_at)
 VALUES
-('log-init-0','login','admin',NULL,'auth','login',NULL,'管理员登录成功',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 07:58:31'),
-('log-init-1','operation','admin',NULL,'dict','edit','device_status','修改字典分类「设备状态」备注',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 07:24:31'),
-('log-init-2','operation','admin',NULL,'dict','add','alert_level.critical','新增字典项「紧急」',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 06:41:31'),
-('log-init-3','login','viewer',NULL,'auth','login',NULL,'运维观摩登录成功',NULL,NULL,'192.168.11.33','success',NULL,'2026-09-18 05:56:31'),
-('log-init-4','operation','admin',NULL,'config','edit','session.timeout','会话超时由 60 调整为 120 分钟',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 04:56:31'),
-('log-init-5','operation','admin',NULL,'log','export','操作日志','导出近 7 天操作日志 CSV',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 03:56:31'),
-('log-init-6','login','unknown',NULL,'auth','login',NULL,'用户名不存在',NULL,NULL,'10.12.3.9','fail',NULL,'2026-09-18 02:46:31'),
-('log-init-7','operation','admin',NULL,'dict','delete','gender.other','删除字典项「其他」',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 01:16:31');
+('log-init-0','login','admin',NULL,'auth','login',NULL,'管理员登录成功',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 12:44:56'),
+('log-init-1','operation','admin',NULL,'dict','edit','device_status','修改字典分类「设备状态」备注',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 12:10:56'),
+('log-init-2','operation','admin',NULL,'dict','add','alert_level.critical','新增字典项「紧急」',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 11:27:56'),
+('log-init-3','login','viewer',NULL,'auth','login',NULL,'运维观摩登录成功',NULL,NULL,'192.168.11.33','success',NULL,'2026-09-18 10:42:56'),
+('log-init-4','operation','admin',NULL,'config','edit','session.timeout','会话超时由 60 调整为 120 分钟',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 09:42:56'),
+('log-init-5','operation','admin',NULL,'log','export','操作日志','导出近 7 天操作日志 CSV',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 08:42:56'),
+('log-init-6','login','unknown',NULL,'auth','login',NULL,'用户名不存在',NULL,NULL,'10.12.3.9','fail',NULL,'2026-09-18 07:32:56'),
+('log-init-7','operation','admin',NULL,'dict','delete','gender.other','删除字典项「其他」',NULL,NULL,'192.168.11.21','success',NULL,'2026-09-18 06:02:56');

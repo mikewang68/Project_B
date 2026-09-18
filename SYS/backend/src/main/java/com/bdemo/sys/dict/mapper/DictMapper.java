@@ -95,7 +95,7 @@ public interface DictMapper {
     @Select("""
             SELECT COUNT(1) FROM sys_dict_item
             WHERE type_code = #{typeCode} AND item_value = #{value} AND deleted = 0
-              AND (#{excludeId} IS NULL OR id &lt;&gt; #{excludeId})
+              AND (CAST(#{excludeId} AS VARCHAR) IS NULL OR id <> #{excludeId})
             """)
     int countItemValue(@Param("typeCode") String typeCode, @Param("value") String value,
                        @Param("excludeId") String excludeId);
