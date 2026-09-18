@@ -47,6 +47,9 @@ public interface RoleMapper {
                @Param("status") String status,
                @Param("now") LocalDateTime now);
 
+    @Update("UPDATE iam_role SET status = #{status}, updated_at = #{now} WHERE id = #{id} AND deleted = 0")
+    int updateStatus(@Param("id") String id, @Param("status") String status, @Param("now") LocalDateTime now);
+
     @Update("UPDATE iam_role SET deleted = 1, updated_at = #{now} WHERE id = #{id}")
     int logicDelete(@Param("id") String id, @Param("now") LocalDateTime now);
 

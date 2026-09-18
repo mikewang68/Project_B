@@ -66,6 +66,14 @@ public class RoleService {
     }
 
     @Transactional
+    public Role updateStatus(String id, String status) {
+        mustExist(id);
+        String target = "inactive".equals(status) ? "inactive" : "active";
+        roleMapper.updateStatus(id, target, LocalDateTime.now());
+        return get(id);
+    }
+
+    @Transactional
     public void delete(String id) {
         Role existing = mustExist(id);
         if ("super_admin".equals(existing.getCode())) {

@@ -71,6 +71,17 @@ public class RoleController {
         return R.ok(role);
     }
 
+    @PutMapping("/{id}/status")
+    @RequirePerm("iam:role:edit:edit")
+    public R<Role> toggleStatus(@PathVariable String id, @RequestBody StatusRequest req, HttpServletRequest http) {
+        Role role = roleService.updateStatus(id, req.status());
+        String actionText = "active".equals(role.getStatus()) ? "启用" : "停用";
+        operationLogger.record(me(), null, "operation", "role", "status",
+                role.getCode(), actionText + "角色：" + role.getCode(),
+                "PUT", "/roles/" + id + "/status", ip(http), "success");
+        return R.ok(role);
+    }
+
     @PutMapping("/{id}/permissions")
     @RequirePerm({"iam:role:perm:edit", "iam:role:perm:execute"})
     public R<Role> assignPermissions(@PathVariable String id, @RequestBody AssignPermsRequest req,
@@ -92,6 +103,10 @@ public class RoleController {
                 role.getCode(), "删除角色：" + role.getCode(),
                 "DELETE", "/roles/" + id, ip(http), "success");
         return R.ok();
+    }
+
+    /** 启用/停用角色请求体 */
+    public record StatusRequest(String status) {
     }
 
     private String me() {

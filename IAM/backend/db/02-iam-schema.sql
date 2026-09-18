@@ -107,3 +107,7 @@ CREATE INDEX IF NOT EXISTS idx_iam_org_parent ON iam_org(parent_id);
 GRANT USAGE ON SCHEMA iam TO sys_app;
 GRANT SELECT ON iam_user, iam_role, iam_permission,
     iam_user_role, iam_role_permission, iam_org TO sys_app;
+
+-- IAM application account: full DML on its own schema
+GRANT USAGE ON SCHEMA iam TO iam_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO iam_app;

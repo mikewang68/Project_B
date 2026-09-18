@@ -25,7 +25,8 @@ public interface UserMapper {
     @Select("SELECT " + COLUMNS + " FROM iam_user WHERE id = #{id} AND deleted = 0")
     User selectById(@Param("id") String id);
 
-    @Select("SELECT id, username, display_name AS name, status, password_hash AS passwordHash " +
+    // 别名必须双引号：openGauss/PG 会把未加引号的驼峰别名折叠为小写，导致 Map 取不到 passwordHash
+    @Select("SELECT id, username, display_name AS \"name\", status, password_hash AS \"passwordHash\" " +
             "FROM iam_user WHERE username = #{username} AND deleted = 0")
     java.util.Map<String, Object> selectAuthByUsername(@Param("username") String username);
 
