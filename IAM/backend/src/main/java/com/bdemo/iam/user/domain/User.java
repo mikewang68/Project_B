@@ -16,6 +16,7 @@ public class User {
     private String name;
     private String phone;
     private String email;
+    @JsonIgnore
     private String password;
     private List<String> roleIds = new ArrayList<>();
     private String zone;

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS sys_dict_type (
     dict_code   VARCHAR(64)  NOT NULL,
     dict_name   VARCHAR(128) NOT NULL,
     remark      VARCHAR(255),
-    status      VARCHAR(16)  NOT NULL DEFAULT 'active',
+    status      VARCHAR(16)  NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled')),
     sort_order  INTEGER      NOT NULL DEFAULT 0,
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS sys_dict_item (
     item_label  VARCHAR(128) NOT NULL,
     tag_type    VARCHAR(16),
     sort_order  INTEGER      NOT NULL DEFAULT 0,
-    status      VARCHAR(16)  NOT NULL DEFAULT 'active',
+    status      VARCHAR(16)  NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled')),
     remark      VARCHAR(255),
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -83,10 +83,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_sys_config_key ON sys_config(config_key);
 CREATE INDEX IF NOT EXISTS idx_sys_config_group ON sys_config(config_group);
 
 -- ============================================================================
--- 跨服务授权：IAM 后端向统一日志表写入登录/用户/角色操作日志
+-- 跨服务授权：IAM 后端仅向统一日志表“写入”登录/用户/角色操作日志（最小权限，
+-- IAM 端 OperationLogger 只做 INSERT，不授予 SELECT，避免越权读取全量操作日志）
 -- ============================================================================
 GRANT USAGE ON SCHEMA sys TO iam_app;
-GRANT SELECT, INSERT ON sys_operation_log TO iam_app;
+GRANT INSERT ON sys_operation_log TO iam_app;
 
 -- SYS application account: full DML on its own schema
 GRANT USAGE ON SCHEMA sys TO sys_app;

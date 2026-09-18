@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS iam_user (
     display_name       VARCHAR(64)  NOT NULL,
     phone              VARCHAR(32),
     email              VARCHAR(128),
-    status             VARCHAR(16)  NOT NULL DEFAULT 'active',
+    status             VARCHAR(16)  NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled')),
     zone               VARCHAR(64),
     company            VARCHAR(64),
     dept               VARCHAR(64),
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS iam_role (
     role_code   VARCHAR(64)  NOT NULL,
     role_name   VARCHAR(64)  NOT NULL,
     description VARCHAR(255),
-    status      VARCHAR(16)  NOT NULL DEFAULT 'active',
+    status      VARCHAR(16)  NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive')),
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted     SMALLINT     NOT NULL DEFAULT 0
