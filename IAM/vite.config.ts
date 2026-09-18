@@ -26,9 +26,9 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0', // 允许通过服务器 IP 访问进行联调
       port: 5174, // 与数字孪生前端(5173)错开，避免本地同时启动时端口冲突
       proxy: {
-        // 开发环境把同源 /api 转发到后端网关；生产环境改由 Nginx 反代
+        // 开发环境把同源 /api 转发到 IAM 后端（8081，context-path /api/v1/iam）；生产由 Nginx 反代
         '/api': {
-          target: env.VITE_DEV_API_TARGET || 'http://127.0.0.1:8080',
+          target: env.VITE_DEV_API_TARGET || 'http://127.0.0.1:8081',
           changeOrigin: true,
         },
       },

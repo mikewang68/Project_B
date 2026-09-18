@@ -10,9 +10,16 @@ const iam = useIamStore()
 const auth = useAuthStore()
 
 onMounted(() => {
-  iam.fetchRoles()
-  iam.fetchUsers()
+  void reload()
 })
+
+async function reload() {
+  try {
+    await Promise.all([iam.fetchRoles(), iam.fetchUsers()])
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '数据加载失败')
+  }
+}
 
 const search = reactive({ keyword: '', status: '' })
 const filteredRoles = computed(() => {
@@ -68,14 +75,14 @@ function openEdit(role: Role) {
 
 async function handleSubmit() {
   if (!formRef.value) return
-  await formRef.value.validate((valid) => {
+  await formRef.value.validate(async (valid) => {
     if (!valid) return
     if (dialogMode.value === 'add') {
-      const result = iam.addRole(form as Omit<Role, 'id' | 'createdAt' | 'updatedAt'>)
+      const result = await iam.addRole(form as Omit<Role, 'id' | 'createdAt' | 'updatedAt'>)
       if (result.success) { ElMessage.success('角色创建成功'); dialogVisible.value = false }
       else ElMessage.error(result.message || '创建失败')
     } else {
-      const result = iam.updateRole(form.id!, form)
+      const result = await iam.updateRole(form.id!, form)
       if (result.success) { ElMessage.success('角色更新成功'); dialogVisible.value = false }
       else ElMessage.error(result.message || '更新失败')
     }
@@ -89,14 +96,16 @@ async function handleDelete(role: Role) {
       '删除确认',
       { type: 'warning' },
     )
-    const result = iam.deleteRole(role.id)
+    const result = await iam.deleteRole(role.id)
     if (result.success) ElMessage.success('删除成功')
     else ElMessage.error(result.message || '删除失败')
-  } catch { /* cancel */ }
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') ElMessage.error(e instanceof Error ? e.message : '删除失败')
+  }
 }
 
-function handleToggleStatus(role: Role) {
-  const result = iam.toggleRoleStatus(role.id)
+async function handleToggleStatus(role: Role) {
+  const result = await iam.toggleRoleStatus(role.id)
   if (result.success) ElMessage.success(role.status === 'active' ? '已停用' : '已启用')
   else ElMessage.error(result.message || '操作失败')
 }
@@ -164,14 +173,14 @@ function openPermAssign(role: Role) {
   permVisible.value = true
 }
 
-function handlePermSubmit() {
+async function handlePermSubmit() {
   // 获取所有选中的叶子节点（权限编码）
   const checked = permTreeRef.value?.getCheckedKeys() as string[] || []
   const halfChecked = permTreeRef.value?.getHalfCheckedKeys() as string[] || []
   const leafCodes = [...checked, ...halfChecked].filter((c) => c.includes(':'))
   // 自动补全查看权限：勾选操作权限时连带其 view，避免孤立授权
   const allChecked = ensureViewPerms(leafCodes)
-  const result = iam.assignRolePerms(permForm.roleId, allChecked)
+  const result = await iam.assignRolePerms(permForm.roleId, allChecked)
   if (result.success) {
     ElMessage.success(`已分配 ${allChecked.length} 项权限（已自动补全查看权限）`)
     permVisible.value = false
@@ -215,7 +224,7 @@ const canAssignPerm = computed(() =>
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="iam.fetchRoles()">查询</el-button>
+          <el-button type="primary" @click="reload()">查询</el-button>
           <el-button @click="search.keyword=''; search.status=''">重置</el-button>
         </el-form-item>
       </el-form>

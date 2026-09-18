@@ -15,9 +15,16 @@ const activeRoles = computed(() => iam.roles.filter((r) => r.status === 'active'
 const orgProps = ORG_CASCADER_PROPS
 
 onMounted(() => {
-  iam.fetchUsers()
-  iam.fetchRoles()
+  void reload()
 })
+
+async function reload() {
+  try {
+    await Promise.all([iam.fetchUsers(), iam.fetchRoles()])
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '数据加载失败')
+  }
+}
 
 const search = reactive({
   keyword: '',
@@ -121,10 +128,10 @@ function openEdit(user: User) {
 
 async function handleSubmit() {
   if (!formRef.value) return
-  await formRef.value.validate((valid) => {
+  await formRef.value.validate(async (valid) => {
     if (!valid) return
     if (dialogMode.value === 'add') {
-      const result = iam.addUser(form as Omit<User, 'id' | 'createdAt' | 'updatedAt'>)
+      const result = await iam.addUser(form as Omit<User, 'id' | 'createdAt' | 'updatedAt'>)
       if (result.success) {
         ElMessage.success('用户创建成功')
         dialogVisible.value = false
@@ -134,7 +141,7 @@ async function handleSubmit() {
     } else {
       const updateData: Partial<User> = { ...form }
       if (!form.password) delete updateData.password
-      const result = iam.updateUser(form.id!, updateData)
+      const result = await iam.updateUser(form.id!, updateData)
       if (result.success) {
         ElMessage.success('用户更新成功')
         dialogVisible.value = false
@@ -148,14 +155,16 @@ async function handleSubmit() {
 async function handleDelete(user: User) {
   try {
     await ElMessageBox.confirm(`确定删除用户「${user.name}（${user.username}）」吗？此操作不可恢复。`, '删除确认', { type: 'warning' })
-    const result = iam.deleteUser(user.id)
+    const result = await iam.deleteUser(user.id)
     if (result.success) ElMessage.success('删除成功')
     else ElMessage.error(result.message || '删除失败')
-  } catch { /* cancel */ }
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') ElMessage.error(e instanceof Error ? e.message : '删除失败')
+  }
 }
 
-function handleToggleStatus(user: User) {
-  const result = iam.toggleUserStatus(user.id)
+async function handleToggleStatus(user: User) {
+  const result = await iam.toggleUserStatus(user.id)
   if (result.success) ElMessage.success(user.status === 'active' ? '已停用' : '已启用')
   else ElMessage.error(result.message || '操作失败')
 }
@@ -170,10 +179,10 @@ function openResetPwd(user: User) {
   pwdForm.confirm = ''
   pwdVisible.value = true
 }
-function handleResetPwd() {
+async function handleResetPwd() {
   if (pwdForm.password.length < 6) { ElMessage.error('密码至少 6 位'); return }
   if (pwdForm.password !== pwdForm.confirm) { ElMessage.error('两次密码不一致'); return }
-  const result = iam.resetPassword(pwdForm.userId, pwdForm.password)
+  const result = await iam.resetPassword(pwdForm.userId, pwdForm.password)
   if (result.success) { ElMessage.success('密码重置成功'); pwdVisible.value = false }
   else ElMessage.error(result.message || '重置失败')
 }
@@ -187,8 +196,8 @@ function openAssignRole(user: User) {
   roleForm.roleIds = [...user.roleIds]
   roleVisible.value = true
 }
-function handleAssignRole() {
-  const result = iam.assignUserRoles(roleForm.userId, roleForm.roleIds)
+async function handleAssignRole() {
+  const result = await iam.assignUserRoles(roleForm.userId, roleForm.roleIds)
   if (result.success) { ElMessage.success('角色分配成功'); roleVisible.value = false }
   else ElMessage.error(result.message || '分配失败')
 }
@@ -227,7 +236,7 @@ const canResetPwd = computed(() =>
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="iam.fetchUsers()">查询</el-button>
+          <el-button type="primary" @click="reload()">查询</el-button>
           <el-button @click="search.keyword=''; search.status=''; search.roleId=''">重置</el-button>
         </el-form-item>
       </el-form>

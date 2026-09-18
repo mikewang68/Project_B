@@ -10,8 +10,8 @@ function goHome() {
   router.push(auth.landingPath)
 }
 
-function goLogin() {
-  auth.logout()
+async function goLogin() {
+  await auth.logout()
   router.push('/login')
 }
 </script>

@@ -1,25 +1,16 @@
 /**
  * 认证与权限 Store（IAM 独立系统）
  *
- * 负责：登录/登出、会话管理、当前用户、权限编码集合、菜单树过滤。
- * 当前为 mock 实现（localStorage），后续替换为 REST 接口，接口形态不变。
+ * 负责：登录/登出、会话恢复、当前用户、权限编码集合、菜单树过滤。
+ * 已接入真实后端 REST API（/api/v1/iam/auth/*），JWT 存 localStorage，
+ * 业务数据不再使用 localStorage；刷新页面通过 /auth/me 恢复会话。
  */
 
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { AuthSession, LoginRequest, LoginResponse, User, Role } from '@/iam/types'
-import {
-  getUsers,
-  getRoles,
-  getSession,
-  saveSession,
-  saveUsers,
-  clearSession,
-  addLog,
-  uid,
-  now,
-} from '@/iam/mock-data'
 import { MENU_TREE, filterMenuByPerms, collectAllPerms, type MenuNode } from '@/iam/menu-tree'
+import { iamApi, TOKEN_KEY, type LoginResult, type MeResult } from '@/api/iam'
 
 /** IAM 后台可导航页面及其进入所需权限（登录落地页按此顺序选第一个有权限的） */
 const LANDING_CANDIDATES = [
@@ -30,14 +21,16 @@ const LANDING_CANDIDATES = [
 
 export const useAuthStore = defineStore('auth', () => {
   // ---- state ----
-  const session = ref<AuthSession | null>(getSession())
+  const session = ref<AuthSession | null>(null)
   const currentUser = ref<User | null>(null)
   const userRoles = ref<Role[]>([])
   const permCodes = ref<Set<string>>(new Set())
   const menuTree = ref<MenuNode[]>([])
+  /** 是否已完成 /auth/me 恢复（路由守卫等待） */
+  const hydrated = ref(!localStorage.getItem(TOKEN_KEY))
 
   // ---- getters ----
-  const isLoggedIn = computed(() => session.value !== null && currentUser.value !== null)
+  const isLoggedIn = computed(() => !!session.value && !!currentUser.value)
   const isSuperAdmin = computed(() =>
     userRoles.value.some((r) => r.code === 'super_admin' && r.status === 'active'),
   )
@@ -49,127 +42,118 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   // ---- actions ----
-  /** 根据用户角色重新计算权限集合与菜单树 */
-  function refreshPermissions() {
-    if (!currentUser.value) {
-      permCodes.value = new Set()
-      menuTree.value = []
-      userRoles.value = []
-      return
-    }
-    const roles = getRoles().filter((r) => currentUser.value!.roleIds.includes(r.id))
-    userRoles.value = roles
-    const codes = new Set<string>()
-    const isSuper = roles.some((r) => r.status === 'active' && r.code === 'super_admin')
-    if (isSuper) {
-      // 超级管理员动态拥有菜单树中的全部权限，避免新增权限点后本地快照过期
+  function hydrate(user: User, roles: Array<Pick<Role, 'id' | 'name' | 'code' | 'status'>>,
+                  permissions: string[], token: string) {
+    currentUser.value = user
+    userRoles.value = roles as Role[]
+    const codes = new Set(permissions)
+    // 前端兜底：超管动态拥有静态菜单树全部权限（权限以服务端返回为准）
+    if (userRoles.value.some((r) => r.status === 'active' && r.code === 'super_admin')) {
       for (const p of collectAllPerms()) codes.add(p.code)
-    } else {
-      for (const role of roles) {
-        if (role.status !== 'active') continue
-        for (const code of role.permCodes) codes.add(code)
-      }
     }
     permCodes.value = codes
     menuTree.value = filterMenuByPerms(MENU_TREE, codes)
-  }
-
-  /** 从会话恢复当前用户 */
-  function restoreFromSession() {
-    const s = getSession()
-    if (!s) return
-    session.value = s
-    const user = getUsers().find((u) => u.id === s.userId)
-    if (user && user.status === 'active') {
-      currentUser.value = user
-      refreshPermissions()
-    } else {
-      clearSession()
-      session.value = null
-    }
-  }
-
-  /** 登录 */
-  function login(req: LoginRequest): LoginResponse {
-    const users = getUsers()
-    const user = users.find((u) => u.username === req.username.trim())
-    if (!user) {
-      return { success: false, message: '用户名不存在' }
-    }
-    if (user.status !== 'active') {
-      return { success: false, message: '账号已被停用，请联系管理员' }
-    }
-    if (user.password !== req.password) {
-      return { success: false, message: '密码错误' }
-    }
-    // 生成会话（模拟 JWT）
-    const loginAt = now()
-    const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-    const newSession: AuthSession = {
-      token: `mock-jwt-${uid()}`,
+    session.value = {
+      token,
       userId: user.id,
       username: user.username,
       name: user.name,
-      loginAt,
-      expireAt,
+      loginAt: new Date().toISOString(),
+      expireAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
     }
-    saveSession(newSession)
-    session.value = newSession
-    currentUser.value = { ...user, lastLoginAt: loginAt }
-    // 更新用户最后登录时间（静态 import，同步持久化）
-    const updatedUsers = users.map((u) => (u.id === user.id ? { ...u, lastLoginAt: loginAt } : u))
-    saveUsers(updatedUsers)
-
-    refreshPermissions()
-    addLog({
-      userId: user.id,
-      username: user.username,
-      module: 'iam',
-      action: 'login',
-      detail: `用户 ${user.username} 登录成功`,
-    })
-    return {
-      success: true,
-      session: newSession,
-      user: currentUser.value,
-      permCodes: Array.from(permCodes.value),
-    }
+    hydrated.value = true
   }
 
-  /** 登出 */
-  function logout() {
-    if (currentUser.value) {
-      addLog({
-        userId: currentUser.value.id,
-        username: currentUser.value.username,
-        module: 'iam',
-        action: 'logout',
-        detail: `用户 ${currentUser.value.username} 退出登录`,
-      })
-    }
-    clearSession()
+  function reset() {
     session.value = null
     currentUser.value = null
     userRoles.value = []
     permCodes.value = new Set()
     menuTree.value = []
+    iamApi.token.clearToken()
+    hydrated.value = true
   }
 
-  /** 刷新当前用户信息（如修改密码、变更角色后）；若用户已被停用则强制登出 */
-  function refreshCurrentUser() {
-    if (!session.value) return
-    const user = getUsers().find((u) => u.id === session.value!.userId)
-    if (!user || user.status !== 'active') {
-      // 用户被删除或停用 → 当前会话立即失效
-      logout()
+  /** 登录（调用 IAM 后端） */
+  async function login(req: LoginRequest): Promise<LoginResponse> {
+    try {
+      const result: LoginResult = await iamApi.login(req.username.trim(), req.password)
+      iamApi.token.setToken(result.token)
+      hydrate(result.user, result.roles, result.permissions, result.token)
+      return {
+        success: true,
+        session: session.value || undefined,
+        user: currentUser.value || undefined,
+        permCodes: Array.from(permCodes.value),
+      }
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : '登录失败' }
+    }
+  }
+
+  /** 登出（尽力调用后端记录日志，无论成败都清空本地会话） */
+  async function logout() {
+    try {
+      await iamApi.logout()
+    } catch {
+      // 忽略：即使后端不可达也要允许本地登出
+    }
+    reset()
+  }
+
+  /** 刷新页面后凭 token 调用 /auth/me 恢复会话 */
+  async function restoreFromSession() {
+    const token = iamApi.token.getToken()
+    if (!token) {
+      reset()
       return
     }
-    currentUser.value = user
-    refreshPermissions()
+    try {
+      const me: MeResult = await iamApi.me()
+      const user: User = {
+        id: me.user.id,
+        username: me.user.username,
+        name: me.user.name,
+        password: '',
+        roleIds: me.roles.map((r) => r.id),
+        status: 'active',
+        createdAt: '',
+        updatedAt: '',
+      }
+      hydrate(user, me.roles.map((r) => ({ ...r, status: 'active', permCodes: [] })),
+        me.permissions, token)
+    } catch {
+      reset()
+    } finally {
+      hydrated.value = true
+    }
   }
 
-  // 初始化时尝试恢复会话
-  restoreFromSession()
+  /** 变更当前用户资料/角色后重新拉取身份与权限；用户失效则登出 */
+  async function refreshCurrentUser() {
+    const token = iamApi.token.getToken()
+    if (!token) {
+      reset()
+      return
+    }
+    try {
+      const me: MeResult = await iamApi.me()
+      const user: User = {
+        id: me.user.id,
+        username: me.user.username,
+        name: me.user.name,
+        password: '',
+        roleIds: me.roles.map((r) => r.id),
+        status: 'active',
+        createdAt: currentUser.value?.createdAt || '',
+        updatedAt: '',
+      }
+      hydrate(user, me.roles.map((r) => ({ ...r, status: 'active', permCodes: [] })),
+        me.permissions, token)
+    } catch {
+      reset()
+    }
+  }
 
   return {
     session,
@@ -177,12 +161,12 @@ export const useAuthStore = defineStore('auth', () => {
     userRoles,
     permCodes,
     menuTree,
+    hydrated,
     isLoggedIn,
     isSuperAdmin,
     landingPath,
     login,
     logout,
-    refreshPermissions,
     refreshCurrentUser,
     restoreFromSession,
   }

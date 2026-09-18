@@ -1,17 +1,36 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { MENU_TREE, collectAllPerms, type MenuNode, type PermOp } from '@/iam/menu-tree'
 import { useAuthStore } from '@/stores/auth'
+import { iamApi } from '@/api/iam'
 
 const auth = useAuthStore()
+
+/** 权限目录树：优先从后端加载，接口不可用时回退到内置静态菜单源 */
+const serverTree = ref<MenuNode[]>(MENU_TREE)
 
 const expandedKeys = ref<string[]>(MENU_TREE.map((n) => n.id))
 const searchKeyword = ref('')
 const showOnlyMine = ref(false)
 const treeRef = ref()
 
-const allPerms = computed(() => collectAllPerms())
+onMounted(() => {
+  void syncTree(false)
+})
+
+async function syncTree(showMessage = true) {
+  try {
+    const tree = await iamApi.permissionTree()
+    if (Array.isArray(tree) && tree.length > 0) serverTree.value = tree
+    if (showMessage) ElMessage.success('菜单权限已从后端同步')
+  } catch (e) {
+    serverTree.value = MENU_TREE
+    if (showMessage) ElMessage.warning(e instanceof Error ? e.message : '同步失败，已使用内置菜单源')
+  }
+}
+
+const allPerms = computed(() => collectAllPerms(serverTree.value))
 const totalCount = computed(() => allPerms.value.length)
 const myCount = computed(() => auth.permCodes.size)
 
@@ -54,10 +73,10 @@ function transform(nodes: MenuNode[], kw: string, onlyMine: boolean): MenuTreeNo
   return result
 }
 
-const treeData = computed(() => transform(MENU_TREE, searchKeyword.value, showOnlyMine.value))
+const treeData = computed(() => transform(serverTree.value, searchKeyword.value, showOnlyMine.value))
 
 function handleSync() {
-  ElMessage.success('菜单权限已同步（当前为前端本地菜单源，后续接入后端后从 /api/v1/iam/menus 拉取）')
+  void syncTree(true)
 }
 
 async function copyCode(code: string) {
@@ -100,13 +119,13 @@ watch(searchKeyword, async (kw) => {
     })
   } else {
     Object.keys(nodesMap).forEach((id) => {
-      nodesMap[id].expanded = MENU_TREE.some((n) => n.id === id)
+      nodesMap[id].expanded = serverTree.value.some((n) => n.id === id)
     })
   }
 })
 
 const systemStats = computed(() => {
-  return MENU_TREE.map((sys) => {
+  return serverTree.value.map((sys) => {
     const perms = allPerms.value.filter((p) => p.system === sys.system)
     const mine = perms.filter((p) => auth.permCodes.has(p.code)).length
     return { name: sys.name, system: sys.system, total: perms.length, mine }

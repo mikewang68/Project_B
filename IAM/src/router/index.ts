@@ -54,8 +54,13 @@ const router = createRouter({
 /** 白名单：不需要登录即可访问的路径 */
 const WHITE_LIST = ['/login']
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
+
+  // 页面刷新后若本地仍有 token，先通过 /auth/me 恢复会话
+  if (!auth.hydrated) {
+    await auth.restoreFromSession()
+  }
 
   // 已登录用户访问登录页 → 跳到其落地页
   if (to.path === '/login' && auth.isLoggedIn) {
@@ -86,6 +91,14 @@ router.beforeEach((to, _from, next) => {
 
 router.afterEach((to) => {
   document.title = to.meta.title ? `${to.meta.title} | IAM统一权限` : 'IAM统一身份与权限管理'
+})
+
+// 任意请求返回 401：清理后回到登录页（带当前路径用于登录后跳回）
+window.addEventListener('app:unauthorized', () => {
+  const current = router.currentRoute.value
+  if (current.path !== '/login') {
+    router.replace({ path: '/login', query: { redirect: current.fullPath } })
+  }
 })
 
 export default router
