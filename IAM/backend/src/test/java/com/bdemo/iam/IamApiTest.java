@@ -229,4 +229,58 @@ class IamApiTest {
                 .andExpect(jsonPath("$.data[0].children[0].id").value("iam-user"))
                 .andExpect(jsonPath("$.data[0].children[0].perms.view").value("iam:user:list:view"));
     }
+
+    @Test
+    void invalidUsernameSpecialCharsRejected() throws Exception {
+        // 用户名含空格/特殊字符必须被服务端拒绝（白名单 ^[A-Za-z0-9_.-]+$），防止注入/越权构造
+        mockMvc.perform(post("/users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"非法\",\"username\":\"bad name!\",\"password\":\"Pass@123\","
+                                + "\"roleIds\":[\"role-viewer\"],\"orgCodes\":[],\"status\":\"active\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void tooShortUsernameRejected() throws Exception {
+        mockMvc.perform(post("/users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"短名\",\"username\":\"ab\",\"password\":\"Pass@123\","
+                                + "\"roleIds\":[\"role-viewer\"],\"orgCodes\":[],\"status\":\"active\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void invalidUserStatusRejected() throws Exception {
+        // 用户状态仅允许 active/disabled
+        mockMvc.perform(post("/users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"状态非法\",\"username\":\"validuser\",\"password\":\"Pass@123\","
+                                + "\"roleIds\":[\"role-viewer\"],\"orgCodes\":[],\"status\":\"hacked\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void invalidRoleStatusRejected() throws Exception {
+        // 角色状态仅允许 active/inactive（注意与用户的 active/disabled 不同）
+        mockMvc.perform(post("/roles")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"测试角色\",\"code\":\"test_role\",\"description\":\"\","
+                                + "\"permCodes\":[],\"status\":\"disabled\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void userListResponseDoesNotLeakPasswordHash() throws Exception {
+        // 即使 Mapper 带出了 password，User.password 的 @JsonIgnore 也必须保证响应不含该字段
+        User secret = user("user-admin", "admin", "系统管理员");
+        secret.setPassword("$2a$10$should-not-be-serialized");
+        when(userMapper.selectList(anyString(), any(), any(), any())).thenReturn(List.of(secret));
+        mockMvc.perform(get("/users").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].password").doesNotExist());
+    }
 }

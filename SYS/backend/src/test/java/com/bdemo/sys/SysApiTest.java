@@ -30,6 +30,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -211,5 +212,72 @@ class SysApiTest {
                         .content("{\"entries\":[{\"key\":\"cfg-name\",\"value\":\"新值\"}]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.updated").value(1));
+    }
+
+    @Test
+    void csvExportNeutralizesFormulaInjection() throws Exception {
+        // 日志对象/详情若以 = @ 等公式字符开头，导出 CSV 时必须前置单引号，避免 Excel/WPS 公式注入（CWE-1236）
+        SysLog evil = new SysLog();
+        evil.setId("log-evil");
+        evil.setKind("operation");
+        evil.setUsername("viewer");
+        evil.setModule("user");
+        evil.setAction("add");
+        evil.setTarget("=1+1");
+        evil.setDetail("@SUM(1+1)");
+        evil.setResult("success");
+        evil.setCreatedAt(LocalDateTime.now());
+        when(logMapper.selectLogs(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(evil));
+        mockMvc.perform(get("/logs/export").header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"'=1+1\"")))
+                .andExpect(content().string(containsString("\"'@SUM(1+1)\"")));
+    }
+
+    @Test
+    void invalidLogDateReturns400() throws Exception {
+        // 非法日期参数必须返回 400 而不是被兜底成 500
+        mockMvc.perform(get("/logs").param("begin", "not-a-date")
+                        .header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void nonNumericConfigValueReturns400() throws Exception {
+        // number 类型配置写入非数字必须被服务端拒绝（不能只依赖前端控件）
+        SysConfigItem num = new SysConfigItem();
+        num.setId("cfg-num");
+        num.setKey("cfg-num");
+        num.setLabel("数值配置");
+        num.setGroup("基础设置");
+        num.setValue("8");
+        num.setType("number");
+        num.setEditable(1);
+        when(configMapper.selectAll()).thenReturn(List.of(num));
+        mockMvc.perform(put("/configs/group/基础设置")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"entries\":[{\"key\":\"cfg-num\",\"value\":\"abc\"}]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void booleanConfigRejectsInvalidValue() throws Exception {
+        // boolean 类型配置只接受 true/false
+        SysConfigItem bool = new SysConfigItem();
+        bool.setId("cfg-bool");
+        bool.setKey("cfg-bool");
+        bool.setLabel("开关配置");
+        bool.setGroup("基础设置");
+        bool.setValue("false");
+        bool.setType("boolean");
+        bool.setEditable(1);
+        when(configMapper.selectAll()).thenReturn(List.of(bool));
+        mockMvc.perform(put("/configs/group/基础设置")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"entries\":[{\"key\":\"cfg-bool\",\"value\":\"maybe\"}]}"))
+                .andExpect(status().isBadRequest());
     }
 }
