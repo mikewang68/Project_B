@@ -35,6 +35,7 @@ function selectType(code: string) {
 }
 
 const typeDialog = ref(false)
+const typeSaving = ref(false)
 const typeFormRef = ref<FormInstance>()
 const typeEditing = ref<DictType | null>(null)
 const typeForm = reactive({ code: '', name: '', status: 'active' as Status, remark: '' })
@@ -64,7 +65,9 @@ function openTypeEdit(row: DictType) {
   typeDialog.value = true
 }
 async function submitType() {
+  if (typeSaving.value) return
   await typeFormRef.value?.validate()
+  typeSaving.value = true
   try {
     if (typeEditing.value) {
       await sys.updateType(typeEditing.value.id, { name: typeForm.name, status: typeForm.status, remark: typeForm.remark })
@@ -77,6 +80,8 @@ async function submitType() {
     typeDialog.value = false
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : '保存失败')
+  } finally {
+    typeSaving.value = false
   }
 }
 async function removeType(row: DictType) {
@@ -110,6 +115,7 @@ const currentItems = computed(() =>
 )
 
 const itemDialog = ref(false)
+const itemSaving = ref(false)
 const itemFormRef = ref<FormInstance>()
 const itemEditing = ref<DictItem | null>(null)
 const itemForm = reactive({ label: '', value: '', sort: 1, status: 'active' as Status, tagType: 'info' as NonNullable<DictItem['tagType']>, remark: '' })
@@ -155,6 +161,7 @@ function openItemEdit(row: DictItem) {
   itemDialog.value = true
 }
 async function submitItem() {
+  if (itemSaving.value) return
   await itemFormRef.value?.validate()
   const payload = {
     typeCode: currentTypeCode.value,
@@ -165,6 +172,7 @@ async function submitItem() {
     tagType: itemForm.tagType,
     remark: itemForm.remark,
   }
+  itemSaving.value = true
   try {
     if (itemEditing.value) {
       await sys.updateItem(itemEditing.value.id, payload)
@@ -176,6 +184,8 @@ async function submitItem() {
     itemDialog.value = false
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : '保存失败')
+  } finally {
+    itemSaving.value = false
   }
 }
 async function removeItem(row: DictItem) {
@@ -316,7 +326,7 @@ async function toggleItem(row: DictItem) {
       </el-form>
       <template #footer>
         <el-button @click="typeDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitType">保存</el-button>
+        <el-button type="primary" :loading="typeSaving" @click="submitType">保存</el-button>
       </template>
     </el-dialog>
 
@@ -327,7 +337,7 @@ async function toggleItem(row: DictItem) {
           <el-input v-model="itemForm.label" placeholder="如 启用" />
         </el-form-item>
         <el-form-item label="字典值" prop="value">
-          <el-input v-model="itemForm.value" placeholder="如 active" />
+          <el-input v-model="itemForm.value" placeholder="如 active（保存后不可改）" :disabled="!!itemEditing" />
         </el-form-item>
         <el-form-item label="排序号">
           <el-input-number v-model="itemForm.sort" :min="0" :max="9999" />
@@ -349,7 +359,7 @@ async function toggleItem(row: DictItem) {
       </el-form>
       <template #footer>
         <el-button @click="itemDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitItem">保存</el-button>
+        <el-button type="primary" :loading="itemSaving" @click="submitItem">保存</el-button>
       </template>
     </el-dialog>
   </div>

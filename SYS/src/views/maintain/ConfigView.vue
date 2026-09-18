@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useSysStore } from '@/stores/sys'
 import { useAuthStore } from '@/stores/auth'
@@ -11,6 +11,8 @@ const canEdit = computed(() => auth.isSuperAdmin || auth.permCodes.has('sys:conf
 
 // 编辑草稿（统一字符串存储），配置加载后取当前值
 const draft = reactive<Record<string, string>>({})
+// 正在保存的分组，防止重复提交
+const savingGroup = ref('')
 
 onMounted(async () => {
   try {
@@ -47,7 +49,9 @@ function groupDirty(items: SysConfigItem[]) {
 }
 
 async function saveGroup(groupName: string, items: SysConfigItem[]) {
+  if (savingGroup.value) return
   const entries = items.map((c) => ({ key: c.key, value: draft[c.key] ?? c.value }))
+  savingGroup.value = groupName
   try {
     const n = await sys.saveConfigGroup(entries)
     // 保存后以后端返回值为准同步草稿
@@ -56,6 +60,8 @@ async function saveGroup(groupName: string, items: SysConfigItem[]) {
     else ElMessage.success(`「${groupName}」已保存，更新 ${n} 项`)
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : '保存失败')
+  } finally {
+    savingGroup.value = ''
   }
 }
 </script>
@@ -79,7 +85,8 @@ async function saveGroup(groupName: string, items: SysConfigItem[]) {
             v-if="canEdit"
             type="primary"
             size="small"
-            :disabled="!groupDirty(g.items)"
+            :loading="savingGroup === g.name"
+            :disabled="!groupDirty(g.items) || savingGroup !== ''"
             @click="saveGroup(g.name, g.items)"
           >保存本组</el-button>
         </div>

@@ -41,6 +41,7 @@ function getUserCount(roleId: string) {
 const dialogVisible = ref(false)
 const dialogMode = ref<'add' | 'edit'>('add')
 const formRef = ref<FormInstance>()
+const saving = ref(false)
 const form = reactive<Partial<Role>>({
   name: '',
   code: '',
@@ -74,17 +75,22 @@ function openEdit(role: Role) {
 }
 
 async function handleSubmit() {
-  if (!formRef.value) return
+  if (!formRef.value || saving.value) return
   await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    if (dialogMode.value === 'add') {
-      const result = await iam.addRole(form as Omit<Role, 'id' | 'createdAt' | 'updatedAt'>)
-      if (result.success) { ElMessage.success('角色创建成功'); dialogVisible.value = false }
-      else ElMessage.error(result.message || '创建失败')
-    } else {
-      const result = await iam.updateRole(form.id!, form)
-      if (result.success) { ElMessage.success('角色更新成功'); dialogVisible.value = false }
-      else ElMessage.error(result.message || '更新失败')
+    if (!valid || saving.value) return
+    saving.value = true
+    try {
+      if (dialogMode.value === 'add') {
+        const result = await iam.addRole(form as Omit<Role, 'id' | 'createdAt' | 'updatedAt'>)
+        if (result.success) { ElMessage.success('角色创建成功'); dialogVisible.value = false }
+        else ElMessage.error(result.message || '创建失败')
+      } else {
+        const result = await iam.updateRole(form.id!, form)
+        if (result.success) { ElMessage.success('角色更新成功'); dialogVisible.value = false }
+        else ElMessage.error(result.message || '更新失败')
+      }
+    } finally {
+      saving.value = false
     }
   })
 }
@@ -114,6 +120,7 @@ async function handleToggleStatus(role: Role) {
 const permVisible = ref(false)
 const permForm = reactive({ roleId: '', roleName: '', checkedPerms: [] as string[] })
 const permTreeRef = ref()
+const permSaving = ref(false)
 
 /**
  * 将 MENU_TREE 转为 el-tree 权限树结构。
@@ -178,14 +185,20 @@ async function handlePermSubmit() {
   const checked = permTreeRef.value?.getCheckedKeys() as string[] || []
   const halfChecked = permTreeRef.value?.getHalfCheckedKeys() as string[] || []
   const leafCodes = [...checked, ...halfChecked].filter((c) => c.includes(':'))
+  if (permSaving.value) return
   // 自动补全查看权限：勾选操作权限时连带其 view，避免孤立授权
   const allChecked = ensureViewPerms(leafCodes)
-  const result = await iam.assignRolePerms(permForm.roleId, allChecked)
-  if (result.success) {
-    ElMessage.success(`已分配 ${allChecked.length} 项权限（已自动补全查看权限）`)
-    permVisible.value = false
-  } else {
-    ElMessage.error(result.message || '分配失败')
+  permSaving.value = true
+  try {
+    const result = await iam.assignRolePerms(permForm.roleId, allChecked)
+    if (result.success) {
+      ElMessage.success(`已分配 ${allChecked.length} 项权限（已自动补全查看权限）`)
+      permVisible.value = false
+    } else {
+      ElMessage.error(result.message || '分配失败')
+    }
+  } finally {
+    permSaving.value = false
   }
 }
 
@@ -220,7 +233,7 @@ const canAssignPerm = computed(() =>
         <el-form-item label="状态">
           <el-select v-model="search.status" placeholder="全部" clearable style="width:120px">
             <el-option label="启用" value="active" />
-            <el-option label="停用" value="disabled" />
+            <el-option label="停用" value="inactive" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -298,14 +311,14 @@ const canAssignPerm = computed(() =>
         <el-form-item label="状态">
           <el-select v-model="form.status" style="width:100%" :disabled="form.code === 'super_admin'">
             <el-option label="启用" value="active" />
-            <el-option label="停用" value="disabled" />
+            <el-option label="停用" value="inactive" />
           </el-select>
           <div v-if="form.code === 'super_admin'" style="font-size:11px;color:var(--app-color-warning);line-height:1.4">内置系统管理员角色不可停用</div>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
 
@@ -332,7 +345,7 @@ const canAssignPerm = computed(() =>
       </div>
       <template #footer>
         <el-button @click="permVisible = false">取消</el-button>
-        <el-button type="primary" @click="handlePermSubmit">保存权限</el-button>
+        <el-button type="primary" :loading="permSaving" @click="handlePermSubmit">保存权限</el-button>
       </template>
     </el-dialog>
   </div>

@@ -67,7 +67,7 @@ export const iamApi = {
   toggleUserStatus: (id: string, status: User['status']) =>
     client.request<User>(`/users/${id}/status`, { method: 'PUT', body: { status } }).then(normalizeUser),
   resetPassword: (id: string, newPassword: string) =>
-    client.request<void>(`/users/${id}/password`, { method: 'PUT', body: { newPassword } }),
+    client.request<void>(`/users/${id}/password`, { method: 'PUT', body: { password: newPassword } }),
   assignUserRoles: (id: string, roleIds: string[]) =>
     client.request<void>(`/users/${id}/roles`, { method: 'PUT', body: { roleIds } }),
 

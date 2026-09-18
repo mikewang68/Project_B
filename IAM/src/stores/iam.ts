@@ -79,6 +79,7 @@ export const useIamStore = defineStore('iam', () => {
         name: data.name,
         phone: data.phone,
         email: data.email,
+        password: data.password,
         roleIds: data.roleIds ? [...data.roleIds] : undefined,
         orgCodes: data.orgCodes,
         status: data.status,
@@ -180,7 +181,7 @@ export const useIamStore = defineStore('iam', () => {
       return { success: false, message: '角色编码已存在' }
     }
     const current = roles.value.find((r) => r.id === id)
-    if (current?.code === 'super_admin' && data.status === 'disabled') {
+    if (current?.code === 'super_admin' && data.status === 'inactive') {
       return { success: false, message: '系统管理员角色不允许停用' }
     }
     try {
@@ -220,7 +221,7 @@ export const useIamStore = defineStore('iam', () => {
     if (current.code === 'super_admin' && current.status === 'active') {
       return { success: false, message: '系统管理员角色不允许停用' }
     }
-    const next = current.status === 'active' ? 'disabled' : 'active'
+    const next = current.status === 'active' ? 'inactive' : 'active'
     try {
       const updated = await iamApi.toggleRoleStatus(id, next)
       const idx = roles.value.findIndex((r) => r.id === id)

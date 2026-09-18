@@ -50,6 +50,7 @@ const filteredUsers = computed(() => {
 const dialogVisible = ref(false)
 const dialogMode = ref<'add' | 'edit'>('add')
 const formRef = ref<FormInstance>()
+const saving = ref(false)
 const form = reactive<Partial<User>>({
   username: '',
   name: '',
@@ -127,27 +128,32 @@ function openEdit(user: User) {
 }
 
 async function handleSubmit() {
-  if (!formRef.value) return
+  if (!formRef.value || saving.value) return
   await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    if (dialogMode.value === 'add') {
-      const result = await iam.addUser(form as Omit<User, 'id' | 'createdAt' | 'updatedAt'>)
-      if (result.success) {
-        ElMessage.success('用户创建成功')
-        dialogVisible.value = false
+    if (!valid || saving.value) return
+    saving.value = true
+    try {
+      if (dialogMode.value === 'add') {
+        const result = await iam.addUser(form as Omit<User, 'id' | 'createdAt' | 'updatedAt'>)
+        if (result.success) {
+          ElMessage.success('用户创建成功')
+          dialogVisible.value = false
+        } else {
+          ElMessage.error(result.message || '创建失败')
+        }
       } else {
-        ElMessage.error(result.message || '创建失败')
+        const updateData: Partial<User> = { ...form }
+        if (!form.password) delete updateData.password
+        const result = await iam.updateUser(form.id!, updateData)
+        if (result.success) {
+          ElMessage.success('用户更新成功')
+          dialogVisible.value = false
+        } else {
+          ElMessage.error(result.message || '更新失败')
+        }
       }
-    } else {
-      const updateData: Partial<User> = { ...form }
-      if (!form.password) delete updateData.password
-      const result = await iam.updateUser(form.id!, updateData)
-      if (result.success) {
-        ElMessage.success('用户更新成功')
-        dialogVisible.value = false
-      } else {
-        ElMessage.error(result.message || '更新失败')
-      }
+    } finally {
+      saving.value = false
     }
   })
 }
@@ -171,6 +177,7 @@ async function handleToggleStatus(user: User) {
 
 // ---- 重置密码 ----
 const pwdVisible = ref(false)
+const pwdSaving = ref(false)
 const pwdForm = reactive({ userId: '', username: '', password: '', confirm: '' })
 function openResetPwd(user: User) {
   pwdForm.userId = user.id
@@ -180,15 +187,22 @@ function openResetPwd(user: User) {
   pwdVisible.value = true
 }
 async function handleResetPwd() {
+  if (pwdSaving.value) return
   if (pwdForm.password.length < 6) { ElMessage.error('密码至少 6 位'); return }
   if (pwdForm.password !== pwdForm.confirm) { ElMessage.error('两次密码不一致'); return }
-  const result = await iam.resetPassword(pwdForm.userId, pwdForm.password)
-  if (result.success) { ElMessage.success('密码重置成功'); pwdVisible.value = false }
-  else ElMessage.error(result.message || '重置失败')
+  pwdSaving.value = true
+  try {
+    const result = await iam.resetPassword(pwdForm.userId, pwdForm.password)
+    if (result.success) { ElMessage.success('密码重置成功'); pwdVisible.value = false }
+    else ElMessage.error(result.message || '重置失败')
+  } finally {
+    pwdSaving.value = false
+  }
 }
 
 // ---- 分配角色 ----
 const roleVisible = ref(false)
+const roleSaving = ref(false)
 const roleForm = reactive({ userId: '', username: '', roleIds: [] as string[] })
 function openAssignRole(user: User) {
   roleForm.userId = user.id
@@ -197,9 +211,15 @@ function openAssignRole(user: User) {
   roleVisible.value = true
 }
 async function handleAssignRole() {
-  const result = await iam.assignUserRoles(roleForm.userId, roleForm.roleIds)
-  if (result.success) { ElMessage.success('角色分配成功'); roleVisible.value = false }
-  else ElMessage.error(result.message || '分配失败')
+  if (roleSaving.value) return
+  roleSaving.value = true
+  try {
+    const result = await iam.assignUserRoles(roleForm.userId, roleForm.roleIds)
+    if (result.success) { ElMessage.success('角色分配成功'); roleVisible.value = false }
+    else ElMessage.error(result.message || '分配失败')
+  } finally {
+    roleSaving.value = false
+  }
 }
 
 const canAdd = computed(() => auth.permCodes.has('iam:user:add:add'))
@@ -380,7 +400,7 @@ const canResetPwd = computed(() =>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
 
@@ -397,7 +417,7 @@ const canResetPwd = computed(() =>
       </el-form>
       <template #footer>
         <el-button @click="pwdVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleResetPwd">确定重置</el-button>
+        <el-button type="primary" :loading="pwdSaving" @click="handleResetPwd">确定重置</el-button>
       </template>
     </el-dialog>
 
@@ -413,7 +433,7 @@ const canResetPwd = computed(() =>
       </el-checkbox-group>
       <template #footer>
         <el-button @click="roleVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleAssignRole">确定</el-button>
+        <el-button type="primary" :loading="roleSaving" @click="handleAssignRole">确定</el-button>
       </template>
     </el-dialog>
   </div>

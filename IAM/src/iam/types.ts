@@ -9,8 +9,8 @@
 /** 用户状态 */
 export type UserStatus = 'active' | 'disabled'
 
-/** 角色状态 */
-export type RoleStatus = 'active' | 'disabled'
+/** 角色状态（角色枚举为 active/inactive，与用户状态 active/disabled 不同，须与后端保持一致） */
+export type RoleStatus = 'active' | 'inactive'
 
 /** 系统用户 */
 export interface User {
