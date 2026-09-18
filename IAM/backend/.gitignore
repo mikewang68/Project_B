@@ -1,0 +1,25 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### VS Code ###
+.vscode/
+
+### Logs ###
+*.log
+logs/
+
+### Local secrets ###
+.env
+.env.local
+application-local.yml
+application-local.yaml
+application-prod-secret.yml
+application-prod-secret.yaml

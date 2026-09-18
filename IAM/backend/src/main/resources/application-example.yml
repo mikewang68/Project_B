@@ -1,0 +1,21 @@
+# IAM 后端本地配置示例
+# 复制为 application-local.yml 或通过环境变量注入；application-local.yml 不入库。
+server:
+  port: 8081
+  servlet:
+    context-path: /api/v1/iam
+
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://127.0.0.1:5432/project_b?currentSchema=iam&ApplicationName=iam-backend
+    username: iam_app
+    password: # 填写 db/01-create-database.sql 中为 iam_app 设置的真实密码
+
+app:
+  jwt:
+    # 必须与 SYS 后端完全一致
+    secret: # 生产/联调环境通过 JWT_SECRET 注入，至少 32 字节
+    expire-hours: 12
+  cors:
+    allowed-origins: http://localhost:5174,http://127.0.0.1:5174

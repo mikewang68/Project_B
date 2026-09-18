@@ -1,0 +1,41 @@
+server:
+  port: ${IAM_SERVER_PORT:8081}
+  servlet:
+    context-path: /api/v1/iam
+  encoding:
+    charset: UTF-8
+    force: true
+
+spring:
+  application:
+    name: iam-backend
+  datasource:
+    # openGauss 6.0.5；驱动与 URL 写法与 WMS 模块保持一致（opengauss-jdbc 6.0.0）
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:project_b}?currentSchema=iam&ApplicationName=iam-backend&reWriteBatchedInserts=true
+    username: ${DB_USER:iam_app}
+    password: ${DB_PASSWORD:change-me}
+    hikari:
+      pool-name: IamHikariPool
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+    default-fetch-size: 100
+    default-statement-timeout: 20
+
+app:
+  jwt:
+    # 开发占位密钥；生产必须通过环境变量 JWT_SECRET 注入（IAM/SYS 必须相同）
+    secret: ${JWT_SECRET:dev-only-iam-sys-jwt-secret-please-change-in-production-0123456789}
+    # 有效期（小时）
+    expire-hours: ${JWT_EXPIRE_HOURS:12}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5174,http://127.0.0.1:5174,http://localhost:4174,http://127.0.0.1:4174,http://localhost:5175,http://127.0.0.1:5175}
+
+logging:
+  level:
+    com.bdemo.iam: info
