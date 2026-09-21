@@ -14,8 +14,8 @@ import com.bproject.safety.module.rule.model.DemoRule.EdgeNode;
 import com.bproject.safety.module.rule.model.DemoRule.Param;
 import com.bproject.safety.module.rule.model.DemoRule.Version;
 import com.bproject.safety.module.rule.model.RuleStatuses;
+import com.bproject.safety.module.rule.repository.RuleQuery;
 import com.bproject.safety.module.rule.repository.RuleRepository;
-import com.bproject.safety.module.rule.repository.RuleRepository.RuleQuery;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -44,11 +44,14 @@ public class RuleService {
     private final RuleRepository repository;
     private final DomainLivePublisher publisher;
     private final Clock clock;
+    private final RuleNumberGenerator numberGenerator;
 
-    public RuleService(RuleRepository repository, DomainLivePublisher publisher, Clock clock) {
+    public RuleService(RuleRepository repository, DomainLivePublisher publisher, Clock clock,
+                       RuleNumberGenerator numberGenerator) {
         this.repository = repository;
         this.publisher = publisher;
         this.clock = clock;
+        this.numberGenerator = numberGenerator;
     }
 
     // ---------- 查询 ----------
@@ -65,10 +68,10 @@ public class RuleService {
         List<DemoRule> all = repository.findAll();
         String today = nowDate();
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("active", all.stream().filter(r -> RuleStatuses.ACTIVE.equals(r.status)).count());
-        m.put("review", all.stream().filter(r -> RuleStatuses.REVIEW.equals(r.status)).count());
-        m.put("draft", all.stream().filter(r -> RuleStatuses.DRAFT.equals(r.status)).count());
-        m.put("mismatch", all.stream().filter(r -> RuleStatuses.MISMATCH.equals(r.status)).count());
+        m.put("active", all.stream().filter(r -> RuleStatuses.ACTIVE.equals(r.statusCode)).count());
+        m.put("review", all.stream().filter(r -> RuleStatuses.REVIEW.equals(r.statusCode)).count());
+        m.put("draft", all.stream().filter(r -> RuleStatuses.DRAFT.equals(r.statusCode)).count());
+        m.put("mismatch", all.stream().filter(r -> RuleStatuses.MISMATCH.equals(r.statusCode)).count());
         m.put("changedToday", all.stream().filter(r -> r.updatedAt != null && r.updatedAt.startsWith(today)).count());
         return m;
     }
@@ -92,7 +95,8 @@ public class RuleService {
         r.areas = req.areas() == null ? new ArrayList<>() : new ArrayList<>(req.areas());
         r.version = "v1.0";
         r.platformVersion = "v1.0";
-        r.risk = firstNonBlank(req.risk(), "一般");
+        r.riskCode = com.bproject.safety.module.alert.model.RiskLevels
+                .normalize(firstNonBlank(req.risk(), "一般"));
         r.owner = firstNonBlank(req.owner(), "安全员 李娜");
         r.approver = bool(req.submitReview()) ? "待审批" : "—";
         r.effectiveAt = "—";
@@ -101,7 +105,7 @@ public class RuleService {
         r.params = req.params() == null ? new ArrayList<>() : new ArrayList<>(req.params());
         r.actions = req.actions() == null ? new ArrayList<>() : new ArrayList<>(req.actions());
         r.highRisk = bool(req.highRisk());
-        r.status = bool(req.submitReview()) ? RuleStatuses.REVIEW : RuleStatuses.DRAFT;
+        r.statusCode = bool(req.submitReview()) ? RuleStatuses.REVIEW : RuleStatuses.DRAFT;
         r.updatedAt = nowDateTime();
         r.versions = new ArrayList<>(List.of(new Version(r.version, nowDate(),
                 bool(req.submitReview()) ? "新建并提交评审" : "新建草稿", r.owner, "当前", null)));
@@ -115,16 +119,23 @@ public class RuleService {
     public DemoRule update(String id, UpdateRuleRequest req) {
         DemoRule r = require(id);
         boolean asNew = bool(req.asNewVersion());
+        boolean isActive = RuleStatuses.ACTIVE.equals(r.statusCode);
+        String newVersion = null;
         if (asNew) {
             // 已生效规则“新建版本”：不覆盖历史，版本号 minor +1，回到草稿 / 待评审
             String oldVersion = r.version;
-            String newVersion = bumpMinor(oldVersion);
+            newVersion = bumpMinor(oldVersion);
             r.versions = prependVersion(r, newVersion,
                     bool(req.submitReview()) ? "基于上一版本修订，提交评审" : "新版本草稿", null);
             r.version = newVersion;
             r.platformVersion = newVersion;
             r.sourceVersion = null;
-            snapshot(r, newVersion);
+        } else if (isActive) {
+            // ACTIVE 规则普通编辑：主状态保持 ACTIVE，记录新版本草稿，边缘节点仍维持当前 active 版本
+            newVersion = bumpMinor(r.version);
+            if (r.versions == null || r.versions.isEmpty() || !newVersion.equals(r.versions.get(0).version())) {
+                r.versions = prependVersion(r, newVersion, "新版本草稿", null);
+            }
         }
         if (req.name() != null) {
             r.name = req.name();
@@ -136,7 +147,7 @@ public class RuleService {
             r.areas = new ArrayList<>(req.areas());
         }
         if (req.risk() != null) {
-            r.risk = req.risk();
+            r.riskCode = com.bproject.safety.module.alert.model.RiskLevels.normalize(req.risk());
         }
         if (req.params() != null) {
             r.params = new ArrayList<>(req.params());
@@ -153,9 +164,14 @@ public class RuleService {
         if (req.relatedModules() != null) {
             r.relatedModules = new ArrayList<>(req.relatedModules());
         }
-        r.status = bool(req.submitReview()) ? RuleStatuses.REVIEW : RuleStatuses.DRAFT;
-        r.approver = bool(req.submitReview()) ? "待审批" : "—";
-        r.effectiveAt = "—";
+        if (newVersion != null) {
+            snapshot(r, newVersion);
+        }
+        if (!isActive || asNew) {
+            r.statusCode = bool(req.submitReview()) ? RuleStatuses.REVIEW : RuleStatuses.DRAFT;
+            r.approver = bool(req.submitReview()) ? "待审批" : "—";
+            r.effectiveAt = "—";
+        }
         r.updatedAt = nowDateTime();
         repository.save(r);
         publishChanged(r);
@@ -170,7 +186,7 @@ public class RuleService {
         if (r.highRisk && !bool(req == null ? null : req.confirmHighRisk())) {
             throw ApiException.unprocessable("高危规则提交评审需显式二次确认（confirmHighRisk=true）");
         }
-        r.status = RuleStatuses.REVIEW;
+        r.statusCode = RuleStatuses.REVIEW;
         r.approver = "待审批";
         r.updatedAt = nowDateTime();
         repository.save(r);
@@ -184,7 +200,7 @@ public class RuleService {
         if (r.highRisk && !bool(req == null ? null : req.confirmHighRisk())) {
             throw ApiException.unprocessable("高危安全参数批准需显式二次确认（confirmHighRisk=true）");
         }
-        r.status = RuleStatuses.APPROVED;
+        r.statusCode = RuleStatuses.APPROVED;
         r.approver = DEFAULT_APPROVER;
         r.updatedAt = nowDateTime();
         repository.save(r);
@@ -195,7 +211,7 @@ public class RuleService {
     public DemoRule reject(String id, OperatorRequest req) {
         DemoRule r = require(id);
         requireStatus(r, RuleStatuses.REVIEW);
-        r.status = RuleStatuses.DRAFT;
+        r.statusCode = RuleStatuses.DRAFT;
         r.approver = "—";
         String comment = req != null && !isBlank(req.comment()) ? "（驳回原因：" + req.comment() + "）" : "";
         r.versions = prependVersion(r, r.version, "评审驳回，退回草稿" + comment, null);
@@ -207,12 +223,17 @@ public class RuleService {
 
     public DemoRule publish(String id, com.bproject.safety.module.rule.dto.RuleRequests.PublishRequest req) {
         DemoRule r = require(id);
-        requireStatus(r, RuleStatuses.APPROVED);
+        if (!RuleStatuses.APPROVED.equals(r.statusCode) && !RuleStatuses.ACTIVE.equals(r.statusCode)) {
+            throw ApiException.conflict("当前状态不允许执行该操作（当前状态：" + RuleStatuses.label(r.statusCode) + "）");
+        }
         // 模拟 EDGE-01~04 同步：全部成功后规则生效（不连接真实边缘节点）
-        r.status = RuleStatuses.PUBLISHING;
+        r.statusCode = RuleStatuses.PUBLISHING;
         repository.save(r);
-        r.edgeNodes = syncedNodes(r.version);
-        r.status = RuleStatuses.ACTIVE;
+        String targetVersion = (r.versions != null && !r.versions.isEmpty()) ? r.versions.get(0).version() : r.version;
+        r.version = targetVersion;
+        r.platformVersion = targetVersion;
+        r.edgeNodes = syncedNodes(targetVersion);
+        r.statusCode = RuleStatuses.ACTIVE;
         r.effectiveAt = nowDateTime();
         r.updatedAt = nowDateTime();
         repository.save(r);
@@ -238,8 +259,8 @@ public class RuleService {
         r.edgeNodes = nodes;
         boolean allSynced = r.edgeNodes.size() == EDGE_IDS.size()
                 && r.edgeNodes.stream().allMatch(n -> RuleStatuses.EDGE_SYNCED.equals(n.state()));
-        if (allSynced && RuleStatuses.MISMATCH.equals(r.status)) {
-            r.status = RuleStatuses.ACTIVE;
+        if (allSynced && RuleStatuses.MISMATCH.equals(r.statusCode)) {
+            r.statusCode = RuleStatuses.ACTIVE;
             r.effectiveAt = nowDateTime();
         }
         r.updatedAt = nowDateTime();
@@ -266,7 +287,7 @@ public class RuleService {
         r.version = newVersion;
         r.platformVersion = newVersion;
         r.sourceVersion = target;
-        r.status = RuleStatuses.REVIEW;
+        r.statusCode = RuleStatuses.REVIEW;
         r.approver = "待审批";
         r.effectiveAt = "—";
         r.updatedAt = nowDateTime();
@@ -276,7 +297,8 @@ public class RuleService {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("newVersion", newVersion);
         out.put("sourceVersion", target);
-        out.put("status", r.status);
+        out.put("status", r.getStatus());
+        out.put("statusCode", r.statusCode);
         out.put("rule", get(id));
         out.put("versions", r.versions);
         out.put("basedOn", historical);
@@ -285,10 +307,10 @@ public class RuleService {
 
     public DemoRule disable(String id, OperatorRequest req) {
         DemoRule r = require(id);
-        if (!List.of(RuleStatuses.ACTIVE, RuleStatuses.MISMATCH, RuleStatuses.APPROVED).contains(r.status)) {
-            throw ApiException.conflict("当前状态不允许停用（当前状态：" + r.status + "）");
+        if (!List.of(RuleStatuses.ACTIVE, RuleStatuses.MISMATCH, RuleStatuses.APPROVED).contains(r.statusCode)) {
+            throw ApiException.conflict("当前状态不允许停用（当前状态：" + RuleStatuses.label(r.statusCode) + "）");
         }
-        r.status = RuleStatuses.DISABLED;
+        r.statusCode = RuleStatuses.DISABLED;
         r.updatedAt = nowDateTime();
         repository.save(r);
         publishChanged(r);
@@ -308,7 +330,7 @@ public class RuleService {
             }
         }
         r.edgeNodes = nodes;
-        r.status = RuleStatuses.MISMATCH;
+        r.statusCode = RuleStatuses.MISMATCH;
         r.updatedAt = nowDateTime();
         repository.save(r);
         publisher.publish(LiveEventTypes.RULE_SYNC_CHANGED, syncData(r));
@@ -330,17 +352,22 @@ public class RuleService {
         double severe = 6 * factor;
         double emergency = 3 * factor;
         String level;
+        String levelCode;
         List<String> actions;
         if (distance <= emergency) {
+            levelCode = com.bproject.safety.module.collision.model.CollisionRiskLevels.URGENT;
             level = "紧急风险";
             actions = List.of("设备停机", "PLC 联动", "通知司机", "通知安全员");
         } else if (distance <= severe) {
+            levelCode = com.bproject.safety.module.collision.model.CollisionRiskLevels.SEVERE;
             level = "严重风险";
             actions = List.of("减速请求", "通知司机", "通知安全员");
         } else if (distance <= warn) {
+            levelCode = com.bproject.safety.module.collision.model.CollisionRiskLevels.WARNING;
             level = "预警风险";
             actions = List.of("通知司机", "现场声光提醒");
         } else {
+            levelCode = com.bproject.safety.module.collision.model.CollisionRiskLevels.SAFE;
             level = "安全";
             actions = List.of("保持监测");
         }
@@ -355,13 +382,14 @@ public class RuleService {
         String escalation;
         if (distance > emergency && distance - emergency < 2) {
             escalation = String.format("距离继续下降至 %.1fm 内，预计升级为紧急风险并触发设备停机", emergency);
-        } else if ("安全".equals(level)) {
+        } else if (com.bproject.safety.module.collision.model.CollisionRiskLevels.SAFE.equals(levelCode)) {
             escalation = "距离继续缩小至预警阈值内将触发预警风险";
         } else {
             escalation = "若相对速度持续增大，升级时间将进一步缩短";
         }
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("level", level);
+        out.put("levelCode", levelCode);
         out.put("matchedRule", matchedRule);
         out.put("thresholdNote", thresholdNote);
         out.put("actions", actions);
@@ -442,8 +470,8 @@ public class RuleService {
     }
 
     private void requireStatus(DemoRule r, String expected) {
-        if (!expected.equals(r.status)) {
-            throw ApiException.conflict("当前状态不允许执行该操作（当前状态：" + r.status + "）");
+        if (!expected.equals(r.statusCode)) {
+            throw ApiException.conflict("当前状态不允许执行该操作（当前状态：" + RuleStatuses.label(r.statusCode) + "）");
         }
     }
 
@@ -451,7 +479,8 @@ public class RuleService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("ruleId", r.id);
         data.put("version", r.version);
-        data.put("status", r.status);
+        data.put("status", r.getStatus());
+        data.put("statusCode", r.statusCode);
         publisher.publish(LiveEventTypes.RULE_CHANGED, data);
     }
 
@@ -460,7 +489,8 @@ public class RuleService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("ruleId", r.id);
         data.put("version", r.version);
-        data.put("status", r.status);
+        data.put("status", r.getStatus());
+        data.put("statusCode", r.statusCode);
         data.put("synced", synced);
         data.put("total", r.edgeNodes.size());
         return data;
@@ -489,17 +519,9 @@ public class RuleService {
         return EDGE_IDS.stream().map(n -> new EdgeNode(n, version, RuleStatuses.EDGE_SYNCED)).toList();
     }
 
+    /** Phase B：编号生成委托 {@link RuleNumberGenerator}，格式 RULE-&lt;域前缀&gt;-NNN 不变。 */
     private String nextRuleId(String category) {
-        String prefix = switch (firstNonBlank(category, "人员安全")) {
-            case "设备安全" -> "RULE-DEV";
-            case "AI识别" -> "RULE-AI";
-            case "告警策略" -> "RULE-ALM";
-            case "联动策略" -> "RULE-LNK";
-            case "通知策略" -> "RULE-NTF";
-            default -> "RULE-PER";
-        };
-        long n = repository.findAll().stream().filter(r -> r.id != null && r.id.startsWith(prefix)).count() + 1;
-        return String.format("%s-%03d", prefix, n);
+        return numberGenerator.nextRuleNumber(firstNonBlank(category, "人员安全"));
     }
 
     /** v3.3 → v3.4（minor +1，Demo 语义化简化）。 */

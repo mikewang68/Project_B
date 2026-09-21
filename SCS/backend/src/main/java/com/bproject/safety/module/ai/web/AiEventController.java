@@ -33,9 +33,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AiEventController {
 
     private final AiEventService service;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
 
-    public AiEventController(AiEventService service) {
+    public AiEventController(AiEventService service,
+                             com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.service = service;
+        this.demoGuard = demoGuard;
     }
 
     @GetMapping("/ai-events")
@@ -113,6 +116,7 @@ public class AiEventController {
     @Operation(summary = "模拟 AI 事件（SIMULATED）：kind=new/low-confidence/camera-fault")
     public DemoAiEvent simulate(@RequestBody(required = false) SimulateRequest body,
                                 @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
+        demoGuard.requireSimulator();
         return service.simulate(body, idemKey);
     }
 

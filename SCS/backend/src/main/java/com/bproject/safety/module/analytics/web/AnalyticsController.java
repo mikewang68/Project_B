@@ -21,9 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AnalyticsController {
 
     private final AnalyticsService service;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
 
-    public AnalyticsController(AnalyticsService service) {
+    public AnalyticsController(AnalyticsService service,
+                               com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.service = service;
+        this.demoGuard = demoGuard;
     }
 
     @GetMapping("/dataset")
@@ -71,6 +74,7 @@ public class AnalyticsController {
     @PostMapping("/simulate-surge")
     @Operation(summary = "切换风险突增场景（SIMULATED：向告警存储注入 / 移除演示事件）")
     public Map<String, Object> simulateSurge(@RequestBody(required = false) SurgeRequest request) {
+        demoGuard.requireSimulator();
         String area = request == null ? null : request.area();
         Boolean active = request == null ? null : request.active();
         return service.simulateSurge(area, active);

@@ -6,7 +6,7 @@ import com.bproject.safety.module.rule.model.DemoRule.Param;
 import com.bproject.safety.module.rule.model.DemoRule.Version;
 import com.bproject.safety.module.rule.model.DemoRule.VersionDiff;
 import com.bproject.safety.module.rule.model.RuleStatuses;
-import com.bproject.safety.module.rule.repository.InMemoryRuleRepository;
+import com.bproject.safety.module.rule.repository.RuleRepository;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -26,14 +26,20 @@ public class RuleDemoSeeder implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(RuleDemoSeeder.class);
     private static final List<String> EDGE_IDS = List.of("EDGE-01", "EDGE-02", "EDGE-03", "EDGE-04");
 
-    private final InMemoryRuleRepository repository;
+    private final RuleRepository repository;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard guard;
 
-    public RuleDemoSeeder(InMemoryRuleRepository repository) {
+    public RuleDemoSeeder(RuleRepository repository,
+                          com.bproject.safety.support.demo.DemoFeatureGuard guard) {
         this.repository = repository;
+        this.guard = guard;
     }
 
     @Override
     public void run(String... args) {
+        if (!guard.isSeedEnabled()) {
+            return;
+        }
         if (repository.count() > 0) {
             return;
         }
@@ -70,7 +76,7 @@ public class RuleDemoSeeder implements CommandLineRunner {
                 List.of(ver("v2.1", "2026-08-26", "优化边界抖动过滤", "李娜", "当前", null),
                         ver("v2.0", "2026-07-30", "初始规则", "系统管理员", "历史版本", null))));
 
-        list.add(seed("RULE-PER-003", "危险区域人员滞留提醒", "人员安全", List.of("维修通道", "翻箱机作业区"),
+        list.add(seed("RULE-PER-003", "危险区域人员滞留提醒", "人员安全", List.of("维修通道", "翻箱机区"),
                 "v1.6", "预警", RuleStatuses.REVIEW, "2026-09-03 17:40", "安全员 李娜", "待审批",
                 "—", false, List.of("人员定位", "告警中心"),
                 "人员在危险区域滞留超过时限时逐级提醒。",
@@ -87,7 +93,7 @@ public class RuleDemoSeeder implements CommandLineRunner {
                 List.of("通知安全员"),
                 List.of(ver("v1.2", "2026-09-02", "草稿：补充低电量联动", "王建国", "当前", null))));
 
-        list.add(seed("RULE-DEV-003", "转运车辆距离预警", "设备安全", List.of("翻箱机作业区", "装卸区 A"),
+        list.add(seed("RULE-DEV-003", "转运车辆距离预警", "设备安全", List.of("翻箱机区", "装卸区 A"),
                 "v2.4", "严重", RuleStatuses.ACTIVE, "2026-09-04 09:18", "设备管理员 周海", "安全总监 赵民",
                 "2026-09-04 09:30", true, List.of("设备防碰撞", "告警中心"),
                 "按设备间距与相对速度分级预警，紧急距离内联动减速 / 停机。",
@@ -100,7 +106,7 @@ public class RuleDemoSeeder implements CommandLineRunner {
                         ver("v2.3", "2026-08-12", "加入相对速度修正", "周海", "历史版本", null),
                         ver("v2.2", "2026-07-20", "初始规则", "系统管理员", "历史版本", null))));
 
-        list.add(seed("RULE-DEV-009", "车辆通道距离预警", "设备安全", List.of("车辆通道", "翻箱机作业区"),
+        list.add(seed("RULE-DEV-009", "车辆通道距离预警", "设备安全", List.of("车辆通道", "翻箱机区"),
                 "v1.5", "严重", RuleStatuses.ACTIVE, "2026-08-20 14:32", "设备管理员 周海", "安全总监 赵民",
                 "2026-08-20 15:00", false, List.of("设备防碰撞", "告警中心"),
                 "车辆通道会车 / 跟车距离分级预警。",
@@ -213,7 +219,7 @@ public class RuleDemoSeeder implements CommandLineRunner {
                 List.of(ver("v0.4", "2026-09-02", "草稿", "陈晓", "当前", null))));
 
         list.add(seed("RULE-LNK-001", "紧急事件设备联动编排", "联动策略",
-                List.of("装卸区 A", "龙门吊作业区", "翻箱机作业区"),
+                List.of("装卸区 A", "龙门吊作业区", "翻箱机区"),
                 "v2.5", "紧急", RuleStatuses.ACTIVE, "2026-09-04 11:06", "设备管理员 周海", "安全总监 赵民",
                 "2026-09-04 11:20", true, List.of("告警中心", "设备防碰撞", "人员定位"),
                 "紧急告警按声光 → 手环 → 通知 → 减速 → 停机 → PLC 回执顺序联动。",
@@ -281,8 +287,9 @@ public class RuleDemoSeeder implements CommandLineRunner {
         r.areas = new ArrayList<>(areas);
         r.version = version;
         r.platformVersion = version;
-        r.risk = risk;
-        r.status = status;
+        // 种子中文风险仅用于装配，落模型统一转机器 code；status 已为 RuleStatuses code。
+        r.riskCode = com.bproject.safety.module.alert.model.RiskLevels.normalize(risk);
+        r.statusCode = status;
         r.updatedAt = updatedAt;
         r.owner = owner;
         r.approver = approver;

@@ -43,9 +43,9 @@ class RuleModuleIntegrationTest {
 
     @BeforeEach
     void reset() {
-        ((InMemoryAlertRepository) alertRepository).clear();
+        ((InMemoryAlertRepository) alertRepository).clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(alertRepository::save);
-        ruleRepository.clear();
+        ruleRepository.clearDemoData();
         RuleDemoSeeder.buildSeeds().forEach(ruleRepository::save);
     }
 

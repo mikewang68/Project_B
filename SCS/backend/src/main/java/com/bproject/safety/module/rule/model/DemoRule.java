@@ -23,8 +23,10 @@ public class DemoRule {
     public List<String> areas = new ArrayList<>();
     public String version;
     public String platformVersion;
-    public String risk;
-    public String status;
+    /** 风险等级机器 code（RiskLevels，权威）；中文由 {@link #getRisk()} 派生。 */
+    public String riskCode;
+    /** 规则生命周期状态机器 code（RuleStatuses，权威）；中文由 {@link #getStatus()} 派生。 */
+    public String statusCode;
     public String updatedAt;
     public String owner;
     public String approver;
@@ -41,6 +43,18 @@ public class DemoRule {
     /** 版本 → 参数快照（Backend Demo 回滚还原用；前端不消费该字段）。 */
     public java.util.Map<String, List<Param>> versionSnapshots;
 
+    /** 风险等级中文标签（由 riskCode 派生，API 兼容）。 */
+    @com.fasterxml.jackson.annotation.JsonProperty("risk")
+    public String getRisk() {
+        return com.bproject.safety.module.alert.model.RiskLevels.label(riskCode);
+    }
+
+    /** 规则状态中文标签（由 statusCode 派生，API 兼容）。 */
+    @com.fasterxml.jackson.annotation.JsonProperty("status")
+    public String getStatus() {
+        return RuleStatuses.label(statusCode);
+    }
+
     public DemoRule copy() {
         DemoRule r = new DemoRule();
         r.id = id;
@@ -51,8 +65,8 @@ public class DemoRule {
         r.areas = areas == null ? new ArrayList<>() : new ArrayList<>(areas);
         r.version = version;
         r.platformVersion = platformVersion;
-        r.risk = risk;
-        r.status = status;
+        r.riskCode = riskCode;
+        r.statusCode = statusCode;
         r.updatedAt = updatedAt;
         r.owner = owner;
         r.approver = approver;

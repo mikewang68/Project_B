@@ -55,11 +55,11 @@ class CollisionModuleIntegrationTest {
     @BeforeEach
     void reset() {
         InMemoryAlertRepository alerts = (InMemoryAlertRepository) alertRepository;
-        alerts.clear();
+        alerts.clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(alertRepository::save);
-        ((InMemoryCollisionRepository) collisionRepository).reset();
-        ((InMemoryPersonnelRepository) personnelRepository).reset();
-        ((InMemoryFenceRepository) fenceRepository).reset();
+        ((InMemoryCollisionRepository) collisionRepository).resetDemoData();
+        ((InMemoryPersonnelRepository) personnelRepository).resetDemoData();
+        ((InMemoryFenceRepository) fenceRepository).resetDemoData();
         collisionService.resetAllPairs();
     }
 
@@ -104,15 +104,15 @@ class CollisionModuleIntegrationTest {
         approach(2); // 7.1、5.4 → 严重，建单
         List<DemoAlert> severe = collisionAlerts();
         org.assertj.core.api.Assertions.assertThat(severe).hasSize(1);
-        org.assertj.core.api.Assertions.assertThat(severe.get(0).risk).isEqualTo("严重");
+        org.assertj.core.api.Assertions.assertThat(severe.get(0).riskCode).isEqualTo(com.bproject.safety.module.alert.model.RiskLevels.SEVERE);
         String alertId = severe.get(0).id;
 
         approach(2); // 3.8、2.8 → 紧急，升级同一告警
         List<DemoAlert> after = collisionAlerts();
         org.assertj.core.api.Assertions.assertThat(after).hasSize(1);
         org.assertj.core.api.Assertions.assertThat(after.get(0).id).isEqualTo(alertId);
-        org.assertj.core.api.Assertions.assertThat(after.get(0).risk).isEqualTo("紧急");
-        org.assertj.core.api.Assertions.assertThat(after.get(0).upgradedFrom).isEqualTo("严重");
+        org.assertj.core.api.Assertions.assertThat(after.get(0).riskCode).isEqualTo(com.bproject.safety.module.alert.model.RiskLevels.URGENT);
+        org.assertj.core.api.Assertions.assertThat(after.get(0).upgradedFromCode).isEqualTo(com.bproject.safety.module.alert.model.RiskLevels.SEVERE);
 
         mvc.perform(get("/api/v1/collision/devices/VEH-07"))
                 .andExpect(jsonPath("$.risk", is("紧急")))

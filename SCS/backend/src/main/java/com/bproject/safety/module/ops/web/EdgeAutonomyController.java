@@ -33,9 +33,12 @@ public class EdgeAutonomyController {
     private static final String DEFAULT_NODE = "EDGE-03";
 
     private final EdgeOpsService service;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
 
-    public EdgeAutonomyController(EdgeOpsService service) {
+    public EdgeAutonomyController(EdgeOpsService service,
+                                  com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.service = service;
+        this.demoGuard = demoGuard;
     }
 
     @GetMapping("/link")
@@ -47,6 +50,7 @@ public class EdgeAutonomyController {
     @PostMapping("/simulate-link")
     @Operation(summary = "模拟断网 / 恢复连接（state=disconnect|recover，默认 EDGE-03）")
     public DemoEdgeNode simulateLink(@RequestBody(required = false) SimulateLinkRequest body) {
+        demoGuard.requireSimulator();
         String nodeId = body != null && body.nodeId() != null ? body.nodeId() : DEFAULT_NODE;
         String state = body == null || body.state() == null ? "disconnect" : body.state();
         return switch (state) {
@@ -66,6 +70,7 @@ public class EdgeAutonomyController {
     @PostMapping("/local-events")
     @Operation(summary = "断网期间产生边缘本地风险事件（本地判定 + 本地联动，入离线队列，不进云端 Alert）")
     public EdgePendingEvent createLocalEvent(@RequestBody(required = false) EdgeOpsService.LocalEventRequest body) {
+        demoGuard.requireSimulator();
         EdgeOpsService.LocalEventRequest req = body == null
                 ? new EdgeOpsService.LocalEventRequest(DEFAULT_NODE, null, null, null, null, null) : body;
         return service.createLocalEvent(req);
@@ -74,6 +79,7 @@ public class EdgeAutonomyController {
     @PostMapping("/recover")
     @Operation(summary = "启动 / 推进恢复流程（CONNECTIVITY→CLOCK→RULE→EVENT_REPLAY→FINAL_CHECK→ONLINE）；重复调用兼作失败重试")
     public DemoEdgeNode recover(@RequestBody(required = false) RecoverRequest body) {
+        demoGuard.requireSimulator();
         String nodeId = body != null && body.nodeId() != null ? body.nodeId() : DEFAULT_NODE;
         // 恢复推进是重复安全的：同一阶段重复调用不会重复补传（队列层幂等兜底），因此每次都允许执行
         return service.startRecovery(nodeId);

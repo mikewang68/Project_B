@@ -64,14 +64,14 @@ class OverviewIntegrationTest {
     @BeforeEach
     void resetSeeds() {
         InMemoryAlertRepository alerts = (InMemoryAlertRepository) alertRepository;
-        alerts.clear();
+        alerts.clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(alertRepository::save);
         InMemoryAiEventRepository ais = (InMemoryAiEventRepository) aiEventRepository;
-        ais.clear();
+        ais.clearDemoData();
         aiSeeder.buildSeeds().forEach(aiEventRepository::save);
-        ((InMemoryPersonnelRepository) personnelRepository).reset();
-        ((InMemoryFenceRepository) fenceRepository).reset();
-        ((InMemoryCollisionRepository) collisionRepository).reset();
+        ((InMemoryPersonnelRepository) personnelRepository).resetDemoData();
+        ((InMemoryFenceRepository) fenceRepository).resetDemoData();
+        ((InMemoryCollisionRepository) collisionRepository).resetDemoData();
         collisionService.resetAllPairs();
     }
 

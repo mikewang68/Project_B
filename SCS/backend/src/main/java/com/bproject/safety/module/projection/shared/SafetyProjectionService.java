@@ -39,22 +39,27 @@ public class SafetyProjectionService {
 
     /** 未关闭的活动告警数。 */
     public long activeCount() {
-        return repository.findAll().stream().filter(a -> !AlertStatuses.CLOSED.equals(a.status)).count();
+        return repository.findAll().stream().filter(a -> !AlertStatuses.CLOSED.equals(a.statusCode)).count();
     }
+
+    /** 处置中口径：处理中 / 待复核 / 已升级。 */
+    private static final java.util.Set<String> IN_HANDLING = java.util.Set.of(
+            AlertStatuses.PROCESSING, AlertStatuses.PENDING_REVIEW, AlertStatuses.ESCALATED);
 
     public long processingCount() {
         return repository.findAll().stream()
-                .filter(a -> AlertStatuses.HANDLING.equals(a.status) || AlertStatuses.ESCALATED.equals(a.status))
+                .filter(a -> IN_HANDLING.contains(a.statusCode))
                 .count();
     }
 
-    public long countByRiskOpen(String risk) {
+    public long countByRiskOpen(String riskCodeOrLabel) {
+        String riskCode = com.bproject.safety.module.alert.model.RiskLevels.normalize(riskCodeOrLabel);
         return repository.findAll().stream()
-                .filter(a -> risk.equals(a.risk) && !AlertStatuses.CLOSED.equals(a.status)).count();
+                .filter(a -> riskCode.equals(a.riskCode) && !AlertStatuses.CLOSED.equals(a.statusCode)).count();
     }
 
     public long closedCount() {
-        return repository.findAll().stream().filter(a -> AlertStatuses.CLOSED.equals(a.status)).count();
+        return repository.findAll().stream().filter(a -> AlertStatuses.CLOSED.equals(a.statusCode)).count();
     }
 
     /** 风险类型分布（按数量倒序）。 */

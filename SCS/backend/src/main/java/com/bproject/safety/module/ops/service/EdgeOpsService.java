@@ -12,11 +12,11 @@ import com.bproject.safety.module.ops.model.EdgePendingEvent;
 import com.bproject.safety.module.ops.model.OpsEventLog;
 import com.bproject.safety.module.ops.model.PendingEventStatuses;
 import com.bproject.safety.module.ops.model.RecoveryPhase;
+import com.bproject.safety.module.ops.model.EdgeSeedVersions;
 import com.bproject.safety.module.ops.model.RecoveryPhases;
 import com.bproject.safety.module.ops.repository.EdgeEventQueueRepository;
-import com.bproject.safety.module.ops.repository.InMemoryEdgeNodeRepository;
-import com.bproject.safety.module.ops.repository.InMemoryEdgeEventQueueRepository;
-import com.bproject.safety.module.ops.repository.InMemoryOpsEventLogRepository;
+import com.bproject.safety.module.ops.repository.EdgeNodeRepository;
+import com.bproject.safety.module.ops.repository.OpsEventLogRepository;
 import com.bproject.safety.module.ops.realtime.OpsLiveNotifier;
 import com.bproject.safety.module.rule.model.RuleStatuses;
 import com.bproject.safety.module.rule.repository.RuleRepository;
@@ -32,6 +32,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 运维监控 + 云边断网自治核心服务（SIMULATED EDGE AUTONOMY：同进程行为模拟，非真实边缘平台）。
@@ -51,9 +52,9 @@ public class EdgeOpsService {
     private static final long CLOCK_OK_OFFSET_MS = 120L;
     private static final int TREND_POINTS = 30;
 
-    private final InMemoryEdgeNodeRepository nodeRepository;
+    private final EdgeNodeRepository nodeRepository;
     private final EdgeEventQueueRepository queueRepository;
-    private final InMemoryOpsEventLogRepository logRepository;
+    private final OpsEventLogRepository logRepository;
     private final OpsInventory inventory;
     private final EdgeReplayService replayService;
     private final OpsLiveNotifier notifier;
@@ -62,9 +63,9 @@ public class EdgeOpsService {
     private final List<InfrastructureProbe> probes;
     private final Clock clock;
 
-    public EdgeOpsService(InMemoryEdgeNodeRepository nodeRepository,
+    public EdgeOpsService(EdgeNodeRepository nodeRepository,
                           EdgeEventQueueRepository queueRepository,
-                          InMemoryOpsEventLogRepository logRepository,
+                          OpsEventLogRepository logRepository,
                           OpsInventory inventory, EdgeReplayService replayService,
                           OpsLiveNotifier notifier, RuleRepository ruleRepository,
                           AlertService alertService,
@@ -151,23 +152,24 @@ public class EdgeOpsService {
         return data;
     }
 
-    /** 节点列表：惰性刷新在线节点心跳与指标，并实时回填期望版本 / 队列深度。 */
+    /**
+     * 节点列表：惰性刷新在线节点心跳与指标，并实时回填期望版本 / 队列深度。
+     * Phase B：load detached copy → refreshRuntime（dirty 时显式 save）→ 返回副本，无内部引用泄漏。
+     */
     public List<DemoEdgeNode> listNodes() {
-        List<DemoEdgeNode> snapshot = nodeRepository.findAll();
         List<DemoEdgeNode> result = new ArrayList<>();
-        for (DemoEdgeNode copy : snapshot) {
-            DemoEdgeNode mutable = nodeRepository.findMutable(copy.id).orElseThrow();
-            refreshRuntime(mutable);
-            result.add(mutable.copy());
+        for (DemoEdgeNode copy : nodeRepository.findAll()) {
+            refreshRuntime(copy);
+            result.add(copy.copy());
         }
         return result;
     }
 
     public DemoEdgeNode getNode(String id) {
-        DemoEdgeNode node = mutable(id);
+        DemoEdgeNode node = nodeRepository.findById(id)
+                .orElseThrow(() -> ApiException.notFound("边缘节点不存在: " + id));
         refreshRuntime(node);
-        DemoEdgeNode view = node.copy();
-        return view;
+        return node.copy();
     }
 
     /** 节点详情附带趋势样本（按请求确定性生成，不建后台采样线程，任务书第四十七 / 四十八节）。 */
@@ -276,8 +278,9 @@ public class EdgeOpsService {
     // ==================== 模拟断网 / 恢复（任务十三、十七） ====================
 
     /** 模拟断网：cloudConnected=false、status=OFFLINE、心跳冻结，但 autonomy=ACTIVE。 */
+    @Transactional
     public DemoEdgeNode simulateDisconnect(String nodeId) {
-        DemoEdgeNode n = mutable(nodeId);
+        DemoEdgeNode n = loadNode(nodeId);
         if (!n.cloudConnected) {
             throw ApiException.conflict("节点已处于断网状态: " + nodeId);
         }
@@ -304,8 +307,9 @@ public class EdgeOpsService {
      * 启动 / 推进恢复流程（任务书第十七、十八节固定阶段）。可重复调用：
      * 遇到时钟 / 规则对账阻塞或补传失败时停在对应阶段，再次调用即继续推进（兼作 Retry）。
      */
+    @Transactional
     public synchronized DemoEdgeNode startRecovery(String nodeId) {
-        DemoEdgeNode n = mutable(nodeId);
+        DemoEdgeNode n = loadNode(nodeId);
         if (EdgeNodeStatuses.ONLINE.equals(n.status)) {
             throw ApiException.conflict("节点已在线，无需恢复: " + nodeId);
         }
@@ -424,8 +428,9 @@ public class EdgeOpsService {
     }
 
     /** 时间对账（任务书第十九节，Demo 校时，不实现真实 NTP）。 */
+    @Transactional
     public DemoEdgeNode reconcileTime(String nodeId) {
-        DemoEdgeNode n = mutable(nodeId);
+        DemoEdgeNode n = loadNode(nodeId);
         Long before = n.clockOffsetMs;
         n.clockOffsetMs = CLOCK_OK_OFFSET_MS;
         completeBlockedPhase(n, RecoveryPhases.CLOCK,
@@ -444,8 +449,9 @@ public class EdgeOpsService {
     }
 
     /** 规则版本对账（任务书第二十节，redeliver 重新下发 / keep 本次放行）。 */
+    @Transactional
     public DemoEdgeNode reconcileRules(String nodeId, String action) {
-        DemoEdgeNode n = mutable(nodeId);
+        DemoEdgeNode n = loadNode(nodeId);
         String before = n.activeRuleVersion;
         boolean redeliver = action == null || "redeliver".equalsIgnoreCase(action);
         if (redeliver) {
@@ -525,9 +531,10 @@ public class EdgeOpsService {
      * 断网期间边缘本地产生风险事件：继续本地判定、继续本地联动，事件进入离线队列；
      * <b>不</b>调用 AlertService、<b>不</b>进入云端 AlertRepository、<b>不</b>广播 alert.new。
      */
+    @Transactional
     public synchronized EdgePendingEvent createLocalEvent(LocalEventRequest req) {
         String nodeId = req != null && req.nodeId() != null ? req.nodeId() : "EDGE-03";
-        DemoEdgeNode n = mutable(nodeId);
+        DemoEdgeNode n = loadNode(nodeId);
         if (n.cloudConnected) {
             throw ApiException.conflict("节点云连接正常，风险事件应直接上报云端，不进入离线队列: " + nodeId);
         }
@@ -552,7 +559,9 @@ public class EdgeOpsService {
         // 审计语义：冻结使用断网边缘当前规则版本，恢复后平台升级也不回改（任务书第三十九节）
         e.ruleVersionUsed = n.activeRuleVersion;
         e.risk = risk;
-        boolean needPlc = "严重".equals(risk) || "紧急".equals(risk);
+        String riskCode = com.bproject.safety.module.alert.model.RiskLevels.normalize(risk);
+        boolean needPlc = com.bproject.safety.module.alert.model.RiskLevels.SEVERE.equals(riskCode)
+                || com.bproject.safety.module.alert.model.RiskLevels.URGENT.equals(riskCode);
         e.payloadSummary = new EdgePendingEvent.PayloadSummary(title, n.area, tpl.person(),
                 tpl.fence(), tpl.device(), risk, e.businessKey, detail);
         List<String> actions = new ArrayList<>(tpl.actions());
@@ -606,11 +615,11 @@ public class EdgeOpsService {
 
     /** 让某条离线事件下一次补传失败一次（任务书第三十五节故障补传演示）。 */
     public EdgePendingEvent armFailure(String eventId) {
-        var mutable = ((InMemoryEdgeEventQueueRepository) queueRepository).findMutable(eventId)
+        // Phase B：load detached copy → 标记 transient failNextReplay → 显式 save。
+        EdgePendingEvent event = queueRepository.findByEventId(eventId)
                 .orElseThrow(() -> ApiException.notFound("离线事件不存在: " + eventId));
-        mutable.failNextReplay = true;
-        queueRepository.save(mutable);
-        return mutable.copy();
+        event.failNextReplay = true;
+        return queueRepository.save(event);
     }
 
     // ==================== 运维模拟场景 / 节点维护 ====================
@@ -640,8 +649,9 @@ public class EdgeOpsService {
     }
 
     /** 时钟漂移（任务书第五十四节：EDGE-02 +3200ms）。 */
+    @Transactional
     public DemoEdgeNode simulateTimeDrift(String nodeId, long offsetMs) {
-        DemoEdgeNode n = mutable(nodeId);
+        DemoEdgeNode n = loadNode(nodeId);
         n.clockOffsetMs = offsetMs;
         if (EdgeNodeStatuses.ONLINE.equals(n.status)) {
             n.status = EdgeNodeStatuses.DEGRADED;
@@ -664,8 +674,9 @@ public class EdgeOpsService {
         return fault;
     }
 
+    @Transactional
     private DemoEdgeNode simulateCacheAlert(String nodeId) {
-        DemoEdgeNode n = mutable(nodeId);
+        DemoEdgeNode n = loadNode(nodeId);
         n.diskUsage = Math.min(96, n.diskUsage + 12);
         n.cacheParts = List.of(
                 new DemoEdgeNode.CachePart("事件缓存", Math.min(99, n.diskUsage + 6)),
@@ -681,8 +692,9 @@ public class EdgeOpsService {
     }
 
     /** 节点抽屉维护动作：reconnect 发起恢复 / resyncTime 校时 / redeliverRule 重下发规则。 */
+    @Transactional
     public DemoEdgeNode maintain(String nodeId, String action) {
-        DemoEdgeNode n = mutable(nodeId);
+        DemoEdgeNode n = loadNode(nodeId);
         return switch (action == null ? "" : action) {
             case "reconnect" -> startRecovery(nodeId);
             case "resyncTime" -> reconcileTime(nodeId);
@@ -766,8 +778,9 @@ public class EdgeOpsService {
 
     // ==================== 辅助 ====================
 
-    private DemoEdgeNode mutable(String id) {
-        return nodeRepository.findMutable(id)
+    /** load detached copy：命令方法统一走 load → mutate → explicit save（Phase B）。 */
+    private DemoEdgeNode loadNode(String id) {
+        return nodeRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("边缘节点不存在: " + id));
     }
 
@@ -775,18 +788,18 @@ public class EdgeOpsService {
     private String expectedRuleVersion() {
         try {
             return ruleRepository.findAll().stream()
-                    .filter(r -> "RULE-PER-001".equals(r.id) && RuleStatuses.ACTIVE.equals(r.status))
+                    .filter(r -> "RULE-PER-001".equals(r.id) && RuleStatuses.ACTIVE.equals(r.statusCode))
                     .map(r -> r.version).findFirst()
-                    .orElse(InMemoryEdgeNodeRepository.SEED_RULE_VERSION);
+                    .orElse(EdgeSeedVersions.RULE_VERSION);
         } catch (RuntimeException ex) {
-            return InMemoryEdgeNodeRepository.SEED_RULE_VERSION;
+            return EdgeSeedVersions.RULE_VERSION;
         }
     }
 
     /** v3.3 → v3.2（Demo：断网期间错过最新一版同步）。 */
     private String previousMinor(String version) {
         if (version == null) {
-            return InMemoryEdgeNodeRepository.SEED_RULE_VERSION;
+            return EdgeSeedVersions.RULE_VERSION;
         }
         int idx = version.lastIndexOf('.');
         if (idx <= 1) {
@@ -838,3 +851,4 @@ public class EdgeOpsService {
                                     String detail, Boolean failNextReplay) {
     }
 }
+

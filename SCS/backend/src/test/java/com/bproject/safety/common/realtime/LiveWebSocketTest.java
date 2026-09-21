@@ -67,7 +67,7 @@ class LiveWebSocketTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        ((InMemoryAlertRepository) repository).clear();
+        ((InMemoryAlertRepository) repository).clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(repository::save);
         handlerA = new CollectHandler();
         handlerB = new CollectHandler();
@@ -103,7 +103,7 @@ class LiveWebSocketTest {
         assertThat(a1).doesNotContain("timeline").doesNotContain("evidence");
 
         alertService.assign("ALM-20260904-002",
-                new AssignRequest("安全员 王建国", null, null, "普通", 15, null, null, null), null);
+                new AssignRequest("王建国", "USR-002", "王建国", "普通", 15, null, null, null), null);
         String a2 = handlerA.messages.poll(5, TimeUnit.SECONDS);
         assertThat(a2).contains("alert.assigned").contains("PENDING");
     }

@@ -40,7 +40,7 @@ class ProjectionIntegrationTest {
     @BeforeEach
     void resetSeeds() {
         InMemoryAlertRepository mem = (InMemoryAlertRepository) repository;
-        mem.clear();
+        mem.clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(repository::save);
     }
 
@@ -118,7 +118,7 @@ class ProjectionIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isOk());
         mvc.perform(post("/api/v1/alerts/ALM-20260904-002/assign")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assignee\":\"安全员 王建国\",\"priority\":\"普通\",\"limitMin\":15}"))
+                        .content("{\"assignee\":\"王建国\",\"assigneeId\":\"USR-002\",\"priority\":\"普通\",\"limitMin\":15}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is("待处理")))
                 .andExpect(jsonPath("$.mobileStage", is("PENDING")));

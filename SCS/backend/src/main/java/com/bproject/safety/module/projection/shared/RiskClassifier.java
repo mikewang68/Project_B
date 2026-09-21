@@ -1,6 +1,7 @@
 package com.bproject.safety.module.projection.shared;
 
 import com.bproject.safety.module.alert.model.DemoAlert;
+import com.bproject.safety.module.alert.model.RiskLevels;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,13 +20,13 @@ public final class RiskClassifier {
     private static final Pattern PERSON = Pattern.compile("P-\\d+");
     private static final Pattern DEVICE = Pattern.compile("[A-Z]+(?:-[A-Z]+)*-\\d+");
 
-    /** 高风险 = 严重 / 紧急。 */
-    public static boolean isHighRisk(String risk) {
-        return "严重".equals(risk) || "紧急".equals(risk);
+    /** 高风险 = 严重 / 紧急（入参可为机器 code 或中文标签，统一归一后判断）。 */
+    public static boolean isHighRisk(String riskCodeOrLabel) {
+        return RiskLevels.isHigh(RiskLevels.normalize(riskCodeOrLabel));
     }
 
     public static boolean isHighRisk(DemoAlert a) {
-        return isHighRisk(a.risk);
+        return RiskLevels.isHigh(a.riskCode);
     }
 
     /** 归并为统计分析使用的事件大类（与前端 analyticsData 的类型口径对齐）。 */
@@ -120,6 +121,7 @@ public final class RiskClassifier {
 
     /**
      * DEMO 班组映射：Alert 暂无班组字段，按对象 / 责任人归并到演示班组；
+     * 班组名称统一使用 DemoMasterData 的 canonical 名称（安全管理组 / 设备维保班），
      * 正式领域模型补齐人员-班组关系后移除。
      */
     public static String teamOf(DemoAlert a) {
@@ -136,11 +138,11 @@ public final class RiskClassifier {
         }
         String dev = deviceIdOf(t);
         if (dev != null) {
-            return "设备保障班";
+            return "设备维保班";
         }
         if (a.assignee != null) {
             if (a.assignee.contains("李娜")) {
-                return "安全管理班";
+                return "安全管理组";
             }
             if (a.assignee.contains("刘志明")) {
                 return "装卸二班";
@@ -149,6 +151,6 @@ public final class RiskClassifier {
                 return "装卸一班";
             }
         }
-        return "安全管理班";
+        return "安全管理组";
     }
 }

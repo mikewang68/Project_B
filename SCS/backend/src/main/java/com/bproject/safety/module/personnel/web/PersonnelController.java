@@ -26,9 +26,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class PersonnelController {
 
     private final PersonnelService service;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
 
-    public PersonnelController(PersonnelService service) {
+    public PersonnelController(PersonnelService service,
+                               com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.service = service;
+        this.demoGuard = demoGuard;
     }
 
     @GetMapping
@@ -78,6 +81,7 @@ public class PersonnelController {
     @PostMapping("/simulate-abnormal")
     @Operation(summary = "模拟人员异常（SIMULATED：lowBattery/offline/intrusion/restore）")
     public DemoPersonnel simulate(@RequestBody(required = false) Map<String, String> body) {
+        demoGuard.requireSimulator();
         String id = body == null ? null : body.getOrDefault("id", "P-ZHAO");
         String kind = body == null ? "lowBattery" : body.getOrDefault("kind", "lowBattery");
         return service.simulateAbnormal(id, kind);

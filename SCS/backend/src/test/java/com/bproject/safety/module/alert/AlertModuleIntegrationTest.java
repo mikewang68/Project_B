@@ -50,7 +50,7 @@ class AlertModuleIntegrationTest {
     @BeforeEach
     void resetSeeds() {
         InMemoryAlertRepository mem = (InMemoryAlertRepository) repository;
-        mem.clear();
+        mem.clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(repository::save);
     }
 
@@ -88,6 +88,27 @@ class AlertModuleIntegrationTest {
         // level 是 risk 的别名
         mvc.perform(get(BASE).param("level", "紧急"))
                 .andExpect(jsonPath("$.total", is(1)));
+    }
+
+    @Test
+    @DisplayName("责任人筛选支持 userCode 与姓名（Phase A）")
+    void filterByAssigneeUserCode() throws Exception {
+        // 待派单事件派给 USR-004 陈静
+        mvc.perform(post(BASE + "/ALM-20260904-004/assign")
+                        .header("Idempotency-Key", "filter-assignee-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"assignee\":\"陈静\",\"assigneeId\":\"USR-004\",\"assigneeName\":\"陈静\",\"priority\":\"普通\",\"limitMin\":30}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.assigneeUserCode", is("USR-004")));
+
+        // userCode 筛选：返回项全部属于该责任人
+        mvc.perform(get(BASE).param("assignee", "USR-004"))
+                .andExpect(jsonPath("$.total", greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.list[*].assigneeUserCode", everyItem(is("USR-004"))));
+
+        // 姓名同样可筛（快照可能含角色前缀，按 contains 匹配）
+        mvc.perform(get(BASE).param("assignee", "陈静"))
+                .andExpect(jsonPath("$.total", greaterThanOrEqualTo(1)));
     }
 
     @Test
@@ -146,10 +167,11 @@ class AlertModuleIntegrationTest {
         mvc.perform(post(BASE + "/ALM-20260904-002/assign")
                         .header("Idempotency-Key", "flow-assign-1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assignee\":\"安全员 王建国\",\"priority\":\"紧急\",\"limitMin\":10,\"note\":\"尽快处理\"}"))
+                        .content("{\"assignee\":\"王建国\",\"assigneeId\":\"USR-002\",\"assigneeName\":\"王建国\",\"priority\":\"紧急\",\"limitMin\":10,\"note\":\"尽快处理\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is("待处理")))
-                .andExpect(jsonPath("$.assignee", is("安全员 王建国")))
+                .andExpect(jsonPath("$.assignee", is("王建国")))
+                .andExpect(jsonPath("$.assigneeUserCode", is("USR-002")))
                 .andExpect(jsonPath("$.slaDeadline", notNullValue()))
                 .andExpect(jsonPath("$.slaRemainingSec", greaterThanOrEqualTo(590)))
                 .andExpect(jsonPath("$.timeline", hasSize(4)));
@@ -169,7 +191,7 @@ class AlertModuleIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is("待复核")))
                 .andExpect(jsonPath("$.treatment.measures", hasSize(2)))
-                .andExpect(jsonPath("$.treatment.handler", is("安全员 王建国")))
+                .andExpect(jsonPath("$.treatment.handler", is("王建国")))
                 .andExpect(jsonPath("$.timeline", hasSize(6)));
 
         // 严重事件必须经复核：待复核 → 已关闭，SLA 清空
@@ -221,7 +243,7 @@ class AlertModuleIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.risk", is("严重")))
                 .andExpect(jsonPath("$.upgradedFrom", is("预警")))
-                .andExpect(jsonPath("$.status", is("已升级")));
+                .andExpect(jsonPath("$.status", is("待确认")));
     }
 
     @Test

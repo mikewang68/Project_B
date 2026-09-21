@@ -1,6 +1,7 @@
 package com.bproject.safety.module.ops.repository;
 
 import com.bproject.safety.module.ops.model.OpsEventLog;
+import com.bproject.safety.support.demo.DemoClearableStore;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -8,20 +9,26 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Repository;
 
-/** 进程内运维日志：最多保留最近 300 条，按时间倒序返回。 */
+/**
+ * 进程内运维日志（append-only）：最多保留最近 300 条，按时间倒序返回。
+ *
+ * <p>Phase B：append 存独立副本（copy-on-write），查询返回副本；清空仅通过
+ * {@link DemoClearableStore#clearDemoData()} 供 Demo / Test 使用。</p>
+ */
 @Repository
-public class InMemoryOpsEventLogRepository implements OpsEventLogRepository {
+public class InMemoryOpsEventLogRepository implements OpsEventLogRepository, DemoClearableStore {
 
     private static final int MAX_KEEP = 300;
     private final CopyOnWriteArrayList<OpsEventLog> store = new CopyOnWriteArrayList<>();
 
     @Override
     public OpsEventLog append(OpsEventLog log) {
-        store.add(log);
+        OpsEventLog persisted = log.copy();
+        store.add(persisted);
         while (store.size() > MAX_KEEP) {
             store.remove(0);
         }
-        return log;
+        return persisted.copy();
     }
 
     @Override
@@ -54,8 +61,9 @@ public class InMemoryOpsEventLogRepository implements OpsEventLogRepository {
         }
     }
 
+    /** 清空日志（DemoClearableStore，仅 Demo 种子初始化器 / 测试调用）。 */
     @Override
-    public void clear() {
+    public void clearDemoData() {
         store.clear();
     }
 }

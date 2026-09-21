@@ -49,10 +49,10 @@ class AiModuleIntegrationTest {
     @BeforeEach
     void resetSeeds() {
         InMemoryAlertRepository alerts = (InMemoryAlertRepository) alertRepository;
-        alerts.clear();
+        alerts.clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(alertRepository::save);
         InMemoryAiEventRepository ais = (InMemoryAiEventRepository) aiEventRepository;
-        ais.clear();
+        ais.clearDemoData();
         aiSeeder.buildSeeds().forEach(aiEventRepository::save);
     }
 
@@ -154,17 +154,17 @@ class AiModuleIntegrationTest {
     void assignCreatesAndDispatchesAlert() throws Exception {
         mvc.perform(post("/api/v1/ai-events/AI-E-20260903-025/assign")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assignee\":\"安全员 王建国\",\"priority\":\"普通\",\"note\":\"尽快处理\"}"))
+                        .content("{\"assignee\":\"王建国\",\"assigneeId\":\"USR-002\",\"priority\":\"普通\",\"note\":\"尽快处理\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is("已派单")))
-                .andExpect(jsonPath("$.assignee", is("安全员 王建国")))
+                .andExpect(jsonPath("$.assignee", is("王建国")))
                 .andExpect(jsonPath("$.linkedAlertId", notNullValue()));
         // 关联 Alert 已处于待处理
         MvcResult r = mvc.perform(get("/api/v1/ai-events/AI-E-20260903-025")).andReturn();
         String linkedId = com.jayway.jsonpath.JsonPath.read(r.getResponse().getContentAsString(), "$.linkedAlertId");
         mvc.perform(get("/api/v1/alerts/" + linkedId))
                 .andExpect(jsonPath("$.status", is("待处理")))
-                .andExpect(jsonPath("$.assignee", is("安全员 王建国")));
+                .andExpect(jsonPath("$.assignee", is("王建国")));
     }
 
     @Test

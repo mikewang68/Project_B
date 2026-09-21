@@ -16,6 +16,9 @@ spring:
 app:
   cors:
     allowed-origins: http://localhost:5173
+  demo:
+    seed-enabled: true
+    simulator-enabled: true
   rocketmq:
     enabled: false
   opengemini:

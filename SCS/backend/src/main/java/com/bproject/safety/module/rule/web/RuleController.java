@@ -31,9 +31,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class RuleController {
 
     private final RuleService service;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
 
-    public RuleController(RuleService service) {
+    public RuleController(RuleService service,
+                          com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.service = service;
+        this.demoGuard = demoGuard;
     }
 
     @GetMapping("/metrics")
@@ -121,12 +124,14 @@ public class RuleController {
     @Operation(summary = "模拟边缘版本不一致（SIMULATED）")
     public DemoRule simulateMismatch(@PathVariable String id,
                                      @RequestBody(required = false) OperatorRequest request) {
+        demoGuard.requireSimulator();
         return service.simulateMismatch(id, request);
     }
 
     @PostMapping("/simulate")
     @Operation(summary = "规则数值仿真（设备距离 → 风险等级 / 建议动作）")
     public Map<String, Object> simulate(@RequestBody SimulateRequest request) {
+        demoGuard.requireSimulator();
         return service.simulate(request);
     }
 

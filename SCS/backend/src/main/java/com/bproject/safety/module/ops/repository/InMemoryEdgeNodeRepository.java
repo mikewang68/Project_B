@@ -2,6 +2,9 @@ package com.bproject.safety.module.ops.repository;
 
 import com.bproject.safety.module.ops.model.DemoEdgeNode;
 import com.bproject.safety.module.ops.model.EdgeNodeStatuses;
+import com.bproject.safety.module.ops.model.EdgeSeedVersions;
+import com.bproject.safety.support.demo.DemoResettableStore;
+import com.bproject.safety.support.masterdata.DemoDeviceMasterData;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -9,40 +12,55 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 /**
  * 进程内边缘节点台账：EDGE-01 ~ EDGE-04（SIMULATED EDGE AUTONOMY）。
- * 查询统一返回副本；构造时自播种，测试可调用 {@link #reset(Clock)} 恢复初始状态。
+ *
+ * <p>Phase B：copy-on-read / copy-on-write——find/save 均经过 {@link DemoEdgeNode#copy()}，
+ * 不再提供 findMutable；Service 必须走 load → mutate → explicit save。
+ * 灌种由 DemoSeedInitializer 在 app.demo.seed-enabled=true 时统一执行。</p>
  */
 @Repository
-public class InMemoryEdgeNodeRepository implements EdgeNodeRepository {
+@Profile("!server")
+public class InMemoryEdgeNodeRepository implements EdgeNodeRepository, DemoResettableStore {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
-    /** 初始平台规则版本（与 RuleDemoSeeder 中 RULE-PER-001 当前版本一致）。 */
-    public static final String SEED_RULE_VERSION = "v3.3";
-    public static final String SEED_FENCE_VERSION = "v3.3";
 
     private final ConcurrentHashMap<String, DemoEdgeNode> store = new ConcurrentHashMap<>();
     private final Clock clock;
+    private final DemoDeviceMasterData deviceMasterData;
 
-    public InMemoryEdgeNodeRepository(Clock clock) {
+    public InMemoryEdgeNodeRepository(Clock clock, DemoDeviceMasterData deviceMasterData) {
         this.clock = clock;
-        reset(clock);
+        this.deviceMasterData = deviceMasterData;
+        // 不在构造器隐式灌种；由 DemoSeedInitializer 在 app.demo.seed-enabled=true 时统一初始化。
     }
 
-    /** 恢复 4 个初始节点（测试隔离用）。 */
-    public void reset(Clock seedClock) {
+    /** 恢复 4 个初始节点（DemoResettableStore，仅 Demo 种子初始化器 / 测试调用）。 */
+    @Override
+    public void resetDemoData() {
         store.clear();
-        OffsetDateTime now = OffsetDateTime.now(seedClock.withZone(ZONE));
-        store.put("EDGE-01", node("EDGE-01", "1 号边缘节点 · 装卸区 A", "装卸区 A", "10.24.1.11",
+        OffsetDateTime now = OffsetDateTime.now(clock.withZone(ZONE));
+        store.put("EDGE-01", node("EDGE-01", "10.24.1.11",
                 32, 46, 41, 24, 82, now, 1284));
-        store.put("EDGE-02", node("EDGE-02", "2 号边缘节点 · 车辆通道", "车辆通道", "10.24.1.12",
+        store.put("EDGE-02", node("EDGE-02", "10.24.1.12",
                 38, 52, 47, 31, 64, now, 1036));
-        store.put("EDGE-03", node("EDGE-03", "3 号边缘节点 · 翻箱机区", "翻箱机作业区", "10.24.1.13",
+        store.put("EDGE-03", node("EDGE-03", "10.24.1.13",
                 44, 58, 68, 28, 57, now, 1512));
-        store.put("EDGE-04", node("EDGE-04", "4 号边缘节点 · 龙门吊作业区", "龙门吊作业区", "10.24.1.14",
+        store.put("EDGE-04", node("EDGE-04", "10.24.1.14",
                 29, 41, 36, 22, 49, now, 902));
+    }
+
+    /** 节点 name/area 来自设备主数据，IP 及运行态由本仓库维护。 */
+    private DemoEdgeNode node(String id, String ip,
+                              int cpu, int mem, int disk, int latency, int temp,
+                              OffsetDateTime now, int localCount) {
+        DemoDeviceMasterData.DeviceIdentity identity = deviceMasterData.device(id)
+                .orElseThrow(() -> new IllegalStateException("缺少边缘节点主数据：" + id));
+        return node(id, identity.name(), identity.areaName(), ip,
+                cpu, mem, disk, latency, temp, now, localCount);
     }
 
     private DemoEdgeNode node(String id, String name, String area, String ip,
@@ -64,10 +82,10 @@ public class InMemoryEdgeNodeRepository implements EdgeNodeRepository {
         n.temperature = temp;
         n.queueDepth = 0;
         n.cachedEventCount = localCount;
-        n.activeRuleVersion = SEED_RULE_VERSION;
-        n.expectedRuleVersion = SEED_RULE_VERSION;
-        n.activeFenceVersion = SEED_FENCE_VERSION;
-        n.expectedFenceVersion = SEED_FENCE_VERSION;
+        n.activeRuleVersion = EdgeSeedVersions.RULE_VERSION;
+        n.expectedRuleVersion = EdgeSeedVersions.RULE_VERSION;
+        n.activeFenceVersion = EdgeSeedVersions.FENCE_VERSION;
+        n.expectedFenceVersion = EdgeSeedVersions.FENCE_VERSION;
         n.clockOffsetMs = 32L;
         n.agentVersion = "edge-agent 1.4.2";
         n.uptimeSec = 86_400L + localCount;
@@ -92,15 +110,11 @@ public class InMemoryEdgeNodeRepository implements EdgeNodeRepository {
         return n == null ? Optional.empty() : Optional.of(n.copy());
     }
 
-    /** 供 Service 层在锁内修改后保存（直接持有实例，避免 copy 丢更新）。 */
-    public Optional<DemoEdgeNode> findMutable(String id) {
-        return Optional.ofNullable(store.get(id));
-    }
-
     @Override
     public DemoEdgeNode save(DemoEdgeNode node) {
-        store.put(node.id, node);
-        return node.copy();
+        DemoEdgeNode persisted = node.copy();
+        store.put(node.id, persisted);
+        return persisted.copy();
     }
 
     @Override

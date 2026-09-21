@@ -55,7 +55,10 @@ class AlertServiceIdempotencyTest {
         AlertDemoSeeder.buildSeeds(clock).forEach(repository::save);
         IdempotencyService idempotency = new IdempotencyService(redis, 600);
         DemoUserProperties user = new DemoUserProperties("USR-001", "李娜", "安全员", "安全管理组", "夜班", true);
-        service = new AlertService(repository, idempotency, user, clock, AlertChangeNotifier.NOOP);
+        com.bproject.safety.support.masterdata.DemoMasterData masterData =
+                new com.bproject.safety.support.masterdata.DemoMasterData();
+        service = new AlertService(repository, idempotency, user, masterData, clock, AlertChangeNotifier.NOOP,
+                new com.bproject.safety.support.demo.DemoAlertNumberGenerator(repository, clock));
     }
 
     @Test
@@ -67,12 +70,12 @@ class AlertServiceIdempotencyTest {
         when(ops.setIfAbsent(eq(STORE_KEY), eq(IdempotencyService.PROCESSING), any())).thenReturn(true);
 
         DemoAlert first = service.confirm("ALM-20260904-002", new ConfirmRequest("李娜"), IDEM_KEY);
-        assertThat(first.status).isEqualTo(AlertStatuses.TO_ASSIGN);
+        assertThat(first.statusCode).isEqualTo(AlertStatuses.PENDING_ASSIGNMENT);
         assertThat(first.timeline).hasSize(3);
 
         // 第二次同 key：Kvrocks 已有完成结果 → 直接回放，不再执行业务变更
         DemoAlert second = service.confirm("ALM-20260904-002", new ConfirmRequest("李娜"), IDEM_KEY);
-        assertThat(second.status).isEqualTo(AlertStatuses.TO_ASSIGN);
+        assertThat(second.statusCode).isEqualTo(AlertStatuses.PENDING_ASSIGNMENT);
         assertThat(second.timeline).hasSize(3);
         // setIfAbsent 只在首次调用一次，重复请求不再尝试占键
         verify(ops, times(1)).setIfAbsent(eq(STORE_KEY), eq(IdempotencyService.PROCESSING), any());
@@ -95,7 +98,7 @@ class AlertServiceIdempotencyTest {
     @DisplayName("无 Idempotency-Key 时不访问 Kvrocks，业务正常执行（本地降级路径）")
     void noKeyBypassesStore() {
         DemoAlert alert = service.confirm("ALM-20260904-002", new ConfirmRequest("李娜"), null);
-        assertThat(alert.status).isEqualTo(AlertStatuses.TO_ASSIGN);
+        assertThat(alert.statusCode).isEqualTo(AlertStatuses.PENDING_ASSIGNMENT);
         verify(redis, never()).opsForValue();
     }
 }

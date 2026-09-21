@@ -51,7 +51,10 @@ class AlertChangeNotifierTest {
         AlertDemoSeeder.buildSeeds(clock).forEach(repository::save);
         IdempotencyService idempotency = new IdempotencyService(redis, 600);
         DemoUserProperties user = new DemoUserProperties("USR-001", "李娜", "安全员", "安全管理组", "夜班", true);
-        service = new AlertService(repository, idempotency, user, clock, notifier);
+        com.bproject.safety.support.masterdata.DemoMasterData masterData =
+                new com.bproject.safety.support.masterdata.DemoMasterData();
+        service = new AlertService(repository, idempotency, user, masterData, clock, notifier,
+                new com.bproject.safety.support.demo.DemoAlertNumberGenerator(repository, clock));
     }
 
     @Test
@@ -59,7 +62,7 @@ class AlertChangeNotifierTest {
     void notifierFiredOnMutation() {
         DemoAlert result = service.confirm("ALM-20260904-002", new ConfirmRequest("李娜"), null);
         verify(notifier, times(1)).changed(eq("confirm"), any(DemoAlert.class));
-        assertThat(result.status).isEqualTo(AlertStatuses.TO_ASSIGN);
+        assertThat(result.statusCode).isEqualTo(AlertStatuses.PENDING_ASSIGNMENT);
     }
 
     @Test
@@ -88,8 +91,8 @@ class AlertChangeNotifierTest {
     void assignSetsMobileStagePending() {
         service.confirm("ALM-20260904-002", new ConfirmRequest("李娜"), null);
         DemoAlert assigned = service.assign("ALM-20260904-002",
-                new AssignRequest("安全员 王建国", null, null, "普通", 15, null, null, null), null);
-        assertThat(assigned.status).isEqualTo(AlertStatuses.TO_HANDLE);
+                new AssignRequest("王建国", "USR-002", "王建国", "普通", 15, null, null, null), null);
+        assertThat(assigned.statusCode).isEqualTo(AlertStatuses.PENDING_PROCESS);
         assertThat(assigned.mobileStage).isEqualTo("PENDING");
     }
 }

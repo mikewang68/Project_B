@@ -17,13 +17,11 @@ require_version() {
 java_version="$(java -version 2>&1 | awk -F'"' '/version/ {print $2; exit}')"
 maven_version="$(mvn -version | awk '/Apache Maven/ {print $3; exit}')"
 node_version="$(node --version | sed 's/^v//')"
-npm_version="$(npm --version)"
 pnpm_version="$(pnpm --version)"
 
 [[ "$java_version" == 17.* ]] || { echo "ERROR: Java 17 required, found ${java_version}" >&2; exit 1; }
 require_version "Maven" "$maven_version" "3.9.16"
 require_version "Node.js" "$node_version" "24.18.0"
-require_version "npm" "$npm_version" "11.16.0"
 require_version "pnpm" "$pnpm_version" "10.34.5"
 
 cd "$project_root"

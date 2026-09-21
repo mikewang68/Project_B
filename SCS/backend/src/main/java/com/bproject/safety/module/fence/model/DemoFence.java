@@ -19,10 +19,11 @@ public class DemoFence {
     /** danger / warning / normal / temporary（前端配色口径）。 */
     public String tone;
     public String area;
-    /** 风险等级：一般 / 严重 / 紧急。 */
-    public String riskLevel;
+    /** 风险等级机器 code（RiskLevels：NORMAL/WARNING/SEVERE/URGENT，权威）；中文由 {@link #getRiskLevel()} 派生。 */
+    public String riskCode;
     public String version;
-    public String status;
+    /** 围栏生命周期状态机器 code（FenceStatuses，权威）；中文由 {@link #getStatus()} 派生。 */
+    public String statusCode;
     public String effectiveAt;
     public String expiresAt;
     public String teams;
@@ -33,6 +34,18 @@ public class DemoFence {
     public List<EdgeNode> nodes = new ArrayList<>();
     public OffsetDateTime createdAt;
     public OffsetDateTime updatedAt;
+
+    /** 风险等级中文标签（由 riskCode 派生，API 兼容）。 */
+    @com.fasterxml.jackson.annotation.JsonProperty("riskLevel")
+    public String getRiskLevel() {
+        return com.bproject.safety.module.alert.model.RiskLevels.label(riskCode);
+    }
+
+    /** 围栏状态中文标签（由 statusCode 派生，API 兼容）。 */
+    @com.fasterxml.jackson.annotation.JsonProperty("status")
+    public String getStatus() {
+        return FenceStatuses.label(statusCode);
+    }
 
     public static List<EdgeNode> pendingNodes() {
         return new ArrayList<>(List.of(
@@ -48,5 +61,32 @@ public class DemoFence {
                 new EdgeNode("EDGE-02", EdgeNode.SUCCESS),
                 new EdgeNode("EDGE-03", EdgeNode.SUCCESS),
                 new EdgeNode("EDGE-04", EdgeNode.SUCCESS)));
+    }
+
+    /**
+     * 整体副本（polygon 的 FencePoint、nodes 的 EdgeNode 均为不可变 record，浅拷贝集合即可）。
+     * Repository 的 copy-on-read/write 依赖本方法切断内部对象引用泄漏。
+     */
+    public DemoFence copy() {
+        DemoFence f = new DemoFence();
+        f.id = id;
+        f.name = name;
+        f.kind = kind;
+        f.tone = tone;
+        f.area = area;
+        f.riskCode = riskCode;
+        f.version = version;
+        f.statusCode = statusCode;
+        f.effectiveAt = effectiveAt;
+        f.expiresAt = expiresAt;
+        f.teams = teams;
+        f.approver = approver;
+        f.edgeSynced = edgeSynced;
+        f.edgeTotal = edgeTotal;
+        f.polygon = polygon == null ? new ArrayList<>() : new ArrayList<>(polygon);
+        f.nodes = nodes == null ? new ArrayList<>() : new ArrayList<>(nodes);
+        f.createdAt = createdAt;
+        f.updatedAt = updatedAt;
+        return f;
     }
 }

@@ -18,8 +18,11 @@ public final class AiRequests {
     public record UncertainRequest(String reviewer) {
     }
 
-    /** AI 派单（无关联 Alert 时先创建 Alert 再复用 Alert 派单主链）。 */
-    public record AiAssignRequest(String assignee, String priority, String note, String reviewer) {
+    /**
+     * AI 派单（无关联 Alert 时先创建 Alert 再复用 Alert 派单主链）。
+     * assigneeId 为用户 code（USR-xxx，权威）；assignee 为旧版姓名兼容字段。
+     */
+    public record AiAssignRequest(String assignee, String assigneeId, String priority, String note, String reviewer) {
     }
 
     /** 开始处理 / 关闭。 */

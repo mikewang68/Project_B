@@ -27,9 +27,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class CollisionController {
 
     private final CollisionService service;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
 
-    public CollisionController(CollisionService service) {
+    public CollisionController(CollisionService service,
+                               com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.service = service;
+        this.demoGuard = demoGuard;
     }
 
     @GetMapping("/devices")
@@ -60,6 +63,7 @@ public class CollisionController {
     @PostMapping("/simulate")
     @Operation(summary = "模拟（SIMULATED：approach 逐档接近 / radarDown / linkageFail / reset）")
     public SimulateResult simulate(@RequestBody Map<String, String> body) {
+        demoGuard.requireSimulator();
         String deviceId = body == null ? "VEH-07" : body.getOrDefault("deviceId", "VEH-07");
         String scenario = body == null ? "approach" : body.getOrDefault("scenario", "approach");
         return service.simulate(deviceId, scenario);

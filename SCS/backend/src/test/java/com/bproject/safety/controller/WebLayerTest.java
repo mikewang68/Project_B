@@ -75,18 +75,26 @@ class WebLayerTest {
     void dictionariesReturnAllByDefault() throws Exception {
         mockMvc.perform(get("/api/v1/meta/dictionaries"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.areas.length()").value(6))
-                .andExpect(jsonPath("$.teams.length()").value(4))
-                .andExpect(jsonPath("$.assignees.length()").value(4))
-                .andExpect(jsonPath("$.assignees[0].id").exists());
+                .andExpect(jsonPath("$.areas.length()").value(12))
+                .andExpect(jsonPath("$.teams.length()").value(6))
+                .andExpect(jsonPath("$.assignees.length()").value(7))
+                .andExpect(jsonPath("$.areas[0].code").value("LOADING_AREA_A"))
+                .andExpect(jsonPath("$.areas[0].name").value("装卸区 A"))
+                .andExpect(jsonPath("$.teams[0].code").value("LOADING_TEAM_1"))
+                .andExpect(jsonPath("$.assignees[0].id").value("USR-001"))
+                .andExpect(jsonPath("$.assignees[4].name").value("刘志明"))
+                .andExpect(jsonPath("$.assignees[4].teamCode").value("LOADING_TEAM_2"))
+                .andExpect(jsonPath("$.assignees[4].demoUnverified").value(true))
+                .andExpect(jsonPath("$.assignees[0].demoUnverified").value(false))
+                .andExpect(jsonPath("$.assignees[6].teamName").value("设备维保班"));
     }
 
     @Test
     void dictionariesFilterByKeys() throws Exception {
         mockMvc.perform(get("/api/v1/meta/dictionaries").param("keys", "areas,teams"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.areas.length()").value(6))
-                .andExpect(jsonPath("$.teams.length()").value(4))
+                .andExpect(jsonPath("$.areas.length()").value(12))
+                .andExpect(jsonPath("$.teams.length()").value(6))
                 .andExpect(jsonPath("$.assignees").doesNotExist());
     }
 

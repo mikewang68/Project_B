@@ -13,3 +13,6 @@ backend/target/
 !.env.production.example
 .config.json
 deploy/generated/
+
+# 部署打包产物
+*.tar.gz

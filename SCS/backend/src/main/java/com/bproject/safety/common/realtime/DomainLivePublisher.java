@@ -25,20 +25,26 @@ public class DomainLivePublisher {
     private final WebSocketSessionRegistry registry;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final LiveEventGate gate;
 
-    public DomainLivePublisher(WebSocketSessionRegistry registry, ObjectMapper objectMapper, Clock clock) {
+    public DomainLivePublisher(WebSocketSessionRegistry registry, ObjectMapper objectMapper, Clock clock,
+                               LiveEventGate gate) {
         this.registry = registry;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.gate = gate;
     }
 
     public void publish(String type, Map<String, Object> data) {
-        try {
-            String ts = OffsetDateTime.now(clock.withZone(ZONE)).toString();
-            LiveEvent event = LiveEvent.of(type, ts, null, data);
-            registry.broadcast(new TextMessage(objectMapper.writeValueAsString(event)));
-        } catch (Exception ex) {
-            log.warn("publish domain live event failed type={}: {}", type, ex.getMessage());
-        }
+        // Phase B：跨聚合 workflow 缓冲期间只入队，所有 save 成功后由 LiveEventGate.flush 统一发送。
+        gate.emit(() -> {
+            try {
+                String ts = OffsetDateTime.now(clock.withZone(ZONE)).toString();
+                LiveEvent event = LiveEvent.of(type, ts, null, data);
+                registry.broadcast(new TextMessage(objectMapper.writeValueAsString(event)));
+            } catch (Exception ex) {
+                log.warn("publish domain live event failed type={}: {}", type, ex.getMessage());
+            }
+        });
     }
 }

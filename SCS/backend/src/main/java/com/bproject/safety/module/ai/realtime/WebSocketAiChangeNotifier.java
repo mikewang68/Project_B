@@ -1,6 +1,7 @@
 package com.bproject.safety.module.ai.realtime;
 
 import com.bproject.safety.common.realtime.LiveEvent;
+import com.bproject.safety.common.realtime.LiveEventGate;
 import com.bproject.safety.common.realtime.LiveEventTypes;
 import com.bproject.safety.common.realtime.WebSocketSessionRegistry;
 import com.bproject.safety.module.ai.model.DemoAiEvent;
@@ -28,11 +29,14 @@ public class WebSocketAiChangeNotifier implements AiChangeNotifier {
     private final WebSocketSessionRegistry registry;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final LiveEventGate gate;
 
-    public WebSocketAiChangeNotifier(WebSocketSessionRegistry registry, ObjectMapper objectMapper, Clock clock) {
+    public WebSocketAiChangeNotifier(WebSocketSessionRegistry registry, ObjectMapper objectMapper, Clock clock,
+                                     LiveEventGate gate) {
         this.registry = registry;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.gate = gate;
     }
 
     @Override
@@ -40,29 +44,33 @@ public class WebSocketAiChangeNotifier implements AiChangeNotifier {
         if (after == null) {
             return;
         }
-        try {
-            String type = switch (op) {
-                case "new" -> LiveEventTypes.AI_NEW;
-                case "reviewed" -> LiveEventTypes.AI_REVIEWED;
-                default -> LiveEventTypes.AI_CHANGED;
-            };
-            Map<String, Object> data = new LinkedHashMap<>();
-            data.put("aiEventId", after.id);
-            data.put("status", after.status);
-            data.put("confidence", after.confidence);
-            data.put("type", after.type);
-            data.put("changeType", op);
-            data.put("area", after.area);
-            data.put("camera", after.camera);
-            if (after.linkedAlertId != null) {
-                data.put("linkedAlertId", after.linkedAlertId);
+        // Phase B：跨聚合 workflow 缓冲期间延迟到所有 save（含 AI 事件回写）成功后发送。
+        gate.emit(() -> {
+            try {
+                String type = switch (op) {
+                    case "new" -> LiveEventTypes.AI_NEW;
+                    case "reviewed" -> LiveEventTypes.AI_REVIEWED;
+                    default -> LiveEventTypes.AI_CHANGED;
+                };
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("aiEventId", after.id);
+                data.put("status", after.getStatus());
+                data.put("statusCode", after.statusCode);
+                data.put("confidence", after.confidence);
+                data.put("type", after.type);
+                data.put("changeType", op);
+                data.put("area", after.area);
+                data.put("camera", after.camera);
+                if (after.linkedAlertId != null) {
+                    data.put("linkedAlertId", after.linkedAlertId);
+                }
+                LiveEvent event = LiveEvent.of(type, OffsetDateTime.now(clock.withZone(ZONE)).toString(), null, data);
+                registry.broadcast(new TextMessage(objectMapper.writeValueAsString(event)));
+            } catch (RuntimeException ex) {
+                log.warn("publish ai live event failed op={} id={}: {}", op, after.id, ex.getMessage());
+            } catch (Exception ex) {
+                log.warn("serialize ai live event failed op={} id={}: {}", op, after.id, ex.getMessage());
             }
-            LiveEvent event = LiveEvent.of(type, OffsetDateTime.now(clock.withZone(ZONE)).toString(), null, data);
-            registry.broadcast(new TextMessage(objectMapper.writeValueAsString(event)));
-        } catch (RuntimeException ex) {
-            log.warn("publish ai live event failed op={} id={}: {}", op, after.id, ex.getMessage());
-        } catch (Exception ex) {
-            log.warn("serialize ai live event failed op={} id={}: {}", op, after.id, ex.getMessage());
-        }
+        });
     }
 }

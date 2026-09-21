@@ -54,11 +54,11 @@ class PersonnelModuleIntegrationTest {
     @BeforeEach
     void reset() {
         InMemoryAlertRepository alerts = (InMemoryAlertRepository) alertRepository;
-        alerts.clear();
+        alerts.clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(alertRepository::save);
-        ((InMemoryPersonnelRepository) personnelRepository).reset();
-        ((InMemoryFenceRepository) fenceRepository).reset();
-        ((InMemoryCollisionRepository) collisionRepository).reset();
+        ((InMemoryPersonnelRepository) personnelRepository).resetDemoData();
+        ((InMemoryFenceRepository) fenceRepository).resetDemoData();
+        ((InMemoryCollisionRepository) collisionRepository).resetDemoData();
         collisionService.resetAllPairs();
     }
 

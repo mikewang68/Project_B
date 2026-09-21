@@ -37,4 +37,18 @@ public class EdgeLocalLinkage {
         l.actions = new java.util.ArrayList<>(actions);
         return l;
     }
+
+    /** 拷贝构造（仓储 copy-on-read/write：副本之间不得共享可变 actions 列表）。 */
+    public EdgeLocalLinkage(EdgeLocalLinkage o) {
+        if (o == null) {
+            return;
+        }
+        this.alarm = o.alarm;
+        this.screen = o.screen;
+        this.localVoice = o.localVoice;
+        this.localLight = o.localLight;
+        this.plcStop = o.plcStop;
+        this.actions = o.actions == null ? new java.util.ArrayList<>()
+                : new java.util.ArrayList<>(o.actions);
+    }
 }

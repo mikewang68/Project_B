@@ -66,7 +66,7 @@ public class OverviewService {
 
     public OverviewSummary summary() {
         long pendingAi = aiEventRepository.findAll().stream()
-                .filter(e -> AiReviewStatuses.PENDING.equals(e.status) || AiReviewStatuses.UNCERTAIN.equals(e.status))
+                .filter(e -> AiReviewStatuses.PENDING.equals(e.statusCode) || AiReviewStatuses.UNCERTAIN.equals(e.statusCode))
                 .count();
         return new OverviewSummary(
                 SafetyProjectionService.DEMO_ON_DUTY,
@@ -84,8 +84,10 @@ public class OverviewService {
     /** 首页态势地图：Demo 底图 + 真实未关闭高风险 Alert 风险覆盖。 */
     public OverviewMap map() {
         List<DemoAlert> openHighRisks = projection.allAlerts().stream()
-                .filter(a -> !AlertStatuses.CLOSED.equals(a.status))
-                .filter(a -> "严重".equals(a.risk) || "紧急".equals(a.risk) || "预警".equals(a.risk))
+                .filter(a -> !AlertStatuses.CLOSED.equals(a.statusCode))
+                .filter(a -> com.bproject.safety.module.alert.model.RiskLevels.SEVERE.equals(a.riskCode)
+                        || com.bproject.safety.module.alert.model.RiskLevels.URGENT.equals(a.riskCode)
+                        || com.bproject.safety.module.alert.model.RiskLevels.WARNING.equals(a.riskCode))
                 .toList();
 
         List<MapPerson> people = basePeople().stream()
@@ -94,7 +96,9 @@ public class OverviewService {
         List<MapEquipment> equipment = baseEquipment().stream()
                 .map(e -> overlayEquipment(e, openHighRisks))
                 .toList();
-        boolean liveOverlay = openHighRisks.stream().anyMatch(a -> "严重".equals(a.risk) || "紧急".equals(a.risk));
+        boolean liveOverlay = openHighRisks.stream().anyMatch(
+                a -> com.bproject.safety.module.alert.model.RiskLevels.SEVERE.equals(a.riskCode)
+                        || com.bproject.safety.module.alert.model.RiskLevels.URGENT.equals(a.riskCode));
         return new OverviewMap(true, liveOverlay, people, equipment, baseFences());
     }
 
@@ -150,7 +154,9 @@ public class OverviewService {
                     x = 57;
                     y = 26;
                 }
-            } else if (areaHit && !"danger".equals(state) && ("严重".equals(a.risk) || "紧急".equals(a.risk))) {
+            } else if (areaHit && !"danger".equals(state)
+                    && (com.bproject.safety.module.alert.model.RiskLevels.SEVERE.equals(a.riskCode)
+                            || com.bproject.safety.module.alert.model.RiskLevels.URGENT.equals(a.riskCode))) {
                 risk = "关注";
                 state = "warning";
                 overlay = true;
@@ -172,7 +178,9 @@ public class OverviewService {
                 default -> false;
             };
             if (hit) {
-                state = "严重".equals(a.risk) || "紧急".equals(a.risk) ? "danger" : "warning";
+                state = (com.bproject.safety.module.alert.model.RiskLevels.SEVERE.equals(a.riskCode)
+                        || com.bproject.safety.module.alert.model.RiskLevels.URGENT.equals(a.riskCode))
+                        ? "danger" : "warning";
                 overlay = true;
             }
         }
@@ -191,8 +199,8 @@ public class OverviewService {
 
     private List<MapPerson> basePeople() {
         return personnelRepository.findAll().stream()
-                .map(p -> new MapPerson(p.id, p.name, p.team, p.status, p.battery, p.area,
-                        p.risk, p.state, p.x, p.y, false))
+                .map(p -> new MapPerson(p.id, p.name, p.team, p.getStatus(), p.battery, p.area,
+                        p.getRisk(), p.state, p.x, p.y, false))
                 .toList();
     }
 
@@ -205,7 +213,7 @@ public class OverviewService {
 
     private List<MapFence> baseFences() {
         return fenceRepository.findAll().stream()
-                .filter(f -> !FenceStatuses.DISABLED.equals(f.status))
+                .filter(f -> !FenceStatuses.DISABLED.equals(f.statusCode))
                 .map(f -> new MapFence(f.id, f.name, f.tone, f.area,
                         f.polygon.stream().map(pt -> new MapPoint(pt.x(), pt.y())).toList()))
                 .toList();
@@ -234,9 +242,9 @@ public class OverviewService {
         List<FeedTimeline> timeline = tail.stream()
                 .map(n -> new FeedTimeline(n.time(), n.text(), timelineDetail(n.state())))
                 .toList();
-        return new FeedItem(a.id, a.title, a.risk, projection.summaryOf(a),
+        return new FeedItem(a.id, a.title, a.getRisk(), projection.summaryOf(a),
                 a.occurredAt == null ? null : ISO.format(a.occurredAt),
-                a.area, a.target, a.status, timeline);
+                a.area, a.target, a.getStatus(), timeline);
     }
 
     private String timelineDetail(String state) {

@@ -16,7 +16,10 @@ public class PairState {
     public double relSpeed;
     public String direction;
     public int radarQuality;
-    public String risk;
+    /** 碰撞风险机器 code（SAFE/WARNING/SEVERE/URGENT）。 */
+    public String riskCode;
+    /** 感知健康机器 code（NORMAL/UNCERTAIN/RADAR_DOWN）；雷达断数时为 UNCERTAIN。 */
+    public String healthCode = SensorHealth.NORMAL;
     public boolean radarDown;
     public boolean deviceStopped;
     public boolean controlFailure;
@@ -34,7 +37,8 @@ public class PairState {
         this.relSpeed = 1.2;
         this.direction = "接近";
         this.radarQuality = 97;
-        this.risk = "安全";
+        this.riskCode = CollisionRiskLevels.SAFE;
+        this.healthCode = SensorHealth.NORMAL;
         this.trend = new ArrayList<>(initTrend);
         this.steps = baseSteps();
     }

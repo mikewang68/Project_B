@@ -30,9 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class OverviewController {
 
     private final OverviewService service;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
 
-    public OverviewController(OverviewService service) {
+    public OverviewController(OverviewService service,
+                              com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.service = service;
+        this.demoGuard = demoGuard;
     }
 
     @GetMapping("/summary")
@@ -75,6 +78,7 @@ public class OverviewController {
     @Operation(summary = "SIMULATED 风险演示开关：body {\"active\":true/false}")
     public Map<String, Object> simulateRisk(@RequestBody(required = false) Map<String, Object> body,
                                             @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
+        demoGuard.requireSimulator();
         boolean active = body != null && Boolean.TRUE.equals(body.get("active"));
         service.simulateRisk(active);
         return Map.of("active", active);

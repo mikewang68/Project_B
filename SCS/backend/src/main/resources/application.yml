@@ -104,6 +104,8 @@ app:
   idempotency:
     ttl-seconds: ${IDEMPOTENCY_TTL_SECONDS:600}
   demo:
+    seed-enabled: ${APP_DEMO_SEED_ENABLED:false}
+    simulator-enabled: ${APP_DEMO_SIMULATOR_ENABLED:false}
     user:
       id: ${DEMO_USER_ID:USR-001}
       name: ${DEMO_USER_NAME:李娜}

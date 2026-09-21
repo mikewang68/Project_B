@@ -3,6 +3,7 @@ package com.bproject.safety.module.ai.seed;
 import com.bproject.safety.module.ai.model.AiBox;
 import com.bproject.safety.module.ai.model.AiTimelineNode;
 import com.bproject.safety.module.ai.model.AiReviewStatuses;
+import com.bproject.safety.module.ai.model.AiRiskLevels;
 import com.bproject.safety.module.ai.model.CameraInfo;
 import com.bproject.safety.module.ai.model.DemoAiEvent;
 import com.bproject.safety.module.ai.repository.AiEventRepository;
@@ -42,14 +43,20 @@ public class AiDemoSeeder implements CommandLineRunner {
 
     private final AiEventRepository repository;
     private final Clock clock;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard guard;
 
-    public AiDemoSeeder(AiEventRepository repository, Clock clock) {
+    public AiDemoSeeder(AiEventRepository repository, Clock clock,
+                        com.bproject.safety.support.demo.DemoFeatureGuard guard) {
         this.repository = repository;
         this.clock = clock;
+        this.guard = guard;
     }
 
     @Override
     public void run(String... args) {
+        if (!guard.isSeedEnabled()) {
+            return;
+        }
         if (repository.count() > 0) {
             return;
         }
@@ -58,17 +65,24 @@ public class AiDemoSeeder implements CommandLineRunner {
         log.info("AI 事件 Demo 数据初始化完成：{} 条", seeds.size());
     }
 
-    /** 摄像头健康台账（Demo）。 */
-    public static List<CameraInfo> buildCameras() {
-        return List.of(
-                camera("CAM-01", "装卸区 B 球机", "装卸区 B", 98.2, "正常"),
-                camera("CAM-02", "龙门吊下枪机", "龙门吊作业区", 41.5, "画面质量下降"),
-                camera("CAM-03", "装卸区 A 球机", "装卸区 A", 46.8, "画面质量下降"),
-                camera("CAM-04", "翻箱机区枪机", "翻箱机作业区", 97.4, "正常"),
-                camera("CAM-05", "铁路线 B 枪机", "铁路装卸线 B", 96.9, "正常"),
-                camera("CAM-06", "箱区通道球机", "箱区通道 C", 95.1, "正常"),
-                camera("CAM-07", "装卸区 B 球机", "装卸区 B", 97.8, "正常"),
-                camera("CAM-08", "维修通道枪机", "维修通道", 94.3, "正常"));
+    /**
+     * 摄像头健康台账（Demo）。设备身份（code/name/area）来自统一的
+     * {@link com.bproject.safety.support.masterdata.DemoDeviceMasterData}，
+     * 此处仅维护各摄像头的运行态（画质 / 在线状态）。
+     */
+    public static List<CameraInfo> buildCameras(
+            com.bproject.safety.support.masterdata.DemoDeviceMasterData devices) {
+        // 运行态（非主数据）：画质评分与健康状态，按设备 code 对齐。
+        java.util.Map<String, Double> quality = java.util.Map.of(
+                "CAM-01", 98.2, "CAM-02", 41.5, "CAM-03", 46.8, "CAM-04", 97.4,
+                "CAM-05", 96.9, "CAM-06", 95.1, "CAM-07", 97.8, "CAM-08", 94.3);
+        java.util.Map<String, String> state = java.util.Map.of(
+                "CAM-02", "画面质量下降", "CAM-03", "画面质量下降");
+        return devices.cameras().stream()
+                .map(c -> camera(c.code(), c.name(), c.areaName(),
+                        quality.getOrDefault(c.code(), 95.0),
+                        state.getOrDefault(c.code(), "正常")))
+                .toList();
     }
 
     private static CameraInfo camera(String id, String name, String area, double quality, String state) {
@@ -120,7 +134,7 @@ public class AiDemoSeeder implements CommandLineRunner {
                 List.of(person(96.9, 40, 45, 23, 43), box("helmet", "NO HELMET", 96.1, 45, 43, 13, 13, "violation")),
                 "李娜", "21:48:12", null, null, null, null, null));
 
-        list.add(event("AI-E-20260903-020", "闯入危险区域", "CAM-04", "翻箱机区枪机", "翻箱机作业区",
+        list.add(event("AI-E-20260903-020", "闯入危险区域", "CAM-04", "翻箱机区枪机", "翻箱机区",
                 93.7, 4.1, "Zone-Intrusion-v2.1.0", 85, "21:37:20", AiReviewStatuses.CONFIRMED, "高", "正常",
                 "设备运行区域禁止人员进入", "外协人员 P-1068", "翻箱机 TIP-03",
                 "人员进入设备运行区域，轨迹与危险区重叠 4.1 秒。",
@@ -152,6 +166,22 @@ public class AiDemoSeeder implements CommandLineRunner {
         return list;
     }
 
+    private static final com.bproject.safety.support.masterdata.DemoMasterData MASTER =
+            new com.bproject.safety.support.masterdata.DemoMasterData();
+
+    /** 种子责任人按姓名匹配用户 code（无责任人 / “—” 返回 null）。 */
+    private static String resolveAssigneeCode(String assignee) {
+        if (assignee == null || assignee.isBlank() || "—".equals(assignee)) {
+            return null;
+        }
+        for (com.bproject.safety.support.masterdata.DemoMasterData.DemoUser u : MASTER.users()) {
+            if (assignee.contains(u.name())) {
+                return u.id();
+            }
+        }
+        return null;
+    }
+
     @SuppressWarnings("checkstyle:ParameterNumber")
     private DemoAiEvent event(String id, String type, String camera, String cameraName, String area,
                               double confidence, double durationSec, String model, double threshold,
@@ -171,8 +201,10 @@ public class AiDemoSeeder implements CommandLineRunner {
         e.model = model;
         e.threshold = threshold;
         e.time = time;
-        e.status = status;
-        e.risk = risk;
+        // 种子中文状态 / 风险仅用于装配，落模型时统一转机器 code（Demo 种子一次性转换）。
+        // 装配期兼容：入参可能是机器 code 或中文 label，统一归一化为 code（非运行时业务判断）。
+        e.statusCode = AiReviewStatuses.normalize(status);
+        e.riskCode = AiRiskLevels.normalize(risk);
         e.health = health;
         e.scene = sceneOf(type);
         e.rule = rule;
@@ -184,6 +216,7 @@ public class AiDemoSeeder implements CommandLineRunner {
         e.reviewTime = reviewTime;
         e.falseReason = falseReason;
         e.assignee = assignee;
+        e.assigneeUserCode = resolveAssigneeCode(assignee);
         e.assignmentPriority = assignmentPriority;
         e.processStatus = processStatus;
         e.assignmentNote = assignmentNote;

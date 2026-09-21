@@ -18,18 +18,38 @@ public class DemoAlert {
     /** 事件编号，如 ALM-20260904-001。 */
     public String id;
     public String title;
-    /** 风险等级：一般 / 预警 / 严重 / 紧急。 */
-    public String risk;
+    /**
+     * 风险等级机器 code（权威值），见 {@link RiskLevels}（NORMAL/WARNING/SEVERE/URGENT）。
+     * 中文展示通过 {@link #getRisk()} 派生，禁止在业务判断中使用中文字面量。
+     */
+    public String riskCode;
     public String eventType;
-    /** 展示用时间（HH:mm:ss，与当前前端 Mock 一致）。 */
+    /** 展示用时间（HH:mm:ss，仅展示；权威时间为 {@link #occurredAt}）。 */
     public String time;
     public String area;
     public String target;
     /** 来源：人员安全 / 设备防碰撞 / AI违规 / 设备异常 / 系统异常。 */
     public String source;
-    /** 当前状态，见 {@link AlertStatuses}。 */
-    public String status;
+    /** 当前状态机器 code（权威值），见 {@link AlertStatuses}。 */
+    public String statusCode;
+
+    /** 责任人用户 code（USR-xxx，正式业务关联值，F-02）；未派单为 null。 */
+    public String assigneeUserCode;
+    /**
+     * 责任人姓名快照（派单时刻从主数据解析，仅用于展示，不能作为关联依据）。
+     * 未派单为“待分配”。
+     */
     public String assignee;
+
+    /**
+     * 判定 / 配置来源类型（F-07 provenance）：FENCE / RULE / AI_MODEL / COLLISION / MANUAL / EDGE 等。
+     * 与 {@link #ruleId}/{@link #ruleVersion} 区分：人员越界依据围栏时不得把围栏版本写成规则版本。
+     */
+    public String decisionSourceType;
+    /** 判定来源实体 code（如 FENCE-003 / RULE-COL-001 / 模型 code）。 */
+    public String decisionSourceCode;
+    /** 判定来源版本（如围栏 v1.2 / 模型版本），语义随 {@link #decisionSourceType}。 */
+    public String decisionSourceVersion;
 
     /**
      * Demo 级风险去重键（Backend Demo 过渡设计）：如 PERSON_INTRUSION:P-ZHAO:FENCE-001、
@@ -62,7 +82,10 @@ public class DemoAlert {
     public String reviewUser;
     public String reviewTime;
     public String reviewNote;
-    public String upgradedFrom;
+    /** 升级前风险等级机器 code（见 {@link RiskLevels}）；中文展示通过 {@link #getUpgradedFrom()} 派生。 */
+    public String upgradedFromCode;
+    /** 最近一次风险升级前的等级机器 code（B5-01 规范命名）。 */
+    public String previousRiskLevelCode;
 
     /**
      * 移动端现场处置阶段（Backend Demo 过渡设计，见 docs/mobile-alert-integration-issues.md）：
@@ -102,20 +125,56 @@ public class DemoAlert {
         public String ruleVersionUsed;
         /** 平台接收到补传的时间。 */
         public OffsetDateTime syncedAt;
+
+        /** 深拷贝（copy-on-read/write：仓储返回的副本之间不得共享可变子对象）。 */
+        public EdgeReplayMeta copy() {
+            EdgeReplayMeta m = new EdgeReplayMeta();
+            m.edgeNodeId = edgeNodeId;
+            m.offlineEventId = offlineEventId;
+            m.offlineOccurred = offlineOccurred;
+            m.syncDelaySec = syncDelaySec;
+            m.ruleVersionUsed = ruleVersionUsed;
+            m.syncedAt = syncedAt;
+            return m;
+        }
+    }
+
+    // ---------- 中文展示派生（API 兼容：JSON 仍输出 status / risk / upgradedFrom 中文） ----------
+
+    /** 当前状态中文标签（由 statusCode 派生）。 */
+    @com.fasterxml.jackson.annotation.JsonProperty("status")
+    public String getStatus() {
+        return AlertStatuses.label(statusCode);
+    }
+
+    /** 风险等级中文标签（由 riskCode 派生）。 */
+    @com.fasterxml.jackson.annotation.JsonProperty("risk")
+    public String getRisk() {
+        return RiskLevels.label(riskCode);
+    }
+
+    /** 升级前风险等级中文标签（由 upgradedFromCode 派生）。 */
+    @com.fasterxml.jackson.annotation.JsonProperty("upgradedFrom")
+    public String getUpgradedFrom() {
+        return RiskLevels.label(upgradedFromCode);
     }
 
     public DemoAlert copy() {
         DemoAlert a = new DemoAlert();
         a.id = id;
         a.title = title;
-        a.risk = risk;
+        a.riskCode = riskCode;
         a.eventType = eventType;
         a.time = time;
         a.area = area;
         a.target = target;
         a.source = source;
-        a.status = status;
+        a.statusCode = statusCode;
+        a.assigneeUserCode = assigneeUserCode;
         a.assignee = assignee;
+        a.decisionSourceType = decisionSourceType;
+        a.decisionSourceCode = decisionSourceCode;
+        a.decisionSourceVersion = decisionSourceVersion;
         a.dedupKey = dedupKey;
         a.slaRemainingSec = slaRemainingSec;
         a.ruleId = ruleId;
@@ -133,18 +192,23 @@ public class DemoAlert {
         a.acceptTime = acceptTime;
         a.priority = priority;
         a.slaLimitMin = slaLimitMin;
-        a.treatment = treatment;
+        a.treatment = treatment == null ? null
+                : new TreatmentRecord(treatment.measures() == null ? null
+                        : List.copyOf(treatment.measures()),
+                        treatment.result(), treatment.attachment(), treatment.note(),
+                        treatment.submitTime(), treatment.handler());
         a.reviewUser = reviewUser;
         a.reviewTime = reviewTime;
         a.reviewNote = reviewNote;
-        a.upgradedFrom = upgradedFrom;
+        a.upgradedFromCode = upgradedFromCode;
+        a.previousRiskLevelCode = previousRiskLevelCode;
         a.mobileStage = mobileStage;
         a.acceptedAt = acceptedAt;
         a.arrivedAt = arrivedAt;
         a.occurredAt = occurredAt;
         a.slaDeadline = slaDeadline;
         a.updatedAt = updatedAt;
-        a.edgeReplay = edgeReplay;
+        a.edgeReplay = edgeReplay == null ? null : edgeReplay.copy();
         a.origin = origin;
         return a;
     }

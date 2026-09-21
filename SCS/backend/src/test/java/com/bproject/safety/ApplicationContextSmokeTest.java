@@ -42,7 +42,7 @@ class ApplicationContextSmokeTest {
                 .andExpect(jsonPath("$.name").value("李娜"));
         mockMvc.perform(get("/api/v1/meta/dictionaries").param("keys", "areas"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.areas.length()").value(6));
+                .andExpect(jsonPath("$.areas.length()").value(12));
     }
 
     @Test

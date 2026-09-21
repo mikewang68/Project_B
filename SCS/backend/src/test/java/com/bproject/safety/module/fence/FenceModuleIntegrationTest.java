@@ -53,11 +53,11 @@ class FenceModuleIntegrationTest {
     @BeforeEach
     void reset() {
         InMemoryAlertRepository alerts = (InMemoryAlertRepository) alertRepository;
-        alerts.clear();
+        alerts.clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(alertRepository::save);
-        ((InMemoryFenceRepository) fenceRepository).reset();
-        ((InMemoryPersonnelRepository) personnelRepository).reset();
-        ((InMemoryCollisionRepository) collisionRepository).reset();
+        ((InMemoryFenceRepository) fenceRepository).resetDemoData();
+        ((InMemoryPersonnelRepository) personnelRepository).resetDemoData();
+        ((InMemoryCollisionRepository) collisionRepository).resetDemoData();
         collisionService.resetAllPairs();
     }
 

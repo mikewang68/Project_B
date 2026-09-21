@@ -23,7 +23,7 @@ function baseNode(over: Partial<BackendEdgeNode> = {}): BackendEdgeNode {
   return {
     id: 'EDGE-03',
     name: '3 号边缘节点 · 翻箱机区',
-    area: '翻箱机作业区',
+    area: '翻箱机区',
     ip: '10.24.1.13',
     status: 'ONLINE',
     cloudConnected: true,

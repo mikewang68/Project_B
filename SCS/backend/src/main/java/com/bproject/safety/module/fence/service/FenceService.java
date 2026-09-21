@@ -30,18 +30,22 @@ public class FenceService {
     private final FenceRepository repository;
     private final DomainLivePublisher publisher;
     private final Clock clock;
+    private final FenceNumberGenerator numberGenerator;
 
-    public FenceService(FenceRepository repository, DomainLivePublisher publisher, Clock clock) {
+    public FenceService(FenceRepository repository, DomainLivePublisher publisher, Clock clock,
+                        FenceNumberGenerator numberGenerator) {
         this.repository = repository;
         this.publisher = publisher;
         this.clock = clock;
+        this.numberGenerator = numberGenerator;
     }
 
     public List<DemoFence> list(String keyword, String status, String kind) {
         String kw = keyword == null ? "" : keyword.trim();
         return repository.findAll().stream().filter(f ->
                 (kw.isEmpty() || f.name.contains(kw) || f.id.contains(kw))
-                        && (status == null || status.isBlank() || status.equals(f.status))
+                        && (status == null || status.isBlank()
+                                || FenceStatuses.normalize(status).equals(f.statusCode))
                         && (kind == null || kind.isBlank() || kind.equals(f.kind))).toList();
     }
 
@@ -60,7 +64,7 @@ public class FenceService {
                 req.riskLevel(), req.teams(), req.startsAt(), req.endsAt(), req.polygon());
         boolean review = Boolean.TRUE.equals(req.submitReview());
         f.version = "v1.0";
-        f.status = review ? FenceStatuses.TO_REVIEW : FenceStatuses.DRAFT;
+        f.statusCode = review ? FenceStatuses.TO_REVIEW : FenceStatuses.DRAFT;
         f.approver = review ? "等待审批" : "—";
         f.nodes = DemoFence.pendingNodes();
         f.edgeSynced = 0;
@@ -74,15 +78,15 @@ public class FenceService {
 
     public DemoFence update(String id, UpdateFenceRequest req) {
         DemoFence f = require(id);
-        if (FenceStatuses.DISABLED.equals(f.status)) {
+        if (FenceStatuses.DISABLED.equals(f.statusCode)) {
             throw ApiException.conflict("已停用围栏不可编辑，请重新启用后再修改");
         }
         validate(req.name(), req.polygon());
         applyBasics(f, req.name(), req.kind(), req.riskLevel(), req.teams(), req.startsAt(), req.endsAt(),
                 req.polygon());
         // 已生效围栏被编辑后回到待评审，版本递增，需要重新发布（专业配置中心口径）
-        if (FenceStatuses.EFFECTIVE.equals(f.status) || FenceStatuses.MISMATCH.equals(f.status)) {
-            f.status = FenceStatuses.TO_REVIEW;
+        if (FenceStatuses.EFFECTIVE.equals(f.statusCode) || FenceStatuses.MISMATCH.equals(f.statusCode)) {
+            f.statusCode = FenceStatuses.TO_REVIEW;
             f.version = bumpMinor(f.version);
             f.nodes = DemoFence.pendingNodes();
             f.edgeSynced = 0;
@@ -96,10 +100,11 @@ public class FenceService {
 
     public DemoFence submitReview(String id) {
         DemoFence f = require(id);
-        if (!List.of(FenceStatuses.DRAFT, FenceStatuses.TO_PUBLISH).contains(f.status)) {
-            throw ApiException.conflict("当前状态不允许提交评审（当前状态：" + f.status + "）");
+        if (!List.of(FenceStatuses.DRAFT, FenceStatuses.TO_PUBLISH).contains(f.statusCode)) {
+            throw ApiException.conflict("当前状态不允许提交评审（当前状态："
+                    + FenceStatuses.label(f.statusCode) + "）");
         }
-        f.status = FenceStatuses.TO_REVIEW;
+        f.statusCode = FenceStatuses.TO_REVIEW;
         f.approver = "等待审批";
         f.updatedAt = OffsetDateTime.now(clock);
         repository.save(f);
@@ -110,15 +115,15 @@ public class FenceService {
     /** 发布：模拟 4 个边缘节点全部同步成功，状态 → 已生效。 */
     public DemoFence publish(String id) {
         DemoFence f = require(id);
-        if (FenceStatuses.DISABLED.equals(f.status)) {
+        if (FenceStatuses.DISABLED.equals(f.statusCode)) {
             throw ApiException.conflict("已停用围栏不可发布");
         }
-        if (FenceStatuses.EFFECTIVE.equals(f.status) && f.edgeSynced == f.edgeTotal) {
+        if (FenceStatuses.EFFECTIVE.equals(f.statusCode) && f.edgeSynced == f.edgeTotal) {
             return f;
         }
         f.nodes = DemoFence.successNodes();
         f.edgeSynced = f.edgeTotal;
-        f.status = FenceStatuses.EFFECTIVE;
+        f.statusCode = FenceStatuses.EFFECTIVE;
         f.effectiveAt = "立即生效";
         f.updatedAt = OffsetDateTime.now(clock);
         repository.save(f);
@@ -137,7 +142,7 @@ public class FenceService {
         f.nodes = f.nodes.stream().map(n -> n.id().equals(target) ? n.withState(EdgeNode.SUCCESS) : n).toList();
         f.edgeSynced = (int) f.nodes.stream().filter(n -> EdgeNode.SUCCESS.equals(n.state())).count();
         if (f.edgeSynced == f.edgeTotal) {
-            f.status = FenceStatuses.EFFECTIVE;
+            f.statusCode = FenceStatuses.EFFECTIVE;
         }
         f.updatedAt = OffsetDateTime.now(clock);
         repository.save(f);
@@ -147,10 +152,12 @@ public class FenceService {
 
     public DemoFence disable(String id) {
         DemoFence f = require(id);
-        if (!List.of(FenceStatuses.EFFECTIVE, FenceStatuses.MISMATCH, FenceStatuses.TO_PUBLISH).contains(f.status)) {
-            throw ApiException.conflict("当前状态不允许停用（当前状态：" + f.status + "）");
+        if (!List.of(FenceStatuses.EFFECTIVE, FenceStatuses.MISMATCH, FenceStatuses.TO_PUBLISH)
+                .contains(f.statusCode)) {
+            throw ApiException.conflict("当前状态不允许停用（当前状态："
+                    + FenceStatuses.label(f.statusCode) + "）");
         }
-        f.status = FenceStatuses.DISABLED;
+        f.statusCode = FenceStatuses.DISABLED;
         f.nodes = f.nodes.stream().map(n -> n.withState(EdgeNode.PENDING)).toList();
         f.edgeSynced = 0;
         f.updatedAt = OffsetDateTime.now(clock);
@@ -165,7 +172,7 @@ public class FenceService {
         f.nodes = DemoFence.successNodes();
         f.nodes = f.nodes.stream().map(n -> n.id().equals("EDGE-03") ? n.withState(EdgeNode.FAILED) : n).toList();
         f.edgeSynced = (int) f.nodes.stream().filter(n -> EdgeNode.SUCCESS.equals(n.state())).count();
-        f.status = FenceStatuses.MISMATCH;
+        f.statusCode = FenceStatuses.MISMATCH;
         f.updatedAt = OffsetDateTime.now(clock);
         repository.save(f);
         publish(f, "simulate-mismatch");
@@ -179,7 +186,10 @@ public class FenceService {
         f.name = name;
         f.kind = kind;
         f.tone = toneOf(kind);
-        f.riskLevel = risk == null || risk.isBlank() ? "一般" : risk;
+        // 请求仍可传中文风险等级，落模型统一归一为机器 code（默认 NORMAL）。
+        f.riskCode = (risk == null || risk.isBlank())
+                ? com.bproject.safety.module.alert.model.RiskLevels.NORMAL
+                : com.bproject.safety.module.alert.model.RiskLevels.normalize(risk);
         f.area = f.area == null ? "自定义区域" : f.area;
         f.teams = teams == null ? "" : teams;
         if (startsAt != null) {
@@ -216,10 +226,9 @@ public class FenceService {
         };
     }
 
+    /** Phase B：编号生成委托 {@link FenceNumberGenerator}，格式 FENCE-NNN 不变。 */
     private String nextFenceId() {
-        long n = repository.count() + 1;
-        String id = String.format("FENCE-%03d", n);
-        return repository.findById(id).isPresent() ? String.format("FENCE-%03d", n + 1) : id;
+        return numberGenerator.nextFenceNumber();
     }
 
     private static String bumpMinor(String version) {
@@ -238,7 +247,8 @@ public class FenceService {
     private void publish(DemoFence f, String op) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("fenceId", f.id);
-        data.put("status", f.status);
+        data.put("status", f.getStatus());
+        data.put("statusCode", f.statusCode);
         data.put("version", f.version);
         data.put("edgeSynced", f.edgeSynced);
         data.put("edgeTotal", f.edgeTotal);

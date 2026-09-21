@@ -85,6 +85,21 @@ public class EdgePendingEvent {
             this.businessId = businessId;
             this.detail = detail;
         }
+
+        /** 拷贝构造（字段均为不可变 String，但实例本身可变，仓储副本之间不得共享实例）。 */
+        public PayloadSummary(PayloadSummary s) {
+            if (s == null) {
+                return;
+            }
+            this.title = s.title;
+            this.area = s.area;
+            this.fence = s.fence;
+            this.person = s.person;
+            this.device = s.device;
+            this.risk = s.risk;
+            this.businessId = s.businessId;
+            this.detail = s.detail;
+        }
     }
 
     public EdgePendingEvent copy() {
@@ -101,8 +116,8 @@ public class EdgePendingEvent {
         e.clockOffsetAtOccurrence = clockOffsetAtOccurrence;
         e.ruleVersionUsed = ruleVersionUsed;
         e.risk = risk;
-        e.payloadSummary = payloadSummary;
-        e.localLinkage = localLinkage;
+        e.payloadSummary = payloadSummary == null ? null : new PayloadSummary(payloadSummary);
+        e.localLinkage = localLinkage == null ? null : new EdgeLocalLinkage(localLinkage);
         e.status = status;
         e.retryCount = retryCount;
         e.lastRetryAt = lastRetryAt;

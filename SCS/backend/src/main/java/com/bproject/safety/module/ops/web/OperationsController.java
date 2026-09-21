@@ -32,9 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class OperationsController {
 
     private final EdgeOpsService service;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
 
-    public OperationsController(EdgeOpsService service) {
+    public OperationsController(EdgeOpsService service,
+                                com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.service = service;
+        this.demoGuard = demoGuard;
     }
 
     @GetMapping("/overview")
@@ -100,6 +103,7 @@ public class OperationsController {
     @PostMapping("/simulate")
     @Operation(summary = "运维模拟场景：deviceFault 设备故障 / cacheAlert 缓存告警 / timeDrift 时钟漂移")
     public Map<String, Object> simulate(@RequestBody SimulateRequest body) {
+        demoGuard.requireSimulator();
         return service.simulate(body.scenario(), body.target());
     }
 }

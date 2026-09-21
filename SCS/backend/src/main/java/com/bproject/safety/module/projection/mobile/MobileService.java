@@ -19,6 +19,10 @@ public class MobileService {
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
+    /** 移动端“处置中”口径：处理中 / 已升级（待复核属于复核队列，不计入移动端处置中）。 */
+    private static final java.util.Set<String> IN_HANDLING = java.util.Set.of(
+            AlertStatuses.PROCESSING, AlertStatuses.ESCALATED);
+
     private final AlertRepository repository;
 
     public MobileService(AlertRepository repository) {
@@ -28,14 +32,15 @@ public class MobileService {
     public MobileHome home() {
         List<DemoAlert> all = repository.findAll();
         List<DemoAlert> pending = all.stream()
-                .filter(a -> AlertStatuses.TO_HANDLE.equals(a.status))
+                .filter(a -> AlertStatuses.PENDING_PROCESS.equals(a.statusCode))
                 .sorted(occurredDesc()).toList();
         List<DemoAlert> handling = all.stream()
-                .filter(a -> AlertStatuses.HANDLING.equals(a.status) || AlertStatuses.ESCALATED.equals(a.status))
+                .filter(a -> IN_HANDLING.contains(a.statusCode))
                 .sorted(occurredDesc()).toList();
         int urgent = (int) all.stream()
-                .filter(a -> "紧急".equals(a.risk) && !AlertStatuses.CLOSED.equals(a.status)).count();
-        int closed = (int) all.stream().filter(a -> AlertStatuses.CLOSED.equals(a.status)).count();
+                .filter(a -> com.bproject.safety.module.alert.model.RiskLevels.URGENT.equals(a.riskCode)
+                        && !AlertStatuses.CLOSED.equals(a.statusCode)).count();
+        int closed = (int) all.stream().filter(a -> AlertStatuses.CLOSED.equals(a.statusCode)).count();
 
         return new MobileHome(
                 "王建国", "安全员", "装卸一班", "夜班",
@@ -50,8 +55,8 @@ public class MobileService {
     }
 
     private MobileHomeItem toItem(DemoAlert a) {
-        return new MobileHomeItem(a.id, a.title, a.risk, a.area, a.target, a.time,
-                a.status, a.mobileStage, a.assignee,
+        return new MobileHomeItem(a.id, a.title, a.getRisk(), a.area, a.target, a.time,
+                a.getStatus(), a.mobileStage, a.assignee,
                 a.occurredAt == null ? null : ISO.format(a.occurredAt));
     }
 }

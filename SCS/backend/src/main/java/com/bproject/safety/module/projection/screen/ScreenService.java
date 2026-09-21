@@ -60,17 +60,18 @@ public class ScreenService {
     /** 当前最高优先级的紧急且未关闭事件；不存在返回 null。 */
     public ScreenCritical critical() {
         return projection.allAlerts().stream()
-                .filter(a -> "紧急".equals(a.risk) && !AlertStatuses.CLOSED.equals(a.status))
+                .filter(a -> com.bproject.safety.module.alert.model.RiskLevels.URGENT.equals(a.riskCode)
+                        && !AlertStatuses.CLOSED.equals(a.statusCode))
                 .max(Comparator.comparing((DemoAlert a) -> a.occurredAt, Comparator.nullsFirst(Comparator.naturalOrder()))
                         .thenComparing(a -> a.id))
-                .map(a -> new ScreenCritical(a.id, a.title, a.risk, a.area, a.target, a.status,
+                .map(a -> new ScreenCritical(a.id, a.title, a.getRisk(), a.area, a.target, a.getStatus(),
                         a.assignee, a.durationSec,
                         a.occurredAt == null ? null : ISO.format(a.occurredAt), projection.summaryOf(a)))
                 .orElse(null);
     }
 
     private ScreenFeedItem toFeedItem(DemoAlert a) {
-        return new ScreenFeedItem(a.id, a.title, a.risk, a.area, a.target, a.status,
+        return new ScreenFeedItem(a.id, a.title, a.getRisk(), a.area, a.target, a.getStatus(),
                 a.eventType, a.source, a.occurredAt == null ? null : ISO.format(a.occurredAt),
                 projection.summaryOf(a));
     }

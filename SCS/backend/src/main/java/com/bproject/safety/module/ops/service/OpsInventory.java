@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.bproject.safety.support.masterdata.DemoDeviceMasterData;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,10 +32,12 @@ public class OpsInventory {
     private final Map<String, OpsDevice> devices = new LinkedHashMap<>();
     private final Map<String, OpsInterface> interfaces = new LinkedHashMap<>();
     private final Clock clock;
+    private final DemoDeviceMasterData deviceMasterData;
 
-    public OpsInventory(Clock clock) {
+    public OpsInventory(Clock clock, DemoDeviceMasterData deviceMasterData) {
         this.clock = clock;
-        seed();
+        this.deviceMasterData = deviceMasterData;
+        // 不在构造器隐式灌种；由 DemoSeedInitializer 在 app.demo.seed-enabled=true 时统一初始化。
     }
 
     public record OpsDevice(String id, String name, String type, String category, String area,
@@ -80,7 +83,7 @@ public class OpsInventory {
     private void seed() {
         OffsetDateTime now = OffsetDateTime.now(clock.withZone(ZONE));
         String[] nodes = {"EDGE-01", "EDGE-02", "EDGE-03", "EDGE-04"};
-        String[] areas = {"装卸区 A", "车辆通道", "翻箱机作业区", "龙门吊作业区"};
+        String[] areas = {"装卸区 A", "车辆通道", "翻箱机区", "龙门吊作业区"};
         addDevices("CAM", "摄像头", "视频感知", 24, nodes, areas, now);
         addDevices("RAD", "雷达", "测距感知", 8, nodes, areas, now);
         addDevices("LOC", "定位基站", "人员定位", 12, nodes, areas, now);
@@ -102,8 +105,19 @@ public class OpsInventory {
             String id = prefix + "-" + String.format("%02d", i);
             int latency = 20 + (i * 7) % 60;
             int health = 92 + (i * 3) % 8;
-            OpsDevice d = new OpsDevice(id, typeName + " " + i, typeName, category,
-                    areas[idx], nodes[idx], ONLINE, now, latency, health, null);
+            String name = typeName + " " + i;
+            String area = areas[idx];
+            String edgeNodeId = nodes[idx];
+            // CAM-01 ~ CAM-08 与 AI 摄像头是同一批物理设备：身份/名称/区域以设备主数据为准，避免双源冲突。
+            if ("CAM".equals(prefix) && i <= 8) {
+                DemoDeviceMasterData.DeviceIdentity identity = deviceMasterData.device(id).orElse(null);
+                if (identity != null) {
+                    name = identity.name();
+                    area = identity.areaName();
+                }
+            }
+            OpsDevice d = new OpsDevice(id, name, typeName, category,
+                    area, edgeNodeId, ONLINE, now, latency, health, null);
             devices.put(id, d);
         }
     }

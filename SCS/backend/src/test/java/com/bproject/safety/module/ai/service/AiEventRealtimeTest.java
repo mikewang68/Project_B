@@ -56,7 +56,13 @@ class AiEventRealtimeTest {
         alertRepository = new InMemoryAlertRepository();
         AlertDemoSeeder.buildSeeds(clock).forEach(alertRepository::save);
         aiRepository = new InMemoryAiEventRepository();
-        new AiDemoSeeder(aiRepository, clock).buildSeeds().forEach(aiRepository::save);
+        com.bproject.safety.support.demo.DemoFeatureGuard guard =
+                new com.bproject.safety.support.demo.DemoFeatureGuard(true, true);
+        com.bproject.safety.support.masterdata.DemoMasterData masterData =
+                new com.bproject.safety.support.masterdata.DemoMasterData();
+        com.bproject.safety.support.masterdata.DemoDeviceMasterData deviceMasterData =
+                new com.bproject.safety.support.masterdata.DemoDeviceMasterData(masterData);
+        new AiDemoSeeder(aiRepository, clock, guard).buildSeeds().forEach(aiRepository::save);
 
         redis = mock(StringRedisTemplate.class);
         ops = mock(ValueOperations.class);
@@ -66,8 +72,17 @@ class AiEventRealtimeTest {
 
         AlertChangeNotifier alertNotifier = (op, after) -> alertOps.add(op + ":" + after.id);
         AiChangeNotifier aiNotifier = (op, after) -> aiOps.add(op + ":" + after.id);
-        AlertService alertService = new AlertService(alertRepository, idempotency, user, clock, alertNotifier);
-        aiService = new AiEventService(aiRepository, alertService, idempotency, aiNotifier, user, clock);
+        // Phase B：编号 Generator 与 LiveEventGate 为显式依赖。
+        com.bproject.safety.module.alert.service.AlertNumberGenerator alertNumbers =
+                new com.bproject.safety.support.demo.DemoAlertNumberGenerator(alertRepository, clock);
+        com.bproject.safety.module.ai.service.AiEventNumberGenerator aiNumbers =
+                new com.bproject.safety.support.demo.DemoAiEventNumberGenerator(aiRepository, clock);
+        com.bproject.safety.common.realtime.LiveEventGate gate =
+                new com.bproject.safety.common.realtime.LiveEventGate();
+        AlertService alertService = new AlertService(alertRepository, idempotency, user, masterData, clock,
+                alertNotifier, alertNumbers);
+        aiService = new AiEventService(aiRepository, alertService, idempotency, aiNotifier, user,
+                masterData, deviceMasterData, clock, aiNumbers, gate);
     }
 
     @Test

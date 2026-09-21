@@ -3,8 +3,11 @@ package com.bproject.safety.module.analytics.service;
 import com.bproject.safety.common.realtime.DomainLivePublisher;
 import com.bproject.safety.common.realtime.LiveEventTypes;
 import com.bproject.safety.module.alert.model.AlertStatuses;
+import com.bproject.safety.module.alert.model.AlertTimelineEventTypes;
 import com.bproject.safety.module.alert.model.DemoAlert;
+import com.bproject.safety.module.alert.model.RiskLevels;
 import com.bproject.safety.module.alert.model.TimelineEvent;
+import com.bproject.safety.module.alert.demo.DemoAlertMaintenance;
 import com.bproject.safety.module.alert.repository.AlertRepository;
 import com.bproject.safety.module.analytics.dto.AnalyticsDtos.AreaRisk;
 import com.bproject.safety.module.analytics.dto.AnalyticsDtos.Dataset;
@@ -48,7 +51,8 @@ public class AnalyticsService {
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter MD_HM = DateTimeFormatter.ofPattern("MM-dd HH:mm");
     private static final DateTimeFormatter MD = DateTimeFormatter.ofPattern("MM/dd");
-    private static final List<String> LEVEL_ORDER = List.of("一般", "预警", "严重", "紧急");
+    /** 风险等级按机器 code 排序，展示标签由 RiskLevels 派生。 */
+    private static final List<String> LEVEL_CODES = RiskLevels.ORDERED;
     private static final String SURGE_PREFIX = "ALM-SURGE-";
     /** 本周历史桶 DEMO 基线（仅用于无历史时序库时的曲线展示，当天桶永远使用真实计数）。 */
     private static final int[] WEEK_BASELINE = {15, 18, 14, 20, 17, 22};
@@ -56,11 +60,18 @@ public class AnalyticsService {
     private final AlertRepository alerts;
     private final DomainLivePublisher publisher;
     private final Clock clock;
+    /**
+     * Phase B：风险突增演示的注入 / 回滚经 Demo 维护组件（deleteById 不属于正式仓储契约）；
+     * 仅 simulateSurge 使用，Controller 层已由 DemoFeatureGuard 门控。
+     */
+    private final DemoAlertMaintenance demoMaintenance;
 
-    public AnalyticsService(AlertRepository alerts, DomainLivePublisher publisher, Clock clock) {
+    public AnalyticsService(AlertRepository alerts, DomainLivePublisher publisher, Clock clock,
+                            DemoAlertMaintenance demoMaintenance) {
         this.alerts = alerts;
         this.publisher = publisher;
         this.clock = clock;
+        this.demoMaintenance = demoMaintenance;
     }
 
     // ---------- 聚合数据集 ----------
@@ -88,16 +99,17 @@ public class AnalyticsService {
         List<TeamEfficiency> teams = buildTeams(scope);
         List<HotDevice> devices = buildDevices(scope);
         List<RepeatPerson> persons = buildPersons(scope);
-        List<LevelCount> levels = LEVEL_ORDER.stream()
-                .map(lv -> new LevelCount(lv, scope.stream().filter(a -> lv.equals(a.risk)).count()))
+        List<LevelCount> levels = LEVEL_CODES.stream()
+                .map(code -> new LevelCount(RiskLevels.label(code),
+                        scope.stream().filter(a -> code.equals(a.riskCode)).count()))
                 .toList();
         return new Dataset(kpi, trend, riskTypes, areas, teams, devices, persons, levels, true);
     }
 
     private List<Kpi> buildKpi(List<DemoAlert> scope) {
         long total = scope.size();
-        long severe = scope.stream().filter(a -> "严重".equals(a.risk)).count();
-        long urgent = scope.stream().filter(a -> "紧急".equals(a.risk)).count();
+        long severe = scope.stream().filter(a -> RiskLevels.SEVERE.equals(a.riskCode)).count();
+        long urgent = scope.stream().filter(a -> RiskLevels.URGENT.equals(a.riskCode)).count();
         long high = severe + urgent;
         Long avgResp = average(scope, AnalyticsService::confirmSeconds);
         Long avgClose = average(scope, AnalyticsService::closeSeconds);
@@ -161,7 +173,7 @@ public class AnalyticsService {
             Long confirm = average(list, AnalyticsService::confirmSeconds);
             Long arrive = average(list, AnalyticsService::arriveSeconds);
             Long close = average(list, AnalyticsService::closeSeconds);
-            long closed = list.stream().filter(a -> AlertStatuses.CLOSED.equals(a.status)).count();
+            long closed = list.stream().filter(a -> AlertStatuses.CLOSED.equals(a.statusCode)).count();
             double rate = list.isEmpty() ? 0 : Math.round(closed * 1000.0 / list.size()) / 10.0;
             out.add(new TeamEfficiency(team, confirm, arrive, close, list.size(), rate));
         });
@@ -188,7 +200,7 @@ public class AnalyticsService {
                     .sorted(Comparator.comparing((DemoAlert a) -> a.occurredAt,
                             Comparator.nullsLast(Comparator.reverseOrder()))).toList();
             List<RecentEvent> recent = sorted.stream().limit(5)
-                    .map(a -> new RecentEvent(fmtMdHm(a), RiskClassifier.analyticsType(a), a.risk)).toList();
+                    .map(a -> new RecentEvent(fmtMdHm(a), RiskClassifier.analyticsType(a), a.getRisk())).toList();
             DemoAlert last = sorted.isEmpty() ? null : sorted.get(0);
             List<TypeSplit> typeSplit = split.entrySet().stream()
                     .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
@@ -277,8 +289,8 @@ public class AnalyticsService {
                 injectSurge(targetArea);
             }
         } else {
-            alerts.findAll().stream().filter(a -> a.id != null && a.id.startsWith(SURGE_PREFIX))
-                    .forEach(a -> alerts.deleteById(a.id));
+            // Phase B：演示数据物理删除走 Demo 维护组件，正式 AlertRepository 无 deleteById。
+            demoMaintenance.deleteByIdPrefix(SURGE_PREFIX);
         }
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("active", turnOn);
@@ -298,18 +310,20 @@ public class AnalyticsService {
                 {"06", "王强（P-1008）", "严重", "待确认", "49"},
         };
         int seq = 0;
+        int seqNo = 1;
         for (String[] p : plan) {
             DemoAlert a = new DemoAlert();
             a.id = SURGE_PREFIX + p[0];
             a.title = "人员进入" + area + "危险区域";
-            a.risk = p[2];
+            // 演示装配：中文入参一次性转机器 code（非运行时判断）。
+            a.riskCode = RiskLevels.fromLabel(p[2]);
             a.eventType = "危险区域闯入";
             a.time = now.minusHours(Long.parseLong(p[4])).toLocalTime()
                     .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
             a.area = area;
             a.target = p[1];
             a.source = "人员安全";
-            a.status = p[3];
+            a.statusCode = AlertStatuses.fromLabel(p[3]);
             a.assignee = "安全员 王建国";
             a.ruleId = "RULE-PER-001";
             a.ruleVersion = "v3.3";
@@ -318,14 +332,18 @@ public class AnalyticsService {
             a.occurredAt = now.minusHours(Long.parseLong(p[4]));
             a.updatedAt = now;
             a.timeline = List.of(new com.bproject.safety.module.alert.model.TimelineEvent(
-                    a.time, a.occurredAt, "风险突增演示：人员进入危险区域", "done"));
-            alerts.save(a);
+                    a.time, a.occurredAt, "风险突增演示：人员进入危险区域", "done",
+                    AlertTimelineEventTypes.CREATED, seqNo));
+            demoMaintenance.save(a);
             seq++;
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("alertId", a.id);
-            data.put("status", a.status);
-            data.put("level", a.risk);
+            data.put("status", a.getStatus());
+            data.put("statusCode", a.statusCode);
+            data.put("level", a.getRisk());
+            data.put("riskCode", a.riskCode);
             publisher.publish(LiveEventTypes.ALERT_NEW, data);
+            seqNo++;
         }
     }
 
@@ -354,7 +372,8 @@ public class AnalyticsService {
         return alerts.findAll().stream()
                 .filter(a -> a.occurredAt == null || (!a.occurredAt.isBefore(fs) && !a.occurredAt.isAfter(fe)))
                 .filter(a -> area == null || area.isBlank() || "全部".equals(area) || area.equals(a.area))
-                .filter(a -> level == null || level.isBlank() || "全部".equals(level) || level.equals(a.risk))
+                .filter(a -> level == null || level.isBlank() || "全部".equals(level)
+                        || RiskLevels.normalize(level).equals(a.riskCode))
                 .filter(a -> team == null || team.isBlank() || "全部".equals(team)
                         || team.equals(RiskClassifier.teamOf(a)))
                 .filter(a -> type == null || type.isBlank() || "全部".equals(type)
@@ -384,7 +403,7 @@ public class AnalyticsService {
     private EventItem toEventItem(DemoAlert a) {
         Integer duration = a.durationSec > 0 ? a.durationSec : null;
         return new EventItem(a.id, a.occurredAt == null ? a.time : a.occurredAt.atZoneSameInstant(ZONE)
-                .format(MD_HM), RiskClassifier.analyticsType(a), a.area, a.target, a.risk, a.status,
+                .format(MD_HM), RiskClassifier.analyticsType(a), a.area, a.target, a.getRisk(), a.getStatus(),
                 duration, RiskClassifier.teamOf(a), RiskClassifier.deviceIdOf(a.target));
     }
 
@@ -393,22 +412,26 @@ public class AnalyticsService {
     }
 
     private static Long confirmSeconds(DemoAlert a) {
-        return secondsToFirst(a, Pattern.compile("确认"));
+        return secondsToFirst(a, java.util.Set.of(AlertTimelineEventTypes.CONFIRMED));
     }
 
     private static Long arriveSeconds(DemoAlert a) {
-        return secondsToFirst(a, Pattern.compile("接单|到场|到达现场|赶赴"));
+        // 接单 / 到场均视为现场到达链路节点
+        return secondsToFirst(a, java.util.Set.of(
+                AlertTimelineEventTypes.ACCEPTED, AlertTimelineEventTypes.ARRIVED));
     }
 
     private static Long closeSeconds(DemoAlert a) {
-        return secondsToFirst(a, Pattern.compile("关闭"));
+        return secondsToFirst(a, java.util.Set.of(AlertTimelineEventTypes.CLOSED));
     }
 
-    private static Long secondsToFirst(DemoAlert a, Pattern keyword) {
+    /** 时长统计只依赖机器 eventType（F-12），不再用中文 text 关键字匹配。 */
+    private static Long secondsToFirst(DemoAlert a, java.util.Set<String> eventTypes) {
         if (a.occurredAt == null || a.timeline == null) {
             return null;
         }
-        return a.timeline.stream().filter(t -> t.at() != null && keyword.matcher(nz(t.text())).find())
+        return a.timeline.stream()
+                .filter(t -> t.at() != null && t.eventType() != null && eventTypes.contains(t.eventType()))
                 .map(TimelineEvent::at).filter(t -> !t.isBefore(a.occurredAt))
                 .min(Comparator.naturalOrder())
                 .map(t -> Duration.between(a.occurredAt, t).getSeconds())

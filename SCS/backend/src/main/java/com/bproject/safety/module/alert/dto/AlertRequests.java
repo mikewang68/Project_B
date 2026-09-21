@@ -39,8 +39,8 @@ public final class AlertRequests {
     public record TakeoverRequest(String operator, String reason, String note, String result) {
     }
 
-    /** 转派。 */
-    public record TransferRequest(String assignee, String note, String operator) {
+    /** 转派；assigneeId 为用户 code（USR-xxx，权威），assignee 为旧版姓名兼容字段。 */
+    public record TransferRequest(String assignee, String assigneeId, String note, String operator) {
     }
 
     /** 复核驳回，继续处理。 */

@@ -26,10 +26,11 @@ public class DemoAiEvent {
     public double threshold;
     /** 展示用 HH:mm:ss */
     public String time;
-    public String status;
-    /** 高 / 中 / 低 */
-    public String risk;
-    /** 正常 / 画面质量下降 / 离线 */
+    /** AI 复核状态机器 code（权威），见 {@link AiReviewStatuses}；中文由 {@link #getStatus()} 派生。 */
+    public String statusCode;
+    /** AI 风险机器 code（LOW/MEDIUM/HIGH，权威）；中文由 {@link #getRisk()} 派生。 */
+    public String riskCode;
+    /** 正常 / 画面质量下降 / 离线（摄像头健康展示值，非 AI 风险等级）。 */
     public String health;
     /** helmet / fence / intrusion / linger / camera */
     public String scene;
@@ -42,6 +43,8 @@ public class DemoAiEvent {
     public String reviewer;
     public String reviewTime;
     public String falseReason;
+    /** 责任人用户 code（USR-xxx，权威关联，F-02）。 */
+    public String assigneeUserCode;
     public String assignee;
     public String assignmentPriority;
     public String processStatus;
@@ -59,6 +62,18 @@ public class DemoAiEvent {
     @JsonProperty("fresh")
     public Boolean fresh;
 
+    /** AI 复核状态中文标签（由 statusCode 派生，API 兼容）。 */
+    @JsonProperty("status")
+    public String getStatus() {
+        return AiReviewStatuses.label(statusCode);
+    }
+
+    /** AI 风险中文标签（由 riskCode 派生，API 兼容）。 */
+    @JsonProperty("risk")
+    public String getRisk() {
+        return AiRiskLevels.label(riskCode);
+    }
+
     public DemoAiEvent copy() {
         DemoAiEvent c = new DemoAiEvent();
         c.id = id;
@@ -71,8 +86,8 @@ public class DemoAiEvent {
         c.model = model;
         c.threshold = threshold;
         c.time = time;
-        c.status = status;
-        c.risk = risk;
+        c.statusCode = statusCode;
+        c.riskCode = riskCode;
         c.health = health;
         c.scene = scene;
         c.boxes = boxes == null ? new ArrayList<>() : new ArrayList<>(boxes);
@@ -83,6 +98,7 @@ public class DemoAiEvent {
         c.reviewer = reviewer;
         c.reviewTime = reviewTime;
         c.falseReason = falseReason;
+        c.assigneeUserCode = assigneeUserCode;
         c.assignee = assignee;
         c.assignmentPriority = assignmentPriority;
         c.processStatus = processStatus;

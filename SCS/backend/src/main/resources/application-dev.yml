@@ -10,6 +10,9 @@ spring:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://localhost:4178,http://127.0.0.1:4178}
+  demo:
+    seed-enabled: ${APP_DEMO_SEED_ENABLED:true}
+    simulator-enabled: ${APP_DEMO_SIMULATOR_ENABLED:true}
   # 本地默认不连 RocketMQ / openGemini；需要联调时用环境变量打开
   rocketmq:
     enabled: ${ROCKETMQ_ENABLED:false}

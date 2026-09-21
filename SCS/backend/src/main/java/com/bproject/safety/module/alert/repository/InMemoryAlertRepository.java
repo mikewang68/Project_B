@@ -1,23 +1,44 @@
 package com.bproject.safety.module.alert.repository;
 
+import com.bproject.safety.module.alert.model.AlertPageResult;
+import com.bproject.safety.module.alert.model.AlertStatuses;
 import com.bproject.safety.module.alert.model.DemoAlert;
+import com.bproject.safety.module.alert.model.RiskLevels;
+import com.bproject.safety.support.demo.DemoClearableStore;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 /**
  * 进程内告警存储（Backend Demo 专用）：本地无需 openGauss 即可运行全部告警接口。
  *
  * <p>使用 ConcurrentHashMap 保证可见性；写操作在 Service 层对单条告警加对象锁，
- * 保证"状态变更 + 时间线追加"的原子性。查询统一返回副本，避免外部直接改写存储。</p>
+ * 保证"状态变更 + 时间线追加"的原子性。</p>
+ *
+ * <p>Phase B：copy-on-read / copy-on-write——find/save 均经过 {@link DemoAlert#copy()}（深拷贝
+ * timeline / linkage / treatment / edgeReplay）；修改 find 返回对象但不 save 不会落库，
+ * 与未来 JDBC 实现语义一致。清空仅通过 {@link DemoClearableStore} 供 Demo / Test 使用。</p>
  */
 @Repository
-public class InMemoryAlertRepository implements AlertRepository {
+public class InMemoryAlertRepository implements AlertRepository, DemoClearableStore {
 
     private final ConcurrentHashMap<String, DemoAlert> store = new ConcurrentHashMap<>();
+    private final Clock clock;
+
+    @Autowired
+    public InMemoryAlertRepository(Clock clock) {
+        this.clock = clock;
+    }
+
+    /** 兼容无参构造（部分单元测试直接 new；使用系统时钟）。 */
+    public InMemoryAlertRepository() {
+        this(Clock.systemDefaultZone());
+    }
 
     private static final Comparator<DemoAlert> TIME_DESC = Comparator
             .comparing((DemoAlert a) -> a.occurredAt, Comparator.nullsLast(Comparator.reverseOrder()))
@@ -33,12 +54,15 @@ public class InMemoryAlertRepository implements AlertRepository {
         return store.values().stream()
                 .map(DemoAlert::copy)
                 .filter(a -> matchKeyword(q.keyword(), a))
-                .filter(a -> q.risk() == null || q.risk().equals(a.risk))
-                .filter(a -> q.status() == null || q.status().equals(a.status))
+                .filter(a -> q.risk() == null || RiskLevels.normalize(q.risk()).equals(a.riskCode))
+                .filter(a -> q.status() == null || AlertStatuses.normalize(q.status()).equals(a.statusCode))
                 .filter(a -> q.area() == null || q.area().equals(a.area))
                 .filter(a -> q.eventType() == null || q.eventType().equals(a.eventType))
                 .filter(a -> q.source() == null || q.source().equals(a.source))
-                .filter(a -> q.assignee() == null || q.assignee().equals(a.assignee))
+                // Phase A：责任人筛选同时支持 userCode（USR-*）、姓名快照（可能含角色前缀）
+                .filter(a -> q.assignee() == null
+                        || q.assignee().equals(a.assigneeUserCode)
+                        || (a.assignee != null && a.assignee.contains(q.assignee())))
                 .filter(a -> matchTimeRange(q, a))
                 .sorted(TIME_DESC)
                 .toList();
@@ -59,12 +83,24 @@ public class InMemoryAlertRepository implements AlertRepository {
     }
 
     @Override
-    public DemoAlert save(DemoAlert alert) {
-        if (alert.updatedAt == null) {
-            alert.updatedAt = OffsetDateTime.now();
+    public Optional<DemoAlert> findOpenByDedupKey(String dedupKey) {
+        if (dedupKey == null || dedupKey.isBlank()) {
+            return Optional.empty();
         }
-        store.put(alert.id, alert);
-        return alert.copy();
+        return store.values().stream()
+                .filter(a -> dedupKey.equals(a.dedupKey) && !AlertStatuses.CLOSED.equals(a.statusCode))
+                .findFirst()
+                .map(DemoAlert::copy);
+    }
+
+    @Override
+    public DemoAlert save(DemoAlert alert) {
+        DemoAlert persisted = alert.copy();
+        if (persisted.updatedAt == null) {
+            persisted.updatedAt = OffsetDateTime.now(clock);
+        }
+        store.put(alert.id, persisted);
+        return persisted.copy();
     }
 
     @Override
@@ -72,14 +108,18 @@ public class InMemoryAlertRepository implements AlertRepository {
         return store.size();
     }
 
+    /** 清空存储（DemoClearableStore，仅 Demo 场景维护 / 测试调用）。 */
     @Override
-    public boolean deleteById(String id) {
-        return store.remove(id) != null;
+    public void clearDemoData() {
+        store.clear();
     }
 
-    /** 清空存储（供测试在每个用例前重置 Demo 数据；服务器实现替换为 openGauss 后移除）。 */
-    public void clear() {
-        store.clear();
+    /**
+     * 按编号删除（<b>非</b>正式契约，仅 {@code DemoAlertMaintenance} 的 Demo 突增回滚使用；
+     * 真实告警原则上不物理删除）。
+     */
+    public boolean deleteDemoAlert(String id) {
+        return store.remove(id) != null;
     }
 
     private boolean matchKeyword(String kw, DemoAlert a) {

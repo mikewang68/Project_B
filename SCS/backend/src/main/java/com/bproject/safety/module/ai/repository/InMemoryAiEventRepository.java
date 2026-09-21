@@ -1,21 +1,40 @@
 package com.bproject.safety.module.ai.repository;
 
+import com.bproject.safety.module.ai.model.AiPageResult;
+import com.bproject.safety.module.ai.model.AiReviewStatuses;
+import com.bproject.safety.module.ai.model.AiRiskLevels;
 import com.bproject.safety.module.ai.model.DemoAiEvent;
+import com.bproject.safety.support.demo.DemoClearableStore;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 /**
  * 进程内 AI 事件存储（Backend Demo 专用）：本地无需 openGauss 即可运行全部 AI 接口。
- * 查询统一返回副本，避免外部直接改写存储；写操作在 Service 层对单条事件加对象锁。
+ *
+ * <p>Phase B：copy-on-read / copy-on-write——find/save 均经过 {@link DemoAiEvent#copy()}；
+ * 修改 find 返回对象但不 save 不会落库。清空仅通过 {@link DemoClearableStore} 供 Demo / Test 使用。</p>
  */
 @Repository
-public class InMemoryAiEventRepository implements AiEventRepository {
+public class InMemoryAiEventRepository implements AiEventRepository, DemoClearableStore {
 
     private final ConcurrentHashMap<String, DemoAiEvent> store = new ConcurrentHashMap<>();
+    private final Clock clock;
+
+    @Autowired
+    public InMemoryAiEventRepository(Clock clock) {
+        this.clock = clock;
+    }
+
+    /** 兼容无参构造（部分单元测试直接 new；使用系统时钟）。 */
+    public InMemoryAiEventRepository() {
+        this(Clock.systemDefaultZone());
+    }
 
     private static final Comparator<DemoAiEvent> TIME_DESC = Comparator
             .comparing((DemoAiEvent e) -> e.occurredAt, Comparator.nullsLast(Comparator.reverseOrder()))
@@ -34,8 +53,8 @@ public class InMemoryAiEventRepository implements AiEventRepository {
                 .filter(e -> q.type() == null || q.type().equals(e.type))
                 .filter(e -> q.area() == null || q.area().equals(e.area))
                 .filter(e -> q.camera() == null || q.camera().equals(e.camera))
-                .filter(e -> q.status() == null || q.status().equals(e.status))
-                .filter(e -> q.risk() == null || q.risk().equals(e.risk))
+                .filter(e -> q.status() == null || AiReviewStatuses.normalize(q.status()).equals(e.statusCode))
+                .filter(e -> q.risk() == null || AiRiskLevels.normalize(q.risk()).equals(e.riskCode))
                 .filter(e -> matchConfidence(q.confidence(), e))
                 .filter(e -> matchTimeBucket(q.timeBucket(), e))
                 .sorted(TIME_DESC)
@@ -58,11 +77,12 @@ public class InMemoryAiEventRepository implements AiEventRepository {
 
     @Override
     public DemoAiEvent save(DemoAiEvent event) {
-        if (event.updatedAt == null) {
-            event.updatedAt = OffsetDateTime.now();
+        DemoAiEvent persisted = event.copy();
+        if (persisted.updatedAt == null) {
+            persisted.updatedAt = OffsetDateTime.now(clock);
         }
-        store.put(event.id, event);
-        return event.copy();
+        store.put(event.id, persisted);
+        return persisted.copy();
     }
 
     @Override
@@ -70,8 +90,9 @@ public class InMemoryAiEventRepository implements AiEventRepository {
         return store.size();
     }
 
-    /** 清空存储（测试重置；openGauss 实现替换后移除）。 */
-    public void clear() {
+    /** 清空存储（DemoClearableStore，仅 Demo / 测试调用）。 */
+    @Override
+    public void clearDemoData() {
         store.clear();
     }
 
@@ -100,15 +121,21 @@ public class InMemoryAiEventRepository implements AiEventRepository {
         };
     }
 
-    /** 演示班次时间桶（按展示用 HH:mm:ss 过滤，与前端旧逻辑一致）。 */
+    /**
+     * 演示班次时间桶：按权威时间 {@code occurredAt}（上海时区本地时间）过滤，
+     * 不再用展示用 HH:mm:ss 字符串做比较（F-18）。阈值对齐 Demo 种子班次。
+     */
     private boolean matchTimeBucket(String bucket, DemoAiEvent e) {
-        if (bucket == null || e.time == null) {
+        if (bucket == null || e.occurredAt == null) {
             return true;
         }
+        java.time.LocalTime t = e.occurredAt.atZoneSameInstant(java.time.ZoneId.of("Asia/Shanghai")).toLocalTime();
+        java.time.LocalTime cut21 = java.time.LocalTime.of(21, 0);
+        java.time.LocalTime cut22 = java.time.LocalTime.of(22, 0);
         return switch (bucket) {
-            case "1h" -> e.time.compareTo("22:00:00") >= 0;
-            case "2h" -> e.time.compareTo("21:00:00") >= 0 && e.time.compareTo("22:00:00") < 0;
-            case "earlier" -> e.time.compareTo("21:00:00") < 0;
+            case "1h" -> !t.isBefore(cut22);
+            case "2h" -> !t.isBefore(cut21) && t.isBefore(cut22);
+            case "earlier" -> t.isBefore(cut21);
             default -> true;
         };
     }

@@ -10,9 +10,9 @@ import com.bproject.safety.module.alert.dto.AlertRequests.StartRequest;
 import com.bproject.safety.module.alert.dto.AlertRequests.TakeoverRequest;
 import com.bproject.safety.module.alert.dto.AlertRequests.TreatmentRequest;
 import com.bproject.safety.module.alert.dto.AlertRequests.TransferRequest;
+import com.bproject.safety.module.alert.model.AlertPageResult;
 import com.bproject.safety.module.alert.model.DemoAlert;
 import com.bproject.safety.module.alert.repository.AlertQuery;
-import com.bproject.safety.module.alert.repository.AlertRepository;
 import com.bproject.safety.module.alert.service.AlertMetrics;
 import com.bproject.safety.module.alert.service.AlertService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,7 +49,7 @@ public class AlertController {
 
     @Operation(summary = "告警列表（多条件筛选 + 分页 + SLA 剩余秒数）")
     @GetMapping
-    public AlertRepository.AlertPageResult list(
+    public AlertPageResult list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String risk,
             @RequestParam(required = false) @Parameter(description = "风险等级别名，等同 risk") String level,

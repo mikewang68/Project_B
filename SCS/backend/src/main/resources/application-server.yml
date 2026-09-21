@@ -3,7 +3,7 @@
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://${OPENGAUSS_HOST}:${OPENGAUSS_PORT}/${OPENGAUSS_DATABASE}
+    url: ${OPENGAUSS_JDBC_URL:jdbc:postgresql://${OPENGAUSS_HOST}:${OPENGAUSS_PORT}/${OPENGAUSS_DATABASE}?currentSchema=safety}
     username: ${OPENGAUSS_USERNAME}
     password: ${OPENGAUSS_PASSWORD}
     hikari:

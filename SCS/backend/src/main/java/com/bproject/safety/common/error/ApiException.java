@@ -46,4 +46,9 @@ public class ApiException extends RuntimeException {
     public static ApiException unprocessable(String message) {
         return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, ErrorCodes.UNPROCESSABLE_ENTITY, message);
     }
+
+    /** Demo 能力（种子 / 模拟端点）被配置关闭时返回 403。 */
+    public static ApiException forbidden(String code, String message) {
+        return new ApiException(HttpStatus.FORBIDDEN, code, message);
+    }
 }

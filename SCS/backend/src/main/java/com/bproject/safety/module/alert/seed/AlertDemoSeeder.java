@@ -1,6 +1,10 @@
 package com.bproject.safety.module.alert.seed;
 
 import com.bproject.safety.module.alert.model.AlertEvidence;
+import com.bproject.safety.module.alert.model.AlertStatuses;
+import com.bproject.safety.module.alert.model.AlertTimelineEventTypes;
+import com.bproject.safety.module.alert.model.DecisionSources;
+import com.bproject.safety.module.alert.model.RiskLevels;
 import com.bproject.safety.module.alert.model.AlertEvidence.AiEvidence;
 import com.bproject.safety.module.alert.model.AlertEvidence.CollisionEvidence;
 import com.bproject.safety.module.alert.model.AlertEvidence.DetectionBox;
@@ -39,14 +43,20 @@ public class AlertDemoSeeder implements CommandLineRunner {
 
     private final com.bproject.safety.module.alert.repository.AlertRepository repository;
     private final Clock clock;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard guard;
 
-    public AlertDemoSeeder(com.bproject.safety.module.alert.repository.AlertRepository repository, Clock clock) {
+    public AlertDemoSeeder(com.bproject.safety.module.alert.repository.AlertRepository repository, Clock clock,
+                           com.bproject.safety.support.demo.DemoFeatureGuard guard) {
         this.repository = repository;
         this.clock = clock;
+        this.guard = guard;
     }
 
     @Override
     public void run(String... args) {
+        if (!guard.isSeedEnabled()) {
+            return;
+        }
         if (repository.count() > 0) {
             return;
         }
@@ -131,7 +141,7 @@ public class AlertDemoSeeder implements CommandLineRunner {
                 "李娜", "12:47:02", "12:48:10", "普通", 60, clock));
 
         DemoAlert a7 = alert("ALM-20260904-007", "翻箱机运行区域人员闯入", "严重", "危险区域闯入", "12:31:19",
-                "翻箱机作业区", "外协人员 P-1068 / TIP-03", "设备防碰撞", "待复核", "班长 刘志明", 400L,
+                "翻箱机区", "外协人员 P-1068 / TIP-03", "设备防碰撞", "待复核", "班长 刘志明", 400L,
                 "RULE-PER-001", "v3.3", 41,
                 CollisionEvidence.of(2.8, 0.6, List.of(7.2, 6.1, 5.0, 4.1, 3.5, 3.0, 2.8),
                         "毫米波雷达正常", "设备已制动停止"),
@@ -180,7 +190,7 @@ public class AlertDemoSeeder implements CommandLineRunner {
                 null, null, null, null, 20, clock));
 
         DemoAlert a10 = alert("ALM-20260904-010", "两台龙门吊运行轨迹交汇", "严重", "设备交汇风险", "11:20:14",
-                "箱区 A", "G-CRANE-01 / G-CRANE-02", "设备防碰撞", "已升级", "安全员 王建国", -72L,
+                "箱区 A", "G-CRANE-01 / G-CRANE-02", "设备防碰撞", "处理中", "安全员 王建国", -72L,
                 "RULE-DEV-009", "v1.5", 312,
                 CollisionEvidence.of(5.4, 2.2, List.of(11.2, 9.8, 8.6, 7.4, 6.6, 5.9, 5.4),
                         "毫米波雷达正常 · 激光雷达正常", "当前制动距离 4.8m"),
@@ -190,11 +200,12 @@ public class AlertDemoSeeder implements CommandLineRunner {
                         tl("11:24:02", "王建国接单处置", "done"),
                         tl("11:24:20", "联动执行至调度通知，继续处置中", "active")),
                 "王建国", "11:24:02", "11:24:02", "紧急", 15, clock);
-        a10.upgradedFrom = "预警";
+        a10.upgradedFromCode = RiskLevels.WARNING;
+        a10.previousRiskLevelCode = RiskLevels.WARNING;
         list.add(a10);
 
         DemoAlert a11 = alert("ALM-20260904-011", "人员接近电子围栏边界", "一般", "围栏接近提醒", "10:58:32",
-                "临时围栏区", "郑阳（P-1048）", "人员安全", "已关闭", "安全员 李娜", null,
+                "临时施工区域", "郑阳（P-1048）", "人员安全", "已关闭", "安全员 李娜", null,
                 "RULE-PER-002", "v2.1", 48,
                 PersonnelEvidence.of(List.of(p(18, 74), p(24, 68), p(30, 62)),
                         "已返回安全区域", "临时施工围栏", "BAND-1048", "在线 · 电量 78%", "88 次/分"),
@@ -246,21 +257,34 @@ public class AlertDemoSeeder implements CommandLineRunner {
         DemoAlert a = new DemoAlert();
         a.id = id;
         a.title = title;
-        a.risk = risk;
+        // 种子中文等级 / 状态仅用于装配，落模型时统一转机器 code（Demo 种子一次性转换，非运行时判断）。
+        a.riskCode = RiskLevels.fromLabel(risk);
+        if (a.riskCode == null) {
+            throw new IllegalStateException("种子风险等级非法: " + risk + " @ " + id);
+        }
         a.eventType = eventType;
         a.time = time;
         a.area = area;
         a.target = target;
         a.source = source;
-        a.status = status;
+        a.statusCode = AlertStatuses.fromLabel(status);
+        if (a.statusCode == null) {
+            throw new IllegalStateException("种子状态非法: " + status + " @ " + id);
+        }
         a.assignee = assignee;
+        a.assigneeUserCode = resolveAssigneeCode(assignee);
+        if (ruleId != null) {
+            a.decisionSourceType = DecisionSources.RULE;
+            a.decisionSourceCode = ruleId;
+            a.decisionSourceVersion = ruleVersion;
+        }
         a.ruleId = ruleId;
         a.ruleVersion = ruleVersion;
         a.durationSec = durationSec;
         a.evidence = evidence;
         a.linkageAvailable = linkageAvailable;
         a.linkage = linkage;
-        a.timeline = new ArrayList<>(timeline);
+        a.timeline = stampSeedTimeline(timeline);
         a.confirmUser = confirmUser;
         a.confirmTime = confirmTime;
         a.acceptTime = acceptTime;
@@ -273,6 +297,80 @@ public class AlertDemoSeeder implements CommandLineRunner {
             a.slaDeadline = OffsetDateTime.now(clock).plusSeconds(slaRemainingSec);
         }
         return a;
+    }
+
+    private static final com.bproject.safety.support.masterdata.DemoMasterData MASTER =
+            new com.bproject.safety.support.masterdata.DemoMasterData();
+
+    /** 种子责任人展示串可能带岗位前缀（如“安全员 王建国”），按姓名后缀匹配用户 code。 */
+    private static String resolveAssigneeCode(String assignee) {
+        if (assignee == null || "待分配".equals(assignee)) {
+            return null;
+        }
+        for (com.bproject.safety.support.masterdata.DemoMasterData.DemoUser u : MASTER.users()) {
+            if (assignee.contains(u.name())) {
+                return u.id();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Demo 种子历史时间线补机器事件类型与连续序号（仅种子装配期执行一次）。
+     * 运行时业务节点的 eventType 由 AlertService 显式给出，不在此处做中文匹配。
+     */
+    private static List<TimelineEvent> stampSeedTimeline(List<TimelineEvent> raw) {
+        List<TimelineEvent> out = new ArrayList<>();
+        int seq = 1;
+        for (TimelineEvent n : raw) {
+            String type = seedEventType(n.text());
+            out.add(TimelineEvent.event(n.at(), n.time(), n.text(), n.state(), type, seq++));
+        }
+        return out;
+    }
+
+    private static String seedEventType(String text) {
+        if (text == null) {
+            return AlertTimelineEventTypes.NOTE;
+        }
+        if (text.contains("提交处置结果")) {
+            return AlertTimelineEventTypes.TREATMENT_SUBMITTED;
+        }
+        if (text.contains("复核驳回")) {
+            return AlertTimelineEventTypes.REVIEW_REJECTED;
+        }
+        if (text.contains("复核通过") || text.contains("事件关闭") || text.contains("风险解除，事件关闭")) {
+            return AlertTimelineEventTypes.CLOSED;
+        }
+        if (text.contains("升级为")) {
+            return AlertTimelineEventTypes.ESCALATED;
+        }
+        if (text.contains("已派发")) {
+            return AlertTimelineEventTypes.ASSIGNED;
+        }
+        if (text.contains("转派")) {
+            return AlertTimelineEventTypes.TRANSFERRED;
+        }
+        if (text.contains("到达现场") || text.contains("已到达")) {
+            return AlertTimelineEventTypes.ARRIVED;
+        }
+        if (text.contains("接单") || text.contains("赶赴现场")) {
+            return AlertTimelineEventTypes.STARTED;
+        }
+        if (text.contains("确认事件") || text.contains("核实事件") || text.contains("李娜确认")
+                || text.contains("确认并")) {
+            return AlertTimelineEventTypes.CONFIRMED;
+        }
+        if (text.contains("人工接管")) {
+            return AlertTimelineEventTypes.TAKEOVER;
+        }
+        if (text.contains("联动") || text.contains("PLC")) {
+            return AlertTimelineEventTypes.LINKAGE_STARTED;
+        }
+        if (text.contains("生成") && (text.contains("告警") || text.contains("预警"))) {
+            return AlertTimelineEventTypes.CREATED;
+        }
+        return AlertTimelineEventTypes.NOTE;
     }
 
     private static Point p(int x, int y) {

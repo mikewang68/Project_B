@@ -81,13 +81,13 @@ class OpsEdgeAutonomyIntegrationTest {
 
     @BeforeEach
     void reset() {
-        nodeRepository.reset(clock);
-        queueRepository.clear();
-        logRepository.clear();
-        replayService.reset();
+        nodeRepository.resetDemoData();
+        ((com.bproject.safety.support.demo.DemoClearableStore) queueRepository).clearDemoData();
+        logRepository.clearDemoData();
+        // Phase B：补传幂等判重权威来自队列仓储，清空队列即完成幂等复位，无需 Service 进程内 reset。
         inventory.reset();
         InMemoryAlertRepository alerts = (InMemoryAlertRepository) alertRepository;
-        alerts.clear();
+        alerts.clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(alertRepository::save);
     }
 
@@ -469,7 +469,7 @@ class OpsEdgeAutonomyIntegrationTest {
         EdgePendingEvent armed = opsService.createLocalEvent(new EdgeOpsService.LocalEventRequest(
                 "EDGE-03", "person-intrusion", null, null, null, Boolean.TRUE));
         org.junit.jupiter.api.Assertions.assertTrue(
-                ((InMemoryEdgeEventQueueRepository) queueRepository).findMutable(armed.eventId).orElseThrow().failNextReplay,
+                ((InMemoryEdgeEventQueueRepository) queueRepository).findByEventId(armed.eventId).orElseThrow().failNextReplay,
                 "createLocalEvent 的 failNextReplay 应透传到队列事件");
 
         EdgePendingEvent second = opsService.createLocalEvent(new EdgeOpsService.LocalEventRequest(
@@ -477,7 +477,7 @@ class OpsEdgeAutonomyIntegrationTest {
         java.util.Map<String, Object> r = opsService.simulate("replayFailure", second.eventId);
         org.junit.jupiter.api.Assertions.assertEquals("replayFailure", r.get("scenario"));
         org.junit.jupiter.api.Assertions.assertTrue(
-                ((InMemoryEdgeEventQueueRepository) queueRepository).findMutable(second.eventId).orElseThrow().failNextReplay,
+                ((InMemoryEdgeEventQueueRepository) queueRepository).findByEventId(second.eventId).orElseThrow().failNextReplay,
                 "simulate replayFailure 应武装指定事件");
     }
 

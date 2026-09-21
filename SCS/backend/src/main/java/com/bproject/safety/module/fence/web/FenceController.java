@@ -26,9 +26,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class FenceController {
 
     private final FenceService service;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
 
-    public FenceController(FenceService service) {
+    public FenceController(FenceService service,
+                           com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.service = service;
+        this.demoGuard = demoGuard;
     }
 
     @GetMapping
@@ -84,6 +87,7 @@ public class FenceController {
     @PostMapping("/{id}/simulate-mismatch")
     @Operation(summary = "模拟边缘版本不一致（SIMULATED）")
     public DemoFence simulateMismatch(@PathVariable String id) {
+        demoGuard.requireSimulator();
         return service.simulateMismatch(id);
     }
 }
