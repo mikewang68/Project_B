@@ -1,38 +1,38 @@
 .road-appointment-page { display: grid; gap: 16px; min-width: 0; }
 .road-appointment-page > *, .appointment-primary-grid > * { min-width: 0; }
-.road-appointment-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 18px 16px 22px; border: 1px solid #DCDFE6; border-left: 4px solid #409EFF; border-radius: 6px; background: #fff; }
+.road-appointment-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 18px 16px 22px; border:1px solid var(--app-border-color); border-left:4px solid var(--app-color-primary); border-radius: 6px; background: var(--iam-card-bg); }
 .appointment-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .appointment-primary-grid { display: grid; grid-template-columns: minmax(290px, .82fr) minmax(420px, 1.35fr) minmax(250px, .72fr); gap: 14px; align-items: stretch; }
 .appointment-primary-grid > .ant-card, .appointment-primary-grid > .ant-card > .ant-card-body { height: 100%; }
 .appointment-queue-list, .appointment-detail, .yard-map-fallback { display: grid; gap: 8px; }
-.appointment-queue-item { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 4px; min-width: 0; padding: 6px; border: 1px solid #E4E7ED; border-radius: 4px; background: #FAFBFC; }
-.appointment-queue-item.is-selected { border-color: #409EFF; background: #ECF5FF; }
-.appointment-drag-handle { width: 30px; height: 34px; border: 0; color: #606266; background: transparent; cursor: grab; font-size: 21px; }
+.appointment-queue-item { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 4px; min-width: 0; padding: 6px; border:1px solid var(--iam-card-border); border-radius: 4px; background: var(--app-surface-secondary); }
+.appointment-queue-item.is-selected { border-color: var(--app-color-primary); background: var(--app-selected-bg); }
+.appointment-drag-handle { width: 30px; height: 34px; border: 0; color: var(--app-text-regular); background: transparent; cursor: grab; font-size: 21px; }
 .appointment-queue-select.ant-btn { display: grid; height: auto; min-width: 0; justify-items: start; padding: 4px 6px; white-space: normal; }
-.appointment-queue-select span { max-width: 100%; overflow: hidden; color: #909399; font-size: 12px; text-overflow: ellipsis; }
-.yard-map-canvas, .yard-map-fallback { min-height: 290px; overflow: hidden; border: 1px solid #E4E7ED; border-radius: 4px; background: #F5F7FA; }
-.yard-map-fallback { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; padding: 12px; background: linear-gradient(#E4E7ED 1px, transparent 1px), linear-gradient(90deg, #E4E7ED 1px, transparent 1px), #F5F7FA; background-size: 28px 28px; }
-.yard-map-fallback button { display: grid; gap: 2px; min-width: 0; padding: 9px; border: 1px solid #DCDFE6; border-radius: 4px; color: #303133; background: rgba(255, 255, 255, .92); text-align: left; }
-.yard-map-fallback button.is-selected { border: 2px solid #F56C6C; }
-.yard-map-fallback small { color: #909399; }
-.yard-map-marker { display: grid; min-width: 82px; padding: 4px 6px; border: 1px solid #409EFF; border-radius: 4px; color: #303133; background: rgba(255, 255, 255, .96); box-shadow: 0 2px 7px rgba(15, 23, 42, 0.10); cursor: pointer; line-height: 1.2; text-align: left; }
+.appointment-queue-select span { max-width: 100%; overflow: hidden; color: var(--iam-text-muted); font-size: 12px; text-overflow: ellipsis; }
+.yard-map-canvas, .yard-map-fallback { min-height: 290px; overflow: hidden; border:1px solid var(--iam-card-border); border-radius: 4px; background: var(--iam-content-bg); }
+.yard-map-fallback { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; padding: 12px; background:linear-gradient(var(--iam-card-border) 1px, transparent 1px), linear-gradient(90deg, var(--iam-card-border) 1px, transparent 1px), var(--iam-content-bg); background-size: 28px 28px; }
+.yard-map-fallback button { display: grid; gap: 2px; min-width: 0; padding: 9px; border:1px solid var(--app-border-color); border-radius: 4px; color: var(--iam-text-base); background: rgba(255, 255, 255, .92); text-align: left; }
+.yard-map-fallback button.is-selected { border:2px solid var(--app-color-danger); }
+.yard-map-fallback small { color: var(--iam-text-muted); }
+.yard-map-marker { display: grid; min-width: 82px; padding: 4px 6px; border:1px solid var(--app-color-primary); border-radius: 4px; color: var(--iam-text-base); background: rgba(255, 255, 255, .96); box-shadow: 0 2px 7px rgba(15, 23, 42, 0.10); cursor: pointer; line-height: 1.2; text-align: left; }
 .yard-map-marker strong { font-size: 11px; }
-.yard-map-marker span { color: #909399; font-size: 10px; }
-.yard-map-marker.is-selected { border: 2px solid #F56C6C; background: #FDE2E2; }
-.yard-map-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; color: #909399; font-size: 12px; }
+.yard-map-marker span { color: var(--iam-text-muted); font-size: 10px; }
+.yard-map-marker.is-selected { border:2px solid var(--app-color-danger); background:#FDE2E2; }
+.yard-map-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; color: var(--iam-text-muted); font-size: 12px; }
 .yard-map-legend span { display: inline-flex; align-items: center; gap: 5px; }
-.yard-map-legend i { display: inline-block; width: 12px; height: 4px; background: #409EFF; }
-.yard-map-legend .legend-vehicle, .yard-map-legend .legend-selected { width: 9px; height: 9px; border-radius: 50%; background: #409EFF; }
-.yard-map-legend .legend-selected { background: #F56C6C; }
-.appointment-detail > div:not(.ant-alert) { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding-bottom: 7px; border-bottom: 1px solid #EBEEF5; }
-.appointment-detail span { color: #909399; }
+.yard-map-legend i { display: inline-block; width: 12px; height: 4px; background: var(--app-color-primary); }
+.yard-map-legend .legend-vehicle, .yard-map-legend .legend-selected { width: 9px; height: 9px; border-radius: 50%; background: var(--app-color-primary); }
+.yard-map-legend .legend-selected { background: var(--app-color-danger); }
+.appointment-detail > div:not(.ant-alert) { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding-bottom: 7px; border-bottom:1px solid var(--app-divider-color); }
+.appointment-detail span { color: var(--iam-text-muted); }
 .appointment-detail strong { overflow-wrap: anywhere; }
 .appointment-filters { display: grid; grid-template-columns: minmax(240px, 420px) 170px auto; align-items: center; gap: 10px; margin-bottom: 12px; }
 .appointment-table-wrap { max-width: 100%; overflow-x: auto; }
 .appointment-table { width: 100%; min-width: 920px; border-collapse: collapse; font-size: 13px; }
-.appointment-table th, .appointment-table td { padding: 10px 12px; border-bottom: 1px solid #EBEEF5; text-align: left; white-space: nowrap; }
-.appointment-table th { color: #909399; background: #FAFBFC; font-weight: 600; }
-.appointment-table tr.is-selected td { background: #ECF5FF; }
+.appointment-table th, .appointment-table td { padding: 10px 12px; border-bottom:1px solid var(--app-divider-color); text-align: left; white-space: nowrap; }
+.appointment-table th { color: var(--iam-text-muted); background: var(--app-surface-secondary); font-weight: 600; }
+.appointment-table tr.is-selected td { background: var(--app-selected-bg); }
 @media (max-width: 1260px) {
   .appointment-primary-grid { grid-template-columns: minmax(280px, .8fr) minmax(420px, 1.2fr); }
   .appointment-detail-card { grid-column: 1 / -1; }

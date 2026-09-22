@@ -4,9 +4,9 @@
   justify-content: space-between;
   gap: 16px;
   padding: 12px 16px;
-  border: 1px solid #E4E7ED;
+  border:1px solid var(--iam-card-border);
   border-radius: 14px;
-  background: linear-gradient(90deg, #FAFBFC 0%, #ECF5FF 100%);
+  background:linear-gradient(90deg, var(--app-surface-secondary) 0%, var(--app-selected-bg) 100%);
 }
 
 .demo-playback-copy {
@@ -32,9 +32,9 @@
   min-height: 58px;
   padding: 10px 12px;
   overflow: hidden;
-  border: 1px solid #E4E7ED;
+  border:1px solid var(--iam-card-border);
   border-radius: 12px;
-  background: #FAFBFC;
+  background: var(--app-surface-secondary);
   transition: transform 260ms ease, border-color 260ms ease, background 260ms ease;
 }
 
@@ -49,21 +49,21 @@
 }
 
 .demo-stage-rail li[data-state='completed'] {
-  color: #303133;
-  border-color: #C2E7B0;
-  background: #F0F9EB;
+  color: var(--iam-text-base);
+  border-color:#C2E7B0;
+  background: var(--app-color-success-light);
 }
 
 .demo-stage-rail li[data-state='current'] {
-  color: #1F2937;
-  border-color: #409EFF;
-  background: linear-gradient(135deg, #ECF5FF 0%, #ECF5FF 100%);
+  color: var(--iam-text-strong);
+  border-color: var(--app-color-primary);
+  background:linear-gradient(135deg, var(--app-selected-bg) 0%, var(--app-selected-bg) 100%);
   box-shadow: 0 8px 20px rgba(64, 158, 255, 0.12);
   transform: translateY(-2px);
 }
 
 .demo-stage-rail li[data-state='current']::after {
-  background: linear-gradient(90deg, #409EFF, #409EFF);
+  background:linear-gradient(90deg, var(--app-color-primary), var(--app-color-primary));
   animation: demo-stage-scan 900ms ease-in-out infinite alternate;
 }
 
@@ -72,19 +72,19 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  color: #fff;
+  color:#fff;
   font-size: 12px;
   font-weight: 700;
-  background: #909399;
+  background: var(--app-color-info);
   border-radius: 50%;
 }
 
 .demo-stage-rail li[data-state='completed'] .demo-stage-index {
-  background: #67C23A;
+  background: var(--app-color-success);
 }
 
 .demo-stage-rail li[data-state='current'] .demo-stage-index {
-  background: #409EFF;
+  background: var(--app-color-primary);
 }
 
 .demo-stage-label {
@@ -93,7 +93,7 @@
 
 .demo-stage-detail {
   grid-column: 2;
-  color: #909399;
+  color: var(--iam-text-muted);
   font-size: 12px;
 }
 

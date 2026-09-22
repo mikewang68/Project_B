@@ -1,50 +1,106 @@
-:root {
-  color: #303133;
-  background: #F5F7FA;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Arial,
-    sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-}
+/* =====================================================
+ * PSMS 全局样式入口
+ *
+ * 对应《统一换肤设置同步指南（IAM / SYS 基线）》第 5 / 8.3 节。
+ * 基线该文件为 Element Plus 覆盖层（`.el-*`），PSMS 使用 antd，
+ * 因此这里承担两件事：
+ *   1) 基础重置 + 骨架布局 + 外观抽屉（与基线同构，类名按 PSMS 现有约定）；
+ *   2) antd 组件视觉的少量补充 —— 其余由 styles/theme.ts 的 design token 下发。
+ *
+ * 颜色一律通过令牌引用：
+ *   品牌色/状态色/圆角/间距 → var(--app-*)
+ *   贴合皮肤的导航/表面/文字  → var(--iam-*)   （仅这些随皮肤变化）
+ * 禁止在业务样式中硬编码十六进制色值。
+ * ===================================================== */
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html,
 body,
 #root {
-  min-height: 100%;
+  height: 100%;
+  width: 100%;
   margin: 0;
 }
 
 body {
-  min-width: 0;
-  background:
-    linear-gradient(rgba(64, 158, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(64, 158, 255, 0.025) 1px, transparent 1px),
-    #F5F7FA;
-  background-size: 28px 28px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  color: var(--iam-text-base);
+  background-color: var(--iam-content-bg);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
 }
 
+/* 皮肤切换时，表面与主色平滑过渡（时长控制在 150-250ms 区间） */
+.ant-btn,
+.ant-card,
+.ant-menu,
+.ant-input,
+.ant-select,
+.ant-table,
+.ant-tag,
+.ant-layout,
+.ant-layout-sider,
+.ant-layout-header {
+  transition:
+    background-color var(--app-motion),
+    border-color var(--app-motion),
+    color var(--app-motion),
+    box-shadow var(--app-motion);
+}
+
+/* ── 滚动条（中性色，深浅皮肤下均可辨识）── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 140, 160, 0.32);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 140, 160, 0.48);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── 快捷键可达性：键盘聚焦显示品牌色光环 ── */
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--app-focus-shadow);
+  outline-offset: 2px;
+}
+
+/* 路由懒加载占位 */
 .route-hydrate-fallback {
   display: grid;
   min-height: 100vh;
   place-items: center;
-  color: #909399;
-  background: #F5F7FA;
+  color: var(--iam-text-muted);
+  background: var(--iam-content-bg);
 }
 
-a:focus-visible,
-button:focus-visible,
-[tabindex]:focus-visible {
-  outline: 3px solid #66B1FF;
-  outline-offset: 2px;
-}
-
+/* =====================================================
+ * 骨架布局（side / top / compact 三种布局共用）
+ * ===================================================== */
 .skeleton-shell {
   min-height: 100vh;
-  background: transparent;
+  background: var(--iam-content-bg);
 }
 
 .skeleton-sider {
@@ -52,31 +108,30 @@ button:focus-visible,
   top: 0;
   height: 100vh;
   overflow: hidden;
-  background: #24364A !important;
+  background: var(--iam-sidebar-bg) !important;
 }
 
-.skeleton-navigation-mask {
-  display: none;
-}
-
-.skeleton-menu-trigger {
-  width: 38px;
-  min-width: 38px;
-  padding: 0;
-  font-size: 19px;
+/* compact 布局：侧栏常驻窄栏，由 antd collapsedWidth 控制宽度 */
+.skeleton-shell[data-layout='compact'] .skeleton-sider {
+  width: var(--iam-sidebar-collapsed) !important;
+  min-width: var(--iam-sidebar-collapsed) !important;
+  max-width: var(--iam-sidebar-collapsed) !important;
+  flex: 0 0 var(--iam-sidebar-collapsed) !important;
 }
 
 .skeleton-brand {
   position: relative;
   display: flex;
-  min-height: 64px;
+  min-height: 56px;
   align-items: center;
   padding: 0 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  color: #FFFFFF;
+  border-bottom: 1px solid var(--iam-sidebar-divider);
+  color: var(--iam-sidebar-active);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .skeleton-brand::after {
@@ -85,23 +140,23 @@ button:focus-visible,
   bottom: 0;
   left: 20px;
   height: 2px;
-  content: "";
-  background: linear-gradient(90deg, #409EFF, #66B1FF);
+  content: '';
+  background: linear-gradient(90deg, var(--app-color-primary), var(--app-color-primary-hover));
 }
 
 .skeleton-navigation {
-  height: calc(100vh - 64px);
+  height: calc(100vh - 56px);
   overflow-y: auto;
   padding: 6px 0 10px;
 }
 
 .skeleton-menu.ant-menu-dark {
-  background: #24364A;
+  background: var(--iam-sidebar-bg);
 }
 
 .skeleton-menu .ant-menu-item-group-title {
   padding: 7px 20px 3px;
-  color: rgba(255, 255, 255, 0.48);
+  color: var(--app-nav-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -121,125 +176,336 @@ button:focus-visible,
   white-space: nowrap;
 }
 
+/* 菜单图标：跟随菜单项文字色（antd 默认已处理），仅统一尺寸与垂直居中 */
+.skeleton-menu .ant-menu-item .ant-menu-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  font-size: 16px;
+}
+
+/* 折叠态：图标是唯一可见内容，居中显示 */
+.skeleton-menu.ant-menu-inline-collapsed .ant-menu-item {
+  padding-inline: calc(50% - 8px);
+}
+
+/* 侧栏底部折叠按钮（仅 side 布局显示） */
+.skeleton-collapse {
+  display: flex;
+  width: 100%;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-top: 1px solid var(--iam-sidebar-divider);
+  background: var(--iam-sidebar-bg-deep);
+  color: var(--iam-sidebar-text);
+  cursor: pointer;
+  font-size: 14px;
+  transition: color var(--app-motion), background-color var(--app-motion);
+}
+
+.skeleton-collapse:hover {
+  color: var(--iam-sidebar-active);
+  background: var(--iam-sidebar-hover-bg);
+}
+
 .skeleton-main {
   min-width: 0;
 }
 
 .skeleton-header {
   display: flex;
-  height: 64px;
+  height: 56px;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px;
-  border-bottom: 1px solid #DCDFE6;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.045);
+  padding: 0 24px;
+  border-bottom: 1px solid var(--iam-topbar-border);
+  background: var(--iam-topbar-bg);
+  box-shadow: var(--app-card-shadow);
   backdrop-filter: blur(12px);
+}
+
+.skeleton-header-left {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
 }
 
 .skeleton-header-title.ant-typography {
   margin: 0;
-  color: #1F2937;
-  font-size: 22px;
+  color: var(--iam-text-strong);
+  font-size: 20px;
   line-height: 1.3;
 }
 
 .skeleton-version {
-  color: #909399;
+  color: var(--iam-text-muted);
   white-space: nowrap;
 }
 
 .skeleton-content {
   min-width: 0;
   padding: 20px 24px 28px;
+  background: var(--iam-content-bg);
 }
 
-.task-decomposition-page .ant-card,
-.dispatch-board-page .ant-card,
-.exception-handling-page .ant-card,
-.safety-interlock-page .ant-card,
-.offline-sync-page .ant-card {
-  border-color: #E4E7ED;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.055);
+.skeleton-menu-trigger {
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+  font-size: 19px;
 }
 
-.task-decomposition-page .ant-card-head,
-.dispatch-board-page .ant-card-head,
-.exception-handling-page .ant-card-head,
-.safety-interlock-page .ant-card-head,
-.offline-sync-page .ant-card-head {
-  min-height: 48px;
-  border-bottom-color: #EBEEF5;
-  background: linear-gradient(90deg, #FFFFFF 0%, #FAFBFC 100%);
+.skeleton-navigation-mask {
+  display: none;
 }
 
-.task-decomposition-page-header,
-.dispatch-board-page-header,
-.exception-handling-header,
-.safety-interlock-header,
-.offline-sync-header {
+/* 外观设置入口按钮 */
+.skeleton-pref-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--app-color-primary);
+  border-color: var(--app-color-primary);
+}
+
+/* ── top 布局：无侧栏，顶栏承载品牌与横向菜单 ── */
+.skeleton-shell[data-layout='top'] .skeleton-header {
+  gap: 24px;
+}
+
+.skeleton-shell[data-layout='top'] .skeleton-content {
+  padding: 20px 24px;
+}
+
+.skeleton-brand-inline {
+  color: var(--iam-text-strong);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.skeleton-top-menu.ant-menu-horizontal {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none;
+  background: transparent;
+}
+
+.skeleton-top-menu.ant-menu-horizontal > .ant-menu-item {
+  border-bottom: 3px solid transparent;
+}
+
+.skeleton-top-menu.ant-menu-horizontal > .ant-menu-item-selected {
+  color: var(--app-color-primary);
+  border-bottom-color: var(--app-color-primary);
+}
+
+/* =====================================================
+ * 外观设置抽屉
+ * ===================================================== */
+.pref-section {
+  margin-bottom: 28px;
+}
+
+.pref-section-title {
+  margin-bottom: 12px;
+  color: var(--iam-text-strong);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.theme-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.theme-card {
   position: relative;
-  padding: 16px 18px 16px 22px;
-  overflow: hidden;
-  border: 1px solid #DCDFE6;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border-color);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.055);
+  background: var(--iam-card-bg);
+  cursor: pointer;
+  transition: border-color var(--app-motion), box-shadow var(--app-motion);
 }
 
-.task-decomposition-page-header::before,
-.dispatch-board-page-header::before,
-.exception-handling-header::before,
-.safety-interlock-header::before,
-.offline-sync-header::before {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  content: "";
-  background: linear-gradient(180deg, #409EFF, #66B1FF);
+.theme-card:hover {
+  border-color: var(--app-color-primary);
 }
 
-.task-decomposition-page .ant-statistic-content,
-.dispatch-board-page .ant-statistic-content,
-.exception-handling-page .ant-statistic-content,
-.safety-interlock-page .ant-statistic-content,
-.offline-sync-page .ant-statistic-content {
-  color: #303133;
-  font-weight: 650;
+.theme-card.is-active {
+  border-color: var(--app-color-primary);
+  box-shadow: var(--app-focus-shadow);
 }
 
-.task-decomposition-page code,
-.dispatch-board-page code,
-.exception-handling-page code,
-.safety-interlock-page code,
-.offline-sync-page code {
-  color: #409EFF;
-  background: #ECF5FF;
+.theme-swatch {
+  display: flex;
+  width: 56px;
+  height: 36px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid rgba(128, 140, 160, 0.28);
+  border-radius: 6px;
 }
 
+.theme-swatch .sw-sidebar {
+  width: 38%;
+  height: 100%;
+}
+
+.theme-swatch .sw-primary {
+  flex: 1;
+  height: 100%;
+}
+
+.theme-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-name {
+  color: var(--iam-text-strong);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.theme-desc {
+  margin-top: 2px;
+  color: var(--iam-text-muted);
+  font-size: 11px;
+}
+
+.theme-check {
+  color: var(--app-color-primary);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.layout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.layout-card {
+  padding: 10px 8px;
+  border: 1px solid var(--app-border-color);
+  border-radius: 10px;
+  background: var(--iam-card-bg);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--app-motion), box-shadow var(--app-motion);
+}
+
+.layout-card:hover {
+  border-color: var(--app-color-primary);
+}
+
+.layout-card.is-active {
+  border-color: var(--app-color-primary);
+  box-shadow: var(--app-focus-shadow);
+}
+
+.layout-thumb {
+  display: flex;
+  height: 44px;
+  gap: 3px;
+  margin-bottom: 6px;
+  padding: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--app-hover-bg);
+}
+
+.layout-thumb .thumb-bar {
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: var(--app-color-primary);
+}
+
+.layout-thumb .thumb-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.layout-thumb .thumb-body i {
+  flex: 1;
+  border-radius: 2px;
+  background: var(--app-color-primary-light);
+}
+
+.layout-thumb[data-thumb='side'] .thumb-bar {
+  width: 26%;
+  height: 100%;
+}
+
+.layout-thumb[data-thumb='compact'] {
+  flex-direction: row;
+}
+
+.layout-thumb[data-thumb='compact'] .thumb-bar {
+  width: 14%;
+  height: 100%;
+}
+
+.layout-thumb[data-thumb='top'] {
+  flex-direction: column;
+}
+
+.layout-thumb[data-thumb='top'] .thumb-bar {
+  width: 100%;
+  height: 26%;
+}
+
+.layout-name {
+  color: var(--iam-text-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.layout-desc {
+  margin-top: 2px;
+  color: var(--iam-text-muted);
+  font-size: 10px;
+}
+
+/* =====================================================
+ * 页面脚手架与通用容器
+ * ===================================================== */
 .page-scaffold {
   min-height: 260px;
-  border: 1px solid #E4E7ED;
-  background: #FFFFFF;
-  box-shadow: 0 6px 22px rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--iam-card-border);
+  background: var(--iam-card-bg);
+  box-shadow: var(--app-card-shadow);
 }
 
 .page-scaffold-heading.ant-typography {
   margin: 14px 0 8px;
-  color: #1F2937;
+  color: var(--iam-text-strong);
 }
 
 .page-scaffold-route {
   display: block;
   margin-bottom: 22px;
-  color: #909399;
-  font-family: Consolas, "Courier New", monospace;
+  color: var(--iam-text-muted);
+  font-family: var(--font-mono);
 }
 
 .page-scaffold-note.ant-typography {
   max-width: 760px;
   margin-bottom: 0;
-  color: #606266;
+  color: var(--app-text-regular);
   font-size: 15px;
   line-height: 1.8;
 }
@@ -253,6 +519,74 @@ button:focus-visible,
   text-align: center;
 }
 
+/* 业务页面卡片：统一边框与轻阴影 */
+.task-decomposition-page .ant-card,
+.dispatch-board-page .ant-card,
+.exception-handling-page .ant-card,
+.safety-interlock-page .ant-card,
+.offline-sync-page .ant-card {
+  border-color: var(--iam-card-border);
+  box-shadow: var(--app-card-shadow);
+}
+
+.task-decomposition-page .ant-card-head,
+.dispatch-board-page .ant-card-head,
+.exception-handling-page .ant-card-head,
+.safety-interlock-page .ant-card-head,
+.offline-sync-page .ant-card-head {
+  min-height: 48px;
+  border-bottom-color: var(--app-divider-color);
+  background: var(--iam-card-bg);
+}
+
+/* 页面级标题条：左侧品牌色强调条 + 卡片外观 */
+.task-decomposition-page-header,
+.dispatch-board-page-header,
+.exception-handling-header,
+.safety-interlock-header,
+.offline-sync-header {
+  position: relative;
+  padding: 16px 18px 16px 22px;
+  overflow: hidden;
+  border: 1px solid var(--iam-card-border);
+  border-radius: 10px;
+  background: var(--iam-card-bg);
+  box-shadow: var(--app-card-shadow);
+}
+
+.task-decomposition-page-header::before,
+.dispatch-board-page-header::before,
+.exception-handling-header::before,
+.safety-interlock-header::before,
+.offline-sync-header::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: '';
+  background: linear-gradient(180deg, var(--app-color-primary), var(--app-color-primary-hover));
+}
+
+.task-decomposition-page .ant-statistic-content,
+.dispatch-board-page .ant-statistic-content,
+.exception-handling-page .ant-statistic-content,
+.safety-interlock-page .ant-statistic-content,
+.offline-sync-page .ant-statistic-content {
+  color: var(--iam-text-base);
+  font-weight: 650;
+}
+
+.task-decomposition-page code,
+.dispatch-board-page code,
+.exception-handling-page code,
+.safety-interlock-page code,
+.offline-sync-page code {
+  color: var(--app-color-primary);
+  background: var(--app-color-primary-light);
+}
+
+/* =====================================================
+ * 响应式
+ * ===================================================== */
 @media (max-height: 760px) {
   .skeleton-menu .ant-menu-item-group-title {
     padding-top: 4px;
@@ -270,7 +604,7 @@ button:focus-visible,
     position: fixed !important;
     z-index: 1100;
     left: 0;
-    box-shadow: 8px 0 24px rgba(15, 23, 42, .28);
+    box-shadow: 8px 0 24px rgba(15, 23, 42, 0.28);
   }
 
   .skeleton-navigation-mask {
@@ -280,7 +614,7 @@ button:focus-visible,
     display: block;
     width: 100%;
     border: 0;
-    background: rgba(15, 23, 42, .42);
+    background: rgba(15, 23, 42, 0.42);
   }
 
   .skeleton-header {
@@ -300,5 +634,13 @@ button:focus-visible,
 
   .skeleton-content {
     padding: 12px;
+  }
+
+  /* 窄屏下取消 compact 的强制宽度，一律走遮罩式侧栏 */
+  .skeleton-shell[data-layout='compact'] .skeleton-sider {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
   }
 }

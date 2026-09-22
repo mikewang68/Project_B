@@ -73,7 +73,7 @@
   overflow: hidden;
   color: inherit;
   text-align: left;
-  background: #fff;
+  background: var(--iam-card-bg);
   border: 1px solid rgba(5, 5, 5, 0.12);
   border-radius: 10px;
   cursor: pointer;
@@ -83,7 +83,7 @@
 .recommendation-candidate:hover,
 .recommendation-candidate:focus-visible,
 .recommendation-candidate.is-selected {
-  border-color: #409EFF;
+  border-color: var(--app-color-primary);
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.12);
   outline: none;
 }
@@ -123,7 +123,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  background: #fff;
+  background: var(--iam-card-bg);
   border: 1px solid rgba(5, 5, 5, 0.08);
   border-radius: 10px;
 }

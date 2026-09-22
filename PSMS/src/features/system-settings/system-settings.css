@@ -1,16 +1,16 @@
 .system-settings-page {
-  --settings-ink: #303133;
-  --settings-muted: #909399;
-  --settings-line: #DCDFE6;
-  --settings-soft: #F5F7FA;
-  --settings-accent: #409EFF;
+  --settings-ink: var(--iam-text-base);
+  --settings-muted: var(--iam-text-muted);
+  --settings-line: var(--app-border-color);
+  --settings-soft: var(--iam-content-bg);
+  --settings-accent: var(--app-color-primary);
   color: var(--settings-ink);
   min-width: 0;
 }
 
 .system-settings-context {
   align-items: start;
-  background: linear-gradient(125deg, #24364A, #337ECC 62%, #409EFF);
+  background:linear-gradient(125deg, var(--iam-sidebar-bg), var(--app-color-primary-active) 62%, var(--app-color-primary));
   border-radius: 16px;
   color: white;
   display: grid;
@@ -53,14 +53,14 @@
 }
 
 .system-settings-id {
-  background: #ECF5FF !important;
-  border-color: #ECF5FF !important;
-  color: #409EFF;
+  background: var(--app-selected-bg) !important;
+  border-color: var(--app-selected-bg) !important;
+  color: var(--app-color-primary);
   font-weight: 800;
 }
 
 .system-settings-disclosure {
-  color: #B8C7D9;
+  color: var(--app-nav-text);
   margin: 0;
 }
 
@@ -75,9 +75,9 @@
   padding: 10px 14px;
 }
 
-.settings-banner.is-success { background: #F0F9EB; border-color: #C2E7B0; }
-.settings-banner.is-error { background: #FEF0F0; border-color: #FBC4C4; }
-.settings-banner.is-loading { background: #ECF5FF; border-color: #B3D8FF; }
+.settings-banner.is-success { background: var(--app-color-success-light); border-color:#C2E7B0; }
+.settings-banner.is-error { background: var(--app-color-danger-light); border-color:#FBC4C4; }
+.settings-banner.is-loading { background: var(--app-selected-bg); border-color:#B3D8FF; }
 
 .system-settings-layout {
   align-items: start;
@@ -129,7 +129,7 @@
   margin-top: 4px;
 }
 
-.system-settings-groups button.is-active { background: #ECF5FF; color: #409EFF; }
+.system-settings-groups button.is-active { background: var(--app-selected-bg); color: var(--app-color-primary); }
 
 .system-settings-detail { min-height: 420px; padding: 20px; }
 .system-settings-detail h3,
@@ -154,7 +154,7 @@
 .settings-field-grid select,
 .settings-reason-field textarea {
   background: white;
-  border: 1px solid #DCDFE6;
+  border:1px solid var(--app-border-color);
   border-radius: 8px;
   color: var(--settings-ink);
   font: inherit;
@@ -166,7 +166,7 @@
 .settings-read-row,
 .settings-toggle-row {
   background: var(--settings-soft);
-  border: 1px solid #E4E7ED;
+  border:1px solid var(--iam-card-border);
   border-radius: 9px;
   display: flex;
   gap: 10px;
@@ -188,8 +188,8 @@
 }
 
 .settings-boundary-note {
-  background: #FDF6EC;
-  border: 1px solid #F5DAB1;
+  background: var(--app-color-warning-light);
+  border:1px solid #F5DAB1;
   border-radius: 9px;
   margin-top: 16px;
   padding: 11px 12px;
@@ -216,22 +216,22 @@
 .settings-change-list strong { grid-column: 1 / -1; }
 .settings-change-list span { overflow-wrap: anywhere; }
 .settings-field-error,
-.settings-form-error { color: #F56C6C; font-size: 12px; margin: 0; }
+.settings-form-error { color: var(--app-color-danger); font-size: 12px; margin: 0; }
 .settings-field-errors {
-  background: #FEF0F0;
-  border: 1px solid #FBC4C4;
+  background: var(--app-color-danger-light);
+  border:1px solid #FBC4C4;
   border-radius: 8px;
   display: grid;
   gap: 5px;
   margin-top: 10px;
   padding: 10px;
 }
-.settings-field-errors strong { color: #F56C6C; font-size: 12px; }
+.settings-field-errors strong { color: var(--app-color-danger); font-size: 12px; }
 .settings-actions { display: flex; gap: 8px; margin-top: 12px; }
 .settings-actions button,
 .settings-edit-button,
 .settings-reset-boundary button {
-  border: 1px solid #DCDFE6;
+  border:1px solid var(--app-border-color);
   border-radius: 8px;
   cursor: pointer;
   font-weight: 750;
@@ -252,8 +252,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   overflow-wrap: anywhere;
   padding: 11px;
 }
-.settings-command-feedback.is-success { background: #F0F9EB; border: 1px solid #C2E7B0; }
-.settings-command-feedback.is-error { background: #FEF0F0; border: 1px solid #FBC4C4; }
+.settings-command-feedback.is-success { background: var(--app-color-success-light); border:1px solid #C2E7B0; }
+.settings-command-feedback.is-error { background: var(--app-color-danger-light); border:1px solid #FBC4C4; }
 .settings-command-feedback p { margin: 0; }
 
 .system-settings-state {

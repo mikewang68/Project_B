@@ -66,12 +66,12 @@
   padding: 14px;
   border: 1px solid rgba(5, 5, 5, 0.1);
   border-radius: 10px;
-  background: linear-gradient(135deg, #fff 0%, #FAFBFC 100%);
+  background:linear-gradient(135deg, var(--iam-card-bg) 0%, var(--app-surface-secondary) 100%);
   transition: border-color 260ms ease, box-shadow 260ms ease, transform 260ms ease;
 }
 
 .task-tree-row-demo-current {
-  border-color: #409EFF;
+  border-color: var(--app-color-primary);
   box-shadow: 0 10px 26px rgba(64, 158, 255, 0.16);
   transform: translateX(4px);
 }
@@ -81,9 +81,9 @@
   place-items: center;
   width: 34px;
   height: 34px;
-  color: #409EFF;
+  color: var(--app-color-primary);
   font-weight: 700;
-  background: #ECF5FF;
+  background: var(--app-selected-bg);
   border-radius: 50%;
 }
 
@@ -117,8 +117,8 @@
 
 .task-decomposition-next-step {
   padding: 14px 16px;
-  background: #F0F9EB;
-  border: 1px solid #C2E7B0;
+  background: var(--app-color-success-light);
+  border:1px solid #C2E7B0;
   border-radius: 10px;
 }
 

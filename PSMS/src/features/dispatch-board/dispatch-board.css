@@ -64,7 +64,7 @@
 
 .dispatch-order-button.ant-btn-primary .ant-typography,
 .dispatch-order-button.ant-btn-primary .ant-typography-secondary {
-  color: #fff;
+  color:#fff;
 }
 
 .dispatch-order-sequence {
@@ -72,9 +72,9 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  color: #409EFF;
+  color: var(--app-color-primary);
   font-weight: 700;
-  background: #ECF5FF;
+  background: var(--app-selected-bg);
   border-radius: 50%;
 }
 
@@ -96,7 +96,7 @@
 }
 
 .dispatch-board-page[data-demo-active='true'] .dispatch-resource-option:has(input:checked) {
-  border-color: #409EFF;
+  border-color: var(--app-color-primary);
   box-shadow: 0 8px 22px rgba(64, 158, 255, 0.16);
   transform: translateX(3px);
 }
