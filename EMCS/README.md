@@ -80,9 +80,11 @@ curl http://127.0.0.1:18103/actuator/health
 cd web
 npm install -g pnpm@10.34.5
 cp .env.example .env.production
-pnpm install --frozen-lockfile
+pnpm --ignore-workspace install --frozen-lockfile
 pnpm run build:prod
 ```
+
+安装命令中的 `--ignore-workspace` 确保在 Project_B/EMCS 子目录使用本模块锁文件，避免加入上级其他模块的工作区。
 
 默认部署路径 `/emcs/`，API 前缀 `/emcs-api`。将 `dist/` 内容发布到 node6 的 `/srv/www/emcs/`，不要覆盖其他模块目录。把 `deploy/nginx-emcs.conf` 加入已有 Nginx 的 `server` 块：
 
