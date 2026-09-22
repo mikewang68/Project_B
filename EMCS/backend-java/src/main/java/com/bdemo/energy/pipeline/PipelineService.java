@@ -12,8 +12,8 @@ import java.util.Map;
 @Service
 public class PipelineService {
     private static final String VALID = "'ok','late','est','fix'";
-    private static final String TOU = "CASE WHEN HOUR(r.sample_time) IN (8,9,10,18,19,20) THEN 'peak' "
-            + "WHEN HOUR(r.sample_time) IN (22,23,0,1,2,3,4,5) THEN 'valley' ELSE 'flat' END";
+    private static final String TOU = "CASE WHEN EXTRACT(HOUR FROM CAST(r.sample_time AS timestamp)) IN (8,9,10,18,19,20) THEN 'peak' "
+            + "WHEN EXTRACT(HOUR FROM CAST(r.sample_time AS timestamp)) IN (22,23,0,1,2,3,4,5) THEN 'valley' ELSE 'flat' END";
     private static final String AREA_MAIN = "((p.energy_type_code='electricity' AND p.point_category='area_meter') "
             + "OR (p.energy_type_code='compressed_air' AND p.equipment_id IS NULL "
             + "AND (p.point_code LIKE '%-MAIN' OR p.point_code LIKE '%-BRANCH')) "
@@ -79,17 +79,17 @@ public class PipelineService {
         return """
                 INSERT INTO e_stat_hour(object_type,object_id,energy_type_code,stat_time,total_value,
                   avg_power_kw,coverage_ratio,quality_summary,tou_period,version_no,computed_at)
-                SELECT '%s',%s,p.energy_type_code,DATE_FORMAT(r.sample_time,'%%Y-%%m-%%d %%H:00:00'),
+                SELECT '%s',%s,p.energy_type_code,date_trunc('hour',CAST(r.sample_time AS timestamp)),
                   SUM(CASE WHEN r.quality_state IN (%s) THEN r.incremental_value ELSE 0 END),
                   CASE WHEN p.energy_type_code='electricity' THEN
                     SUM(CASE WHEN r.quality_state IN (%s) THEN r.incremental_value ELSE 0 END) END,
-                  LEAST(1,SUM(r.quality_state IN (%s))/NULLIF(COUNT(DISTINCT r.point_id)*(3600.0/MIN(p.sample_period_sec)),0)),
-                  CONCAT('ok=',SUM(r.quality_state='ok'),' late=',SUM(r.quality_state='late'),
-                    ' miss=',SUM(r.quality_state='miss'),' est=',SUM(r.quality_state='est'),' fix=',SUM(r.quality_state='fix')),
+                  LEAST(1,SUM(CASE WHEN r.quality_state IN (%s) THEN 1 ELSE 0 END)/NULLIF(COUNT(DISTINCT r.point_id)*(3600.0/MIN(p.sample_period_sec)),0)),
+                  CONCAT('ok=',SUM(CASE WHEN r.quality_state='ok' THEN 1 ELSE 0 END),' late=',SUM(CASE WHEN r.quality_state='late' THEN 1 ELSE 0 END),
+                    ' miss=',SUM(CASE WHEN r.quality_state='miss' THEN 1 ELSE 0 END),' est=',SUM(CASE WHEN r.quality_state='est' THEN 1 ELSE 0 END),' fix=',SUM(CASE WHEN r.quality_state='fix' THEN 1 ELSE 0 END)),
                   %s,1,NOW()
                 FROM e_raw_reading r JOIN e_meter_point p ON p.point_id=r.point_id
                 WHERE p.status='enabled' AND p.energy_type_code IS NOT NULL AND %s %s
-                GROUP BY %s,p.energy_type_code,DATE_FORMAT(r.sample_time,'%%Y-%%m-%%d %%H:00:00'),%s
+                GROUP BY %s,p.energy_type_code,date_trunc('hour',CAST(r.sample_time AS timestamp)),%s
                 ON DUPLICATE KEY UPDATE total_value=VALUES(total_value),avg_power_kw=VALUES(avg_power_kw),
                   coverage_ratio=VALUES(coverage_ratio),quality_summary=VALUES(quality_summary),
                   tou_period=VALUES(tou_period),version_no=version_no+1,computed_at=NOW()
@@ -101,12 +101,12 @@ public class PipelineService {
         return """
                 INSERT INTO e_stat_day(object_type,object_id,energy_type_code,stat_date,total_value,
                   peak_value,flat_value,valley_value,coverage_ratio,workday_flag,version_no,computed_at)
-                SELECT object_type,object_id,energy_type_code,DATE(stat_time),SUM(total_value),
-                  SUM(IF(tou_period='peak',total_value,0)),SUM(IF(tou_period='flat',total_value,0)),
-                  SUM(IF(tou_period='valley',total_value,0)),AVG(coverage_ratio),
-                  IF(WEEKDAY(DATE(MIN(stat_time)))<5,1,0),1,NOW()
+                SELECT object_type,object_id,energy_type_code,CAST(stat_time AS date),SUM(total_value),
+                  SUM((CASE WHEN tou_period='peak' THEN total_value ELSE 0 END)),SUM((CASE WHEN tou_period='flat' THEN total_value ELSE 0 END)),
+                  SUM((CASE WHEN tou_period='valley' THEN total_value ELSE 0 END)),AVG(coverage_ratio),
+                  (CASE WHEN (EXTRACT(ISODOW FROM CAST(CAST(MIN(stat_time) AS date) AS timestamp))-1)<5 THEN 1 ELSE 0 END),1,NOW()
                 FROM e_stat_hour WHERE object_type='%s' %s
-                GROUP BY object_type,object_id,energy_type_code,DATE(stat_time)
+                GROUP BY object_type,object_id,energy_type_code,CAST(stat_time AS date)
                 ON DUPLICATE KEY UPDATE total_value=VALUES(total_value),peak_value=VALUES(peak_value),
                   flat_value=VALUES(flat_value),valley_value=VALUES(valley_value),coverage_ratio=VALUES(coverage_ratio),
                   workday_flag=VALUES(workday_flag),version_no=version_no+1,computed_at=NOW()
@@ -114,7 +114,7 @@ public class PipelineService {
     }
 
     private String systemDaySql(boolean ranged) {
-        String time = ranged ? " AND stat_date>=DATE(?) AND stat_date<DATE(?)" : "";
+        String time = ranged ? " AND stat_date>=CAST(? AS date) AND stat_date<CAST(? AS date)" : "";
         return """
                 INSERT INTO e_stat_day(object_type,object_id,energy_type_code,stat_date,total_value,
                   peak_value,flat_value,valley_value,coverage_ratio,workday_flag,version_no,computed_at)
@@ -128,14 +128,14 @@ public class PipelineService {
     }
 
     private String monthSql(String scope, boolean ranged) {
-        String time = ranged ? " AND stat_date>=DATE(?) AND stat_date<DATE(?)" : "";
+        String time = ranged ? " AND stat_date>=CAST(? AS date) AND stat_date<CAST(? AS date)" : "";
         return """
                 INSERT INTO e_stat_month(object_type,object_id,energy_type_code,stat_month,total_value,
                   peak_value,flat_value,valley_value,coverage_ratio,version_no,computed_at)
-                SELECT object_type,object_id,energy_type_code,DATE_FORMAT(stat_date,'%%Y-%%m'),SUM(total_value),
+                SELECT object_type,object_id,energy_type_code,to_char(CAST(stat_date AS timestamp),'YYYY-MM'),SUM(total_value),
                   SUM(peak_value),SUM(flat_value),SUM(valley_value),AVG(coverage_ratio),1,NOW()
                 FROM e_stat_day WHERE object_type='%s' %s
-                GROUP BY object_type,object_id,energy_type_code,DATE_FORMAT(stat_date,'%%Y-%%m')
+                GROUP BY object_type,object_id,energy_type_code,to_char(CAST(stat_date AS timestamp),'YYYY-MM')
                 ON DUPLICATE KEY UPDATE total_value=VALUES(total_value),peak_value=VALUES(peak_value),
                   flat_value=VALUES(flat_value),valley_value=VALUES(valley_value),coverage_ratio=VALUES(coverage_ratio),
                   version_no=version_no+1,computed_at=NOW()

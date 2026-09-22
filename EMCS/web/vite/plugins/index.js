@@ -1,3 +1,4 @@
+import path from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import monacoEditorEsmPlugin from 'vite-plugin-monaco-editor-esm'
 
@@ -35,6 +36,7 @@ export default function createVitePlugins(viteEnv, isBuild = false) {
 	vitePlugins.push(createSetupExtend())
 	vitePlugins.push(monacoEditorEsmPlugin({
         languageWorkers: [],
+        customDistPath: (root, outDir) => path.join(root, outDir, 'monacoeditorwork'),
         customWorkers: monacoWorkers
     }))
     vitePlugins.push(createSvgIcon(isBuild))

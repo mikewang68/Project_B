@@ -38,7 +38,7 @@ const topMenus = computed(() => {
   return permissionStore.sidebarRouters.filter((f) => !f.hidden).slice(0, visibleNumber.value)
 })
 const moreRoutes = computed(() => {
-  return permissionStore.sidebarRouters.filter((f) => !f.hidden).slice(visibleNumber.value, sidebarRouters.value.length - visibleNumber.value)
+  return permissionStore.sidebarRouters.filter((f) => !f.hidden).slice(visibleNumber.value)
 })
 function setVisibleNumber() {
   const width = document.body.getBoundingClientRect().width / 3
@@ -67,7 +67,7 @@ onMounted(() => {
   float: left;
   height: 50px !important;
   line-height: 50px !important;
-  color: #303133 !important;
+  color: var(--app-text-primary) !important;
   padding: 0 5px !important;
   margin: 0 10px !important;
 }
@@ -80,7 +80,7 @@ onMounted(() => {
 .topbar-menu.el-menu--horizontal > .el-sub-menu .el-sub-menu__title {
   float: left;
   line-height: 50px !important;
-  color: #303133 !important;
+  color: var(--app-text-primary) !important;
   margin: 0 15px -3px!important;
 }
 

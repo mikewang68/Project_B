@@ -243,7 +243,7 @@ function handleScroll() {
 .tags-view-container {
   height: 34px;
   width: 100%;
-  background: var(--tags-bg, #fff);
+  background: var(--tags-bg, var(--app-surface));
   border-bottom: 1px solid var(--tags-item-border, #d8dce5);
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .12), 0 0 3px 0 rgba(0, 0, 0, .04);
   .tags-view-wrapper {
@@ -255,7 +255,7 @@ function handleScroll() {
       line-height: 26px;
       border: 1px solid var(--tags-item-border, #d8dce5);
       color: var(--tags-item-text, #495060);
-      background: var(--tags-item-bg, #fff);
+      background: var(--tags-item-bg, var(--app-surface));
       padding: 0 8px;
       font-size: 12px;
       margin-left: 5px;
@@ -271,12 +271,12 @@ function handleScroll() {
 
       &.active {
         background-color: #42b983;
-        color: #fff;
+        color: var(--app-surface);
         border-color: #42b983;
 
         &::before {
           content: '';
-          background: #fff;
+          background: var(--app-surface);
           display: inline-block;
           width: 8px;
           height: 8px;
@@ -294,7 +294,7 @@ function handleScroll() {
 
   .contextmenu {
     margin: 0;
-    background: var(--el-bg-color-overlay, #fff);
+    background: var(--el-bg-color-overlay, var(--app-surface));
     z-index: 3000;
     position: absolute;
     list-style-type: none;
@@ -304,7 +304,7 @@ function handleScroll() {
     font-weight: 400;
     color: var(--tags-item-text, #333);
     box-shadow: 2px 2px 3px 0 rgba(0, 0, 0, .3);
-    border: 1px solid var(--el-border-color-light, #e4e7ed);
+    border: 1px solid var(--el-border-color-light, var(--app-border-light));
 
     li {
       margin: 0;
@@ -340,7 +340,7 @@ function handleScroll() {
 
       &:hover {
         background-color: var(--tags-close-hover, #b4bccc);
-        color: #fff;
+        color: var(--app-surface);
         width: 12px !important;
         height: 12px !important;
       }

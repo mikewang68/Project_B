@@ -1,6 +1,6 @@
 // 处理主题样式
 export function handleThemeStyle(theme) {
-	// 品牌主色由 app-theme.scss 统一管理，清理旧版内联主题残留。
+	// 品牌主色由 styles/tokens.scss 统一管理，清理旧版内联主题残留。
 	document.documentElement.style.removeProperty('--el-color-primary')
 	for (let i = 1; i <= 9; i++) {
 		document.documentElement.style.removeProperty(`--el-color-primary-light-${i}`)

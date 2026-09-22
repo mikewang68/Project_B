@@ -1,8 +1,8 @@
 <template>
-  <div :class="classObj" class="app-wrapper" :style="{ '--current-color': theme }">
+  <div :class="classObj" class="app-wrapper" :data-layout="prefs.layout" :style="{ '--current-color': theme }">
     <div v-if="device === 'mobile' && sidebar.opened" class="drawer-bg" @click="handleClickOutside"/>
-    <sidebar v-if="!sidebar.hide" class="sidebar-container" />
-    <div :class="{ hasTagsView: needTagsView, sidebarHide: sidebar.hide }" class="main-container">
+    <sidebar v-if="prefs.layout !== 'top' && !sidebar.hide" class="sidebar-container" @mouseenter="compactHover(true)" @mouseleave="compactHover(false)" />
+    <div :class="{ hasTagsView: needTagsView, sidebarHide: sidebar.hide || prefs.layout === 'top' }" class="main-container">
       <div :class="{ 'fixed-header': fixedHeader }">
         <navbar @setLayout="setLayout" />
         <tags-view v-if="needTagsView" />
@@ -22,7 +22,14 @@ import { AppMain, Navbar, Settings, TagsView } from './components'
 import useAppStore from '@/store/modules/app'
 import useSettingsStore from '@/store/modules/settings'
 
+import { usePreferenceStore } from '@/stores/preference'
+const prefs = usePreferenceStore()
 const settingsStore = useSettingsStore()
+watch(() => prefs.layout, layout => {
+  settingsStore.navType = layout === 'top' ? 3 : 1
+  useAppStore().sidebar.hide = false
+  useAppStore().sidebar.opened = layout === 'side'
+}, { immediate: true })
 const theme = computed(() => settingsStore.theme);
 const sideTheme = computed(() => settingsStore.sideTheme);
 const sidebar = computed(() => useAppStore().sidebar);
@@ -54,6 +61,10 @@ watchEffect(() => {
     useAppStore().toggleDevice('desktop')
   }
 })
+
+function compactHover(opened) {
+  if (prefs.layout === 'compact') useAppStore().sidebar.opened = opened
+}
 
 function handleClickOutside() {
   useAppStore().closeSideBar({ withoutAnimation: false })

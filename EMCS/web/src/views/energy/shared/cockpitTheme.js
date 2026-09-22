@@ -39,14 +39,14 @@ const LIGHT = Object.freeze({
 
 // 暗色 palette（与 html.dark .cockpit-page 覆盖值同源）
 const DARK = Object.freeze({
-  bg: '#0F1B2D',
-  panel: '#17263A',
-  panel2: '#1F3043',
-  line: 'rgba(64, 158, 255, 0.28)',
-  lineStrong: '#3B5775',
-  ink: '#FFFFFF',
-  ink2: '#AFC2D8',
-  ink3: '#AFC2D8',
+  bg: '#0F1A2B',
+  panel: '#16233A',
+  panel2: '#1A2C48',
+  line: '#284062',
+  lineStrong: '#2C4569',
+  ink: '#E6EDF6',
+  ink2: '#B6C4D4',
+  ink3: '#8FA3BD',
   cyan: '#409EFF',
   amber: '#E6A23C',
   red: '#F56C6C',
@@ -58,9 +58,9 @@ const DARK = Object.freeze({
   redTint: 'rgba(245, 108, 108, 0.14)',
   amberTint: 'rgba(230, 162, 60, 0.14)',
   limeTint: 'rgba(103, 194, 58, 0.14)',
-  tooltipBg: '#17263A',
-  tooltipBorder: '#3B5775',
-  tooltipInk: '#FFFFFF'
+  tooltipBg: '#16233A',
+  tooltipBorder: '#2C4569',
+  tooltipInk: '#CBD5E1'
 })
 
 // 响应式返回当前主题 palette；组件消费 theme.value.xxx

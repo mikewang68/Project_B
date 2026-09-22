@@ -172,23 +172,13 @@ getCookie();
   justify-content: center;
   align-items: center;
   height: 100%;
-  /* 方向 A 深色调度控制台底 —— 无外部素材，仅 CSS 渐变 */
-  background:
-    radial-gradient(1200px 500px at 12% -10%, rgba(56, 189, 248, 0.10), transparent 60%),
-    radial-gradient(900px 400px at 100% 0%, rgba(249, 115, 22, 0.06), transparent 60%),
-    linear-gradient(180deg, #0B0F14 0%, #0F1622 100%);
+  background: var(--app-page-bg);
 }
 
-html.dark .login {
-  background:
-    radial-gradient(1200px 500px at 12% -10%, rgba(56, 189, 248, 0.14), transparent 60%),
-    radial-gradient(900px 400px at 100% 0%, rgba(249, 115, 22, 0.08), transparent 60%),
-    linear-gradient(180deg, #05080C 0%, #0B0F14 100%);
-}
 .title {
   margin: 0px auto 30px auto;
   text-align: center;
-  color: #707070;
+  color: var(--app-text-title);
 }
 
 html.dark .title {
@@ -196,9 +186,9 @@ html.dark .title {
 }
 
 .login-form {
-  border-radius: 6px;
-  background: #ffffff;
-  width: 400px;
+  border-radius: var(--radius-lg);
+  background: var(--app-surface);
+  width: min(400px, calc(100vw - 32px));
   padding: 25px 25px 5px 25px;
   z-index: 1;
   .el-input {
@@ -220,7 +210,7 @@ html.dark .login-form {
 .login-tip {
   font-size: 13px;
   text-align: center;
-  color: #bfbfbf;
+  color: var(--app-text-secondary);
 }
 .login-code {
   width: 33%;
@@ -238,7 +228,7 @@ html.dark .login-form {
   bottom: 0;
   width: 100%;
   text-align: center;
-  color: #fff;
+  color: var(--app-text-secondary);
   font-family: Arial;
   font-size: 12px;
   letter-spacing: 1px;

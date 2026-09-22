@@ -174,14 +174,14 @@ onMounted(() => {
   float: left;
   height: 50px !important;
   line-height: 50px !important;
-  color: #303133 !important;
+  color: var(--app-text-primary) !important;
   padding: 0 5px !important;
   margin: 0 10px !important;
 }
 
 .topmenu-container.el-menu--horizontal > .el-menu-item.is-active, .el-menu--horizontal > .el-sub-menu.is-active .el-submenu__title {
   border-bottom: 2px solid #{'var(--theme)'} !important;
-  color: #303133;
+  color: var(--app-text-primary);
 }
 
 /* sub-menu item */
@@ -189,14 +189,14 @@ onMounted(() => {
   float: left;
   height: 50px !important;
   line-height: 50px !important;
-  color: #303133 !important;
+  color: var(--app-text-primary) !important;
   padding: 0 5px !important;
   margin: 0 10px !important;
 }
 
 /* 背景色隐藏 */
 .topmenu-container.el-menu--horizontal>.el-menu-item:not(.is-disabled):focus, .topmenu-container.el-menu--horizontal>.el-menu-item:not(.is-disabled):hover, .topmenu-container.el-menu--horizontal>.el-submenu .el-submenu__title:hover {
-  background-color: #ffffff;
+  background-color: var(--app-surface);
 }
 
 /* 图标右间距 */

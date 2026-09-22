@@ -35,7 +35,8 @@
     "vue": "3.5.26",
     "vue-cropper": "1.1.1",
     "vue-router": "4.6.4",
-    "vuedraggable": "4.1.0"
+    "vuedraggable": "4.1.0",
+    "sortablejs": "1.15.6"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "5.2.4",
@@ -46,9 +47,15 @@
     "vite": "6.4.1",
     "vite-plugin-compression": "0.5.1",
     "vite-plugin-monaco-editor-esm": "2.0.2",
-    "vite-plugin-svg-icons": "2.0.1"
+    "vite-plugin-svg-icons": "2.0.1",
+    "monaco-editor": "0.55.1"
   },
   "overrides": {
     "quill": "2.0.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "quill": "2.0.2"
+    }
   }
 }

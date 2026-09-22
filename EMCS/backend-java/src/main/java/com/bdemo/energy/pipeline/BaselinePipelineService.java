@@ -38,7 +38,7 @@ public class BaselinePipelineService {
             long id = ((Number) baseline.get("baseline_id")).longValue();
             boolean area = "area".equals(String.valueOf(baseline.get("object_scope")));
             String sql = """
-                    SELECT IF(WEEKDAY(stat_time)<5,'workday','weekend') day_kind,tou_period,
+                    SELECT (CASE WHEN (EXTRACT(ISODOW FROM CAST(stat_time AS timestamp))-1)<5 THEN 'workday' ELSE 'weekend' END) day_kind,tou_period,
                       AVG(hour_total) mean_value,STDDEV_SAMP(hour_total) sigma,COUNT(*) samples
                     FROM (SELECT stat_time,tou_period,SUM(total_value) hour_total FROM e_stat_hour
                       WHERE object_type='area' AND energy_type_code=? AND stat_time>=? AND stat_time<? %s

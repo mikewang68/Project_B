@@ -1,0 +1,68 @@
+// EMCS compatibility aliases; IAM/SYS baseline files remain unchanged.
+:root, html[data-theme] {
+  --sidebar-bg: var(--iam-sidebar-bg);
+  --sidebar-text: var(--iam-sidebar-text);
+  --menu-hover: var(--iam-sidebar-hover-bg);
+  --menu-active-text: var(--iam-sidebar-active);
+  --navbar-bg: var(--iam-topbar-bg);
+  --navbar-text: var(--iam-text-base);
+  --tags-view-bg: var(--app-surface);
+  --tags-view-border: var(--app-border-light);
+  --tags-view-item-bg: var(--app-surface);
+  --tags-view-item-border: var(--app-border-color);
+  --tags-view-item-text: var(--app-text-regular);
+  --splitpanes-default-bg: var(--app-surface);
+}
+#app .sidebar-container {
+  width: var(--iam-sidebar-width) !important;
+  background: var(--iam-sidebar-bg) !important;
+  .el-menu, .el-sub-menu .el-menu { background: var(--iam-sidebar-bg) !important; }
+  .el-menu-item, .el-sub-menu__title { color: var(--iam-sidebar-text) !important; }
+  .el-menu-item:hover, .el-sub-menu__title:hover { background: var(--iam-sidebar-hover-bg) !important; }
+  .el-menu-item.is-active { color: var(--iam-sidebar-active) !important; background: var(--iam-sidebar-active-bg) !important; }
+  .sidebar-logo-container { background: var(--iam-sidebar-bg-deep) !important; }
+  .sidebar-title { color: var(--iam-sidebar-active) !important; }
+}
+#app .main-container { margin-left: var(--iam-sidebar-width); }
+#app .fixed-header { width: calc(100% - var(--iam-sidebar-width)); }
+#app .hideSidebar {
+  .sidebar-container { width: var(--iam-sidebar-collapsed) !important; }
+  .main-container { margin-left: var(--iam-sidebar-collapsed); }
+  .fixed-header { width: calc(100% - var(--iam-sidebar-collapsed)); }
+}
+#app [data-layout='top'] {
+  .main-container { margin-left: 0; }
+  .fixed-header { width: 100%; }
+  .navbar { overflow: visible; }
+  .topbar-menu { background: var(--iam-topbar-bg); }
+  .topbar-menu .el-menu-item, .topbar-menu .el-sub-menu__title { color: var(--iam-text-base) !important; }
+}
+#app .navbar { height: var(--iam-topbar-height); color:var(--iam-text-base); }
+#app .navbar .right-menu-item { color: var(--iam-text-base); }
+#app .app-main { background:var(--iam-content-bg); }
+#app .fixed-header + .app-main { margin-top: 56px; padding-top: 0; }
+#app .hasTagsView .fixed-header + .app-main { margin-top: 90px; padding-top: 0; }
+#app .mobile {
+  .main-container { margin-left: 0; }
+  .fixed-header { width: 100%; }
+}
+.pref-btn { margin-right:12px; }
+.sidebar-container,.main-container,.fixed-header { transition: width var(--app-motion), margin-left var(--app-motion); }
+.el-menu--popup { background: var(--app-surface); }
+.el-button.is-link,.el-button.is-text { background:transparent; border-color:transparent; }
+.login,.register { background:var(--app-page-bg) !important; }
+.login-form,.register-form { background:var(--app-surface) !important; border:1px solid var(--app-border-light); box-shadow:var(--app-card-shadow); }
+
+#app [data-layout='compact'] .main-container { margin-left:var(--iam-sidebar-collapsed); }
+#app [data-layout='compact'] .fixed-header { width:calc(100% - var(--iam-sidebar-collapsed)); }
+
+.splitpanes.default-theme .splitpanes__pane { background:var(--app-surface); }
+#app .splitpanes.default-theme .splitpanes__splitter { background:var(--app-page-bg); border-color:var(--app-border-light); }
+#app .hasTagsView .fixed-header + .app-main { height:calc(100vh - 90px); min-height:0; }
+// Legacy toolbar plain buttons need a distinct surface under the shared primary rule.
+.el-button--primary.is-plain:not(.is-link):not(.is-text) {
+  color:var(--app-color-primary);
+  background:var(--el-color-primary-light-9);
+  border-color:var(--el-color-primary-light-5);
+  &:hover, &:focus, &:active { color:#fff; background:var(--app-color-primary); border-color:var(--app-color-primary); }
+}

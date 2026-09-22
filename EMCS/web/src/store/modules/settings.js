@@ -1,10 +1,6 @@
 import defaultSettings from '@/settings'
-import { useDark, useToggle } from '@vueuse/core'
+import { usePreferenceStore } from '@/stores/preference'
 import { useDynamicTitle } from '@/utils/dynamicTitle'
-
-// 统一规范默认浅色；使用独立存储键，避免继承旧版的系统深色偏好。
-const isDark = useDark({ storageKey: 'bdemo-color-scheme', initialValue: 'light' })
-const toggleDark = useToggle(isDark)
 
 const { sideTheme, showSettings, navType, tagsView, tagsIcon, fixedHeader, sidebarLogo, dynamicTitle, footerVisible, footerContent } = defaultSettings
 
@@ -26,8 +22,9 @@ const useSettingsStore = defineStore(
       dynamicTitle: storageSetting.dynamicTitle === undefined ? dynamicTitle : storageSetting.dynamicTitle,
       footerVisible: storageSetting.footerVisible === undefined ? footerVisible : storageSetting.footerVisible,
       footerContent: footerContent,
-      isDark: isDark.value
+
     }),
+    getters: { isDark: () => usePreferenceStore().theme === 'dark-pro' },
     actions: {
       // 修改布局设置
       changeSetting(data) {
@@ -43,8 +40,8 @@ const useSettingsStore = defineStore(
       },
       // 切换暗黑模式
       toggleTheme() {
-        this.isDark = !this.isDark
-        toggleDark()
+        const prefs = usePreferenceStore()
+        prefs.setTheme(prefs.theme === 'dark-pro' ? 'tech-blue' : 'dark-pro')
       }
     }
   })

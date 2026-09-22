@@ -368,7 +368,7 @@ onBeforeUnmount(() => { currentAbort?.abort() })
   border-radius: 50%;
   border: 1px solid rgba(64, 158, 255, 0.55);
   background: var(--app-color-primary);
-  color: #fff;
+  color: var(--app-surface);
   font-family: var(--app-font);
   font-weight: 600;
   letter-spacing: 0.08em;

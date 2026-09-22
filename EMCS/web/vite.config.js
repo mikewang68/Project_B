@@ -7,8 +7,8 @@ export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd())
   const { VITE_APP_ENV } = env
   return {
-    // 部署环境的 URL 前缀：默认根路径 '/'；若挂到子路径（如 '/admin/'），改这里。
-    base: VITE_APP_ENV === 'production' ? '/' : '/',
+    // 构建默认部署到 /emcs/，本地开发使用根路径。
+    base: env.VITE_APP_BASE_PATH || (command === 'build' ? '/emcs/' : '/'),
     plugins: createVitePlugins(env, command === 'build'),
     resolve: {
       // https://cn.vitejs.dev/config/#resolve-alias
@@ -38,13 +38,13 @@ export default defineConfig(({ mode, command }) => {
     },
     // vite 相关配置
     server: {
-      port: 80,
+      port: 5173,
       host: true,
       open: true,
       proxy: {
         // https://cn.vitejs.dev/config/#server-proxy
         '/dev-api': {
-          target: 'http://127.0.0.1:9099',
+          target: env.VITE_API_TARGET || 'http://127.0.0.1:18103',
           changeOrigin: true,
           rewrite: (p) => p.replace(/^\/dev-api/, '')
         }

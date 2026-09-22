@@ -44,20 +44,8 @@ const theme = computed(() => settingsStore.theme);
 const isCollapse = computed(() => !appStore.sidebar.opened);
 
 // 获取菜单背景色
-const getMenuBackground = computed(() => {
-  if (settingsStore.isDark) {
-    return 'var(--sidebar-bg)';
-  }
-  return sideTheme.value === 'theme-dark' ? variables.menuBg : variables.menuLightBg;
-});
-
-// 获取菜单文字颜色
-const getMenuTextColor = computed(() => {
-  if (settingsStore.isDark) {
-    return 'var(--sidebar-text)';
-  }
-  return sideTheme.value === 'theme-dark' ? variables.menuText : variables.menuLightText;
-});
+const getMenuBackground = computed(() => 'var(--iam-sidebar-bg)')
+const getMenuTextColor = computed(() => 'var(--iam-sidebar-text)')
 
 const activeMenu = computed(() => {
   const { meta, path } = route;
@@ -91,7 +79,7 @@ const activeMenu = computed(() => {
       color: v-bind(getMenuTextColor);
       
       &.is-active {
-        color: var(--menu-active-text, #409eff);
+        color: var(--menu-active-text, var(--app-color-primary));
         background-color: var(--menu-hover, rgba(0, 0, 0, 0.06)) !important;
       }
     }

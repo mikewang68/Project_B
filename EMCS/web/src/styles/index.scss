@@ -1,0 +1,277 @@
+// =====================================================
+// 全局样式入口（IAM / SYS 逐字一致）
+// 1) 基础重置与全局底色；2) Element Plus 统一视觉覆盖（对齐统一交互规范）
+// =====================================================
+@use './tokens';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  color: var(--iam-text-base);
+  background-color: var(--iam-content-bg);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+// 皮肤切换时，表面与主色平滑过渡（时长控制在 150-250ms 的交互区间附近）
+.el-button,
+.el-card,
+.el-menu,
+.el-input__wrapper,
+.el-select__wrapper,
+.el-table,
+.el-tag {
+  transition:
+    background-color var(--app-motion),
+    border-color var(--app-motion),
+    color var(--app-motion),
+    box-shadow var(--app-motion);
+}
+
+// 滚动条（中性色，深浅皮肤下均可辨识）
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(31, 45, 61, 0.22);
+  border-radius: 4px;
+
+  &:hover {
+    background: rgba(31, 45, 61, 0.34);
+  }
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+// =====================================================
+// Element Plus 统一覆盖（规范第 11-17 节；IAM/SYS 一致）
+// =====================================================
+
+// ---------- 按钮：Primary 精确三态，Secondary 沿用 EP 默认（白底/灰边/主色悬停）----------
+.el-button--primary {
+  --el-button-bg-color: var(--app-color-primary);
+  --el-button-border-color: var(--app-color-primary);
+  --el-button-hover-bg-color: var(--app-color-primary-hover);
+  --el-button-hover-border-color: var(--app-color-primary-hover);
+  --el-button-active-bg-color: var(--app-color-primary-active);
+  --el-button-active-border-color: var(--app-color-primary-active);
+  --el-button-hover-text-color: #ffffff;
+  --el-button-active-text-color: #ffffff;
+  background-color: var(--app-color-primary);
+  border-color: var(--app-color-primary);
+}
+.el-button--primary:hover,
+.el-button--primary:focus {
+  background-color: var(--app-color-primary-hover);
+  border-color: var(--app-color-primary-hover);
+  color: #ffffff;
+}
+.el-button--primary:active,
+.el-button--primary.is-active {
+  background-color: var(--app-color-primary-active);
+  border-color: var(--app-color-primary-active);
+  color: #ffffff;
+}
+
+.el-button {
+  border-radius: var(--radius-sm);
+}
+
+// 文字链接 / link 按钮三态跟随品牌色
+.el-button.is-link.el-button--primary,
+.el-link.el-link--primary {
+  --el-link-text-color: var(--app-color-primary);
+  --el-link-hover-text-color: var(--app-color-primary-hover);
+}
+.el-button.is-link.el-button--primary:active,
+.el-link.el-link--primary:active {
+  color: var(--app-color-primary-active);
+}
+
+// ---------- 表单：统一边框 / hover / 聚焦光环 / 禁用底 ----------
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  background-color: var(--el-fill-color-blank);
+  box-shadow: 0 0 0 1px var(--app-border-color) inset;
+  border-radius: var(--radius-sm);
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--app-input-hover-border) inset;
+}
+
+.el-textarea__inner:hover {
+  border-color: var(--app-input-hover-border);
+}
+
+.el-input__wrapper.is-focus,
+.el-input__wrapper:focus-within,
+.el-select__wrapper.is-focused,
+.el-select__wrapper:focus-within {
+  box-shadow:
+    0 0 0 1px var(--app-color-primary) inset,
+    var(--app-focus-shadow);
+}
+
+.el-textarea__inner:focus {
+  border-color: var(--app-color-primary);
+  box-shadow: var(--app-focus-shadow);
+}
+
+.el-input.is-disabled .el-input__wrapper,
+.el-select.is-disabled .el-select__wrapper,
+.el-textarea.is-disabled .el-textarea__inner {
+  background-color: var(--app-hover-bg);
+}
+
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+  color: var(--app-text-disabled);
+}
+
+// ---------- 表格：表头 / 行 hover / 斑马纹 / 边框 ----------
+.el-table {
+  --el-table-border-color: var(--app-divider-color);
+  --el-table-header-bg-color: var(--app-table-header-bg);
+  --el-table-header-text-color: var(--app-text-secondary);
+  --el-table-text-color: var(--app-text-regular);
+  --el-table-row-hover-bg-color: var(--app-selected-bg);
+  --el-table-current-row-bg-color: var(--app-selected-bg);
+  --el-table-tr-bg-color: var(--app-surface);
+  --el-table-bg-color: var(--app-surface);
+  font-size: var(--font-size-body);
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  background-color: var(--app-table-header-bg);
+  color: var(--app-text-secondary);
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: var(--app-table-stripe-bg);
+}
+
+// ---------- 卡片：统一边框与轻阴影 ----------
+.el-card {
+  border: 1px solid var(--app-border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--app-card-shadow);
+}
+
+.el-card__header {
+  border-bottom: 1px solid var(--app-divider-color);
+  font-weight: 600;
+  color: var(--app-text-title);
+}
+
+// 可交互卡片 hover 上限（规范第 16 节）
+.is-interactive-card {
+  cursor: pointer;
+  transition:
+    border-color var(--app-motion),
+    box-shadow var(--app-motion);
+  &:hover {
+    border-color: var(--app-card-hover-border);
+    box-shadow: var(--app-card-hover-shadow);
+  }
+}
+
+// ---------- Dialog / Drawer：圆角与标题层级 ----------
+.el-dialog {
+  border-radius: var(--radius-md);
+}
+.el-dialog__title,
+.el-drawer__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--app-text-title);
+}
+
+// ---------- Divider ----------
+.el-divider {
+  --el-border-color: var(--app-divider-color);
+}
+
+// ---------- Pagination：选中页使用品牌色实心 ----------
+.el-pagination {
+  --el-pagination-hover-color: var(--app-color-primary);
+  font-weight: 400;
+  .el-pager li {
+    border-radius: var(--radius-sm);
+    &:hover {
+      color: var(--app-color-primary);
+      background: var(--app-clickable-hover-bg);
+    }
+    &.is-active {
+      background: var(--app-color-primary);
+      color: #ffffff;
+      &:hover {
+        background: var(--app-color-primary-hover);
+        color: #ffffff;
+      }
+    }
+  }
+}
+
+// ---------- Tabs：选中跟随品牌色 ----------
+.el-tabs__item.is-active,
+.el-tabs__item:hover {
+  color: var(--app-color-primary);
+}
+.el-tabs__active-bar {
+  background-color: var(--app-color-primary);
+}
+.el-tabs__nav-wrap::after {
+  height: 1px;
+  background-color: var(--app-divider-color);
+}
+
+// ---------- Tag：统一小圆角（语义色由 EP type 提供，与状态规范一致）----------
+.el-tag {
+  border-radius: var(--radius-sm);
+}
+
+// ---------- Empty：描述文字层级 ----------
+.el-empty__description p {
+  color: var(--app-text-secondary);
+}
+
+// ---------- Message / Notification 圆角统一 ----------
+.el-message,
+.el-notification {
+  border-radius: var(--radius-sm);
+}
+
+// ---------- 焦点可见性：键盘聚焦显示品牌色光环 ----------
+.el-button:focus-visible,
+.el-menu-item:focus-visible,
+.el-pager li:focus-visible {
+  outline: none;
+  box-shadow: var(--app-focus-shadow);
+}

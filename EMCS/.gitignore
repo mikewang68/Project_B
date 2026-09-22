@@ -25,9 +25,11 @@ web/dist/
 !/sql/
 !/sql/*.sql
 
-# Docker 卷（compose 用 named volume，此处兜底）
+# 本地数据库与缓存测试产物
 mysql-data/
 redis-data/
+opengauss-data/
+kvrocks-data/
 
 # IDE / 系统
 .DS_Store
@@ -67,3 +69,6 @@ mcp.json.*
 
 # Python 静态检查缓存
 .ruff_cache/
+
+# 临时前端验收入口
+/web/qa-*.html

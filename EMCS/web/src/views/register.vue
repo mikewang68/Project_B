@@ -166,18 +166,18 @@ getCode();
   background:
     radial-gradient(1200px 500px at 12% -10%, rgba(56, 189, 248, 0.10), transparent 60%),
     radial-gradient(900px 400px at 100% 0%, rgba(249, 115, 22, 0.06), transparent 60%),
-    linear-gradient(180deg, #0B0F14 0%, #0F1622 100%);
+    linear-gradient(180deg, var(--app-page-bg) 0%, var(--app-surface-secondary) 100%);
   background-size: cover;
 }
 .title {
   margin: 0px auto 30px auto;
   text-align: center;
-  color: #707070;
+  color: var(--app-text-secondary);
 }
 
 .register-form {
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--app-surface);
   width: 400px;
   padding: 25px 25px 5px 25px;
   .el-input {
@@ -195,7 +195,7 @@ getCode();
 .register-tip {
   font-size: 13px;
   text-align: center;
-  color: #bfbfbf;
+  color: var(--app-text-disabled);
 }
 .register-code {
   width: 33%;
@@ -213,7 +213,7 @@ getCode();
   bottom: 0;
   width: 100%;
   text-align: center;
-  color: #fff;
+  color: var(--app-surface);
   font-family: Arial;
   font-size: 12px;
   letter-spacing: 1px;

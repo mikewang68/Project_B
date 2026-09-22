@@ -18,10 +18,11 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class CaptchaService {
-    private static final String PREFIX = "captcha_codes:";
+    private final String prefix;
     private final StringRedisTemplate redis;
 
-    public CaptchaService(StringRedisTemplate redis) {
+    public CaptchaService(StringRedisTemplate redis, @org.springframework.beans.factory.annotation.Value("${b-demo.cache-prefix}") String prefix) {
+        this.prefix = prefix + "captcha_codes:";
         this.redis = redis;
     }
 
@@ -29,7 +30,7 @@ public class CaptchaService {
         int left = ThreadLocalRandom.current().nextInt(1, 10);
         int right = ThreadLocalRandom.current().nextInt(1, 10);
         String uuid = UUID.randomUUID().toString();
-        redis.opsForValue().set(PREFIX + uuid, Integer.toString(left + right), Duration.ofMinutes(2));
+        redis.opsForValue().set(prefix + uuid, Integer.toString(left + right), Duration.ofMinutes(2));
         return new Captcha(uuid, render(left + " + " + right + " = ?"));
     }
 
@@ -37,7 +38,7 @@ public class CaptchaService {
         if (uuid == null || answer == null) {
             return false;
         }
-        String key = PREFIX + uuid;
+        String key = prefix + uuid;
         String expected = redis.opsForValue().getAndDelete(key);
         return expected != null && expected.equals(answer.trim());
     }

@@ -1,0 +1,26 @@
+[Unit]
+Description=EMCS energy management API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=emcs
+Group=emcs
+WorkingDirectory=/opt/emcs
+EnvironmentFile=/etc/emcs/emcs.env
+ExecStart=/usr/bin/java -Duser.timezone=Asia/Shanghai -Djava.awt.headless=true -jar /opt/emcs/emcs.jar
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+SuccessExitStatus=143
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/emcs
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

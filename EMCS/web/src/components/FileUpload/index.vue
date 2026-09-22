@@ -239,7 +239,7 @@ onMounted(() => {
   margin-bottom: 5px;
 }
 .upload-file-list .el-upload-list__item {
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--app-border-light);
   line-height: 2;
   margin-bottom: 10px;
   position: relative;

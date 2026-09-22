@@ -1,5 +1,5 @@
 {
-  "description": "前端版本与依赖配置清单；required 为 package.json 声明，locked 为 package-lock.json 锁定版本。",
+  "description": "前端版本与依赖配置清单；required 为 package.json 声明，locked 为 pnpm-lock.yaml 锁定版本。",
   "application": {
     "name": "b-demo-web",
     "version": "0.1.0"
@@ -13,7 +13,7 @@
   },
   "sources": {
     "manifest": "package.json",
-    "lockfile": "package-lock.json"
+    "lockfile": "pnpm-lock.yaml"
   },
   "maintenance": "升级前端版本或依赖后，同步更新本文件；实际依赖安装仍以 package.json 和对应锁文件为准。",
   "dependencies": {
@@ -96,6 +96,10 @@
     "vuedraggable": {
       "required": "4.1.0",
       "locked": "4.1.0"
+    },
+    "sortablejs": {
+      "required": "1.15.6",
+      "locked": "1.15.6"
     }
   },
   "devDependencies": {
@@ -105,7 +109,7 @@
     },
     "less": {
       "required": "^4.2.0",
-      "locked": "4.6.7"
+      "locked": "4.9.1"
     },
     "sass-embedded": {
       "required": "1.97.2",
@@ -134,6 +138,10 @@
     "vite-plugin-svg-icons": {
       "required": "2.0.1",
       "locked": "2.0.1"
+    },
+    "monaco-editor": {
+      "required": "0.55.1",
+      "locked": "0.55.1"
     }
   },
   "overrides": {

@@ -201,7 +201,7 @@ public class AlertService {
         List<Map<String, Object>> orders = jdbc.queryForList("""
                 SELECT work_order_id,order_no,cargo_type,workload_value,workload_unit,start_time,end_time,status
                 FROM e_work_order WHERE equipment_id=? AND status<>'cancelled' AND start_time<?
-                AND COALESCE(end_time,DATE_ADD(start_time,INTERVAL 8 HOUR))>? ORDER BY start_time
+                AND COALESCE(end_time,(CAST(start_time AS timestamp) + INTERVAL '8 HOUR'))>? ORDER BY start_time
                 """, equipment, Timestamp.valueOf(end), Timestamp.valueOf(start)).stream().map(order -> map(
                 "workOrderId", order.get("work_order_id"), "orderNo", order.get("order_no"), "cargoType", order.get("cargo_type"),
                 "workload", order.get("workload_value"), "workloadUnit", order.get("workload_unit"),

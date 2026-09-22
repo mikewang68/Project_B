@@ -158,7 +158,7 @@ function closeDialog() {
   right: 0;
   top: 0;
   bottom: 0;
-  color: #eee;
+  color: var(--app-border-light);
   background: rgba(0, 0, 0, 0.5);
   font-size: 24px;
   font-style: normal;

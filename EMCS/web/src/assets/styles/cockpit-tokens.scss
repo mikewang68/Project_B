@@ -5,57 +5,28 @@
 // （ECharts 主题色的 JS 镜像），改一处必改两处。
 
 @mixin cockpit-tokens-light {
-  --bg: #F5F7FA;
-  --panel: #FFFFFF;
-  --panel-2: #FAFBFC;
-  --line: #E4E7ED;
-  --line-strong: #DCDFE6;
-
-  --ink: #1F2937;
-  --ink-2: #606266;
-  --ink-3: #909399;
-
-  --cyan: #409EFF;
-  --amber: #E6A23C;
-  --red: #F56C6C;
-  --lime: #67C23A;
-  --violet: #909399;
-
-  --cyan-tint: #ECF5FF;
-  --amber-tint: #FDF6EC;
-  --red-tint: #FEF0F0;
-  --lime-tint: #F0F9EB;
-
-  --serif: "PingFang SC", "Microsoft YaHei", sans-serif;
-  --mono: "SF Mono", "Menlo", "Consolas", monospace;
-
+  --bg: var(--app-page-bg);
+  --panel: var(--app-surface);
+  --panel-2: var(--app-surface-secondary);
+  --line: var(--app-border-light);
+  --line-strong: var(--app-border-color);
+  --ink: var(--app-text-title);
+  --ink-2: var(--app-text-regular);
+  --ink-3: var(--app-text-secondary);
+  --cyan: var(--app-color-primary);
+  --amber: var(--app-color-warning);
+  --red: var(--app-color-danger);
+  --lime: var(--app-color-success);
+  --violet: var(--app-color-info);
+  --cyan-tint: var(--app-selected-bg);
+  --amber-tint: var(--app-color-warning-light);
+  --red-tint: var(--app-color-danger-light);
+  --lime-tint: var(--app-color-success-light);
+  --serif: var(--font-family);
+  --mono: var(--font-mono);
   --hero-glow: none;
 }
-
-@mixin cockpit-tokens-dark {
-  --bg: #0F1B2D;
-  --panel: #17263A;
-  --panel-2: #1F3043;
-  --line: rgba(64, 158, 255, 0.28);
-  --line-strong: #3B5775;
-
-  --ink: #FFFFFF;
-  --ink-2: #AFC2D8;
-  --ink-3: #AFC2D8;
-
-  --cyan: #409EFF;
-  --amber: #E6A23C;
-  --red: #F56C6C;
-  --lime: #67C23A;
-  --violet: #909399;
-
-  --cyan-tint: rgba(64, 158, 255, 0.14);
-  --amber-tint: rgba(230, 162, 60, 0.14);
-  --red-tint: rgba(245, 108, 108, 0.14);
-  --lime-tint: rgba(103, 194, 58, 0.14);
-
-  --hero-glow: none;
-}
+@mixin cockpit-tokens-dark { @include cockpit-tokens-light; }
 
 .cockpit-page { @include cockpit-tokens-light; }
 html.dark .cockpit-page { @include cockpit-tokens-dark; }

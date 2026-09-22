@@ -111,16 +111,16 @@ public class OverviewService {
     private Map<String, Object> trend(LocalDate today, String energy, Long areaId) {
         String valueColumn = "electricity".equals(energy) ? "SUM(COALESCE(avg_power_kw,total_value))" : "SUM(total_value)";
         List<Map<String, Object>> rows = jdbc.queryForList("""
-                SELECT HOUR(stat_time) hour_no, %s value
-                FROM e_stat_hour WHERE object_type='area' AND energy_type_code=? AND DATE(stat_time)=?
-                %s GROUP BY HOUR(stat_time) ORDER BY hour_no
+                SELECT EXTRACT(HOUR FROM CAST(stat_time AS timestamp)) hour_no, %s value
+                FROM e_stat_hour WHERE object_type='area' AND energy_type_code=? AND CAST(stat_time AS date)=?
+                %s GROUP BY EXTRACT(HOUR FROM CAST(stat_time AS timestamp)) ORDER BY hour_no
                 """.formatted(valueColumn, objectAreaClause(areaId)), paramsWithArea(areaId, energy, Date.valueOf(today)));
         List<Map<String, Object>> baselines = jdbc.queryForList("""
                 SELECT hour_no, AVG(day_value) value FROM (
-                  SELECT DATE(stat_time) day_no, HOUR(stat_time) hour_no, %s day_value
+                  SELECT CAST(stat_time AS date) day_no, EXTRACT(HOUR FROM CAST(stat_time AS timestamp)) hour_no, %s day_value
                   FROM e_stat_hour WHERE object_type='area' AND energy_type_code=?
                     AND stat_time>=? AND stat_time<? %s
-                  GROUP BY DATE(stat_time), HOUR(stat_time)
+                  GROUP BY CAST(stat_time AS date), EXTRACT(HOUR FROM CAST(stat_time AS timestamp))
                 ) history GROUP BY hour_no ORDER BY hour_no
                 """.formatted(valueColumn, objectAreaClause(areaId)), paramsWithArea(areaId, energy,
                 Timestamp.valueOf(today.minusWeeks(8).atStartOfDay()), Timestamp.valueOf(today.atStartOfDay())));
@@ -163,7 +163,7 @@ public class OverviewService {
                 FROM e_stat_day s JOIN e_equipment e ON e.equipment_id=s.object_id
                 JOIN e_area a ON a.area_id=e.area_id
                 WHERE s.object_type='equipment' AND s.energy_type_code=?
-                  AND DATE_FORMAT(s.stat_date,'%%Y-%%m')=? %s
+                  AND to_char(CAST(s.stat_date AS timestamp),'YYYY-MM')=? %s
                 GROUP BY e.equipment_id,e.equipment_name,a.area_name ORDER BY value DESC LIMIT 5
                 """.formatted(areaId == null ? "" : "AND e.area_id=?"), paramsWithArea(areaId, energy, today.toString().substring(0, 7)));
         return rank(rows, "electricity".equals(energy) ? "kWh" : "m³");
@@ -228,7 +228,7 @@ public class OverviewService {
             categories.add(map("key", key, "label", qualityLabel(key), "count", count,
                     "pct", (cells.isEmpty() ? 0 : round(count * 100.0 / cells.size(), 1)) + "%"));
         }
-        String latestIngest = scalarString("SELECT DATE_FORMAT(MAX(ingest_time),'%m-%d %H:%i') FROM e_raw_reading");
+        String latestIngest = scalarString("SELECT to_char(CAST(MAX(ingest_time) AS timestamp),'MM-DD HH24:MI') FROM e_raw_reading");
         return map("total", cells.size(), "latestIngestAt", latestIngest, "categories", categories,
                 "cells", cells, "zoneSplit", "A区24 / B区24", "coverage", coverage, "coverageThreshold", 95);
     }
