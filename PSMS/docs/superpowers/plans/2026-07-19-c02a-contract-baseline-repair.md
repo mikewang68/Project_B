@@ -11,10 +11,10 @@
 ## Global Constraints
 
 - Approved design: `docs/superpowers/specs/2026-07-19-c02a-contract-baseline-repair-design.md` at commit `c95203b4a78958afde2932cc47e2c09e7655ed5f`.
-- Document-engineering root: `C:\Users\developer\Documents\Codex\2026-07-16\e-b`.
+- Document-engineering root: `C:\Users\msi-cn\Documents\Codex\2026-07-16\e-b`.
 - Demo repository: `E:\魔法入门与精通\自己写的神奇玩应\研究\工作\B项目\production-dispatch-demo`.
 - B项目 document destination: `E:\魔法入门与精通\自己写的神奇玩应\研究\工作\B项目\相关文档\技术设计`.
-- Use bundled Python: `C:\Users\developer\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`.
+- Use bundled Python: `C:\Users\msi-cn\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`.
 - Do not install Python or npm packages and do not change `package.json`, `pnpm-lock.yaml`, or exact dependency versions.
 - C02A may change generator source, generated documents, `docs/baseline/openapi.yaml`, `docs/baseline/demo-fixtures.json`, and evidence; it must not create or modify `src/contracts/**`, `src/mocks/**`, Store, state machine, RBAC, audit persistence, or page source.
 - The canonical `/mock/**` runtime shape is strict camelCase. Requirement snake_case names survive only as `x-source-field` or `x-source-fields` trace metadata.
@@ -123,7 +123,7 @@ EXPECTED_COUNTS = {
 Run from the document-engineering root:
 
 ```powershell
-& 'C:\Users\developer\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -m unittest work.demo_doc_pack.tests.test_contract_semantics -v
+& 'C:\Users\msi-cn\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -m unittest work.demo_doc_pack.tests.test_contract_semantics -v
 ```
 
 Expected: FAIL, including all-fixture/schema mismatch, GET requestBody, missing response schemas, `reason?`, numeric `ruleVersion`, absent scenario seeds, and missing fault configuration.
@@ -221,7 +221,7 @@ In `validate_catalog()`, add exact object/fixture counts, unique stable IDs, enu
 Run:
 
 ```powershell
-& 'C:\Users\developer\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -m unittest work.demo_doc_pack.tests.test_catalog work.demo_doc_pack.tests.test_contract_semantics -v
+& 'C:\Users\msi-cn\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -m unittest work.demo_doc_pack.tests.test_catalog work.demo_doc_pack.tests.test_contract_semantics -v
 ```
 
 Expected: catalog-specific tests PASS; OpenAPI response/query tests may remain FAIL until Task 3. Fixture/schema, count, error, and scenario tests must now PASS.
@@ -284,7 +284,7 @@ GET query fields become `parameters` with `in: query`. Path variables become req
 Run:
 
 ```powershell
-& 'C:\Users\developer\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -m unittest discover -s work\demo_doc_pack\tests -v
+& 'C:\Users\msi-cn\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -m unittest discover -s work\demo_doc_pack\tests -v
 ```
 
 Expected: all tests PASS; no `reason?`, no GET requestBody, no numeric `ruleVersion`, every response example validates, and all 25 operations remain present.
@@ -337,7 +337,7 @@ Replace old v0.1/v0.3 input names with v0.2/v0.4 names. Add C02A as an explicit 
 Run:
 
 ```powershell
-& 'C:\Users\developer\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -m work.demo_doc_pack.generate_all
+& 'C:\Users\msi-cn\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -m work.demo_doc_pack.generate_all
 ```
 
 Expected: five deliverables listed above plus seven machine artifacts under `outputs/demo-doc-pack-v04/machine` (`README.md`, five other official baseline files, and `SHA256SUMS.txt`).
@@ -364,8 +364,8 @@ Run the unittest discovery command from Task 3. Expected: all tests PASS and det
 Read completely:
 
 ```text
-C:\Users\developer\.codex\skills\b-project-process-doc-format\SKILL.md
-C:\Users\developer\.codex\plugins\cache\openai-primary-runtime\documents\26.715.12143\skills\documents\SKILL.md
+C:\Users\msi-cn\.codex\skills\b-project-process-doc-format\SKILL.md
+C:\Users\msi-cn\.codex\plugins\cache\openai-primary-runtime\documents\26.715.12143\skills\documents\SKILL.md
 ```
 
 - [ ] **Step 2: Render every DOCX to page PNGs**
@@ -373,10 +373,10 @@ C:\Users\developer\.codex\plugins\cache\openai-primary-runtime\documents\26.715.
 Use:
 
 ```powershell
-& 'C:\Users\developer\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' 'C:\Users\developer\.codex\plugins\cache\openai-primary-runtime\documents\26.715.12143\skills\documents\render_docx.py' 'C:\Users\developer\Documents\Codex\2026-07-16\e-b\outputs\demo-doc-pack-v04\B项目-生产调度管理模块网页Demo技术方案设计文档-v0.4-20260719.docx' --output_dir 'C:\Users\developer\Documents\Codex\2026-07-16\e-b\work\demo_doc_pack\rendered\c02a\main'
-& 'C:\Users\developer\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' 'C:\Users\developer\.codex\plugins\cache\openai-primary-runtime\documents\26.715.12143\skills\documents\render_docx.py' 'C:\Users\developer\Documents\Codex\2026-07-16\e-b\outputs\demo-doc-pack-v04\B项目-生产调度管理模块网页Demo页面与功能任务卡-v0.2-20260719.docx' --output_dir 'C:\Users\developer\Documents\Codex\2026-07-16\e-b\work\demo_doc_pack\rendered\c02a\page-cards'
-& 'C:\Users\developer\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' 'C:\Users\developer\.codex\plugins\cache\openai-primary-runtime\documents\26.715.12143\skills\documents\render_docx.py' 'C:\Users\developer\Documents\Codex\2026-07-16\e-b\outputs\demo-doc-pack-v04\B项目-生产调度管理模块网页Demo Mock接口与数据契约-v0.2-20260719.docx' --output_dir 'C:\Users\developer\Documents\Codex\2026-07-16\e-b\work\demo_doc_pack\rendered\c02a\api-contract'
-& 'C:\Users\developer\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' 'C:\Users\developer\.codex\plugins\cache\openai-primary-runtime\documents\26.715.12143\skills\documents\render_docx.py' 'C:\Users\developer\Documents\Codex\2026-07-16\e-b\outputs\demo-doc-pack-v04\B项目-生产调度管理模块网页Demo开发任务分解与验收清单-v0.2-20260719.docx' --output_dir 'C:\Users\developer\Documents\Codex\2026-07-16\e-b\work\demo_doc_pack\rendered\c02a\task-matrix'
+& 'C:\Users\msi-cn\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' 'C:\Users\msi-cn\.codex\plugins\cache\openai-primary-runtime\documents\26.715.12143\skills\documents\render_docx.py' 'C:\Users\msi-cn\Documents\Codex\2026-07-16\e-b\outputs\demo-doc-pack-v04\B项目-生产调度管理模块网页Demo技术方案设计文档-v0.4-20260719.docx' --output_dir 'C:\Users\msi-cn\Documents\Codex\2026-07-16\e-b\work\demo_doc_pack\rendered\c02a\main'
+& 'C:\Users\msi-cn\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' 'C:\Users\msi-cn\.codex\plugins\cache\openai-primary-runtime\documents\26.715.12143\skills\documents\render_docx.py' 'C:\Users\msi-cn\Documents\Codex\2026-07-16\e-b\outputs\demo-doc-pack-v04\B项目-生产调度管理模块网页Demo页面与功能任务卡-v0.2-20260719.docx' --output_dir 'C:\Users\msi-cn\Documents\Codex\2026-07-16\e-b\work\demo_doc_pack\rendered\c02a\page-cards'
+& 'C:\Users\msi-cn\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' 'C:\Users\msi-cn\.codex\plugins\cache\openai-primary-runtime\documents\26.715.12143\skills\documents\render_docx.py' 'C:\Users\msi-cn\Documents\Codex\2026-07-16\e-b\outputs\demo-doc-pack-v04\B项目-生产调度管理模块网页Demo Mock接口与数据契约-v0.2-20260719.docx' --output_dir 'C:\Users\msi-cn\Documents\Codex\2026-07-16\e-b\work\demo_doc_pack\rendered\c02a\api-contract'
+& 'C:\Users\msi-cn\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' 'C:\Users\msi-cn\.codex\plugins\cache\openai-primary-runtime\documents\26.715.12143\skills\documents\render_docx.py' 'C:\Users\msi-cn\Documents\Codex\2026-07-16\e-b\outputs\demo-doc-pack-v04\B项目-生产调度管理模块网页Demo开发任务分解与验收清单-v0.2-20260719.docx' --output_dir 'C:\Users\msi-cn\Documents\Codex\2026-07-16\e-b\work\demo_doc_pack\rendered\c02a\task-matrix'
 ```
 
 Expected: all four commands exit 0 and each output directory contains at least one PNG.

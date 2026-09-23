@@ -4,9 +4,9 @@
 
 ```text
 浏览器
-  -> app-node Nginx（静态前端、同源反向代理）
-  -> database-node / fabric-node Easegress（API 与 WebSocket 入口）
-  -> database-node Java 17 单实例（Demo 内存状态）
+  -> bpoc-node6 Nginx（静态前端、同源反向代理）
+  -> bpoc-node4 / bpoc-node5 Easegress（API 与 WebSocket 入口）
+  -> bpoc-node4 Java 17 单实例（Demo 内存状态）
 ```
 
 当前 Demo 的状态保存在 Java 进程内存中，因此第一阶段只部署一个后端实例。直接在 node4、node5 各启动一个实例会造成 REST 请求和 WebSocket 看到的状态不一致；需要双实例前，应先把状态迁移到共享存储并设计消息同步。

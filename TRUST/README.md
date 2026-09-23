@@ -81,10 +81,6 @@ PowerShell 默认使用 PATH 中的 `python`，也可设置 `TRUST_PYTHON` 指�
 
 IPFS 启动会等待 RPC 就绪并核对仓库路径。既有仓库升级离线配置时，在 IPFS 节点执行 `bash deploy/ipfs.sh configure-offline`，重启 IPFS 后生效；工具保留旧配置。当前脚本尚未安装开机自启或进程守护。
 
-需要直接通过网关的内网或 VPN 地址访问页面时，可选用 [单层 HTTP 网关部署](docs/http-access.md)：网关系统 Nginx 直连应用节点的 Java 服务。应用节点不增加代理。2026-09-16 开发环境入口已启用并通过实际 HTTP、页面及来源限制检查；地址由私有配置指定。验证范围和剩余工作见 [实施状态](docs/implementation-status.md)。
-
-网关应用入口按三个端口隔离：80 为精简公网导航，18080 为 TRUST 独立入口，18081 为内部完整导航。公网清单只生成配置了 `publicUrl` 的已发布应用；内部清单保留业务系统、公共能力和运维工具，未完成系统以 `enabled=false` 预留端口但不显示卡片。入口清单位于私有配置 `httpAccess.portal.services`；静态源码位于 `deploy/portal/`。见 [端口规划](docs/gateway-port-plan.md) 与 [操作说明](docs/http-access.md)。
-
 ## 构建与日常开发
 
 ```powershell

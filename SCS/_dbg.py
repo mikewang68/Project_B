@@ -1,6 +1,5 @@
 import io
-from pathlib import Path
-p = Path(__file__).resolve().parent / 'frontend/src/composables/useEChart.ts'
+p = r'C:\Users\xis\Desktop\项目开发\code\project B\frontend\src\composables\useEChart.ts'
 s = io.open(p, encoding='utf-8').read()
 old = """  onMounted(() => {
     if (!el.value) return

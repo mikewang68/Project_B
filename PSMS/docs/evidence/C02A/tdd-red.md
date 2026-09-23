@@ -1,8 +1,8 @@
 # C02A 契约语义测试红灯证据
 
 - 时间：2026-07-19 14:23:40 +08:00
-- 工作目录：`C:\Users\developer\Documents\Codex\2026-07-16\e-b`
-- Python：`C:\Users\developer\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`
+- 工作目录：`C:\Users\msi-cn\Documents\Codex\2026-07-16\e-b`
+- Python：`C:\Users\msi-cn\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`
 - 命令：`python -m unittest work.demo_doc_pack.tests.test_contract_semantics -v`
 - 退出码：`1`
 - 汇总：`Ran 12 tests in 0.057s — FAILED (failures=11)`

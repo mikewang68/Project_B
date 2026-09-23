@@ -3,8 +3,7 @@ param([string[]]$Roles = @('ipfs','database','fabric','application'), [switch]$D
 $deployment = Get-TrustDeployment
 $archivePath = Join-Path $script:TrustRoot '.local/source.tar.gz'
 foreach ($role in $Roles) {
-    if ($role -notin @('ipfs','database','fabric','application','gateway')) { throw "Unknown role: $role" }
-    if ($role -eq 'gateway' -and -not $deployment.httpAccess.gateway) { throw 'HTTP gateway configuration is missing' }
+    if ($role -notin @('ipfs','database','fabric','application')) { throw "Unknown role: $role" }
 }
 & $script:TrustPython (Join-Path $script:TrustRoot 'scripts/package-source.py') --output $archivePath
 if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
@@ -17,7 +16,7 @@ $configTransfer = Join-Path $script:TrustRoot '.local/deployment-transfer.json'
 $deployment | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $configTransfer -Encoding utf8
 try {
     foreach ($role in $Roles) {
-        $nodeName = if ($role -eq 'gateway') { $deployment.httpAccess.gateway.sshAlias } else { $deployment.nodes.$role.sshAlias }
+        $nodeName = $deployment.nodes.$role.sshAlias
         ssh -o BatchMode=yes -o StrictHostKeyChecking=yes $nodeName "umask 077; mkdir -p $remoteRoot/runtime/secrets"
         if ($LASTEXITCODE -ne 0) { throw "Remote directory failed: $role" }
         scp -o BatchMode=yes -o StrictHostKeyChecking=yes $archivePath "${nodeName}:$remoteRoot/source.tar.gz"
