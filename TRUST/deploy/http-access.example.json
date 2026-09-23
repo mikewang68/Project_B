@@ -1,0 +1,45 @@
+{
+  "httpAccess": {
+    "gateway": {
+      "sshAlias": "trust-gateway",
+      "address": "192.0.2.11",
+      "listenAddresses": [
+        "192.0.2.11"
+      ],
+      "accessAddress": "192.0.2.11",
+      "clientCidrs": [
+        "192.0.2.0/24"
+      ],
+      "ports": {
+        "public": 80,
+        "trust": 18080,
+        "internal": 18081
+      }
+    },
+    "portal": {
+      "services": [
+        {
+          "id": "trust",
+          "title": "可信存证与溯源",
+          "description": "事件台账、证据归档、链上存证、批次溯源与核验导出。",
+          "badge": "真实组件联调",
+          "code": "TRUST",
+          "category": "公共能力"
+        },
+        {
+          "id": "demo",
+          "title": "业务系统示例",
+          "description": "请填写已部署的应用端口与路径，地址从应用节点配置读取。",
+          "badge": "待配置",
+          "code": "DEMO",
+          "category": "业务系统",
+          "scheme": "http",
+          "port": 18090,
+          "path": "/demo/",
+          "publicUrl": "https://demo.example.com/",
+          "publicDescription": "进入业务系统。"
+        }
+      ]
+    }
+  }
+}
