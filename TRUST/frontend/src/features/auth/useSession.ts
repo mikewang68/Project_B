@@ -1,6 +1,7 @@
 import { ref, computed, onMounted } from "vue";
 import { currentUser, login, logout } from "./api";
 import type { ApiRecord } from "../../shared/types";
+import { post, resetCsrf } from "../../shared/http/client";
 export function useSession() {
   const me = ref<ApiRecord | null>(null);
   const canWrite = computed(() =>
@@ -25,5 +26,11 @@ export function useSession() {
     await logout();
     me.value = null;
   }
-  return { me, canWrite, canAdmin, signIn, signOut };
+  async function quickSignIn(username: string) {
+    await resetCsrf();
+    await post("/dev-login", { username });
+    await resetCsrf();
+    me.value = await currentUser();
+  }
+  return { me, canWrite, canAdmin, signIn, signOut, quickSignIn };
 }

@@ -175,7 +175,7 @@ p {
   display: flex;
   min-height: 100vh;
 }
-aside {
+.workspace-sidebar {
   background: #103e33;
   color: #e3eee6;
   width: 232px;
@@ -217,30 +217,30 @@ aside {
   letter-spacing: 2px;
   margin: 0 12px 20px;
 }
-nav {
+.workspace-nav {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-nav button {
+.workspace-nav button {
   background: transparent;
   border: 0;
   color: #a9c3b6;
   text-align: left;
   padding: 16px 12px;
 }
-nav button span {
+.workspace-nav button span {
   font-size: 10px;
   opacity: 0.65;
   margin-right: 15px;
 }
-nav button.active {
+.workspace-nav button.active {
   background: #ffffff12;
   color: white;
   border-left: 2px solid #c8d8a9;
   border-radius: 0 5px 5px 0;
 }
-nav button:hover {
+.workspace-nav button:hover {
   background: #ffffff0a;
 }
 .aside-bottom {
@@ -267,7 +267,7 @@ nav button:hover {
   margin-left: 232px;
   width: calc(100% - 232px);
 }
-header {
+.workspace-topbar {
   background: #ffffffc9;
   border-bottom: 1px solid #e1e7e0;
   padding: 19px 38px;
@@ -276,7 +276,7 @@ header {
   align-items: center;
   font-size: 12px;
 }
-header b {
+.workspace-topbar b {
   padding: 0 15px;
   color: #b0bbb2;
   font-weight: 400;
@@ -726,7 +726,7 @@ footer {
   gap: 20px;
 }
 @media (max-width: 1100px) {
-  aside {
+  .workspace-sidebar {
     width: 190px;
     padding: 25px 16px;
   }
@@ -743,7 +743,7 @@ footer {
   .facts {
     grid-template-columns: repeat(2, 1fr);
   }
-  header {
+  .workspace-topbar {
     padding: 18px 22px;
   }
 }
@@ -766,7 +766,7 @@ footer {
     max-width: none;
     padding: 30px;
   }
-  aside {
+  .workspace-sidebar {
     position: static;
     width: auto;
     padding: 16px;
@@ -781,23 +781,23 @@ footer {
   .aside-bottom {
     display: none;
   }
-  nav {
+  .workspace-nav {
     flex-direction: row;
     overflow: auto;
     gap: 4px;
   }
-  nav button {
+  .workspace-nav button {
     white-space: nowrap;
     padding: 10px;
   }
-  nav button span {
+  .workspace-nav button span {
     display: none;
   }
   .workspace {
     margin: 0;
     width: 100%;
   }
-  header {
+  .workspace-topbar {
     gap: 10px;
     flex-wrap: wrap;
   }
@@ -863,11 +863,11 @@ footer {
   }
 }
 @media (max-width: 760px) {
-  nav {
+  .workspace-nav {
     flex-wrap: wrap;
     overflow: visible;
   }
-  nav button {
+  .workspace-nav button {
     flex: 1 1 calc(33% - 4px);
     text-align: center;
     padding: 10px 6px;

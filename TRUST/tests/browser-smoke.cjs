@@ -1,7 +1,7 @@
 /* Headless UI checks. --preview uses explicit fixtures, not real backend acceptance. */
 const {chromium}=require('node:module').createRequire(require('node:path').join(__dirname,'../frontend/package.json'))('@playwright/test');const fs=require('fs');const path=require('path');const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'), preview=process.argv.includes('--preview');
-const base=preview?'http://127.0.0.1:18181':'http://127.0.0.1:18180';
+const base=process.env.TRUST_BASE_URL||(preview?'http://127.0.0.1:18181':'http://127.0.0.1:18180');
 const out=process.env.TRUST_TEST_RESULTS||path.join(root,'.local','test-results');fs.mkdirSync(out,{recursive:true});
 const result={mode:preview?'UI fixtures; no backend acceptance':'Real application',checks:[],errors:[]};
 (async()=>{
@@ -31,13 +31,27 @@ const result={mode:preview?'UI fixtures; no backend acceptance':'Real applicatio
   await route.fulfill({status:code,contentType:'application/json',body:JSON.stringify(body)});
  });
  try{
-  await page.goto(base);await page.getByRole('heading',{name:'登录工作台'}).waitFor();
+  await page.goto(base);await page.evaluate(()=>localStorage.setItem('b-project-appearance',JSON.stringify({theme:'tech-blue',layout:'side'})));await page.reload();await page.getByRole('heading',{name:'登录工作台'}).waitFor();
   await page.screenshot({path:path.join(out,'ui-login.png'),fullPage:true});result.checks.push('login layout');
-  const account=preview?{username:'ui-test',password:'fixture'}:JSON.parse(fs.readFileSync(path.join(root,'.local','development-accounts.json'))).find(u=>u.username==='admin');
-  await page.getByLabel('账号',{exact:true}).fill(account.username);await page.getByLabel('密码',{exact:true}).fill(account.password);await page.getByRole('button',{name:'进入工作台'}).click();
+  if(preview){assert.equal(await page.locator('.quick-account').count(),4);await page.getByRole('button',{name:'管理员快捷登录',exact:true}).click();result.checks.push('local quick login account types');}
+  else{const account=JSON.parse(fs.readFileSync(path.join(root,'.local','development-accounts.json'))).find(u=>u.username==='admin');await page.getByLabel('账号',{exact:true}).fill(account.username);await page.getByLabel('密码',{exact:true}).fill(account.password);await page.getByRole('button',{name:'进入工作台'}).click();}
   await page.getByRole('heading',{name:'事件台账',exact:true}).waitFor();await page.locator('tbody tr').first().waitFor();
+  await page.getByRole('button',{name:'外观设置',exact:true}).click();
+  for(const [themeName,themeId] of [['科技蓝','tech-blue'],['护眼墨绿','forest-green'],['雅致深灰','purple-elegant'],['暗夜黑','dark-pro']]){
+   await page.getByRole('button',{name:new RegExp('^'+themeName)}).click();
+   for(const [layoutName,layoutId] of [['左侧菜单','side'],['顶部导航','top'],['图标窄栏','compact']]){
+    await page.getByRole('button',{name:new RegExp('^'+layoutName)}).click();
+    assert.equal(await page.locator('html').getAttribute('data-theme'),themeId);assert.equal(await page.locator('.shell').getAttribute('data-layout'),layoutId);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+   }
+  }
+  await page.screenshot({path:path.join(out,'ui-dark-compact.png'),fullPage:true});
+  await page.getByRole('button',{name:'恢复默认（科技蓝 · 左侧菜单）',exact:true}).click();
+  await page.getByRole('button',{name:'关闭外观设置',exact:true}).click();
+  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('b-project-appearance'))),{theme:'tech-blue',layout:'side'});await page.setViewportSize({width:1024,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:path.join(out,'ui-tablet.png'),fullPage:true});await page.setViewportSize({width:1440,height:980});result.checks.push('12 appearance combinations, tablet width and reset persistence');
   await page.getByLabel('搜索事件').fill(preview?'STEEL':'STEEL-2026-001');
   await Promise.all([page.waitForResponse(r=>r.url().includes('/api/v1/events?q=')&&r.status()===200),page.getByRole('button',{name:'查询',exact:true}).click()]);
+  await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='查询'&&!b.disabled));
   await page.screenshot({path:path.join(out,'ui-events.png'),fullPage:true});result.checks.push('event list and login');
   await page.getByRole('button',{name:'详情 →'}).first().click();await page.getByRole('button',{name:'核验证据'}).waitFor();await page.getByRole('button',{name:'核验证据'}).click();await page.getByRole('heading',{name:'核验通过',exact:true}).waitFor();
   await page.screenshot({path:path.join(out,'ui-verification.png'),fullPage:true});result.checks.push('event detail and verification presentation');
@@ -60,7 +74,8 @@ const result={mode:preview?'UI fixtures; no backend acceptance':'Real applicatio
   await page.locator('nav').getByRole('button',{name:'运行状态'}).click();await page.getByRole('heading',{name:'IPFS 文件归档'}).waitFor();
   await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='重新检查'&&!b.disabled));
   await page.screenshot({path:path.join(out,'ui-status.png'),fullPage:true});result.checks.push('component status');
-  await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(out,'ui-mobile.png'),fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'mobile overflow');result.checks.push('mobile width 390');
+  await page.evaluate(()=>localStorage.setItem('b-project-appearance',JSON.stringify({theme:'purple-elegant',layout:'compact'})));await page.setViewportSize({width:390,height:844});await page.reload();await page.getByRole('heading',{name:'事件台账',exact:true}).waitFor();
+  await page.screenshot({path:path.join(out,'ui-mobile.png'),fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'mobile overflow');assert.equal(await page.locator('.workspace').evaluate(node=>getComputedStyle(node).marginLeft),'0px');result.checks.push('mobile width 390 overrides compact shell without overwriting preference');
   assert.deepEqual(result.errors,[]);result.status='PASS';result.browser=browser.browser()?.version();
  }catch(e){result.status='FAIL';result.failure=e.stack;throw e}
  finally{fs.writeFileSync(path.join(out,preview?'ui-preview.json':'ui-real.json'),JSON.stringify(result,null,2));await browser.close()}
