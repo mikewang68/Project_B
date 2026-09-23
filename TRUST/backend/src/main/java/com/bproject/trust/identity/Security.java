@@ -55,6 +55,7 @@ public class Security {
                         "/favicon.ico",
                         "/api/v1/csrf",
                         "/api/v1/login",
+                        "/api/v1/dev-login",
                         "/actuator/health")
                     .permitAll()
                     .anyRequest()

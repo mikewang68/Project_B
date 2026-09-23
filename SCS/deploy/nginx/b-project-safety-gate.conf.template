@@ -1,4 +1,4 @@
-# Install as /etc/nginx/conf.d/b-project-safety-gate.conf on bpoc-node6 after
+# Install as /etc/nginx/conf.d/b-project-safety-gate.conf on app-node after
 # replacing __PUBLIC_SERVER_NAME__, __NODE4_EASEGRESS_HOST__,
 # __NODE5_EASEGRESS_HOST__ and __EASEGRESS_LISTEN_PORT__.
 

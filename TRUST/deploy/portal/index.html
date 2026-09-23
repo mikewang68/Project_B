@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN" data-audience="internal">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#24364a">
+  <title>B项目 · 应用导航</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%2324364a'/%3E%3Ctext x='32' y='45' text-anchor='middle' font-size='42' font-family='Georgia' fill='white'%3EB%3C/text%3E%3C/svg%3E">
+  <script>
+    (() => {
+      const themes = ['tech-blue', 'forest-green', 'purple-elegant', 'dark-pro'];
+      try {
+        const cookie = document.cookie.split('; ').find(item => item.startsWith('b-project-appearance='));
+        const raw = cookie ? decodeURIComponent(cookie.slice('b-project-appearance='.length)) : localStorage.getItem('b-project-appearance');
+        const saved = JSON.parse(raw || '{}');
+        document.documentElement.dataset.theme = themes.includes(saved.theme) ? saved.theme : 'tech-blue';
+      } catch {
+        document.documentElement.dataset.theme = 'tech-blue';
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/portal-assets/portal.css">
+  <script src="/portal-assets/portal.js" defer></script>
+</head>
+<body>
+  <div class="portal-frame" id="portal-frame" data-layout="side">
+    <aside class="portal-sidebar">
+      <a class="brand sidebar-brand" href="/" aria-label="B项目应用导航首页">
+        <span class="brand-mark">B</span>
+        <span class="brand-copy">B项目<span class="brand-sub public-only">应用中心</span><span class="brand-sub internal-only">内部应用中心</span></span>
+      </a>
+      <span class="nav-heading">应用分类</span>
+      <nav class="category-nav side-category-nav" aria-label="应用分类">
+        <button type="button" data-category="全部" aria-pressed="true"><span class="nav-short">全</span><span class="nav-label">全部应用</span></button>
+        <button type="button" data-category="业务系统" aria-pressed="false"><span class="nav-short">业</span><span class="nav-label">业务系统</span></button>
+        <button type="button" data-category="公共能力" aria-pressed="false"><span class="nav-short">公</span><span class="nav-label">公共能力</span></button>
+        <button type="button" data-category="运维工具" aria-pressed="false"><span class="nav-short">运</span><span class="nav-label">运维工具</span></button>
+      </nav>
+      <div class="sidebar-environment internal-only"><i></i><span>内部访问</span></div>
+    </aside>
+
+    <div class="portal-main">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <a class="brand topbar-brand" href="/" aria-label="B项目应用导航首页">
+            <span class="brand-mark">B</span>
+            <span class="brand-copy">B项目<span class="brand-sub public-only">应用中心</span><span class="brand-sub internal-only">内部应用中心</span></span>
+          </a>
+          <strong class="topbar-title">应用导航</strong>
+          <nav class="category-nav top-category-nav" aria-label="应用分类">
+            <button type="button" data-category="全部" aria-pressed="true">全部应用</button>
+            <button type="button" data-category="业务系统" aria-pressed="false">业务系统</button>
+            <button type="button" data-category="公共能力" aria-pressed="false">公共能力</button>
+            <button type="button" data-category="运维工具" aria-pressed="false">运维工具</button>
+          </nav>
+          <div class="topbar-actions">
+            <span class="environment internal-only"><i></i>内部访问</span>
+            <button class="appearance-trigger" type="button" data-appearance-open aria-haspopup="dialog" aria-controls="appearance-panel">外观设置</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-shell">
+        <section class="hero" aria-labelledby="page-title">
+          <div><p class="eyebrow">PROJECT B</p><h1 id="page-title">应用导航<span class="title-dot">.</span></h1><p class="intro public-only">选择应用，进入对应业务系统。</p><p class="intro internal-only">业务系统、公共能力与运维工具，从这里进入。</p></div>
+          <div class="hero-note"><span class="note-number" id="app-count">—</span><span>个应用入口<span class="internal-only"><br><small>保留各系统现有登录方式</small></span></span></div>
+        </section>
+        <section class="catalogue" aria-label="应用列表">
+          <div class="toolbar">
+            <div><strong id="list-title">全部应用</strong><span id="result-count" aria-live="polite">正在读取入口</span></div>
+            <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="search" type="search" placeholder="搜索应用名称、缩写或端口" aria-label="搜索应用"></label>
+          </div>
+          <div class="grid" id="services"></div>
+          <div class="empty" id="empty" hidden><span>没有找到匹配的应用</span><p>试试其他名称，或切换到全部应用。</p><button id="reset" type="button">清除筛选</button></div>
+          <div class="load-error" id="load-error" role="alert" hidden>暂时无法读取应用入口，请刷新页面后重试。</div>
+          <noscript><p>请启用浏览器 JavaScript 以显示应用入口。</p></noscript>
+        </section>
+        <aside class="access-note internal-only"><span class="info-icon" aria-hidden="true">i</span><div><strong>访问说明</strong><p>各系统在新标签页打开，内部入口需要相应的网络和账号权限。</p></div></aside>
+      </main>
+      <footer class="page-shell footer"><span>B项目</span><span class="internal-only">内部应用导航</span></footer>
+    </div>
+  </div>
+
+  <div class="appearance-overlay" id="appearance-overlay" hidden>
+    <aside class="appearance-panel" id="appearance-panel" role="dialog" aria-modal="true" aria-labelledby="appearance-title" tabindex="-1">
+      <div class="appearance-heading"><h2 id="appearance-title">外观设置</h2><button class="appearance-close" type="button" aria-label="关闭外观设置">×</button></div>
+      <section class="appearance-section" aria-labelledby="theme-title"><h3 id="theme-title">皮肤主题（4 套）</h3><div class="theme-options" id="theme-options"></div></section>
+      <section class="appearance-section" aria-labelledby="layout-title"><h3 id="layout-title">布局方式（3 种）</h3><div class="layout-options" id="layout-options"></div></section>
+      <button class="appearance-reset" type="button">恢复默认（科技蓝 · 左侧菜单）</button>
+    </aside>
+  </div>
+</body>
+</html>

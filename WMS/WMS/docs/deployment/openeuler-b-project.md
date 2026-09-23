@@ -2,12 +2,12 @@
 
 ## 1. 目标部署结构
 
-推荐把 MT-WMS 单 JAR 部署在 `bpoc-node4`，直接连接同一节点已经运行的 openGauss 6.0.5：
+推荐把 MT-WMS 单 JAR 部署在 `database-node`，直接连接同一节点已经运行的 openGauss 6.0.5：
 
 ```text
 浏览器
   -> HTTPS / Easegress
-  -> bpoc-node4:18080 / MT-WMS single JAR
+  -> database-node:18080 / MT-WMS single JAR
   -> 127.0.0.1:5432 / openGauss 6.0.5
 ```
 
@@ -160,7 +160,7 @@ unset WMS_SMOKE_PASSWORD
 
 ## 7. Easegress 入口要求
 
-MT-WMS 使用 Session 和 CSRF Cookie，前端和 API 应保持同源。Easegress 应把同一个 HTTPS 域名下的以下路径转发到 `bpoc-node4:18080`：
+MT-WMS 使用 Session 和 CSRF Cookie，前端和 API 应保持同源。Easegress 应把同一个 HTTPS 域名下的以下路径转发到 `database-node:18080`：
 
 ```text
 /
