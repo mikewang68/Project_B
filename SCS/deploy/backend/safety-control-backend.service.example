@@ -1,6 +1,6 @@
 # systemd Unit 模板 —— 装卸作业安全卡控系统 Backend Demo
 #
-# 部署步骤（database-node / fabric-node 同一份 JAR）：
+# 部署步骤（bpoc-node4 / bpoc-node5 同一份 JAR）：
 #   1. sudo mkdir -p /opt/b-project/backend
 #   2. 上传 target/safety-gate-service.jar 到 /opt/b-project/backend/
 #   3. sudo cp deploy/backend/backend.env.example /etc/b-project/backend.env 并填写真实变量

@@ -12,7 +12,7 @@ import TracePage from "./features/trace/TracePage.vue";
 import TasksPage from "./features/archiving/TasksPage.vue";
 import OperationsPage from "./features/operations/OperationsPage.vue";
 const { run } = provideFeedback();
-const { me, canWrite, canAdmin, signIn, signOut, quickSignIn } = useSession();
+const { me, canWrite, canAdmin, signIn, signOut } = useSession();
 const tab = ref("events"),
   selectedId = ref(""),
   correction = ref<ApiRecord | null>(null);
@@ -43,7 +43,7 @@ async function logout() {
 </script>
 
 <template>
-  <LoginPage v-if="!me" :sign-in="signIn" :quick-sign-in="quickSignIn" />
+  <LoginPage v-if="!me" :sign-in="signIn" />
   <WorkspaceShell
     v-else
     :me="me"

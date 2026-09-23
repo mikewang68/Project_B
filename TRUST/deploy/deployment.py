@@ -58,9 +58,6 @@ def validate(config):
             ipaddress.IPv4Address(config[key])
         except (ValueError, TypeError):
             raise ValueError('Invalid IPv4 address in ' + key) from None
-    if 'httpAccess' in config:
-        from http_access import validate as validate_http_access
-        validate_http_access(config)
     return config
 
 
