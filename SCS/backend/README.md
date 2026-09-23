@@ -1,6 +1,6 @@
 # Safety Gate Service — Backend Demo（阶段二：告警中心 + 处置闭环）
 
-智慧货场 S3「装卸作业安全卡控系统」后端。**模块化单体**（非微服务），bpoc-node4 / bpoc-node5 运行同一份 JAR，经 Easegress 对外提供 `/api/v1` API。
+智慧货场 S3「装卸作业安全卡控系统」后端。**模块化单体**（非微服务），database-node / fabric-node 运行同一份 JAR，经 Easegress 对外提供 `/api/v1` API。
 
 ## 技术栈（固定，不替换）
 

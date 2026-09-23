@@ -1,4 +1,4 @@
-# 服务器 profile（bpoc-node4 / bpoc-node5）：所有连接信息只来自环境变量（EnvironmentFile）。
+# 服务器 profile（database-node / fabric-node）：所有连接信息只来自环境变量（EnvironmentFile）。
 # 启动：java -jar safety-gate-service.jar --spring.profiles.active=server
 spring:
   datasource:

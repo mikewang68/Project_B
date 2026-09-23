@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# 可选：在任意构建机构建后，用 rsync 把静态包推送到 bpoc-node6。
+# 可选：在任意构建机构建后，用 rsync 把静态包推送到 app-node。
 # 用法：
 #   NODE6_USER=root NODE6_HOST=10.0.0.6 ./deploy/deploy-rsync.sh
 #   BASE=/dt/ NODE6_HOST=10.0.0.6 ./deploy/deploy-rsync.sh
@@ -8,7 +8,7 @@
 set -euo pipefail
 
 NODE6_USER="${NODE6_USER:-root}"
-NODE6_HOST="${NODE6_HOST:-bpoc-node6}"
+NODE6_HOST="${NODE6_HOST:?Set NODE6_HOST to your deployment host}"
 WEB_ROOT="${WEB_ROOT:-/usr/share/nginx/b-dt}"
 BASE="${BASE:-/}"
 

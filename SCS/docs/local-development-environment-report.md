@@ -21,7 +21,7 @@ corepack pnpm@10.34.5 install --frozen-lockfile
 该命令会依据根目录 `pnpm-lock.yaml` 恢复整个 workspace 的依赖。不要逐个安装依赖，也不要删除或重写原有锁文件。以下报告仍保留初次检查时的路径、版本和环境信息；凡涉及 `node_modules` 当前状态的内容，以本更新为准。
 
 - 项目：智慧货场 S3「装卸作业安全卡控系统」（b-project-safety-gate，v0.2.0）
-- 工程实际根目录：`C:\Users\xis\Desktop\项目开发\code\project B`
+- 工程实际根目录：`C:\Users\developer\Desktop\项目开发\code\project B`
 - 检查时间：2026-09-04（UTC+8）
 - 检查方式：**只读探测**。未安装/卸载/升级任何软件，未修改 PATH/环境变量/注册表，未启停服务，未下载依赖，未改动项目代码。
 - 目标技术栈：Spring Boot 3.5.5 / Java 17 / Maven / Vue 3 / TypeScript / Node.js / pnpm。
@@ -42,7 +42,7 @@ corepack pnpm@10.34.5 install --frozen-lockfile
 | 系统架构 | **x64**（64-bit / amd64，非 ARM） |
 | PowerShell | **5.1.26100.9168**（Desktop Edition，Windows PowerShell） |
 | 当前用户名 | `xis` |
-| 当前工作目录 | `C:\Users\xis\Desktop\项目开发` |
+| 当前工作目录 | `C:\Users\developer\Desktop\项目开发` |
 
 ### WSL / WSL2
 
@@ -90,7 +90,7 @@ corepack pnpm@10.34.5 install --frozen-lockfile
 | # | 路径 | 版本 | 来源/性质 |
 |---|---|---|---|
 | 1 | `D:\Jdk21` | **Oracle JDK 21.0.8**（含 java/javac/javaw/jshell） | 用户独立安装，`JAVA_HOME` 指向它 |
-| 2 | `C:\Users\xis\Desktop\项目开发\code\project B\.tools\jdk-17.0.20.1+1` | **Eclipse Temurin JDK 17.0.20.1**（已实测 `java -version` 正常） | **工程自带便携 JDK 17** |
+| 2 | `C:\Users\developer\Desktop\项目开发\code\project B\.tools\jdk-17.0.20.1+1` | **Eclipse Temurin JDK 17.0.20.1**（已实测 `java -version` 正常） | **工程自带便携 JDK 17** |
 | 3 | `D:\software\idea\jbr` | IntelliJ IDEA 自带 JBR（仅 IDE 内部使用，不计入开发 JDK） | IDE 运行时 |
 
 - `C:\Program Files\Java`、`Eclipse Adoptium`、`BellSoft`、`Zulu`、`Amazon Corretto` 等常见目录**均不存在 JDK**。
@@ -135,7 +135,7 @@ corepack pnpm@10.34.5 install --frozen-lockfile
 
 ### 4.4 本地依赖缓存
 
-- `C:\Users\xis\.m2\repository` 存在，已缓存约 **497 个 jar**，具备离线/弱网构建的基础。
+- `C:\Users\developer\.m2\repository` 存在，已缓存约 **497 个 jar**，具备离线/弱网构建的基础。
 
 ### 4.5 结论
 
@@ -287,7 +287,7 @@ corepack pnpm@10.34.5 install --frozen-lockfile
 |---|---|
 | `docker --version` | **Docker 29.7.2**（a7dcaa6） |
 | `docker compose version` | **Docker Compose v5.5.0** |
-| `where docker` | `C:\Users\xis\AppData\Local\Programs\DockerDesktop\resources\bin\docker(.exe)`（按用户安装的 Docker Desktop） |
+| `where docker` | `C:\Users\developer\AppData\Local\Programs\DockerDesktop\resources\bin\docker(.exe)`（按用户安装的 Docker Desktop） |
 | `docker info`（守护进程） | **失败：守护进程未运行**（`npipe:////./pipe/dockerDesktopLinuxEngine` 找不到；无 docker 进程）。按只读要求**未代为启动** Docker Desktop |
 | `podman` | NOT INSTALLED |
 
@@ -335,7 +335,7 @@ corepack pnpm@10.34.5 install --frozen-lockfile
 
 ## 16. 当前项目结构
 
-会话选定目录 `C:\Users\xis\Desktop\项目开发` 顶层：
+会话选定目录 `C:\Users\developer\Desktop\项目开发` 顶层：
 
 ```
 项目开发/

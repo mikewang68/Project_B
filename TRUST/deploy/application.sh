@@ -35,7 +35,14 @@ case "${1:-status}" in
  start)
   set -a; source "$ROOT/runtime/secrets/db.env"; set +a
   export TRUST_ROOT="$ROOT" TRUST_DB_USER=trust_app
-  start_process application java -Xms128m -Xmx768m -jar "$ROOT/artifacts/trust-platform.jar"
+  listen_address=127.0.0.1
+  if [[ -f /etc/b-project-trust-http/application-listen-address ]]; then
+    IFS= read -r listen_address < /etc/b-project-trust-http/application-listen-address
+    [[ "$listen_address" == 0.0.0.0 ]] || { echo 'Invalid managed HTTP listen address' >&2; exit 1; }
+  fi
+  dev_quick_login=false
+  [[ ! -f "$ROOT/runtime/secrets/dev-quick-login.enabled" ]] || dev_quick_login=true
+  start_process application java -Djava.net.preferIPv4Stack=true -Xms128m -Xmx768m -jar "$ROOT/artifacts/trust-platform.jar" "--server.address=$listen_address" "--trust.dev-quick-login.enabled=$dev_quick_login"
   wait_for_application
   ;;
  stop) stop_process application ;;
