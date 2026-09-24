@@ -1,0 +1,70 @@
+  /maintenance-plans:
+    get:
+      summary: 按设备查询维护策略与计划
+      parameters: [{name: assetCode, in: query, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 维护计划, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/MaintenancePlan'}}}}}
+    post:
+      summary: 新建包含标准检查项的维护计划
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MaintenancePlanInput'}}}
+      responses:
+        '201': {description: 创建成功, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenancePlan'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /maintenance-plans/{planId}/inspection-tasks:
+    post:
+      summary: 从维护计划生成点检任务
+      parameters: [{name: planId, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/GenerateInspectionTaskInput'}}}
+      responses:
+        '201': {description: 任务已生成, content: {application/json: {schema: {$ref: '#/components/schemas/InspectionTask'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /inspection-tasks:
+    get:
+      summary: 按设备查询点检任务
+      parameters: [{name: assetCode, in: query, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 点检任务, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/InspectionTask'}}}}}
+  /inspection-tasks/{taskNo}:
+    get:
+      summary: 查询点检任务详情
+      parameters: [{name: taskNo, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 点检任务, content: {application/json: {schema: {$ref: '#/components/schemas/InspectionTask'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /inspection-tasks/{taskNo}/start:
+    patch:
+      summary: 开始待执行点检任务
+      parameters: [{name: taskNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/OperatorAction'}}}
+      responses:
+        '200': {description: 已开始, content: {application/json: {schema: {$ref: '#/components/schemas/InspectionTask'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /inspection-tasks/{taskNo}/submit:
+    post:
+      summary: 提交逐项点检结果并在异常时生成缺陷
+      parameters: [{name: taskNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InspectionSubmitInput'}}}
+      responses:
+        '200': {description: 点检已提交, content: {application/json: {schema: {$ref: '#/components/schemas/InspectionSubmissionResult'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /maintenance-defects:
+    get:
+      summary: 按设备查询点检缺陷
+      parameters: [{name: assetCode, in: query, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 缺陷列表, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/DefectRecord'}}}}}
+  /maintenance-defects/{defectNo}/work-order:
+    post:
+      summary: 将人工确认的点检缺陷转为待审批工单
+      parameters: [{name: defectNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/DefectWorkOrderInput'}}}
+      responses:
+        '200': {description: 已关联工单, content: {application/json: {schema: {$ref: '#/components/schemas/DefectRecord'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}

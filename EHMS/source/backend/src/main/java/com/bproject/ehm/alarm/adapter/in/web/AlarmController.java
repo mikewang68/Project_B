@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/ehm/v1/alarms")
 public class AlarmController {
@@ -37,11 +39,19 @@ public class AlarmController {
         return alarms.close(alarmNo, operator(request), request == null ? null : request.reason());
     }
 
+    @PostMapping("/batch-assign")
+    public List<AlarmView> assignBatch(@RequestBody BatchAssignRequest request) {
+        return alarms.assignBatch(request.alarmNos(), request.assignee(), request.operator(), request.reason());
+    }
+
     private String operator(OperatorRequest request) {
         return request == null || request.operator() == null || request.operator().isBlank()
                 ? "Demo设备管理员" : request.operator();
     }
 
     public record OperatorRequest(String operator, String reason) {
+    }
+
+    public record BatchAssignRequest(List<String> alarmNos, String assignee, String operator, String reason) {
     }
 }

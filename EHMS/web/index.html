@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>B项目 · 设备健康管理系统（EHM）</title>
   <meta name="description" content="设备健康管理系统亮色工业级交互原型" />
+  <script src="./preference.js?v=1.0"></script>
   <link rel="stylesheet" href="./styles.css?v=5.0" />
   <link rel="stylesheet" href="./closed-loop.css?v=1.0" />
   <link rel="stylesheet" href="./health-prediction.css?v=1.0" />
@@ -12,16 +13,16 @@
   <link rel="stylesheet" href="./spares-inventory.css?v=1.0" />
   <link rel="stylesheet" href="./reliability-governance.css?v=1.0" />
   <link rel="stylesheet" href="./delivery-console.css?v=1.0" />
-  <link rel="stylesheet" href="./unified-theme.css?v=1.0" />
+  <link rel="stylesheet" href="./unified-theme.css?v=2.0" />
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" id="appShell" data-layout="side">
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-mark">EHM</div>
         <div>
           <strong>设备健康管理系统</strong>
-          <span>B项目 · 可交付演示版 1.2.0</span>
+          <span>B项目 · 服务器联调版 1.3.0</span>
         </div>
       </div>
 
@@ -38,7 +39,7 @@
           <span><b>交付状态可检查</b><small>10 项能力状态已登记</small></span>
           <i>›</i>
         </button>
-        <p>原型数据仅用于界面评审，不代表现场已接入。</p>
+        <p>业务数据以服务器接口返回为准，未接入能力会明确标注。</p>
       </div>
     </aside>
 
@@ -56,6 +57,7 @@
           </label>
         </div>
         <div class="topbar-right">
+          <button class="icon-button preference-trigger" id="appearanceSettings" data-tip="外观设置" type="button" aria-label="外观设置">肤</button>
           <button class="plain-button" id="commandView" type="button">指挥大屏</button>
           <button class="plain-button" id="mobileView" type="button">移动作业端</button>
           <button class="status-button" id="runtimeStatus" type="button"><span></span>系统运行正常</button>
@@ -65,6 +67,8 @@
           <button class="avatar" type="button" aria-label="用户菜单">闫</button>
         </div>
       </header>
+
+      <nav class="top-layout-nav" id="topLayoutNav" aria-label="顶部功能导航"></nav>
 
       <main class="content" id="content" tabindex="-1">
         <div id="pageView"></div>
@@ -82,6 +86,26 @@
   </aside>
   <div class="backdrop" id="backdrop"></div>
 
+  <div class="preference-backdrop" id="preferenceBackdrop"></div>
+  <aside class="preference-drawer" id="preferenceDrawer" aria-hidden="true" aria-labelledby="preferenceTitle">
+    <div class="preference-head"><div><span>统一外观基线</span><h2 id="preferenceTitle">外观设置</h2></div><button id="preferenceClose" type="button" aria-label="关闭外观设置">×</button></div>
+    <div class="preference-body">
+      <section class="preference-section"><h3>皮肤主题（4套）</h3><div class="theme-grid">
+        <button class="theme-card" type="button" data-theme-option="tech-blue"><span class="theme-swatch"><i style="background:#24364a"></i><i style="background:#409eff"></i></span><span><b>科技蓝</b><small>深海军蓝导航 · 科技蓝主色（默认）</small></span><em>✓</em></button>
+        <button class="theme-card" type="button" data-theme-option="forest-green"><span class="theme-swatch"><i style="background:#20382f"></i><i style="background:#409eff"></i></span><span><b>护眼墨绿</b><small>墨绿导航 · 统一科技蓝主色</small></span><em>✓</em></button>
+        <button class="theme-card" type="button" data-theme-option="purple-elegant"><span class="theme-swatch"><i style="background:#2c313a"></i><i style="background:#409eff"></i></span><span><b>雅致深灰</b><small>深灰导航 · 统一科技蓝主色</small></span><em>✓</em></button>
+        <button class="theme-card" type="button" data-theme-option="dark-pro"><span class="theme-swatch"><i style="background:#1f3043"></i><i style="background:#409eff"></i></span><span><b>暗夜黑</b><small>深色海军蓝 · 暗光护眼</small></span><em>✓</em></button>
+      </div></section>
+      <section class="preference-section"><h3>布局方式（3种）</h3><div class="layout-grid">
+        <button class="layout-card" type="button" data-layout-option="side"><span class="layout-thumb side"><i></i><b><u></u><u></u></b></span><strong>左侧菜单</strong><small>经典纵向导航</small></button>
+        <button class="layout-card" type="button" data-layout-option="top"><span class="layout-thumb top"><i></i><b><u></u><u></u></b></span><strong>顶部导航</strong><small>横向菜单 · 内容全宽</small></button>
+        <button class="layout-card" type="button" data-layout-option="compact"><span class="layout-thumb compact"><i></i><b><u></u><u></u></b></span><strong>图标窄栏</strong><small>窄侧栏 · 悬停展开</small></button>
+      </div></section>
+      <button class="preference-reset" id="preferenceReset" type="button">恢复默认（科技蓝 · 左侧菜单）</button>
+      <p class="preference-note">设置仅保存在当前浏览器，存储键为 <code>b-ehm-prefs</code>，不会修改业务数据。</p>
+    </div>
+  </aside>
+
   <div class="modal" id="modal" aria-hidden="true">
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-head"><div><span id="modalEyebrow">操作确认</span><h2 id="modalTitle">请确认</h2></div><button id="modalClose" type="button">×</button></div>
@@ -96,11 +120,11 @@
 
   <aside class="assistant-panel" id="assistantPanel" aria-hidden="true">
     <div class="assistant-head">
-      <div><span>智能运维辅助</span><b>Demo规则 / 外部API可切换</b></div>
+      <div><span>智能运维辅助</span><b>可审计规则 / 外部API可切换</b></div>
       <button id="assistantClose" type="button">×</button>
     </div>
     <div class="capability-notice">
-      <strong>当前回答会结合Demo设备、告警和工单数据</strong>
+      <strong>当前回答会结合服务器中的设备、告警和工单数据</strong>
       <p>未配置外部AI时使用可审计规则；配置后由Java后端代理调用。所有回答仍需人工复核。</p>
     </div>
     <div class="assistant-messages" id="assistantMessages">
@@ -112,7 +136,7 @@
       <button type="button">RUL为何未启用</button>
     </div>
     <form class="assistant-form" id="assistantForm">
-      <input id="assistantInput" placeholder="输入问题（仅使用演示数据）" />
+      <input id="assistantInput" placeholder="输入设备、告警或工单问题" />
       <button type="submit">发送</button>
     </form>
   </aside>

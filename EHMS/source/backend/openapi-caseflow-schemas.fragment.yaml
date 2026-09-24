@@ -1,0 +1,104 @@
+    MaintenanceCase:
+      type: object
+      properties:
+        alarmNo: {type: string}
+        deviceCode: {type: string}
+        deviceName: {type: string}
+        component: {type: string}
+        alarmLevel: {type: string}
+        alarmSummary: {type: string}
+        status: {type: string, enum: [待诊断, 已诊断, 已转工单, 处置中, 待复测, 复测通过, 已闭环]}
+        statusCode: {type: string, enum: [OPEN, DIAGNOSED, WORK_ORDER_CREATED, EXECUTING, WAITING_RETEST, VERIFIED, CLOSED]}
+        evidence: {type: array, items: {$ref: '#/components/schemas/EvidenceItem'}}
+        diagnoses: {type: array, items: {$ref: '#/components/schemas/DiagnosisRecord'}}
+        workOrderNo: {type: string, nullable: true}
+        executionRecords: {type: array, items: {$ref: '#/components/schemas/ExecutionRecord'}}
+        retests: {type: array, items: {$ref: '#/components/schemas/RetestRecord'}}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        closedAt: {type: string, format: date-time, nullable: true}
+        version: {type: integer, format: int64}
+    EvidenceItem:
+      type: object
+      properties:
+        type: {type: string}
+        title: {type: string}
+        content: {type: string}
+        sourceRef: {type: string}
+        capturedAt: {type: string, format: date-time}
+    DiagnosisRecord:
+      type: object
+      properties:
+        diagnosisId: {type: string}
+        conclusion: {type: string}
+        probableCause: {type: string}
+        confidence: {type: string}
+        evidence: {type: string}
+        operator: {type: string}
+        createdAt: {type: string, format: date-time}
+    ExecutionRecord:
+      type: object
+      properties:
+        recordId: {type: string}
+        action: {type: string}
+        result: {type: string}
+        safetyConfirmation: {type: string}
+        partsUsed: {type: string}
+        operator: {type: string}
+        executedAt: {type: string, format: date-time}
+    RetestRecord:
+      type: object
+      properties:
+        retestId: {type: string}
+        pointCode: {type: string}
+        beforeValue: {type: number}
+        afterValue: {type: number}
+        unit: {type: string}
+        criterion: {type: string}
+        passed: {type: boolean}
+        operator: {type: string}
+        testedAt: {type: string, format: date-time}
+    DiagnosisInput:
+      type: object
+      required: [conclusion, probableCause, evidence]
+      properties:
+        conclusion: {type: string}
+        probableCause: {type: string}
+        confidence: {type: string}
+        evidence: {type: string}
+        operator: {type: string}
+    CaseWorkOrderInput:
+      type: object
+      properties:
+        title: {type: string}
+        priority: {type: string}
+        assignee: {type: string}
+        description: {type: string}
+        plannedWindow: {type: string}
+        operator: {type: string}
+    ExecutionInput:
+      type: object
+      required: [action, result, safetyConfirmation]
+      properties:
+        action: {type: string}
+        result: {type: string}
+        safetyConfirmation: {type: string}
+        partsUsed: {type: string}
+        operator: {type: string}
+    RetestInput:
+      type: object
+      required: [pointCode, beforeValue, afterValue, criterion, passed]
+      properties:
+        pointCode: {type: string}
+        beforeValue: {type: number}
+        afterValue: {type: number}
+        unit: {type: string}
+        criterion: {type: string}
+        passed: {type: boolean}
+        operator: {type: string}
+    CloseCaseInput:
+      type: object
+      required: [conclusion]
+      properties:
+        conclusion: {type: string}
+        operator: {type: string}

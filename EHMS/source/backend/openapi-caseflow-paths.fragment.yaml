@@ -1,0 +1,68 @@
+  /alarms/{alarmNo}/case:
+    parameters:
+      - {name: alarmNo, in: path, required: true, schema: {type: string}}
+    get:
+      summary: 查询告警闭环档案
+      responses:
+        '200': {description: 闭环档案, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      summary: 冻结告警、数据质量和测点证据并建立闭环档案
+      responses:
+        '201': {description: 已建立档案, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+  /alarms/{alarmNo}/case/diagnoses:
+    post:
+      summary: 记录人工诊断结论和依据
+      parameters: [{name: alarmNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DiagnosisInput'}}}
+      responses:
+        '200': {description: 已记录诊断, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /alarms/{alarmNo}/case/work-order:
+    post:
+      summary: 根据人工诊断创建并关联维保工单
+      parameters: [{name: alarmNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/CaseWorkOrderInput'}}}
+      responses:
+        '200': {description: 已关联工单, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /work-orders/{orderNo}/case:
+    get:
+      summary: 按工单编号查询闭环档案
+      parameters: [{name: orderNo, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 闭环档案, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /work-orders/{orderNo}/case/execution-records:
+    post:
+      summary: 记录维修执行、安全确认和备件使用
+      parameters: [{name: orderNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ExecutionInput'}}}
+      responses:
+        '200': {description: 已记录执行过程, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /work-orders/{orderNo}/case/retests:
+    post:
+      summary: 提交维修前后量化复测和验收判据
+      parameters: [{name: orderNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/RetestInput'}}}
+      responses:
+        '200': {description: 已记录复测, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /work-orders/{orderNo}/case/close:
+    post:
+      summary: 复测通过后同步关闭工单、告警和闭环档案
+      parameters: [{name: orderNo, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CloseCaseInput'}}}
+      responses:
+        '200': {description: 闭环完成, content: {application/json: {schema: {$ref: '#/components/schemas/MaintenanceCase'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}

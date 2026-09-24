@@ -596,6 +596,21 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Alarm'}
         '409': {$ref: '#/components/responses/Conflict'}
+  /alarms/batch-assign:
+    post:
+      summary: 受控批量分派活动告警
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BatchAssignAlarms'}
+      responses:
+        '200':
+          description: 分派后的告警列表
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Alarm'}}
+        '409': {$ref: '#/components/responses/Conflict'}
   /alarms/{alarmNo}/close:
     post:
       summary: 关闭已确认告警
@@ -757,6 +772,7 @@ components:
         levelClass: {type: string}
         summary: {type: string}
         status: {type: string, enum: [新建, 待确认, 已确认, 处理中, 待验证, 已关闭, 已抑制, 无效告警]}
+        assignee: {type: string}
         history: {type: array, items: {type: object}}
         version: {type: integer, format: int64}
     WorkOrder:
@@ -1460,6 +1476,14 @@ components:
     OperatorAction:
       type: object
       properties:
+        operator: {type: string}
+        reason: {type: string}
+    BatchAssignAlarms:
+      type: object
+      required: [alarmNos, assignee]
+      properties:
+        alarmNos: {type: array, minItems: 1, uniqueItems: true, items: {type: string}}
+        assignee: {type: string, minLength: 1}
         operator: {type: string}
         reason: {type: string}
     CreateWorkOrder:

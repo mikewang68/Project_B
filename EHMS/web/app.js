@@ -60,7 +60,7 @@ let WORK_ORDERS = [
 ];
 
 const API_BASE = location.protocol === 'file:' ? 'http://localhost:8080/api/ehm/v1' : '/api/ehm/v1';
-const state = { page:'dashboard', asset:'GT-01', assetTab:'overview', drawer:null, modal:null, api:null, summary:null, backendConnected:false, backendError:'' };
+const state = { page:'dashboard', asset:'GT-01', assetTab:'overview', drawer:null, modal:null, api:null, summary:null, backendConnected:false, backendError:'', selectedAlarmNos:new Set() };
 
 async function apiRequest(path,options={}){
   const headers={Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})};
@@ -92,7 +92,7 @@ async function loadBackendData(showMessage=false){
     const alarmItems=Array.isArray(alarms)?alarms:(alarms?.content||[]);
     const orderItems=Array.isArray(orders)?orders:(orders?.content||[]);
     state.summary=summary;EQUIPMENT=deviceItems.map(mapDevice);ALARMS=alarmItems;WORK_ORDERS=orderItems;state.backendConnected=true;state.backendError='';
-    const status=$('#runtimeStatus');if(status){status.classList.add('connected');status.innerHTML='<span></span>Demo后端已连接';}
+    const status=$('#runtimeStatus');if(status){status.classList.add('connected');status.innerHTML='<span></span>服务器后端已连接';}
     const assistantBadge=$('#assistantEntry i');if(assistantBadge)assistantBadge.textContent='数据已接入';
     renderPage();
     if(showMessage)toast('已从openGauss刷新设备、告警和工单数据。');
@@ -159,7 +159,7 @@ function renderDashboard(){
   </tr>`).join('');
   return `<div class="page dashboard-page">
     ${pageHead('综合驾驶舱','面向设备管理、运维和调度岗位，集中展示设备风险、数据可信度与待闭环事项。',`${gotoButton('查看设备群态势','fleet')}${button('生成班组交接','handover')}`)}
-    <div class="notice-bar"><strong>${state.backendConnected?'openGauss业务数据':'离线演示数据'}</strong><span>共登记${s.totalDevices}台Demo设备；现场设备清单、测点和接口仍待甲方确认。EHM只做监测、诊断建议和风险上报，不直接控制PLC。</span>${tag(state.backendConnected?'后端已连接':'本地降级',state.backendConnected?'good':'warn')}</div>
+    <div class="notice-bar"><strong>${state.backendConnected?'openGauss业务数据':'离线只读数据'}</strong><span>共登记${s.totalDevices}台设备；现场设备清单、测点和接口仍待甲方确认。EHM只做监测、诊断建议和风险上报，不直接控制PLC。</span>${tag(state.backendConnected?'后端已连接':'本地降级',state.backendConnected?'good':'warn')}</div>
     <div class="grid kpi-grid">
       ${metric('登记设备',String(s.totalDevices),'台','openGauss设备台账','')}
       ${metric('在线率',String(s.onlineRate),'%',s.onlineDevices+' / '+s.totalDevices+' 在线','good')}
@@ -360,11 +360,11 @@ function renderGeneric(){
 
 function renderAlarmCenterLive(){
   const alarms=ALARMS.map(normalizeAlarm);
-  const rows=alarms.map(a=>{const when=a.occurredAt?new Date(a.occurredAt).toLocaleString('zh-CN',{hour12:false}):'—';const actions=[`<button class="table-action" data-action="openEvidence">证据</button>`];if(!['已确认','处理中','待验证','已关闭'].includes(a.status))actions.push(`<button class="table-action" data-action="ackAlarm" data-id="${esc(a.alarmNo)}">确认</button>`);if(['已确认','处理中','待验证'].includes(a.status))actions.push(`<button class="table-action" data-action="closeAlarm" data-id="${esc(a.alarmNo)}">关闭</button>`);actions.push(`<button class="table-action" data-action="createWork" data-device="${esc(a.deviceCode)}">转工单</button>`);return `<tr class="${a.levelClass==='severe'?'row-alert':a.levelClass==='limited'?'row-limited':''}"><td><input type="checkbox"/></td><td><button class="table-link" data-action="openEvidence"><strong>${esc(a.alarmNo)}</strong><small>${esc(when)}</small></button></td><td><strong>${esc(a.deviceCode)}</strong><small>${esc(a.component)}</small></td><td>${tag(a.level,a.levelClass,true)}</td><td>${esc(a.summary)}</td><td>${tag(a.status,a.status==='处理中'?'info':a.status==='已确认'?'good':a.status==='待验证'?'warn':a.status==='已关闭'?'good':'offline')}</td><td class="${String(a.slaText).includes('超')?'text-danger':''}">${esc(a.slaText)}</td><td>${esc(a.triggerMethod)}</td><td>${actions.join('')}</td></tr>`;}).join('');
+  const rows=alarms.map(a=>{const when=a.occurredAt?new Date(a.occurredAt).toLocaleString('zh-CN',{hour12:false}):'—';const selectable=a.status!=='已关闭';const actions=[`<button class="table-action" data-action="openEvidence">证据</button>`];if(!['已确认','处理中','待验证','已关闭'].includes(a.status))actions.push(`<button class="table-action" data-action="ackAlarm" data-id="${esc(a.alarmNo)}">确认</button>`);if(['已确认','处理中','待验证'].includes(a.status))actions.push(`<button class="table-action" data-action="closeAlarm" data-id="${esc(a.alarmNo)}">关闭</button>`);actions.push(`<button class="table-action" data-action="createWork" data-device="${esc(a.deviceCode)}">转工单</button>`);return `<tr class="${a.levelClass==='severe'?'row-alert':a.levelClass==='limited'?'row-limited':''}"><td><input class="alarm-selector" type="checkbox" data-alarm-no="${esc(a.alarmNo)}" ${state.selectedAlarmNos.has(a.alarmNo)?'checked':''} ${selectable?'':'disabled'}/></td><td><button class="table-link" data-action="openEvidence"><strong>${esc(a.alarmNo)}</strong><small>${esc(when)}</small></button></td><td><strong>${esc(a.deviceCode)}</strong><small>${esc(a.component)}${a.assignee?' · '+esc(a.assignee):''}</small></td><td>${tag(a.level,a.levelClass,true)}</td><td>${esc(a.summary)}</td><td>${tag(a.status,a.status==='处理中'?'info':a.status==='已确认'?'good':a.status==='待验证'?'warn':a.status==='已关闭'?'good':'offline')}</td><td class="${String(a.slaText).includes('超')?'text-danger':''}">${esc(a.slaText)}</td><td>${esc(a.triggerMethod)}</td><td>${actions.join('')}</td></tr>`;}).join('');
   const count=status=>alarms.filter(a=>a.status===status).length;
-  return `<div class="page">${pageHead('实时告警中心','告警业务数据已接入openGauss，支持人工确认、关闭和转工单。',`${button('刷新数据','refreshBackend')}${button('受控批量分派','batchAssign')}`)}
-    <div class="grid cols-4 mb-12">${metric('新建',String(count('新建')+count('待确认')),'项','等待人工确认','risk')}${metric('处理中',String(count('处理中')),'项','已进入处置','warn')}${metric('待验证',String(count('待验证')),'项','需维修后复测')}${metric('已关闭',String(count('已关闭')),'项','本次Demo数据','good')}</div>
-    <section class="panel"><div class="table-tools"><div class="filters"><input class="control search" placeholder="告警编号 / 设备 / 部件"/><select class="control"><option>全部等级</option><option>L3严重</option><option>L2警告</option></select><select class="control"><option>全部状态</option><option>新建</option><option>已确认</option><option>处理中</option><option>待验证</option><option>已关闭</option></select></div><div>${mini(state.backendConnected?'openGauss已连接':'离线降级',state.backendConnected?'ready':'pending')}</div></div><div class="table-wrap"><table class="data-table"><thead><tr><th></th><th>告警编号 / 时间</th><th>设备 / 部件</th><th>等级</th><th>触发摘要</th><th>状态</th><th>SLA</th><th>触发方法</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>${pager(String(alarms.length))}</section></div>`;
+  return `<div class="page">${pageHead('实时告警中心','告警业务数据已接入openGauss，支持人工确认、分派、关闭和转工单。',`${button('刷新数据','refreshBackend')}${button(`受控批量分派${state.selectedAlarmNos.size?'（'+state.selectedAlarmNos.size+'）':''}`,'batchAssign')}`)}
+    <div class="grid cols-4 mb-12">${metric('新建',String(count('新建')+count('待确认')),'项','等待人工确认','risk')}${metric('处理中',String(count('处理中')),'项','已进入处置','warn')}${metric('待验证',String(count('待验证')),'项','需维修后复测')}${metric('已关闭',String(count('已关闭')),'项','当前数据','good')}</div>
+    <section class="panel"><div class="table-tools"><div class="filters"><input class="control search" placeholder="告警编号 / 设备 / 部件"/><select class="control"><option>全部等级</option><option>L3严重</option><option>L2警告</option></select><select class="control"><option>全部状态</option><option>新建</option><option>已确认</option><option>处理中</option><option>待验证</option><option>已关闭</option></select></div><div>${mini(state.backendConnected?'openGauss已连接':'离线降级',state.backendConnected?'ready':'pending')}</div></div><div class="table-wrap"><table class="data-table"><thead><tr><th><input id="selectAllAlarms" type="checkbox" aria-label="选择全部活动告警"/></th><th>告警编号 / 时间</th><th>设备 / 部件 / 责任人</th><th>等级</th><th>触发摘要</th><th>状态</th><th>SLA</th><th>触发方法</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>${pager(String(alarms.length))}</section></div>`;
 }
 
 function renderMaintenanceLive(){
@@ -373,7 +373,7 @@ function renderMaintenanceLive(){
   const cards=(status)=>WORK_ORDERS.filter(w=>w.status===status).map(w=>`<article class="work-card ${w.priority?.includes('P1')?'overdue':''}"><b>${esc(w.orderNo)} · ${esc(w.title)}</b><p>设备：${esc(w.deviceCode)} ${esc(w.deviceName||'')} · 来源：${esc(w.source)}</p><small>计划窗口：${esc(w.plannedWindow||'待确认')}</small><div class="work-meta">${tag(w.priority,w.priority?.includes('P1')?'critical':'warn',true)}<span>${esc(w.assignee)}</span></div>${nextStatus[status]?`<button class="table-action work-advance" data-action="advanceWork" data-id="${esc(w.orderNo)}" data-status="${nextStatus[status]}">推进到${nextStatus[status]}</button>`:''}</article>`).join('')||'<div class="empty-state">暂无工单</div>';
   const pending=WORK_ORDERS.filter(w=>['待审批','待执行'].includes(w.status)).length;
   return `<div class="page">${pageHead('维保计划与工单中心','openGauss工单看板已接通，可创建工单并推进审批、执行、复测和关闭状态。',`${button('刷新数据','refreshBackend')}${button('新建工单','newWork','primary')}`)}
-    <div class="notice-bar"><strong>Demo闭环已可操作</strong><span>告警/点检异常 → 创建工单 → 审批 → 执行 → 复测 → 关闭。当前不自动改变生产计划。</span>${tag(state.backendConnected?'持久化已启用':'离线演示',state.backendConnected?'good':'warn')}</div>
+    <div class="notice-bar"><strong>业务闭环已可操作</strong><span>告警/点检异常 → 创建工单 → 审批 → 执行 → 复测 → 关闭。当前不自动改变生产计划。</span>${tag(state.backendConnected?'持久化已启用':'离线只读',state.backendConnected?'good':'warn')}</div>
     <div class="grid cols-4 mb-12">${metric('待审批',String(WORK_ORDERS.filter(w=>w.status==='待审批').length),'单','等待确认','warn')}${metric('待执行',String(WORK_ORDERS.filter(w=>w.status==='待执行').length),'单','可派工')}${metric('执行中',String(WORK_ORDERS.filter(w=>w.status==='执行中').length),'单','现场执行','good')}${metric('待复测',String(WORK_ORDERS.filter(w=>w.status==='待复测').length),'单','需独立验收','risk')}</div>
     <section class="kanban">${columns.map(c=>`<div class="kanban-col"><div class="kanban-head"><span>${c[0]}</span><b>${WORK_ORDERS.filter(w=>w.status===c[0]).length}</b></div><p class="muted">${c[1]}</p>${cards(c[0])}</div>`).join('')}</section>
     <div class="grid cols-2 mt-12">${panel('当前数据状态',`<p class="muted no-margin">共${WORK_ORDERS.length}张工单，待审批/待执行${pending}张。每次状态推进会写回openGauss，刷新页面后仍保留。</p>`)}${panel('后续接入',`<p class="muted no-margin">后续可通过RocketMQ发布工单事件，与调度窗口、库存备件和移动端执行记录联动。</p>`)}</div></div>`;
@@ -382,12 +382,35 @@ function renderMaintenanceLive(){
 function renderPage(){
   const renderers={dashboard:renderDashboard,fleet:renderFleet,'area-map':renderFleet,'asset-detail':renderAssetDetail,diagnosis:renderDiagnosis,'alarm-center':renderAlarmCenterLive,health:renderHealth,workorders:renderMaintenanceLive,'maintenance-plan':renderMaintenanceLive,inspection:renderMaintenanceLive,'asset-tree':renderAssets,'asset-profile':renderAssets,bom:renderAssets,measurement:renderAssets,'device-template':renderAssets,'sensor-cal':renderAssets,fmeca:renderAssets,'config-change':renderAssets,'access-acceptance':renderEdge,gateways:renderEdge,protocol:renderEdge,'data-quality':renderEdge,waveform:renderEdge,lineage:renderEdge,replay:renderEdge,'rule-version':renderModels,'model-registry':renderModels,datasets:renderModels,'inference-lineage':renderModels,shadow:renderModels,'model-release':renderModels,'model-performance':renderModels,kpi:renderReports,reliability:renderReports,oee:renderReports,'failure-report':renderReports,'maintenance-cost':renderReports,'coverage-report':renderReports,'resource-forecast':renderReports,'energy-health':renderReports,'period-report':renderReports,command:renderCommand,mobile:renderMobile};
   $('#pageView').innerHTML=(renderers[state.page]||renderGeneric)();
-  syncNav(); $('#content').scrollTop=0; bindPageEvents();
+  syncNav();
+  if(window.EhmPreferences)window.EhmPreferences.refreshTopMenu();
+  $('#content').scrollTop=0; bindPageEvents();
 }
 
 function bindPageEvents(){
   $$('[data-goto]','#pageView').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.goto)));
   $$('[data-action]','#pageView').forEach(b=>b.addEventListener('click',handleAction));
+  $$('.alarm-selector','#pageView').forEach(input=>input.addEventListener('change',()=>{
+    if(input.checked)state.selectedAlarmNos.add(input.dataset.alarmNo);else state.selectedAlarmNos.delete(input.dataset.alarmNo);
+    syncAlarmSelectionControls();
+  }));
+  const selectAll=$('#selectAllAlarms');
+  if(selectAll)selectAll.addEventListener('change',()=>{
+    $$('.alarm-selector:not(:disabled)','#pageView').forEach(input=>{
+      input.checked=selectAll.checked;
+      if(input.checked)state.selectedAlarmNos.add(input.dataset.alarmNo);else state.selectedAlarmNos.delete(input.dataset.alarmNo);
+    });
+    syncAlarmSelectionControls();
+  });
+}
+
+function syncAlarmSelectionControls(){
+  const count=state.selectedAlarmNos.size;
+  const action=$('[data-action="batchAssign"]','#pageView');
+  if(action)action.textContent=`受控批量分派${count?'（'+count+'）':''}`;
+  const selectable=$$('.alarm-selector:not(:disabled)','#pageView');
+  const selectAll=$('#selectAllAlarms');
+  if(selectAll){selectAll.checked=selectable.length>0&&selectable.every(input=>input.checked);selectAll.indeterminate=selectable.some(input=>input.checked)&&!selectAll.checked;}
 }
 
 function handleAction(e){
@@ -407,8 +430,31 @@ function handleAction(e){
   else if(a==='closeAlarm')closeAlarmAction(b.dataset.id);
   else if(a==='advanceWork')advanceWorkOrder(b.dataset.id,b.dataset.status);
   else if(a==='newAsset')openNewAsset();
+  else if(a==='batchAssign')openBatchAssign();
   else if(a==='generateReport')toast('已生成演示月报任务；真实报告需等待统计周期与指标口径冻结。');
   else toast('“'+b.textContent.trim()+'”尚未纳入本轮可操作闭环，未执行数据变更。');
+}
+
+function openBatchAssign(){
+  const alarmNos=[...state.selectedAlarmNos];
+  if(!alarmNos.length){toast('请先勾选需要分派的活动告警。');return;}
+  if(!state.backendConnected){toast('后端未连接，不能执行批量分派。');return;}
+  openModal('告警处置',`批量分派 ${alarmNos.length} 条告警`,`<div class="risk-confirm"><strong>受控操作：</strong>分派后告警进入“处理中”，系统保存责任班组、操作者、原因、时间和状态流转记录。</div><div class="form-grid"><div class="field"><label>责任班组 <em>*</em></label><select id="batchAlarmAssignee"><option>机修一班</option><option selected>机修二班</option><option>机修三班</option><option>液压班</option><option>电气班</option><option>环保班</option></select></div><div class="field"><label>操作人</label><input id="batchAlarmOperator" value="设备调度员"/></div><div class="field full"><label>分派原因 <em>*</em></label><textarea id="batchAlarmReason">根据设备区域、专业分工和当前班组负荷进行分派，请在SLA时限内完成现场核验。</textarea></div><div class="field full"><label>所选告警</label><div class="selection-summary">${alarmNos.map(esc).join('、')}</div></div></div>`,'确认分派',assignSelectedAlarms);
+}
+
+async function assignSelectedAlarms(){
+  const alarmNos=[...state.selectedAlarmNos];
+  const assignee=$('#batchAlarmAssignee')?.value.trim();
+  const operator=$('#batchAlarmOperator')?.value.trim();
+  const reason=$('#batchAlarmReason')?.value.trim();
+  if(!assignee||!reason){toast('责任班组和分派原因不能为空。');return false;}
+  try{
+    await apiRequest('/alarms/batch-assign',{method:'POST',body:JSON.stringify({alarmNos,assignee,operator,reason})});
+    state.selectedAlarmNos.clear();
+    await loadBackendData();
+    toast(`${alarmNos.length}条告警已分派至${assignee}并写入openGauss。`);
+    return true;
+  }catch(error){toast('批量分派失败：'+error.message);return false;}
 }
 
 function openDrawer(eyebrow,title,body,foot=''){
@@ -452,18 +498,18 @@ function assistantAnswer(q){
 
 async function acknowledgeAlarm(alarmNo){
   if(!state.backendConnected){toast('后端未连接，不能持久化告警状态。');return;}
-  try{await apiRequest('/alarms/'+encodeURIComponent(alarmNo)+'/acknowledge',{method:'POST',body:JSON.stringify({operator:'Demo设备管理员'})});await loadBackendData();toast('告警已确认并写入openGauss。');}catch(error){toast('确认失败：'+error.message);}
+  try{await apiRequest('/alarms/'+encodeURIComponent(alarmNo)+'/acknowledge',{method:'POST',body:JSON.stringify({operator:'设备管理员'})});await loadBackendData();toast('告警已确认并写入openGauss。');}catch(error){toast('确认失败：'+error.message);}
 }
 async function closeAlarmAction(alarmNo){
   if(!state.backendConnected){toast('后端未连接，不能关闭告警。');return;}
-  openModal('关闭告警','确认关闭 '+alarmNo,`<div class="risk-confirm"><strong>注意：</strong>Demo允许直接关闭；生产环境需补充处置结论、复测证据和签核记录。</div>`,'确认关闭',async()=>{try{await apiRequest('/alarms/'+encodeURIComponent(alarmNo)+'/close',{method:'POST',body:JSON.stringify({operator:'Demo设备管理员'})});await loadBackendData();toast('告警已关闭。');}catch(error){toast('关闭失败：'+error.message);}});
+  openModal('关闭告警','确认关闭 '+alarmNo,`<div class="risk-confirm"><strong>关闭条件：</strong>仅关闭已经确认、完成处置并具备复测或签核依据的告警；操作会进入审计记录。</div>`,'确认关闭',async()=>{try{await apiRequest('/alarms/'+encodeURIComponent(alarmNo)+'/close',{method:'POST',body:JSON.stringify({operator:'设备管理员',reason:'现场处置与复核完成'})});await loadBackendData();toast('告警已关闭。');}catch(error){toast('关闭失败：'+error.message);}});
 }
 async function advanceWorkOrder(orderNo,status){
   if(!state.backendConnected){toast('后端未连接，不能持久化工单状态。');return;}
   try{await apiRequest('/work-orders/'+encodeURIComponent(orderNo)+'/status',{method:'PATCH',body:JSON.stringify({status})});await loadBackendData();toast(orderNo+' 已推进到“'+status+'”。');}catch(error){toast('工单推进失败：'+error.message);}
 }
 async function createWorkOrderFromForm(){
-  if(!state.backendConnected){toast('后端未连接，不能创建真实Demo工单。');return;}
+  if(!state.backendConnected){toast('后端未连接，不能创建工单。');return;}
   const payload={deviceCode:$('#workDevice')?.value,title:$('#workTitle')?.value,priority:$('#workPriority')?.value,assignee:$('#workAssignee')?.value,plannedWindow:$('#workWindow')?.value,description:$('#workDescription')?.value,source:'人工创建'};
   try{const created=await apiRequest('/work-orders',{method:'POST',body:JSON.stringify(payload)});await loadBackendData();setPage('workorders');toast('已创建 '+created.orderNo+'，刷新后数据仍保留。');}catch(error){toast('创建工单失败：'+error.message);}
 }
@@ -490,7 +536,7 @@ function init(){
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#globalSearch').focus();}if(e.key==='Escape'){closeDrawer();closeModal();$('#assistantPanel').classList.remove('open');}});
   $('#assistantEntry').onclick=()=>$('#assistantPanel').classList.add('open');$('#assistantClose').onclick=()=>$('#assistantPanel').classList.remove('open');
   $$('.assistant-prompts button').forEach(b=>b.onclick=()=>{ $('#assistantInput').value=b.textContent;$('#assistantForm').requestSubmit(); });
-  $('#assistantForm').onsubmit=async e=>{e.preventDefault();const q=$('#assistantInput').value.trim();if(!q)return;$('#assistantMessages').insertAdjacentHTML('beforeend',`<div class="message user">${esc(q)}</div><div class="message answer" id="assistantPending">正在结合Demo设备、告警和工单数据分析…</div>`);$('#assistantInput').value='';$('#assistantMessages').scrollTop=$('#assistantMessages').scrollHeight;let answer;try{if(!state.backendConnected)throw new Error('backend offline');const result=await apiRequest('/assistant/chat',{method:'POST',body:JSON.stringify({message:q})});answer=result.answer+'\n\n回答模式：'+result.mode;}catch{answer=assistantAnswer(q)+'\n\n回答模式：前端离线规则';}const pending=$('#assistantPending');if(pending){pending.removeAttribute('id');pending.textContent=answer;}$('#assistantMessages').scrollTop=$('#assistantMessages').scrollHeight;};
+  $('#assistantForm').onsubmit=async e=>{e.preventDefault();const q=$('#assistantInput').value.trim();if(!q)return;$('#assistantMessages').insertAdjacentHTML('beforeend',`<div class="message user">${esc(q)}</div><div class="message answer" id="assistantPending">正在结合设备、告警和工单数据分析…</div>`);$('#assistantInput').value='';$('#assistantMessages').scrollTop=$('#assistantMessages').scrollHeight;let answer;try{if(!state.backendConnected)throw new Error('backend offline');const result=await apiRequest('/assistant/chat',{method:'POST',body:JSON.stringify({message:q})});answer=result.answer+'\n\n回答模式：'+result.mode;}catch{answer=assistantAnswer(q)+'\n\n回答模式：前端离线规则';}const pending=$('#assistantPending');if(pending){pending.removeAttribute('id');pending.textContent=answer;}$('#assistantMessages').scrollTop=$('#assistantMessages').scrollHeight;};
   const tick=()=>{$('#clock').textContent=new Date().toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replaceAll('/','-')};tick();setInterval(tick,30000);
 }
 

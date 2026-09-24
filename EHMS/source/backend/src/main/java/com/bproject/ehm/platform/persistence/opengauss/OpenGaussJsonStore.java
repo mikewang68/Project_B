@@ -9,6 +9,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -77,21 +78,22 @@ public class OpenGaussJsonStore {
 
     public <T> T save(String type, String id, T value) {
         String payload = encode(value);
+        Timestamp updatedAt = Timestamp.from(Instant.now());
         int updated = jdbc.update(
                 "UPDATE " + qualifiedTable + " SET payload = ?, updated_at = ? "
                         + "WHERE aggregate_type = ? AND aggregate_id = ?",
-                payload, Instant.now(), type, id);
+                payload, updatedAt, type, id);
         if (updated == 0) {
             try {
                 jdbc.update(
                         "INSERT INTO " + qualifiedTable
                                 + " (aggregate_type, aggregate_id, payload, updated_at) VALUES (?, ?, ?, ?)",
-                        type, id, payload, Instant.now());
+                        type, id, payload, updatedAt);
             } catch (DuplicateKeyException concurrentInsert) {
                 jdbc.update(
                         "UPDATE " + qualifiedTable + " SET payload = ?, updated_at = ? "
                                 + "WHERE aggregate_type = ? AND aggregate_id = ?",
-                        payload, Instant.now(), type, id);
+                        payload, updatedAt, type, id);
             }
         }
         return value;

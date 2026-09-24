@@ -1,6 +1,7 @@
 package com.bproject.ehm.alarm.domain.model;
 
 import com.bproject.ehm.shared.error.DomainConflictException;
+import com.bproject.ehm.shared.error.ValidationException;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -49,6 +50,21 @@ public record Alarm(
         String closeReason = reason == null || reason.isBlank() ? "Demo人工关闭" : reason.trim();
         return transition(AlarmStatus.CLOSED, operator, closeReason, now,
                 acknowledgedAt == null ? now : acknowledgedAt, now, assignee(operator));
+    }
+
+    public Alarm assign(String assignedTo, String operator, String reason, Instant now) {
+        if (status == AlarmStatus.CLOSED || status == AlarmStatus.INVALID || status == AlarmStatus.SUPPRESSED) {
+            throw new DomainConflictException("当前状态“" + status.label() + "”不能分派");
+        }
+        if (assignedTo == null || assignedTo.isBlank()) {
+            throw new ValidationException("责任班组不能为空");
+        }
+        String assignmentReason = reason == null || reason.isBlank()
+                ? "人工分派至" + assignedTo.trim() : reason.trim();
+        AlarmStatus target = status == AlarmStatus.WAITING_VERIFICATION
+                ? AlarmStatus.WAITING_VERIFICATION : AlarmStatus.INVESTIGATING;
+        return transition(target, operator, assignmentReason, now,
+                acknowledgedAt == null ? now : acknowledgedAt, closedAt, assignedTo.trim());
     }
 
     private Alarm transition(AlarmStatus target, String operator, String reason, Instant now,
