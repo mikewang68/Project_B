@@ -43,6 +43,10 @@ openGemini保存温度、振动、电流、压力、载荷等测点采样以及�
 脚本默认从PATH执行java；若服务器Java不在PATH，在config/ehm-server.env中增加
 JAVA_BIN=/实际路径/bin/java。systemd模板中的用户和安装路径也必须按现场账号修改。
 
+如openGauss运行在与应用同机的iSula容器中，且容器IP可能随重建变化，
+可将`EHM_OPENGAUSS_HOST` 设为 `isula-auto`。`start-ehm.sh`会从当前gaussdb容器网络命名空间
+发现实际私网地址；外部数据库或固定服务名场景仍直接填写主机名或IP。
+
 ## 5. 启停
 
 普通账号联调：

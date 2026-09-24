@@ -10,6 +10,7 @@
 - 修复openGauss JDBC对`Instant`更新时间的类型推断错误，改为显式`Timestamp`写入。
 - 运行能力接口改为根据当前持久化与时序适配器动态报告，不再错误显示MongoDB为服务器主库。
 - 服务器基线已通过60项自动化测试及openGauss/openGemini端到端CRUD冒烟测试。
+- 支持`EHM_OPENGAUSS_HOST=isula-auto`，启动时自动发现同机iSula容器中的openGauss地址，避免容器重启换IP后服务失联。
 
 ## 当前边界
 
