@@ -1,4 +1,4 @@
-import { Plan, type PlanDoc } from '../models/index.js';
+import { Plan, type PlanDoc } from '../db/tables.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { writeBusinessAudit } from '../middleware/audit.js';
 

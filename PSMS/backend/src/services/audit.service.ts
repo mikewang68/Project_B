@@ -1,4 +1,4 @@
-import { AuditLog, type AuditLogDoc } from '../models/index.js';
+import { AuditLog, type AuditLogDoc } from '../db/tables.js';
 
 export interface AuditQuery {
   actorId?: string;

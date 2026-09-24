@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User, type UserDoc } from '../models/index.js';
+import { User, type UserDoc } from '../db/tables.js';
 import { env } from '../config/env.js';
 import { AppError } from '../middleware/errorHandler.js';
 

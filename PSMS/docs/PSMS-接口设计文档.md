@@ -74,10 +74,10 @@
 | `src/contracts/requests.ts` | 14 个请求体 Schema 定义 |
 | `src/commands/stateMachines.ts` | 8 个状态机的状态、命令与合法迁移 |
 
-> **后端实现指引**：模块已提供真实后端服务（Express 5 + MongoDB 7），
+> **后端实现指引**：模块已提供真实后端服务（Express 5 + **openGauss 6.0.5（业务库）+ openGemini（时序库）**），
 > 接口路径前缀由 `/mock/*`（MSW 拦截）变为 `/api/*`，路径语义与 `operationId` 保持一致。
 > 路由清单、启动方式与账号见 [`../backend/README.md`](../backend/README.md)；
-> 数据模型见 [`PSMS-数据库设计文档.md`](./PSMS-数据库设计文档.md)。
+> 数据模型（21 张业务表 + 1 个时序 measurement）见 [`PSMS-数据库设计文档.md`](./PSMS-数据库设计文档.md)。
 
 ### 1.5 契约冻结声明
 

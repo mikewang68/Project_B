@@ -1,17 +1,17 @@
 import type { Request, Response, NextFunction } from 'express';
-import { AuditLog } from '../models/index.js';
+import { AuditLog } from '../db/tables.js';
 import { logger } from '../lib/logger.js';
 import { newAuditId, newTraceId } from '../lib/ids.js';
 
 /**
  * HTTP 访问留痕中间件。
  *
- * 在响应结束时把本次请求的访问信息写入 MongoDB 的 audit_logs 集合。
+ * 在响应结束时把本次请求的访问信息写入 openGauss 的 audit_logs 表。
  * 写入失败只记告警，绝不影响主流程（审计不能成为业务可用性的单点）。
  *
  * 注意：该中间件记录的是"访问维度"的留痕；各写命令的"业务维度"审计
  * （before/after 快照、变更原因）由服务层通过 writeBusinessAudit 记录，
- * 两者共用 audit_logs 集合与同一文档模型。
+ * 两者共用 audit_logs 表与同一套字段（超集模型）。
  */
 export function auditOperation(action: string) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {

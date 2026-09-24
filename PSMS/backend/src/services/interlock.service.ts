@@ -1,4 +1,4 @@
-import { Interlock, type InterlockDoc } from '../models/index.js';
+import { Interlock, type InterlockDoc } from '../db/tables.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { writeBusinessAudit } from '../middleware/audit.js';
 

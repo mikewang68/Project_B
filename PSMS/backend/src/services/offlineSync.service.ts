@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { OfflinePacket, type OfflinePacketDoc } from '../models/index.js';
+import { OfflinePacket, type OfflinePacketDoc } from '../db/tables.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { writeBusinessAudit } from '../middleware/audit.js';
 
@@ -75,7 +75,7 @@ export async function syncPacket(
       reason: '首次接收离线包',
     });
 
-    return created.toObject();
+    return created;
   }
 
   const serverVersion = existing.serverVersion ?? 0;

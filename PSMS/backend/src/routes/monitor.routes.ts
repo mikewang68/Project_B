@@ -1,6 +1,6 @@
 import { Router, type Request } from 'express';
 import { optionalAuth } from '../middleware/auth.js';
-import { Equipment, TelemetryPoint, WorkOrder } from '../models/index.js';
+import { Equipment, TelemetryPoint, WorkOrder } from '../db/tables.js';
 
 export const monitorRouter = Router();
 

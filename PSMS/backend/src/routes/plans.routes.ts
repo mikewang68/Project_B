@@ -3,7 +3,7 @@ import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { auditOperation } from '../middleware/audit.js';
 import * as planService from '../services/plan.service.js';
 import * as workOrderService from '../services/workOrder.service.js';
-import { Equipment } from '../models/index.js';
+import { Equipment } from '../db/tables.js';
 import { pathParam, q, qList, qNum } from '../lib/http.js';
 
 export const plansRouter = Router();

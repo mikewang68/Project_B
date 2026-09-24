@@ -12,10 +12,9 @@ import {
   TelemetryPoint,
   User,
   WorkOrder,
-  applyAuditRetention,
-  dropAllCollections,
-  syncAllIndexes,
-} from '../models/index.js';
+} from '../db/tables.js';
+import { migrate } from '../db/migrate.js';
+import { purgeAuditLogs, resetAllData } from '../db/maintenance.js';
 import { logger } from '../lib/logger.js';
 
 /**
@@ -166,29 +165,29 @@ export interface SeedResult {
 export async function seedDatabase(options: SeedOptions = {}): Promise<SeedResult> {
   const { drop = true, withTelemetry = true } = options;
 
-  const dropped = drop ? await dropAllCollections(false) : [];
-  if (drop) await syncAllIndexes();
+  const dropped = drop ? await resetAllData() : [];
+  if (drop) await migrate();
 
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
-  await User.insertMany(users.map((u) => ({ ...u, passwordHash, online: false })));
-  await Equipment.insertMany(equipments.map((e) => ({ ...e, _id: e.equipmentId })));
-  await Plan.insertMany(plans);
-  await WorkOrder.insertMany(workOrders);
-  await Task.insertMany(tasks);
-  await Exception.insertMany(exceptions.map((e) => ({ ...e, _id: e.exceptionId })));
-  await Interlock.insertMany(interlocks.map((i) => ({ ...i, _id: i.interlockId })));
-  await Appointment.insertMany(appointments.map((a) => ({ ...a, _id: a.appointmentId })));
-  await OfflinePacket.insertMany(offlinePackets.map((p) => ({ ...p, _id: p.packetId })));
+  await User.insertMany(users.map((u) => ({ ...u, passwordHash, online: false })), { returnInserted: false });
+  await Equipment.insertMany(equipments.map((e) => ({ ...e, _id: e.equipmentId })), { returnInserted: false });
+  await Plan.insertMany(plans, { returnInserted: false });
+  await WorkOrder.insertMany(workOrders, { returnInserted: false });
+  await Task.insertMany(tasks, { returnInserted: false });
+  await Exception.insertMany(exceptions.map((e) => ({ ...e, _id: e.exceptionId })), { returnInserted: false });
+  await Interlock.insertMany(interlocks.map((i) => ({ ...i, _id: i.interlockId })), { returnInserted: false });
+  await Appointment.insertMany(appointments.map((a) => ({ ...a, _id: a.appointmentId })), { returnInserted: false });
+  await OfflinePacket.insertMany(offlinePackets.map((p) => ({ ...p, _id: p.packetId })), { returnInserted: false });
   await ConfigVersion.create(configDoc);
-  await AuditLog.insertMany(auditLogs);
+  await AuditLog.insertMany(auditLogs, { returnInserted: false });
 
   if (withTelemetry) {
     await TelemetryPoint.insertMany(buildTelemetry(new Date()));
   }
 
   // 让配置里的审计保留期真正作用到 TTL 索引上
-  await applyAuditRetention(configDoc.auditRetentionDays);
+  await purgeAuditLogs(configDoc.auditRetentionDays);
 
   const counts = {
     users: users.length,

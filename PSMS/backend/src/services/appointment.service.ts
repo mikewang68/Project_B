@@ -1,4 +1,4 @@
-import { Appointment, type AppointmentDoc } from '../models/index.js';
+import { Appointment, type AppointmentDoc } from '../db/tables.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { writeBusinessAudit } from '../middleware/audit.js';
 

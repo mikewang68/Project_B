@@ -8,8 +8,9 @@ export const demoRouter = Router();
 /**
  * 演示数据重置。
  *
- * 接入 MongoDB 后这里不再是空壳：会真正清空集合并重新灌入
+ * 这里不是空壳：会真正清空 openGauss 的业务表（TRUNCATE 级联子表）并重新灌入
  * 固定种子数据（与 pnpm seed 同一份定义），用于把演示恢复到基线状态。
+ * 时序侧（openGemini）会一并重新写入演示遥测点。
  */
 demoRouter.post('/reset', authenticate, async (req, res, next) => {
   try {

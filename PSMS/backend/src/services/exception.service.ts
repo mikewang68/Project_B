@@ -1,4 +1,4 @@
-import { Exception, type ExceptionDoc } from '../models/index.js';
+import { Exception, type ExceptionDoc } from '../db/tables.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { writeBusinessAudit } from '../middleware/audit.js';
 

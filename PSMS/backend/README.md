@@ -1,243 +1,180 @@
 # PSMS 后端服务
 
-PSMS（生产调度管理）模块的后端服务，提供 REST API 与 **MongoDB** 持久化。
+PSMS（生产调度管理）模块的后端服务，提供 REST API，持久化采用组内基线的**多存储分工**方案。
 
-- 技术栈：Express 5 + Mongoose 8 + MongoDB 7 + TypeScript 5 + Zod
-- 默认端口：`3100`
-- 数据存储：MongoDB（默认内嵌自动启动，数据持久化到 `backend/.data/mongodb`）
+- 技术栈：Express 5 + PostgreSQL 协议驱动（pg 8）+ TypeScript 5 + Zod
+- 业务库：**openGauss 6.0.5**（事务/业务数据）
+- 时序库：**openGemini**（设备遥测）
 
----
-
-## 快速开始
-
-```bash
-cd PSMS/backend
-
-# 1) 安装依赖（首次）
-pnpm install
-
-# 2) 准备环境变量（首次）
-cp .env.example .env
-
-# 3) 写入种子数据（首次）
-pnpm seed
-
-# 4) 启动服务
-pnpm dev
-```
-
-首次启动时 `mongodb-memory-server` 会联网下载 mongod 二进制（约 60MB，
-缓存在 `.cache/mongodb-binaries/`），**之后可完全离线运行**。
-
-验证是否正常：
-
-```bash
-curl http://localhost:3100/api/health
-```
+> 存储分工的依据见 `EHMS/docs/EHM-architecture-baseline.md`：
+> 资产、工单、权限等**事务数据进入 openGauss**；**遥测与趋势数据进入 openGemini**；
+> 缓存与幂等状态进入 Kvrocks；异步事件进入 RocketMQ。
 
 ---
 
-## npm 脚本
+## 一、快速开始
 
-| 命令 | 说明 |
-|------|------|
-| `pnpm dev` | 开发模式启动（tsx 热重载） |
-| `pnpm build` | 编译 TypeScript 到 `dist/` |
-| `pnpm start` | 以编译产物启动（需先 `pnpm build`） |
-| `pnpm typecheck` | 仅做类型检查，不产出文件 |
-| `pnpm seed` | 清空集合并重新写入固定种子数据 |
-| `pnpm db:stats` | 连接自检：打印 mongod 版本、集合数与各集合文档量 |
-| `pnpm smoke` | 端到端冒烟测试（需服务已在运行） |
+### 1. 建立到集群的隧道
 
----
+openGauss 与 openGemini 都只部署在服务器侧（SERVER-ONLY），开发机需要通过隧道访问：
 
-## MongoDB 运行方式
-
-由 `backend/.env` 的 `MONGODB_URI` 决定：
-
-| `MONGODB_URI` | 行为 |
-|---------------|------|
-| 留空（默认） | **内嵌模式**：自动拉起一个真实的 `mongod` 进程，监听 `127.0.0.1:27017`，数据以 WiredTiger 引擎持久化到 `MONGODB_DATA_DIR` |
-| 填写 URI | **外部模式**：连接该 MongoDB 实例，例如 `mongodb://127.0.0.1:27017/psms` |
-
-两种模式都是真实的 MongoDB，使用相同的集合、索引与聚合能力。
-
-### 内嵌模式的数据在哪
-
-```
-backend/.data/mongodb/           # WiredTiger 数据目录（真实库文件）
-├── WiredTiger                   # 存储引擎元数据
-├── WiredTiger.wt
-├── _mdb_catalog.wt               # 集合目录
-├── collection-*.wt               # 集合数据
-├── index-*.wt                    # 索引数据
-└── journal/                      # 预写日志（崩溃恢复用）
+```cmd
+ssh -N -i C:\Users\Administrator\.ssh\bpoc_ed25519 ^
+    -L 5432:192.168.101.57:5432 ^
+    -L 8086:192.168.101.74:8086 lrz@100.65.200.125
 ```
 
-进程退出后数据保留；下次启动自动加载。
-若要彻底重来，删除 `.data/mongodb/` 后重新 `pnpm seed` 即可。
+> 跳板机 `100.65.200.125` 是 bpoc-node1 的 Tailscale 地址（走 DERP 中继，无直连）。
+> **隧道必须保持开启**，后端启动时会先做连通性自检，不通就直接报错退出（不静默降级）。
 
-### 用图形/命令行工具连
+### 2. 配置与启动
 
-内嵌 mongod 监听固定端口，可直接用 MongoDB Compass 或 mongosh 连：
-
+```cmd
+cd D:\Project_B-main\PSMS\backend
+copy .env.example .env      :: 按需修改；含 # 的口令必须写成 OPENGAUSS_PASSWORD="xxx#yyy"
+pnpm db:init                :: 幂等建表 + 建时序库
+pnpm seed                   :: 灌入固定种子数据（会先清空业务表）
+pnpm dev                    :: 启动服务（默认 3100）
 ```
-mongodb://127.0.0.1:27017/psms
+
+另一个窗口验证：
+
+```cmd
+pnpm db:stats               :: 两个存储的真实状态（表/行数/索引、measurement/点数）
+pnpm smoke                  :: 端到端冒烟（20+ 断言，含直接查库校验）
 ```
 
 ---
 
-## 环境变量
+## 二、目录结构
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `MONGODB_URI` | 空 | 空 = 内嵌 mongod；非空 = 外部实例 |
-| `MONGODB_DB_NAME` | `psms` | 数据库名 |
-| `MONGODB_EMBEDDED_PORT` | `27017` | 内嵌 mongod 监听端口 |
-| `MONGODB_DATA_DIR` | `.data/mongodb` | 内嵌数据目录（相对 `backend/`） |
-| `MONGOMS_DOWNLOAD_DIR` | `.cache/mongodb-binaries` | mongod 二进制缓存目录 |
-| `MONGOMS_VERSION` | `7.0.14` | 内嵌 mongod 版本 |
-| `AUTO_SEED` | `true` | 集合为空时自动灌入种子数据 |
-| `JWT_SECRET` | — | 必填，至少 16 位；生产环境务必替换 |
-| `JWT_EXPIRES_IN` | `8h` | 访问令牌有效期 |
-| `JWT_REFRESH_EXPIRES_IN` | `7d` | 刷新令牌有效期 |
-| `PORT` | `3100` | HTTP 监听端口 |
-| `NODE_ENV` | `development` | 运行环境 |
-| `CORS_ORIGIN` | `http://localhost:5173` | 允许的前端来源 |
-| `LOG_LEVEL` | `info` | 日志级别 |
-
----
-
-## 接口一览
-
-统一响应信封与前端契约保持一致：成功 `{ ok: true, data, auditLogId?, traceId? }`，
-失败 `{ ok: false, errorCode, message, details?, auditLogId, traceId }`。
-
-| 方法 | 路径 | 说明 | 对应契约 |
-|------|------|------|----------|
-| GET | `/api/health` | 健康检查（含 MongoDB 连接状态与文档量） | — |
-| POST | `/api/auth/login` | 登录换取令牌 | — |
-| POST | `/api/auth/refresh` | 刷新访问令牌 | — |
-| GET | `/api/auth/me` | 当前用户 | — |
-| GET | `/api/plans` | 计划列表（过滤/排序/分页） | API-002 |
-| GET | `/api/plans/:id` | 计划详情 | API-002 |
-| POST | `/api/plans/:id/confirm` | 计划确认 | API-004 |
-| POST | `/api/plans/:id/recommendation` | 接车窗口推荐 | API-005 |
-| GET | `/api/plans/:id/tasks` | 计划下任务列表 | API-007 |
-| POST | `/api/plans/:id/tasks` | 任务拆解（整体重建） | API-007 |
-| GET | `/api/work-orders` | 工单列表 | API-008 |
-| GET | `/api/work-orders/:id` | 工单详情 | API-008 |
-| POST | `/api/work-orders/:id` | 工单命令 `assign/accept/start/pause/complete/cancel` | API-008/009 |
-| GET | `/api/appointments` | 预约列表 | API-010 |
-| GET | `/api/appointments/:id` | 预约详情 | API-010 |
-| POST | `/api/appointments/:id` | 预约流转 `approve/checkin/call/enter/complete` | API-011 |
-| GET | `/api/monitor/operations` | 监控快照（工单+设备+遥测） | API-012 |
-| GET | `/api/exceptions` | 异常列表 | API-014 |
-| GET | `/api/exceptions/:id` | 异常详情 | API-014 |
-| POST | `/api/exceptions/:id` | 异常处置 `acknowledge/resolve/close` | API-015 |
-| GET | `/api/interlocks` | 联锁列表 | API-016 |
-| GET | `/api/interlocks/:id` | 联锁详情 | API-016 |
-| POST | `/api/interlocks/:id` | 联锁处置 `trigger/override/approveOverride/reset` | API-017 |
-| GET | `/api/offline/packets` | 离线包列表 | API-018 |
-| GET | `/api/offline/packets/:id` | 离线包详情 | API-018 |
-| POST | `/api/offline/packets/:id` | 离线包处置 `sync/resolve` | API-019 |
-| GET | `/api/reports` | 统计报表（数据库侧聚合） | API-020 |
-| POST | `/api/reports/export` | 报表受控导出 | API-021 |
-| GET | `/api/settings` | 读取系统配置 | API-022 |
-| POST | `/api/settings/:id` | 配置命令 `edit/submit/approve/publish/rollback` | API-023 |
-| GET | `/api/audit-logs` | 审计日志查询 | API-024 |
-| POST | `/api/audit-logs/export` | 审计日志受控导出 | API-024 |
-| POST | `/api/demo/reset` | 演示数据重置（真正重灌种子） | API-025 |
-| POST | `/api/demo/scenario` | 演示场景切换 | API-013 |
-
-> 契约来源：`PSMS/docs/baseline/openapi.yaml` 与 `PSMS/src/contracts/`。
-> 前端契约使用 `/mock/*` 前缀（MSW 拦截），后端使用 `/api/*` 前缀，
-> 路径语义与 operationId 保持一致。
-
----
-
-## 数据模型
-
-11 个集合，全部使用**语义化字符串 `_id`**（如 `PLAN-001`、`WO-001`），
-与前端契约的 `DO-xxx` 标识形式对齐。
-
-| 集合 | 说明 | 文档数（种子） |
-|------|------|----------------|
-| `users` | 用户账号 | 5 |
-| `equipments` | 设备台账 | 15 |
-| `equipment_telemetry` | 设备遥测（**时序集合**） | 40 |
-| `plans` | 到发计划 | 5 |
-| `work_orders` | 作业工单 | 3 |
-| `tasks` | 拆解任务 | 2 |
-| `exceptions` | 生产异常 | 2 |
-| `interlocks` | 安全联锁 | 2 |
-| `appointments` | 公路预约 | 3 |
-| `offline_packets` | PDA 离线包 | 1 |
-| `configs` | 系统配置版本 | 1 |
-| `audit_logs` | 审计日志（含 TTL 保留期） | 5 |
-
-集合结构、索引、内嵌/引用取舍与约束说明见
-[`docs/PSMS-数据库设计文档.md`](../docs/PSMS-数据库设计文档.md)。
-
----
-
-## 演示账号
-
-密码统一为 `password123`。
-
-| 用户名 | 角色 | 数据域 |
-|--------|------|--------|
-| `admin` | super_admin | `*` |
-| `scheduler` | scheduler | AREA-A, AREA-B |
-| `dispatcher` | dispatcher | AREA-A |
-| `operator` | operator | AREA-A |
-| `viewer` | viewer | AREA-A, AREA-B |
-
-登录示例：
-
-```bash
-TOKEN=$(curl -s -X POST http://localhost:3100/api/auth/login \
-  -H "content-type: application/json" \
-  -d '{"username":"admin","password":"password123"}' \
-  | python -c "import sys,json;print(json.load(sys.stdin)['data']['accessToken'])")
-
-curl -s http://localhost:3100/api/plans -H "Authorization: Bearer $TOKEN"
+```
+src/
+├── config/env.ts            环境配置（OPENGAUSS_* / OPENGEMINI_*，zod 校验）
+├── db/
+│   ├── openGaussClient.ts   pg 连接池、事务、健康探针、错误码分类
+│   ├── openGeminiClient.ts  InfluxDB 兼容 HTTP 客户端（自研，不引 SDK）
+│   ├── lineProtocol.ts      行协议构造与转义
+│   ├── schema.ts            21 张表的 DDL + 中文注释（幂等）
+│   ├── migrate.ts           迁移执行器（批量优先、失败回退逐条定位）
+│   ├── table.ts             轻量表访问层（参数化 WHERE、链式查询、子表读写）
+│   ├── tables.ts            11 张表的访问器（字段映射 + 子表装配）
+│   ├── telemetry.ts         设备遥测读写（走 openGemini）
+│   ├── types.ts             领域对象类型（对外契约形态）
+│   ├── inspect.ts           表行数、库概览、审计保留期
+│   └── maintenance.ts       数据重置、审计保留期清理
+├── middleware/              鉴权、审计留痕、统一错误处理
+├── routes/                  12 个路由模块
+├── services/                业务服务（状态机、命令流水线、审计）
+├── seeds/                   种子数据与写入脚本
+└── scripts/                 db-init / db-stats / smoke-test
 ```
 
 ---
 
-## 目录结构
+## 三、数据模型
 
-```
-backend/
-├── src/
-│   ├── config/          # env 校验、MongoDB 连接（内嵌/外部）
-│   ├── lib/             # 日志、HTTP 参数助手、ID 生成
-│   ├── middleware/      # 鉴权、审计留痕、统一错误处理
-│   ├── models/          # 11 个 Mongoose 模型 + 索引同步 + 集合管理
-│   ├── services/        # 11 个业务服务（全部走 Mongoose）
-│   ├── routes/          # 12 个路由
-│   ├── seeds/           # 种子数据定义与 CLI
-│   ├── scripts/         # 自检 / 冒烟测试工具
-│   └── index.ts         # 服务入口（含优雅关闭）
-├── .data/mongodb/       # 内嵌 MongoDB 数据目录（git 忽略）
-├── .cache/              # mongod 二进制缓存（git 忽略）
-├── .env / .env.example
-├── package.json
-└── tsconfig.json
-```
+**21 张表 = 11 张主表 + 10 张子表**。原文档模型里的内嵌数组在关系库里规范化为子表，
+对外接口仍以数组形式返回 —— 存储变了，契约没变。
+
+| 主表 | 说明 | 拆出的子表 |
+|---|---|---|
+| `users` | 账号 | `user_data_scopes` |
+| `plans` | 外部到发计划 | `plan_cargo_items` |
+| `work_orders` | 作业工单 | `work_order_crew` |
+| `tasks` | 任务拆解 | `task_crew`、`task_dependencies` |
+| `equipment` | 设备台账 | — |
+| `exceptions` | 生产异常 | `exception_evidence` |
+| `interlocks` | 安全联锁 | `interlock_input_signals` |
+| `appointments` | 公路预约叫号 | `appointment_documents` |
+| `offline_packets` | PDA 离线包 | `offline_packet_conflict_fields` |
+| `config_versions` | 系统配置版本 | `config_change_history` |
+| `audit_logs` | 审计留痕 | — |
+
+时序侧：openGemini 库 `psms_telemetry`，measurement `equipment_telemetry`，
+tags = `equipment_id / point_code / quality`，fields = `value / unit / metadata`。
+
+### 设计取舍
+
+1. **主键用契约里的语义化字符串**（`PLAN-001`、`WO-001`），与前端 DO-xxx 契约、审计的 `objectId` 完全一致，便于排查。
+2. **内嵌结构拆子表**，不用 jsonb —— 便于独立查询、聚合与约束。
+3. **只有真无结构的字段才用 jsonb**：`supplements` / `specs` / `payload` / 审计的 `before_state`、`after_state`。
+4. **枚举用 TEXT + CHECK**，不用数据库 enum 类型，避免增删取值要做类型迁移。
+5. **外键只用在「内嵌子表 → 主表」**；跨实体引用（工单→计划、任务→工单）故意不加外键，
+   避免删一张主表时级联清掉需要留档的历史单据，这类引用由应用层保证并建索引。
+6. **审计保留期**：关系库没有 TTL，改为按 `audit_retention_days` 做 `DELETE`，
+   由启动期与运维定时任务触发。生产环境建议再叠加按月分区 + `DROP PARTITION`。
 
 ---
 
-## 已知差异与后续工作
+## 四、常用命令
 
-1. **角色体系尚未对齐**：后端角色为 `super_admin / admin / scheduler / dispatcher /
-   operator / viewer`，前端契约为 13 个大写 `RoleCode`（`DISPATCHER`、`SAFETY`、
-   `AUDITOR` 等）。`middleware/auth.ts` 的权限判定目前是管理员粗粒度放行，
-   未落到前端那套权限码（`plan:confirm`、`interlock:approve` 等）。
-2. **字段命名尚未统一**：后端模型字段（`sourceStation`、`arriveTime`、`cargoItems`）
-   与前端契约字段（`sourceSystem`、`arrivalDepartureTime`、`conflicts`）不同名，
-   枚举取值也不一致。两套契约需要一次专门的对齐工作。
-3. **前端尚未接入后端**：前端 `src/` 未引用 `/api/*`，`.env` 的
-   `VITE_USE_BACKEND` 目前是死配置。接入需要改造 12 个业务域的 gateway 层。
-4. **鉴权覆盖不完整**：只读接口使用 `optionalAuth`，未强制登录。
+| 命令 | 作用 |
+|---|---|
+| `pnpm dev` | 开发模式启动（tsx watch） |
+| `pnpm build` | 编译到 `dist/` |
+| `pnpm start` | 运行编译产物 |
+| `pnpm typecheck` | 类型检查（本项目以此为质量门槛） |
+| `pnpm db:init` | 幂等建表 + 建时序库 |
+| `pnpm db:stats` | 存储自检（`--tables` 看列清单，`--indexes` 看索引） |
+| `pnpm seed` | 重置并灌入种子数据 |
+| `pnpm smoke` | 端到端冒烟测试 |
+
+---
+
+## 五、健康检查
+
+`GET /api/health` 同时返回两个存储的真实状态：
+
+```json
+{
+  "ok": true,
+  "openGauss": { "connected": true, "version": "(openGauss 6.0.5 ...)", "latencyMs": 42,
+                 "pool": { "total": 3, "idle": 3, "waiting": 0 },
+                 "tables": { "plans": 12, "work_orders": 20, "...": 0 } },
+  "openGemini": { "enabled": true, "reachable": true, "database": "psms_telemetry",
+                  "databaseExists": true, "latencyMs": 1180 }
+}
+```
+
+**降级策略**：openGauss 连不通 → 启动失败（不做静默降级）；
+openGemini 不可达 → 只告警，业务读写不受影响（与组内 SCS/EHMS 的探针降级一致）。
+
+---
+
+## 六、部署到集群内
+
+生产部署时不需要隧道，把 `.env` 的地址改为集群内地址即可：
+
+```env
+OPENGAUSS_HOST=192.168.101.57      # 或 Easegress 网关
+OPENGEMINI_URL=http://192.168.101.74:8086
+OPENGAUSS_CONNECT_TIMEOUT_MS=8000   # 内网直连可收紧
+```
+
+建库脚本（一次性，需 DBA 用超管执行）：
+
+```sql
+CREATE USER psms WITH PASSWORD '<强口令>' CREATEDB NOCREATEROLE;
+CREATE DATABASE psms WITH OWNER = psms ENCODING = 'UTF8' DBCOMPATIBILITY = 'PG';
+GRANT ALL PRIVILEGES ON DATABASE psms TO psms;
+```
+
+> ⚠️ 注意：openGauss **禁止初始用户（omm）远程登录**，所以应用必须使用独立角色；
+> 另外 openGauss 的 `CREATE USER` **不支持 `NOSUPERUSER` 选项**。
+> 选 `DBCOMPATIBILITY = 'PG'` 是为了与本模块使用的 PostgreSQL 协议驱动语义严格对齐
+> （组内 SCS 的 `b_project` 也是 PG 兼容模式）。
+
+---
+
+## 七、从 MongoDB 迁移过来的变更（留档）
+
+本模块早期版本使用 MongoDB（文档模型）。2026-09-24 按用户决策改为
+**openGauss（业务）+ openGemini（时序）**，MongoDB 已彻底移除：
+
+- 删除 11 个 mongoose 模型与 `config/db.ts`；
+- 卸载 `mongoose` / `mongodb` / `mongodb-memory-server` 依赖；
+- 删除内嵌 mongod 数据目录与二进制缓存；
+- 原「内嵌数组」全部规范化为子表；
+- 原 MongoDB 聚合管道（`$match/$group/$sort`）改写为标准 SQL `GROUP BY`；
+- 原「时序集合 + TTL 索引」分别改为 openGemini measurement 与按保留期 `DELETE`。

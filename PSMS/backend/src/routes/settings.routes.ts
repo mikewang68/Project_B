@@ -2,7 +2,7 @@
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { auditOperation } from '../middleware/audit.js';
 import * as settingsService from '../services/settings.service.js';
-import type { ConfigVersionDoc } from '../models/index.js';
+import type { ConfigVersionDoc } from '../db/tables.js';
 import { pathParam, q } from '../lib/http.js';
 
 export const settingsRouter = Router();

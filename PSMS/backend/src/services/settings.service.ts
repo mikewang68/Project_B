@@ -1,4 +1,5 @@
-﻿import { ConfigVersion, type ConfigVersionDoc, applyAuditRetention } from '../models/index.js';
+﻿import { ConfigVersion, type ConfigVersionDoc,  } from '../db/tables.js';
+import { purgeAuditLogs } from '../db/maintenance.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { writeBusinessAudit } from '../middleware/audit.js';
 import { logger } from '../lib/logger.js';
@@ -154,7 +155,7 @@ async function applyStatusCommand(
 
   // 配置发布后，审计保留期随之生效
   if (nextStatus === 'PUBLISHED' && typeof updated?.auditRetentionDays === 'number') {
-    await applyAuditRetention(updated.auditRetentionDays).catch((err: unknown) => {
+    await purgeAuditLogs(updated.auditRetentionDays).catch((err: unknown) => {
       logger.warn({ err }, '审计保留期更新失败');
     });
   }

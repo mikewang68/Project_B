@@ -1,4 +1,4 @@
-import { Equipment, Plan, Task, WorkOrder, type TaskDoc, type WorkOrderDoc } from '../models/index.js';
+import { Equipment, Plan, Task, WorkOrder, type TaskDoc, type WorkOrderDoc } from '../db/tables.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { writeBusinessAudit } from '../middleware/audit.js';
 
