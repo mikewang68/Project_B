@@ -1,4 +1,4 @@
-# EHM 1.3.0 服务器版部署说明（openGauss + openGemini）
+# EHM 1.4.0 服务器版部署说明（openGauss + openGemini）
 
 > 本仓库为公开脱敏示例。`192.0.2.74`、`node4.example.internal`、
 > `node6.example.internal` 和 `/opt/b-project/ehm` 均为示例值，部署前必须按现场环境替换。
@@ -14,7 +14,7 @@ openGauss 6.0.5、openGemini 1.5.2、Nginx 1.24。公开仓库不提交预编译
 - 示例访问地址为 http://192.0.2.74:18090/ehm/ ，其中 `192.0.2.0/24` 是文档专用保留地址。
 - 当前服务器基线不依赖Docker；MongoDB方案已退出服务器交付和后续开发基线。
 
-openGauss保存设备台账、BOM、告警、健康评估、工单、点检、备件、规则、知识库和审计等事务数据。
+openGauss保存设备台账、BOM、告警、健康评估、工单、点检、备件、规则、知识库、个人待办、班组交接、设备模板、校准记录、配置变更和审计等事务数据。
 openGemini保存温度、振动、电流、压力、载荷等测点采样以及后续健康趋势和模型时间线。
 
 ## 2. 部署前必须取得的参数
@@ -73,7 +73,7 @@ JAVA_BIN=/实际路径/bin/java。systemd模板中的用户和安装路径也必
 - 时序存储：openGemini
 - 联合就绪：openGauss+openGemini
 
-1.3.0还提供4套主题、3种布局、实时告警批量分派，并将分派结果持久化到openGauss。
+1.4.0提供4套主题、3种布局、实时告警批量分派、个人待办、班组交接、设备模板、校准记录和配置变更履历，并将业务结果持久化到openGauss。
 服务器运行能力页会根据实际适配器显示openGauss、openGemini与MongoDB状态。
 
 `smoke-crud.sh` 会建立一组带时间戳的临时设备、部件和测点，验证新增、查询、

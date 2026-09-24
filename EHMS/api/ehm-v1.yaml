@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: 设备健康管理系统 API
-  version: 1.8.0
-  description: EHM可交付Demo契约，覆盖资产、监测、告警闭环、健康预测、维保点检、备件库存与可靠性治理，并增加openGemini时序历史、能力接入状态、交付就绪检查和接口操作审计。旧列表未携带page/size时暂返回兼容数组；新客户端必须显式分页。
+  version: 1.9.0
+  description: EHM可交付Demo契约，覆盖资产、监测、告警闭环、健康预测、维保点检、备件库存、可靠性治理、个人待办、班组交接、设备模板、计量校准和配置变更履历，并增加openGemini时序历史、能力接入状态、交付就绪检查和接口操作审计。
 servers:
   - url: /api/ehm/v1
 paths:
@@ -688,6 +688,105 @@ paths:
                 message: {type: string}
       responses:
         '200': {description: AI或规则降级回答}
+  /my-tasks:
+    get:
+      summary: 查询个人或班组待办
+      parameters:
+        - {name: assignee, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string, enum: [OPEN, IN_PROGRESS, COMPLETED, CANCELLED]}}
+      responses: {'200': {description: 待办列表}}
+    post:
+      summary: 新建待办
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
+      responses: {'201': {description: 已创建}}
+  /my-tasks/{taskNo}:
+    put:
+      summary: 修改未闭环待办
+      parameters: [{name: taskNo, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
+      responses: {'200': {description: 已更新}, '409': {$ref: '#/components/responses/Conflict'}}
+  /my-tasks/{taskNo}/complete:
+    post:
+      summary: 完成待办并固化完成时间
+      parameters: [{name: taskNo, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: 已完成}}
+  /shift-handovers:
+    get:
+      summary: 查询班组交接记录
+      responses: {'200': {description: 交接记录列表}}
+    post:
+      summary: 新建交接草稿
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
+      responses: {'201': {description: 草稿已创建}}
+  /shift-handovers/generate:
+    post:
+      summary: 从活动告警与未闭环工单汇总交接草稿
+      responses: {'201': {description: 草稿已生成}}
+  /shift-handovers/{handoverNo}:
+    put:
+      summary: 修改交接草稿
+      parameters: [{name: handoverNo, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
+      responses: {'200': {description: 已更新}, '409': {$ref: '#/components/responses/Conflict'}}
+  /shift-handovers/{handoverNo}/submit:
+    post:
+      summary: 交班负责人提交交接
+      parameters: [{name: handoverNo, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: 已提交}}
+  /shift-handovers/{handoverNo}/receive:
+    post:
+      summary: 接班负责人确认接班
+      parameters: [{name: handoverNo, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: 已接班}}
+  /device-templates:
+    get:
+      summary: 查询设备模板
+      responses: {'200': {description: 模板列表}}
+    post:
+      summary: 新建设备模板草稿
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
+      responses: {'201': {description: 已创建}}
+  /device-templates/{templateCode}:
+    put:
+      summary: 修改未发布模板
+      parameters: [{name: templateCode, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
+      responses: {'200': {description: 已更新}, '409': {$ref: '#/components/responses/Conflict'}}
+  /device-templates/{templateCode}/publish:
+    post:
+      summary: 审批发布并锁定模板
+      parameters: [{name: templateCode, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: 已发布}}
+  /calibration-records:
+    get:
+      summary: 查询校准记录和临期记录
+      parameters:
+        - {name: assetCode, in: query, schema: {type: string}}
+        - {name: expiring, in: query, schema: {type: boolean}}
+        - {name: days, in: query, schema: {type: integer, default: 30}}
+      responses: {'200': {description: 校准记录列表}}
+    post:
+      summary: 登记不可覆盖的校准记录
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
+      responses: {'201': {description: 已登记}}
+  /configuration-changes:
+    get:
+      summary: 查询配置变更数字履历
+      responses: {'200': {description: 变更记录列表}}
+    post:
+      summary: 发起配置变更并保存前后快照
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
+      responses: {'201': {description: 草稿已创建}}
+  /configuration-changes/{changeNo}/approve:
+    post:
+      summary: 审批配置变更
+      parameters: [{name: changeNo, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: 已审批}}
+  /configuration-changes/{changeNo}/apply:
+    post:
+      summary: 确认变更已在现场生效并固化履历
+      parameters: [{name: changeNo, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: 已生效}, '409': {$ref: '#/components/responses/Conflict'}}
 components:
   parameters:
     Page: {name: page, in: query, required: true, schema: {type: integer, minimum: 0, default: 0}}

@@ -302,3 +302,5 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 [data-theme='dark-pro'] .message.system,[data-theme='dark-pro'] .message.answer,[data-theme='dark-pro'] .capability-notice,[data-theme='dark-pro'] .callout{background:var(--app-surface-secondary);border-color:var(--app-border-light);color:var(--app-text-regular)}
 [data-theme='dark-pro'] .diagnostic-layout,[data-theme='dark-pro'] .diag-side,[data-theme='dark-pro'] .wave-toolbar,[data-theme='dark-pro'] .tree-row.header{background:var(--app-surface-secondary);border-color:var(--app-border-light);color:var(--app-text-regular)}
 [data-theme='dark-pro'] .mobile-preview{background:var(--app-page-bg)}
+
+.config-snapshot{max-width:520px;max-height:260px;overflow:auto;margin-top:8px;padding:10px;border:1px solid var(--line,#d8dee8);border-radius:6px;background:#f7f9fc;color:#26364a;font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-all}
