@@ -4,10 +4,16 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
+import { usePreferenceStore, THEME_OPTIONS, LAYOUT_OPTIONS } from '@/stores/preference'
+import NavigationIcon from '@/components/NavigationIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const prefs = usePreferenceStore()
+const prefVisible = ref(false)
+const collapsed = ref(false)
+const isSideCollapsed = computed(() => prefs.layout === 'compact' || (prefs.layout === 'side' && collapsed.value))
 const tenantDialog = ref(false)
 const tenantSaving = ref(false)
 const passwordDialog = ref(false)
@@ -60,22 +66,47 @@ async function signOut(): Promise<void> {
 
 <template>
   <RouterView v-if="isLogin" />
-  <div v-else class="app-shell">
-    <aside class="sidebar" aria-label="仓储管理系统导航">
+  <div v-else class="app-shell admin-layout" :data-layout="prefs.layout" :class="{ collapsed: isSideCollapsed }">
+    <aside v-if="prefs.layout !== 'top'" class="sidebar" aria-label="仓储管理系统导航">
       <div class="brand"><span class="brand-mark">W</span><strong>仓储管理系统</strong></div>
-      <nav><RouterLink v-for="menu in auth.user?.menus" :key="menu.code" :to="menu.path" :class="{ active: route.path === menu.path }">{{ menu.name }}</RouterLink></nav>
+      <nav><RouterLink v-for="menu in auth.user?.menus" :key="menu.code" :to="menu.path" :aria-label="menu.name" :title="menu.name" :class="{ active: route.path === menu.path }"><NavigationIcon :path="menu.path" /><span class="menu-label">{{ menu.name }}</span></RouterLink></nav>
       <div class="sidebar-status"><span></span> openGauss 已连接</div>
+      <button v-if="prefs.layout === 'side'" class="sidebar-collapse" type="button" :aria-expanded="!collapsed" :aria-label="collapsed ? '展开菜单' : '折叠菜单'" @click="collapsed = !collapsed">{{ collapsed ? '»' : '«' }}<span class="menu-label">折叠菜单</span></button>
     </aside>
     <main class="main-area">
       <header class="topbar">
-        <div><strong>{{ route.meta.title }}</strong><small>仓储管理系统 / {{ auth.user?.companyName }}</small></div>
+        <div class="topbar-heading"><strong>{{ prefs.layout === 'top' ? 'W · 仓储管理系统' : route.meta.title }}</strong><small>{{ prefs.layout === 'top' ? route.meta.title : '仓储管理系统' }} / {{ auth.user?.companyName }}</small></div>
         <div class="topbar-actions">
+          <el-button class="pref-btn" plain @click="prefVisible = true">外观设置</el-button>
           <button class="tenant" type="button" @click="tenantDialog = true">{{ auth.user?.tenant.currentWarehouse.name }} · {{ auth.user?.tenant.currentOwner.name }}</button>
           <el-dropdown trigger="click"><button class="user-trigger" type="button">{{ auth.user?.displayName }} ▾</button><template #dropdown><el-dropdown-menu><el-dropdown-item @click="passwordDialog = true">修改密码</el-dropdown-item><el-dropdown-item divided @click="signOut">退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown>
         </div>
       </header>
+      <nav v-if="prefs.layout === 'top'" class="top-menu" aria-label="仓储管理系统顶部导航"><RouterLink v-for="menu in auth.user?.menus" :key="menu.code" :to="menu.path" :class="{ active: route.path === menu.path }"><NavigationIcon :path="menu.path" /><span>{{ menu.name }}</span></RouterLink></nav>
       <section class="content"><RouterView /></section>
     </main>
+
+    <el-drawer v-model="prefVisible" title="外观设置" size="min(420px, 100vw)" class="preference-drawer">
+      <div class="pref-section">
+        <h3 class="pref-section-title">主题皮肤（4 套）</h3>
+        <div class="theme-grid" role="group" aria-label="主题皮肤">
+          <button v-for="t in THEME_OPTIONS" :key="t.id" type="button" class="theme-card" :class="{ active: prefs.theme === t.id }" :aria-pressed="prefs.theme === t.id" :data-theme-choice="t.id" @click="prefs.setTheme(t.id)">
+            <span class="theme-swatch" aria-hidden="true"><span class="sw-sidebar" :style="{ background: t.colors[0] }"></span><span class="sw-primary" :style="{ background: t.colors[1] }"></span></span>
+            <span class="theme-meta"><span class="theme-name">{{ t.name }}</span><span class="theme-desc">{{ t.desc }}</span></span><span v-if="prefs.theme === t.id" class="theme-check" aria-hidden="true">✓</span>
+          </button>
+        </div>
+      </div>
+      <div class="pref-section">
+        <h3 class="pref-section-title">布局方式（3 种）</h3>
+        <div class="layout-grid" role="group" aria-label="布局方式">
+          <button v-for="l in LAYOUT_OPTIONS" :key="l.id" type="button" class="layout-card" :class="{ active: prefs.layout === l.id }" :aria-pressed="prefs.layout === l.id" :data-layout-choice="l.id" @click="prefs.setLayout(l.id)">
+            <span class="layout-thumb" :data-thumb="l.id" aria-hidden="true"><span class="thumb-bar"></span><span class="thumb-body"><i></i><i></i></span></span><span class="layout-name">{{ l.name }}</span><span class="layout-desc">{{ l.desc }}</span>
+          </button>
+        </div>
+      </div>
+      <el-button plain class="reset-preferences" @click="prefs.reset(); collapsed = false">恢复默认（科技蓝 · 左侧菜单）</el-button>
+      <p class="preference-note">设置仅保存在当前浏览器，不改变业务数据和其他系统的偏好。</p>
+    </el-drawer>
 
     <el-dialog v-model="tenantDialog" title="切换仓库与货主" width="460px">
       <el-form label-position="top">

@@ -1,5 +1,5 @@
 {
-  "configVersion": "1.2.0-server",
+  "configVersion": "1.3.0-server",
   "application": {
     "name": "ehm",
     "displayName": "设备健康管理系统",

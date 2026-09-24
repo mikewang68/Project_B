@@ -3,10 +3,12 @@ package com.bproject.ehm.alarm.application;
 import com.bproject.ehm.alarm.domain.model.Alarm;
 import com.bproject.ehm.alarm.ports.AlarmRepository;
 import com.bproject.ehm.shared.error.ResourceNotFoundException;
+import com.bproject.ehm.shared.error.ValidationException;
 import com.bproject.ehm.shared.page.PageQuery;
 import com.bproject.ehm.shared.page.PageResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.List;
@@ -45,6 +47,24 @@ public class AlarmApplicationService implements AlarmQueryFacade {
     public AlarmView close(String alarmNo, String operator, String reason) {
         Alarm current = find(alarmNo);
         return AlarmView.from(alarms.save(current.close(operator, reason, clock.instant())));
+    }
+
+    @Transactional
+    public List<AlarmView> assignBatch(List<String> alarmNos, String assignee, String operator, String reason) {
+        if (alarmNos == null || alarmNos.isEmpty()) {
+            throw new ValidationException("至少选择一条告警");
+        }
+        List<Alarm> assigned = alarmNos.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .distinct()
+                .map(this::find)
+                .map(value -> value.assign(assignee, operator, reason, clock.instant()))
+                .toList();
+        if (assigned.isEmpty()) {
+            throw new ValidationException("至少选择一条有效告警");
+        }
+        return assigned.stream().map(alarms::save).map(AlarmView::from).toList();
     }
 
     @Override

@@ -20,7 +20,7 @@ class OpenApiContractTest {
         Map<String, Object> info = (Map<String, Object>) root.get("info");
         Map<String, Object> paths = (Map<String, Object>) root.get("paths");
 
-        assertEquals("1.8.0", info.get("version"));
+        assertEquals("1.9.0", info.get("version"));
         assertTrue(paths.containsKey("/assets/{assetCode}/components"));
         assertTrue(paths.containsKey("/assets/{assetCode}/measurement-points"));
         assertTrue(paths.containsKey("/data-quality/summary"));
@@ -59,5 +59,15 @@ class OpenApiContractTest {
         assertTrue(paths.containsKey("/system/capabilities"));
         assertTrue(paths.containsKey("/system/delivery-readiness"));
         assertTrue(paths.containsKey("/system/audit-logs"));
+        assertTrue(paths.containsKey("/my-tasks"));
+        assertTrue(paths.containsKey("/my-tasks/{taskNo}/complete"));
+        assertTrue(paths.containsKey("/shift-handovers"));
+        assertTrue(paths.containsKey("/shift-handovers/generate"));
+        assertTrue(paths.containsKey("/shift-handovers/{handoverNo}/receive"));
+        assertTrue(paths.containsKey("/device-templates"));
+        assertTrue(paths.containsKey("/device-templates/{templateCode}/publish"));
+        assertTrue(paths.containsKey("/calibration-records"));
+        assertTrue(paths.containsKey("/configuration-changes"));
+        assertTrue(paths.containsKey("/configuration-changes/{changeNo}/apply"));
     }
 }

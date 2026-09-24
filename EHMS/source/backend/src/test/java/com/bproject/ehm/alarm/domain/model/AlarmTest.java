@@ -31,6 +31,23 @@ class AlarmTest {
                 () -> alarm(AlarmStatus.CLOSED).acknowledge("tester", NOW));
     }
 
+    @Test
+    void assigningAnOpenAlarmRecordsOwnerAndMovesItIntoInvestigation() {
+        Alarm assigned = alarm(AlarmStatus.NEW).assign("机修二班", "dispatcher", "按区域批量分派", NOW);
+
+        assertEquals(AlarmStatus.INVESTIGATING, assigned.status());
+        assertEquals("机修二班", assigned.assignee());
+        assertEquals(NOW, assigned.acknowledgedAt());
+        assertEquals("按区域批量分派", assigned.history().get(0).reason());
+        assertEquals("dispatcher", assigned.history().get(0).operator());
+    }
+
+    @Test
+    void terminalAlarmCannotBeAssigned() {
+        assertThrows(DomainConflictException.class,
+                () -> alarm(AlarmStatus.CLOSED).assign("机修二班", "dispatcher", null, NOW));
+    }
+
     private Alarm alarm(AlarmStatus status) {
         return new Alarm("ALM-1", "GT-01", "门吊", "减速机", "L3", "severe", "异常",
                 status, "未超期", "规则", NOW.minusSeconds(60), null, null, "机修班", List.of(), 0L);

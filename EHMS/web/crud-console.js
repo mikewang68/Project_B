@@ -272,7 +272,7 @@ handleAction=function(event){
     return;
   }
   if(action==='showHistory'){state.assetTab='history';return renderPage();}
-  if(action==='genericAction'||action==='pageSpec'||action==='batchAssign') return handleUnwiredButton(button);
+  if(action==='genericAction'||action==='pageSpec') return handleUnwiredButton(button);
   return baseHandleActionCrud(event);
 };
 

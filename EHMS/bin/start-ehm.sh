@@ -27,6 +27,31 @@ source "${ENV_FILE}"
 set +a
 export SPRING_PROFILES_ACTIVE=server
 
+resolve_isula_opengauss_host() {
+  local pid candidate port_hex
+  port_hex="$(printf '%04X' "${EHM_OPENGAUSS_PORT:-5432}")"
+  for pid in $(pgrep -x gaussdb 2>/dev/null || true); do
+    grep -q '/isulad/' "/proc/${pid}/cgroup" 2>/dev/null || continue
+    grep -qi ":${port_hex} " "/proc/${pid}/net/tcp" 2>/dev/null || continue
+    candidate="$(awk '
+      /\/32 host LOCAL/ && previous ~ /^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/ { print previous; exit }
+      { previous=$2 }
+    ' "/proc/${pid}/net/fib_trie" 2>/dev/null || true)"
+    if [[ -n "${candidate}" ]]; then
+      EHM_OPENGAUSS_HOST="${candidate}"
+      export EHM_OPENGAUSS_HOST
+      echo "Resolved openGauss iSula endpoint: ${EHM_OPENGAUSS_HOST}:${EHM_OPENGAUSS_PORT:-5432}"
+      return 0
+    fi
+  done
+  echo "Unable to discover the openGauss iSula endpoint" >&2
+  return 1
+}
+
+if [[ "${EHM_OPENGAUSS_HOST:-}" == "isula-auto" ]]; then
+  resolve_isula_opengauss_host
+fi
+
 JAVA_BIN="${JAVA_BIN:-java}"
 nohup "${JAVA_BIN}" \
   -XX:InitialRAMPercentage=10 \

@@ -1,0 +1,70 @@
+    HealthAssessment:
+      type: object
+      properties:
+        assessmentId: {type: string}
+        assetCode: {type: string}
+        assetName: {type: string}
+        healthScore: {type: integer, minimum: 0, maximum: 100}
+        healthGrade: {type: string, enum: [健康, 关注, 异常, 严重]}
+        confidencePercent: {type: number}
+        status: {type: string, enum: [COMPLETED]}
+        method: {type: string}
+        modelVersion: {type: string}
+        featureVersion: {type: string}
+        dataAvailabilityPercent: {type: number}
+        factors: {type: array, items: {$ref: '#/components/schemas/HealthFactor'}}
+        prediction: {$ref: '#/components/schemas/RulPrediction'}
+        limitations: {type: array, items: {type: string}}
+        inputWindowStart: {type: string, format: date-time}
+        inputWindowEnd: {type: string, format: date-time}
+        generatedAt: {type: string, format: date-time}
+        validUntil: {type: string, format: date-time}
+        review: {$ref: '#/components/schemas/PredictionReview', nullable: true}
+        workOrderNo: {type: string, nullable: true}
+        version: {type: integer, format: int64, nullable: true}
+    HealthFactor:
+      type: object
+      properties:
+        pointCode: {type: string}
+        metric: {type: string}
+        value: {type: number}
+        unit: {type: string}
+        referenceLimit: {type: number, nullable: true}
+        utilizationPercent: {type: number}
+        deduction: {type: number}
+        explanation: {type: string}
+    RulPrediction:
+      type: object
+      properties:
+        status: {type: string, enum: [DEMO_ESTIMATE, UNAVAILABLE]}
+        modelVersion: {type: string}
+        lowerDays: {type: integer, nullable: true}
+        expectedDays: {type: integer, nullable: true}
+        upperDays: {type: integer, nullable: true}
+        confidencePercent: {type: number}
+        riskLevel: {type: string}
+        faultMode: {type: string}
+        maintenanceWindow: {type: string}
+        recommendation: {type: string}
+        limitation: {type: string}
+    PredictionReview:
+      type: object
+      properties:
+        decision: {type: string, enum: [ACCEPTED, OBSERVE, REJECTED]}
+        comment: {type: string}
+        reviewer: {type: string}
+        reviewedAt: {type: string, format: date-time}
+    PredictionReviewInput:
+      type: object
+      required: [decision, comment]
+      properties:
+        decision: {type: string, enum: [ACCEPTED, OBSERVE, REJECTED]}
+        comment: {type: string}
+        reviewer: {type: string}
+    PredictionWorkOrderInput:
+      type: object
+      properties:
+        title: {type: string}
+        assignee: {type: string}
+        plannedWindow: {type: string}
+        operator: {type: string}

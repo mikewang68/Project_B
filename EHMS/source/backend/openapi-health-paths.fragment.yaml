@@ -1,0 +1,41 @@
+  /devices/{assetCode}/health-assessments/run:
+    post:
+      summary: 在数据质量准入后生成可追溯健康评估与Demo RUL区间
+      parameters: [{name: assetCode, in: path, required: true, schema: {type: string}}]
+      responses:
+        '201': {description: 评估完成, content: {application/json: {schema: {$ref: '#/components/schemas/HealthAssessment'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /devices/{assetCode}/health-assessments/latest:
+    get:
+      summary: 查询设备最新健康评估
+      parameters: [{name: assetCode, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: 最新评估, content: {application/json: {schema: {$ref: '#/components/schemas/HealthAssessment'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /devices/{assetCode}/health-assessments:
+    get:
+      summary: 查询设备健康评估历史
+      parameters:
+        - {name: assetCode, in: path, required: true, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200': {description: 评估历史, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/HealthAssessment'}}}}}
+  /health-assessments/{assessmentId}/review:
+    post:
+      summary: 对健康预测建议进行一次性人工审核
+      parameters: [{name: assessmentId, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/PredictionReviewInput'}}}
+      responses:
+        '200': {description: 审核已记录, content: {application/json: {schema: {$ref: '#/components/schemas/HealthAssessment'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /health-assessments/{assessmentId}/work-order:
+    post:
+      summary: 将人工接受的预测建议转为待审批工单
+      parameters: [{name: assessmentId, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {$ref: '#/components/schemas/PredictionWorkOrderInput'}}}
+      responses:
+        '200': {description: 工单已创建并关联, content: {application/json: {schema: {$ref: '#/components/schemas/HealthAssessment'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
