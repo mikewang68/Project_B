@@ -23,6 +23,7 @@ interface RequestOptions {
   body?: unknown
   query?: Record<string, string | number | undefined | null>
   /** 直接返回原始 Response（如下载文件），不走统一信封解析 */
+  headers?: Record<string, string>
   raw?: boolean
 }
 
@@ -62,7 +63,7 @@ export function createClient(options: ApiClientOptions): ApiClient {
       if (qs) url += `?${qs}`
     }
 
-    const headers: Record<string, string> = { Accept: 'application/json' }
+    const headers: Record<string, string> = { Accept: 'application/json', ...opts.headers }
     const token = getToken()
     if (token) headers.Authorization = `Bearer ${token}`
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
@@ -91,7 +92,7 @@ export function createClient(options: ApiClientOptions): ApiClient {
       try {
         payload = JSON.parse(text)
       } catch {
-        payload = {}
+        throw new ApiError(resp.status, 502, '认证/API 返回非 JSON，请检查后端路由是否回退为 HTML 首页')
       }
     }
 
@@ -100,6 +101,8 @@ export function createClient(options: ApiClientOptions): ApiClient {
       window.dispatchEvent(new CustomEvent('app:unauthorized'))
       throw new ApiError(401, 401, payload.message || '未登录或登录已过期')
     }
+    if (!resp.headers.get('content-type')?.includes('application/json') || payload.code === undefined)
+      throw new ApiError(resp.status, 502, 'API 响应格式错误，请确认已连接真实 IAM 后端')
     if (!resp.ok || (payload.code !== undefined && payload.code !== 0)) {
       const status = resp.status
       throw new ApiError(status, payload.code ?? status, payload.message || `请求失败（${status}）`)

@@ -50,8 +50,11 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Real openGauss transactions and HTTP authorization; external archive/ledger faults are injected.
  */
-@SpringBootTest
+@org.springframework.context.annotation.Import(com.bproject.trust.support.NoBackgroundScheduling.class)
+@SpringBootTest(properties = {"trust.isolation-enabled=false", "spring.liquibase.enabled=false"})
 @AutoConfigureMockMvc
+@org.springframework.test.annotation.DirtiesContext(
+    classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIfEnvironmentVariable(named = "TRUST_DB_INTEGRATION", matches = "1")
 class DatabaseIntegrationTest {
   @MockitoBean EvidenceStorage ipfs;
@@ -59,17 +62,21 @@ class DatabaseIntegrationTest {
   @Autowired MockMvc mvc;
   @Autowired JdbcTemplate db;
   @Autowired EventService events;
+  @Autowired com.bproject.trust.archiving.ArchiveWorker archive;
   @Autowired TraceService traces;
   @Autowired VerificationService verification;
   static Path testRoot;
 
   @DynamicPropertySource
   static void properties(DynamicPropertyRegistry p) throws Exception {
+    String url = System.getenv("TRUST_TEST_DB_URL");
+    if (!"jdbc:opengauss://127.0.0.1:25432/trust_iam_dev_test".equals(url))
+      throw new IllegalStateException("Dedicated test database required");
     String base = System.getenv("TRUST_ROOT");
     testRoot = Path.of(base, "runtime/db-integration");
     Files.createDirectories(testRoot);
     p.add("trust.root", () -> testRoot.toString());
-    p.add("spring.datasource.url", () -> "jdbc:opengauss://127.0.0.1:25432/trust_test");
+    p.add("spring.datasource.url", () -> url);
   }
 
   final Map<String, byte[]> stored = new ConcurrentHashMap<>();
@@ -84,7 +91,7 @@ class DatabaseIntegrationTest {
   @BeforeEach
   void setup() throws Exception {
     try (var connection = db.getDataSource().getConnection()) {
-      assertTrue(connection.getMetaData().getURL().endsWith("/trust_test"));
+      assertTrue(connection.getMetaData().getURL().endsWith("/trust_iam_dev_test"));
     }
     db.update("INSERT INTO trust_users VALUES(?,?,?,?)", actor, "unused", "EDITOR", org);
     db.update(
@@ -171,10 +178,16 @@ class DatabaseIntegrationTest {
             .andExpect(status().isAccepted()));
   }
 
+  @org.junit.jupiter.api.AfterEach
+  void stopOnlyThisRunTasks() {
+    db.update("UPDATE tasks SET state='FAILED',lease_token=NULL,lease_until=NULL,last_error='TEST_RUN_COMPLETE' WHERE state IN ('READY','RUNNING') AND event_id IN (SELECT id FROM events WHERE org_id=?)", org);
+  }
+
   Map<String, Object> await(String id, Predicate<Map<String, Object>> condition) throws Exception {
     long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(40);
     Map<String, Object> r;
     do {
+      com.bproject.trust.archiving.FixtureArchiveRunner.run(archive, db, id, org);
       r = events.get(id, org);
       if (condition.test(r)) return r;
       Thread.sleep(100);
@@ -411,7 +424,7 @@ class DatabaseIntegrationTest {
             .andReturn()
             .getResponse()
             .getContentAsByteArray();
-    Path docs = Path.of(System.getenv("TRUST_ROOT"), "docs");
+    Path docs = Path.of(System.getenv("TRUST_ROOT"), ".local/test-results");
     Files.createDirectories(docs);
     Files.write(docs.resolve("openapi.json"), spec);
     ExecutorService pool = Executors.newFixedThreadPool(6);

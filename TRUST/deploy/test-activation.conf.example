@@ -1,0 +1,5 @@
+# Install as identity-trust-test.service.d/30-explicit-activation.conf on the isolated host.
+# Also run: systemctl disable --now identity-trust-test.service
+# The root-owned activation directory is mode 0700. Do not create this marker at deployment.
+[Unit]
+ConditionPathExists=/srv/b-project-identity-test/operator/activation/trust.enabled

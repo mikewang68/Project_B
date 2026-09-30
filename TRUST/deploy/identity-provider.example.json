@@ -1,0 +1,31 @@
+{
+  "clientBinary": "/srv/b-project-identity/tools/fabric-ca-client",
+  "clientVersion": "1.5.22",
+  "clientSha256": "REPLACE_WITH_VERIFIED_OFFICIAL_BINARY_SHA256",
+  "clients": [{
+    "id": "iam-identity",
+    "tokenSha256": "REPLACE_WITH_INDEPENDENT_RANDOM_SERVICE_TOKEN_SHA256",
+    "issuer": "b-project-iam",
+    "tenant": "b-project",
+    "orgs": ["B-PROJECT", "B-PROJECT-ORG2"],
+    "operations": ["read", "create", "retry", "rotate", "disable", "revoke"]
+  }],
+  "organizations": {
+    "B-PROJECT": {
+      "mspId": "Org1MSP", "caId": "identity-org1", "affiliation": "org1.business",
+      "attributes": {"app.scope": "identity-probe"},
+      "caUrl": "https://ca-org1.example.invalid:7054",
+      "tlsRootFile": "/srv/b-project-identity/TRUST/runtime/secrets/ca/org1-tls-root.pem",
+      "enrollmentRootFile": "/srv/b-project-identity/TRUST/runtime/secrets/ca/org1-enrollment-chain.pem",
+      "registrarHome": "/srv/b-project-identity/TRUST/runtime/secrets/ca/org1-registrar"
+    },
+    "B-PROJECT-ORG2": {
+      "mspId": "Org2MSP", "caId": "identity-org2", "affiliation": "org2.business",
+      "attributes": {"app.scope": "identity-probe"},
+      "caUrl": "https://ca-org2.example.invalid:8054",
+      "tlsRootFile": "/srv/b-project-identity/TRUST/runtime/secrets/ca/org2-tls-root.pem",
+      "enrollmentRootFile": "/srv/b-project-identity/TRUST/runtime/secrets/ca/org2-enrollment-chain.pem",
+      "registrarHome": "/srv/b-project-identity/TRUST/runtime/secrets/ca/org2-registrar"
+    }
+  }
+}

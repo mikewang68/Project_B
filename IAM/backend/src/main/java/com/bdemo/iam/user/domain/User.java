@@ -1,226 +1,228 @@
 package com.bdemo.iam.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 用户。JSON 字段与前端 iam/types.ts 的 User 保持一致。
- */
+/** 用户。JSON 字段与前端 iam/types.ts 的 User 保持一致。 */
 public class User {
 
-    private String id;
-    private String username;
-    private String name;
-    private String phone;
-    private String email;
-    @JsonIgnore
-    private String password;
-    private List<String> roleIds = new ArrayList<>();
-    private String zone;
-    private String company;
-    private String dept;
-    private String group;
-    @JsonIgnore
-    private String zoneCode;
-    @JsonIgnore
-    private String companyCode;
-    @JsonIgnore
-    private String deptCode;
-    @JsonIgnore
-    private String groupCode;
-    private List<String> orgCodes = new ArrayList<>();
-    private String orgPath;
-    private String status = "active";
-    private String blockchainId;
-    private String blockchainAddress;
-    private LocalDateTime lastLoginAt;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+  private java.util.Map<String, Object> fabricIdentity;
 
-    public String getId() {
-        return id;
-    }
+  public java.util.Map<String, Object> getFabricIdentity() {
+    return fabricIdentity;
+  }
 
-    public void setId(String id) {
-        this.id = id;
-    }
+  public void setFabricIdentity(java.util.Map<String, Object> value) {
+    fabricIdentity = value;
+  }
 
-    public String getUsername() {
-        return username;
-    }
+  private String id;
+  private String username;
+  private String name;
+  private String phone;
+  private String email;
+  @JsonIgnore private String password;
+  private List<String> roleIds = new ArrayList<>();
+  private String zone;
+  private String company;
+  private String dept;
+  private String group;
+  @JsonIgnore private String zoneCode;
+  @JsonIgnore private String companyCode;
+  @JsonIgnore private String deptCode;
+  @JsonIgnore private String groupCode;
+  private List<String> orgCodes = new ArrayList<>();
+  private String orgPath;
+  private String status = "active";
+  private String blockchainId;
+  private String blockchainAddress;
+  private LocalDateTime lastLoginAt;
+  private LocalDateTime createdAt;
+  private LocalDateTime updatedAt;
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+  public String getId() {
+    return id;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public void setId(String id) {
+    this.id = id;
+  }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+  public String getUsername() {
+    return username;
+  }
 
-    public String getPhone() {
-        return phone;
-    }
+  public void setUsername(String username) {
+    this.username = username;
+  }
 
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public String getEmail() {
-        return email;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+  public String getPhone() {
+    return phone;
+  }
 
-    public String getPassword() {
-        return password;
-    }
+  public void setPhone(String phone) {
+    this.phone = phone;
+  }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+  public String getEmail() {
+    return email;
+  }
 
-    public List<String> getRoleIds() {
-        return roleIds;
-    }
+  public void setEmail(String email) {
+    this.email = email;
+  }
 
-    public void setRoleIds(List<String> roleIds) {
-        this.roleIds = roleIds == null ? new ArrayList<>() : roleIds;
-    }
+  public String getPassword() {
+    return password;
+  }
 
-    public String getZone() {
-        return zone;
-    }
+  public void setPassword(String password) {
+    this.password = password;
+  }
 
-    public void setZone(String zone) {
-        this.zone = zone;
-    }
+  public List<String> getRoleIds() {
+    return roleIds;
+  }
 
-    public String getCompany() {
-        return company;
-    }
+  public void setRoleIds(List<String> roleIds) {
+    this.roleIds = roleIds == null ? new ArrayList<>() : roleIds;
+  }
 
-    public void setCompany(String company) {
-        this.company = company;
-    }
+  public String getZone() {
+    return zone;
+  }
 
-    public String getDept() {
-        return dept;
-    }
+  public void setZone(String zone) {
+    this.zone = zone;
+  }
 
-    public void setDept(String dept) {
-        this.dept = dept;
-    }
+  public String getCompany() {
+    return company;
+  }
 
-    public String getGroup() {
-        return group;
-    }
+  public void setCompany(String company) {
+    this.company = company;
+  }
 
-    public void setGroup(String group) {
-        this.group = group;
-    }
+  public String getDept() {
+    return dept;
+  }
 
-    public String getZoneCode() {
-        return zoneCode;
-    }
+  public void setDept(String dept) {
+    this.dept = dept;
+  }
 
-    public void setZoneCode(String zoneCode) {
-        this.zoneCode = zoneCode;
-    }
+  public String getGroup() {
+    return group;
+  }
 
-    public String getCompanyCode() {
-        return companyCode;
-    }
+  public void setGroup(String group) {
+    this.group = group;
+  }
 
-    public void setCompanyCode(String companyCode) {
-        this.companyCode = companyCode;
-    }
+  public String getZoneCode() {
+    return zoneCode;
+  }
 
-    public String getDeptCode() {
-        return deptCode;
-    }
+  public void setZoneCode(String zoneCode) {
+    this.zoneCode = zoneCode;
+  }
 
-    public void setDeptCode(String deptCode) {
-        this.deptCode = deptCode;
-    }
+  public String getCompanyCode() {
+    return companyCode;
+  }
 
-    public String getGroupCode() {
-        return groupCode;
-    }
+  public void setCompanyCode(String companyCode) {
+    this.companyCode = companyCode;
+  }
 
-    public void setGroupCode(String groupCode) {
-        this.groupCode = groupCode;
-    }
+  public String getDeptCode() {
+    return deptCode;
+  }
 
-    public List<String> getOrgCodes() {
-        return orgCodes;
-    }
+  public void setDeptCode(String deptCode) {
+    this.deptCode = deptCode;
+  }
 
-    public void setOrgCodes(List<String> orgCodes) {
-        this.orgCodes = orgCodes == null ? new ArrayList<>() : orgCodes;
-    }
+  public String getGroupCode() {
+    return groupCode;
+  }
 
-    public String getOrgPath() {
-        return orgPath;
-    }
+  public void setGroupCode(String groupCode) {
+    this.groupCode = groupCode;
+  }
 
-    public void setOrgPath(String orgPath) {
-        this.orgPath = orgPath;
-    }
+  public List<String> getOrgCodes() {
+    return orgCodes;
+  }
 
-    public String getStatus() {
-        return status;
-    }
+  public void setOrgCodes(List<String> orgCodes) {
+    this.orgCodes = orgCodes == null ? new ArrayList<>() : orgCodes;
+  }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+  public String getOrgPath() {
+    return orgPath;
+  }
 
-    public String getBlockchainId() {
-        return blockchainId;
-    }
+  public void setOrgPath(String orgPath) {
+    this.orgPath = orgPath;
+  }
 
-    public void setBlockchainId(String blockchainId) {
-        this.blockchainId = blockchainId;
-    }
+  public String getStatus() {
+    return status;
+  }
 
-    public String getBlockchainAddress() {
-        return blockchainAddress;
-    }
+  public void setStatus(String status) {
+    this.status = status;
+  }
 
-    public void setBlockchainAddress(String blockchainAddress) {
-        this.blockchainAddress = blockchainAddress;
-    }
+  public String getBlockchainId() {
+    return blockchainId;
+  }
 
-    public LocalDateTime getLastLoginAt() {
-        return lastLoginAt;
-    }
+  public void setBlockchainId(String blockchainId) {
+    this.blockchainId = blockchainId;
+  }
 
-    public void setLastLoginAt(LocalDateTime lastLoginAt) {
-        this.lastLoginAt = lastLoginAt;
-    }
+  public String getBlockchainAddress() {
+    return blockchainAddress;
+  }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
+  public void setBlockchainAddress(String blockchainAddress) {
+    this.blockchainAddress = blockchainAddress;
+  }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
+  public LocalDateTime getLastLoginAt() {
+    return lastLoginAt;
+  }
 
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
+  public void setLastLoginAt(LocalDateTime lastLoginAt) {
+    this.lastLoginAt = lastLoginAt;
+  }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+  public LocalDateTime getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(LocalDateTime createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  public LocalDateTime getUpdatedAt() {
+    return updatedAt;
+  }
+
+  public void setUpdatedAt(LocalDateTime updatedAt) {
+    this.updatedAt = updatedAt;
+  }
 }

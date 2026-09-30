@@ -54,11 +54,17 @@ class DevLoginControllerTest {
     assertThrows(ResponseStatusException.class, () -> controller.login(Map.of("username", "unexpected"), new MockHttpServletRequest(), response));
     verifyNoInteractions(manager);
     var request = new MockHttpServletRequest();
+    request.getSession().setAttribute("IAM_TOKEN", "previous-iam-token");
+    request.getSession().setAttribute("IAM_ORG", "OTHER-PROJECT");
+    request.getSession().setAttribute("IAM_USER", "previous-iam-user");
     String previousSession = request.getSession().getId();
     try {
       controller.login(Map.of("username", "viewer"), request, response);
       assertNotEquals(previousSession, request.getSession().getId());
       assertNotNull(request.getSession().getAttribute("SPRING_SECURITY_CONTEXT"));
+      assertNull(request.getSession().getAttribute("IAM_TOKEN"));
+      assertNull(request.getSession().getAttribute("IAM_ORG"));
+      assertNull(request.getSession().getAttribute("IAM_USER"));
       assertEquals("viewer", SecurityContextHolder.getContext().getAuthentication().getName());
     } finally {
       SecurityContextHolder.clearContext();

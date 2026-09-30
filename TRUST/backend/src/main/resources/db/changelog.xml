@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.33.xsd">
   <changeSet id="001-trust" author="b-project"><sqlFile path="001.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
+  <changeSet id="002-wallet" author="b-project"><sqlFile path="002-wallet.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
+  <changeSet id="003-signing-audit" author="b-project"><sqlFile path="003-signing-audit.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
+  <changeSet id="004-identities" author="b-project"><sqlFile path="004-identities.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
 </databaseChangeLog>

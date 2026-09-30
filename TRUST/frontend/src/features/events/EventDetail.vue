@@ -87,7 +87,31 @@ const { selected, check, detailEvent, busy, run, verify } = useEventDetail(
           <dt>版本</dt>
           <dd>v{{ selected.version }}</dd>
         </div>
+        <div v-if="selected.wallet_id">
+          <dt>签名钱包版本</dt>
+          <dd>{{ selected.wallet_id }}</dd>
+        </div>
+        <div v-if="selected.signer_fingerprint">
+          <dt>签名证书指纹</dt>
+          <dd style="overflow-wrap: anywhere">
+            {{ selected.signer_fingerprint }}
+          </dd>
+        </div>
+        <div v-if="detailEvent.details?.operatorId">
+          <dt>来源业务操作人</dt>
+          <dd>
+            {{ detailEvent.details.operatorName }}（{{
+              detailEvent.details.operatorId
+            }}）
+          </dd>
+        </div>
       </dl>
+      <p
+        v-if="detailEvent.details?.evidenceStatus === 'NOT_PROVIDED'"
+        class="small muted"
+      >
+        来源系统未提供质检或交接附件。本条存证仅包含业务事件快照。
+      </p>
       <div class="state-path">
         <span :class="{ done: true }">事件已接收</span><i>→</i
         ><span :class="{ done: selected.file_state === 'STORED' }"

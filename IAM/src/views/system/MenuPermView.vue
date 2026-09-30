@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { MENU_TREE, collectAllPerms, type MenuNode, type PermOp } from '@/iam/menu-tree'
+import { collectAllPerms, type MenuNode, type PermOp } from '@/iam/menu-tree'
 import { useAuthStore } from '@/stores/auth'
 import { iamApi } from '@/api/iam'
 
 const auth = useAuthStore()
 
-/** 权限目录树：优先从后端加载，接口不可用时回退到内置静态菜单源 */
-const serverTree = ref<MenuNode[]>(MENU_TREE)
+/** 权限目录树：只从真实后端加载；失败时明确报错 */
+const serverTree = ref<MenuNode[]>([])
 
-const expandedKeys = ref<string[]>(MENU_TREE.map((n) => n.id))
+const expandedKeys = ref<string[]>([])
 const searchKeyword = ref('')
 const showOnlyMine = ref(false)
 const treeRef = ref()
@@ -22,11 +22,12 @@ onMounted(() => {
 async function syncTree(showMessage = true) {
   try {
     const tree = await iamApi.permissionTree()
-    if (Array.isArray(tree) && tree.length > 0) serverTree.value = tree
+    serverTree.value = tree
+    expandedKeys.value = tree.map(node => node.id)
     if (showMessage) ElMessage.success('菜单权限已从后端同步')
   } catch (e) {
-    serverTree.value = MENU_TREE
-    if (showMessage) ElMessage.warning(e instanceof Error ? e.message : '同步失败，已使用内置菜单源')
+    serverTree.value = []
+    ElMessage.error(e instanceof Error ? e.message : '权限目录加载失败')
   }
 }
 
@@ -35,11 +36,13 @@ const totalCount = computed(() => allPerms.value.length)
 const myCount = computed(() => auth.permCodes.size)
 
 const OP_LABELS: Record<PermOp, string> = {
+  read: '查看', submit: '提交', correct: '更正', upload: '上传', verify: '核验', retry: '重试', manage: '申请变更', review: '复核',
   view: '查看', add: '新增', edit: '编辑', delete: '删除',
   execute: '执行', export: '导出', import: '导入', approve: '审批',
 }
 
 const OP_COLORS: Record<PermOp, string> = {
+  read:'#606266',submit:'#409eff',correct:'#e6a23c',upload:'#409eff',verify:'#409eff',retry:'#e6a23c',manage:'#409eff',review:'#409eff',
   view: 'var(--app-text-secondary)', add: '#67c23a', edit: '#e6a23c', delete: '#f56c6c',
   execute: '#409eff', export: 'var(--app-text-secondary)', import: 'var(--app-text-secondary)', approve: '#409eff',
 }
@@ -140,7 +143,7 @@ const systemStats = computed(() => {
       <el-col :span="6">
         <el-card shadow="never" class="stat-card">
           <div class="stat-label">系统总数</div>
-          <div class="stat-value">{{ MENU_TREE.length }}</div>
+          <div class="stat-value">{{ serverTree.length }}</div>
         </el-card>
       </el-col>
       <el-col :span="6">

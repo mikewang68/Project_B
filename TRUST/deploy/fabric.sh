@@ -56,14 +56,18 @@ case "${1:-status}" in
   peer lifecycle chaincode commit -o 127.0.0.1:27050 --tls --cafile "$ORDERER_TLS/ca.crt" --channelID trust --name evidence --version 1.0 --sequence 1 --signature-policy "AND('Org1MSP.peer','Org2MSP.peer')" --peerAddresses 127.0.0.1:27051 --tlsRootCertFiles "$CRYPTO/peerOrganizations/org1.trust/peers/peer0.org1.trust/tls/ca.crt" --peerAddresses 127.0.0.1:29051 --tlsRootCertFiles "$CRYPTO/peerOrganizations/org2.trust/peers/peer0.org2.trust/tls/ca.crt"
   ;;
  start-contract)
+  peer_admin 1
+  sequence=$(peer lifecycle chaincode querycommitted --channelID trust --name evidence --output json | python3 -c 'import json,sys; print(json.load(sys.stdin)["sequence"])')
+  suffix=''; offset=0
+  if [[ "$sequence" == 2 ]]; then suffix='-v2'; offset=100; elif [[ "$sequence" != 1 ]]; then echo 'Unsupported contract sequence'; exit 1; fi
   for org in 1 2; do
    peer_env "$org"
-   export CHAINCODE_ID="$(cat "$ROOT/runtime/ccid$org")" CHAINCODE_ADDRESS="127.0.0.1:$((27059+(org-1)*2000))" CHAINCODE_TLS_DISABLED=false
+   export CHAINCODE_ID="$(cat "$ROOT/runtime/ccid$org$suffix")" CHAINCODE_ADDRESS="127.0.0.1:$((27059+offset+(org-1)*2000))" CHAINCODE_TLS_DISABLED=false
    export CHAINCODE_TLS_KEY="$CORE_PEER_TLS_KEY_FILE" CHAINCODE_TLS_CERT="$CORE_PEER_TLS_CERT_FILE"
-   start_process "chaincode$org" "$ROOT/artifacts/evidence-chaincode"
+   start_process "chaincode$org$suffix" "$ROOT/artifacts/evidence-chaincode$suffix"
   done
   ;;
- stop) for n in chaincode1 chaincode2 peer1 peer2 orderer; do stop_process "$n"; done ;;
+ stop) for n in chaincode1-v2 chaincode2-v2 chaincode1 chaincode2 peer1 peer2 orderer; do stop_process "$n"; done ;;
  status) for org in 1 2; do peer_admin "$org"; peer channel getinfo -c trust; done ;;
  *) echo 'Usage: fabric.sh init|start|join|deploy-contract|start-contract|stop|status'; exit 2 ;;
 esac

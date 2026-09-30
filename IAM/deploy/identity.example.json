@@ -1,0 +1,10 @@
+{
+  "url": "http://127.0.0.1:28185",
+  "tokenFile": "/srv/b-project-identity/IAM/runtime/secrets/trust-service.token",
+  "issuer": "b-project-iam",
+  "tenant": "b-project",
+  "orgMap": {
+    "c-dl-port": "B-PROJECT",
+    "c-my-factory": "B-PROJECT-ORG2"
+  }
+}

@@ -22,6 +22,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "trust.archiving.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class ArchiveWorker {
   final JdbcTemplate db;
   final EventService events;
@@ -29,6 +33,7 @@ public class ArchiveWorker {
   final EvidenceStorage ipfs;
   final LedgerGateway fabric;
   final TransactionTemplate tx;
+  final com.bproject.trust.wallet.WalletService wallets;
   final ExecutorService executor = Executors.newFixedThreadPool(4);
   final ConcurrentHashMap<String, String> active = new ConcurrentHashMap<>();
 
@@ -38,13 +43,15 @@ public class ArchiveWorker {
       EvidenceService evidence,
       EvidenceStorage ipfs,
       LedgerGateway fabric,
-      TransactionTemplate tx) {
+      TransactionTemplate tx,
+      com.bproject.trust.wallet.WalletService wallets) {
     this.db = db;
     this.events = events;
     this.evidence = evidence;
     this.ipfs = ipfs;
     this.fabric = fabric;
     this.tx = tx;
+    this.wallets = wallets;
   }
 
   @Scheduled(fixedDelay = 1000)
@@ -167,14 +174,20 @@ public class ArchiveWorker {
     if (row.get("supersedes_id") != null
         && fabric.find(org, (String) row.get("supersedes_id")) == null)
       throw new IllegalStateException("等待原版本完成上链");
-    var expected = AttestationRecord.record(row);
     // Reconcile every attempt, including commit timeouts and restarts, before submitting again.
     Map<String, Object> result = fabric.find(org, id);
+    if (result == null) {
+      wallets.prepare(id);
+      row = events.get(id, org);
+    }
+    var expected = AttestationRecord.record(row);
     if (result == null)
       result =
           fabric.submit(
               expected,
               tid -> {
+                tx.executeWithoutResult(status -> {
+                wallets.prepared(id, tid);
                 int n =
                     db.update(
                         "UPDATE events SET tx_id=?,chain_state='CONFIRMING' WHERE id=? AND"
@@ -184,6 +197,7 @@ public class ArchiveWorker {
                         id,
                         token);
                 if (n != 1) throw new IllegalStateException("任务租约已变更");
+                });
               });
     AttestationRecord.assertMatches(expected, result);
     final var confirmed = result;
@@ -196,14 +210,17 @@ public class ArchiveWorker {
                       + " WHERE event_id=? AND lease_token=?",
                   id,
                   token);
-          if (n == 1)
+          if (n == 1) {
+            wallets.committed(id, confirmed);
             db.update(
                 "UPDATE events SET"
-                    + " chain_state='COMMITTED',tx_id=?,block_number=COALESCE(?,block_number),last_error=NULL"
+                    + " chain_state='COMMITTED',tx_id=?,block_number=COALESCE(?,block_number),ledger_identity=?,last_error=NULL"
                     + " WHERE id=?",
                 confirmed.get("txId"),
                 confirmed.get("blockNumber"),
+                confirmed.get("ledgerIdentity"),
                 id);
+          }
         });
   }
 
@@ -233,12 +250,14 @@ public class ArchiveWorker {
                     reason,
                     id,
                     token);
-            if (n == 1)
+            if (n == 1) {
+              wallets.uncertain(id, reason);
               db.update(
                   "UPDATE events SET chain_state=CASE WHEN chain_state='COMMITTED' THEN chain_state"
                       + " ELSE 'FAILED' END,last_error=? WHERE id=?",
                   reason,
                   id);
+            }
           });
     } catch (Exception ignored) {
       /* An expired lease will make this task eligible again. */

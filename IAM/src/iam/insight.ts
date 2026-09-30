@@ -15,6 +15,8 @@ export interface EffectivePermission {
 }
 
 export interface EffectivePermissionView {
+  enabled: boolean
+  superAdmin: boolean
   userId: string
   username: string
   displayName: string

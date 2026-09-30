@@ -14,13 +14,24 @@ artifacts/
 *.env
 !*.env.example
 
-# Public repository retains summaries only; raw acceptance artifacts remain local.
-docs/test-results/**/*.json
-docs/test-results/**/*.png
-docs/test-results/**/*.zip
 *.p12
 *.pfx
 *.dump
 *.env.*
 !*.env.example
 !**/.env.example
+
+# Reports, operational evidence and site-specific scripts stay local.
+docs/test-results/
+docs/reports/
+docs/evidence/
+docs/handoffs/
+docs/conversation-prompts/
+docs/implementation-status.md
+docs/requirements-coverage.md
+docs/application-directory-migration.md
+docs/gateway-port-plan.md
+deploy/identity-forwarding.py
+deploy/install-identity-forwarding-admin.sh
+deploy/identity-database.py
+deploy/isolated-database.py
