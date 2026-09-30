@@ -3,6 +3,9 @@ package com.bdemo.sys.log;
 import com.bdemo.sys.common.BizException;
 import com.bdemo.sys.common.PageResult;
 import com.bdemo.sys.log.domain.SysLog;
+import com.bdemo.sys.log.dto.LogStatistics;
+import com.bdemo.sys.log.dto.NameCount;
+import com.bdemo.sys.log.dto.StatRow;
 import com.bdemo.sys.log.mapper.LogMapper;
 import com.bdemo.sys.security.LoginUser;
 import org.springframework.stereotype.Service;
@@ -10,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -73,6 +77,72 @@ public class LogService {
             sb.append(String.join(",", csv(cells))).append("\r\n");
         }
         return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    // ---- 统计概览 ----
+    private static final int DEFAULT_DAYS = 7;
+    private static final int MAX_DAYS = 30;
+
+    public LogStatistics statistics(String from, String to, String user, String module, String result) {
+        LocalDate today = LocalDate.now();
+        LocalDate fromDate = (from == null || from.isBlank()) ? today.minusDays(DEFAULT_DAYS - 1L) : parseDate(from);
+        LocalDate toDate = (to == null || to.isBlank()) ? today : parseDate(to);
+        if (toDate.isBefore(fromDate)) {
+            throw BizException.badRequest("结束日期不能早于开始日期");
+        }
+        if (ChronoUnit.DAYS.between(fromDate, toDate) > MAX_DAYS) {
+            throw BizException.badRequest("统计时间范围不能超过 30 天");
+        }
+        LocalDateTime begin = fromDate.atStartOfDay();
+        LocalDateTime end = toDate.atTime(23, 59, 59);
+
+        List<StatRow> byResult = mapper.groupByResult(begin, end, user, module, result);
+        List<StatRow> byModule = mapper.groupByModule(begin, end, user, module, result);
+        List<StatRow> byUser = mapper.groupByUser(begin, end, user, module, result);
+
+        long total = 0;
+        long success = 0;
+        long fail = 0;
+        for (StatRow r : byResult) {
+            total += r.getTotal();
+            if ("fail".equals(r.getName())) {
+                fail += r.getTotal();
+            } else {
+                success += r.getTotal();
+            }
+        }
+
+        LogStatistics stats = new LogStatistics();
+        stats.setTotal(total);
+        stats.setSuccess(success);
+        stats.setFail(fail);
+        stats.setFailureRate(rate(fail, total));
+        stats.setByResult(toNameCounts(byResult));
+        stats.setByModule(toNameCounts(byModule));
+        stats.setByUser(toNameCounts(byUser));
+        return stats;
+    }
+
+    private List<NameCount> toNameCounts(List<StatRow> rows) {
+        return rows.stream()
+                .map(r -> new NameCount(r.getName(), r.getTotal(), r.getFail(), rate(r.getFail(), r.getTotal())))
+                .toList();
+    }
+
+    private LocalDate parseDate(String s) {
+        try {
+            return LocalDate.parse(s.trim());
+        } catch (DateTimeParseException e) {
+            throw BizException.badRequest("日期格式应为 yyyy-MM-dd");
+        }
+    }
+
+    /** 失败率（0~100，保留两位小数） */
+    private double rate(long fail, long total) {
+        if (total <= 0) {
+            return 0;
+        }
+        return Math.round(fail * 10000.0 / total) / 100.0;
     }
 
     private String nz(String s) {

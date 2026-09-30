@@ -4,6 +4,7 @@ import com.bdemo.sys.common.PageResult;
 import com.bdemo.sys.common.R;
 import com.bdemo.sys.common.WebUtils;
 import com.bdemo.sys.log.domain.SysLog;
+import com.bdemo.sys.log.dto.LogStatistics;
 import com.bdemo.sys.security.JwtAuthFilter;
 import com.bdemo.sys.security.RequirePerm;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,6 +42,17 @@ public class LogController {
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize) {
         return R.ok(logService.query(kind, module, result, keyword, begin, end, pageNum, pageSize));
+    }
+
+    @GetMapping("/statistics")
+    @RequirePerm("sys:log:list:view")
+    public R<LogStatistics> statistics(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String user,
+            @RequestParam(required = false) String module,
+            @RequestParam(required = false) String result) {
+        return R.ok(logService.statistics(from, to, user, module, result));
     }
 
     @GetMapping("/export")

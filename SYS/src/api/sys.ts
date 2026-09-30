@@ -5,6 +5,11 @@
  */
 import { createClient } from './request'
 import type { DictItem, DictType, SysConfigItem, SysLog } from '@/sys/types'
+import type {
+  DiagQuery,
+  LogDiagnosisReport,
+  LogStatistics,
+} from '@/sys/insight'
 
 export const TOKEN_KEY = 'b-sys-token'
 const client = createClient({ tokenKey: TOKEN_KEY })
@@ -90,6 +95,13 @@ export const sysApi = {
   /** 导出当前筛选日志 CSV（后端生成，带 UTF-8 BOM），返回原始 Response 供前端落盘 */
   exportLogs: (query: LogQuery = {}) =>
     client.request<Response>('/sys/logs/export', { query: { ...query }, raw: true }),
+
+  /** 日志统计概览 */
+  logStatistics: (params: DiagQuery = {}) =>
+    client.request<LogStatistics>('/sys/logs/statistics', { query: { ...params } }),
+  /** 日志智能诊断（规则引擎） */
+  logDiagnosis: (params: DiagQuery = {}) =>
+    client.request<LogDiagnosisReport>('/sys/logs/diagnosis', { query: { ...params } }),
 
   // ---------------- 系统配置 ----------------
   listConfigs: () => client.request<SysConfigItem[]>('/sys/configs'),
