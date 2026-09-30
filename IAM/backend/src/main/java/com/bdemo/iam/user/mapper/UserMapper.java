@@ -1,6 +1,7 @@
 package com.bdemo.iam.user.mapper;
 
 import com.bdemo.iam.user.domain.User;
+import com.bdemo.iam.user.dto.UserRoleRow;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -162,4 +163,8 @@ public interface UserMapper {
 
     @Select("SELECT user_id FROM iam_user_role WHERE role_id = #{roleId}")
     List<String> selectUserIdsByRole(@Param("roleId") String roleId);
+
+    /** 全量用户-角色关系（权限健康规则批量加载）。 */
+    @Select("SELECT user_id AS userId, role_id AS roleId FROM iam_user_role")
+    List<UserRoleRow> selectAllUserRoleRows();
 }

@@ -1,6 +1,8 @@
 package com.bdemo.iam.role.mapper;
 
 import com.bdemo.iam.role.domain.Role;
+import com.bdemo.iam.role.dto.RoleBrief;
+import com.bdemo.iam.role.dto.RolePermissionRow;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -72,4 +74,31 @@ public interface RoleMapper {
 
     @Select("SELECT permission_id FROM iam_role_permission WHERE role_id = #{roleId} ORDER BY permission_id")
     List<String> selectPermissionCodes(@Param("roleId") String roleId);
+
+    // ---- 有效权限洞察 ----
+
+    /** 用户的有效（active、未删除）角色简要信息。 */
+    @Select("""
+            SELECT r.id AS id, r.role_code AS code, r.role_name AS name
+            FROM iam_user_role ur
+            JOIN iam_role r ON r.id = ur.role_id AND r.deleted = 0 AND r.status = 'active'
+            WHERE ur.user_id = #{userId}
+            ORDER BY r.created_at ASC, r.id ASC
+            """)
+    List<RoleBrief> selectActiveRolesByUser(@Param("userId") String userId);
+
+    /** 批量取角色-权限关系行（供权限来源映射，避免 N+1）。 */
+    @Select("""
+            <script>
+            SELECT role_id AS roleId, permission_id AS permissionCode
+            FROM iam_role_permission
+            WHERE role_id IN
+            <foreach collection='roleIds' item='rid' open='(' separator=',' close=')'>#{rid}</foreach>
+            </script>
+            """)
+    List<RolePermissionRow> selectRolePermissionRows(@Param("roleIds") List<String> roleIds);
+
+    /** 全量角色-权限关系（权限健康规则批量加载）。 */
+    @Select("SELECT role_id AS roleId, permission_id AS permissionCode FROM iam_role_permission")
+    List<RolePermissionRow> selectAllRolePermissionRows();
 }

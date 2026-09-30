@@ -5,6 +5,8 @@ import { useIamStore } from '@/stores/iam'
 import { useAuthStore } from '@/stores/auth'
 import type { User } from '@/iam/types'
 import { ORG_TREE, ORG_CASCADER_PROPS } from '@/iam/org-tree'
+import { iamApi } from '@/api/iam'
+import type { EffectivePermissionView, PermissionExplanation } from '@/iam/insight'
 
 const iam = useIamStore()
 const auth = useAuthStore()
@@ -234,6 +236,41 @@ const canAssignRole = computed(() =>
 const canResetPwd = computed(() =>
   ['iam:auth:password:edit', 'iam:auth:password:execute'].some((c) => auth.permCodes.has(c)),
 )
+
+// ---- 有效权限 / 来源解释 ----
+const effVisible = ref(false)
+const effLoading = ref(false)
+const effView = ref<EffectivePermissionView | null>(null)
+const queryCode = ref('')
+const explanation = ref<PermissionExplanation | null>(null)
+const explainLoading = ref(false)
+
+async function openEffective(user: User) {
+  effVisible.value = true
+  effLoading.value = true
+  effView.value = null
+  queryCode.value = ''
+  explanation.value = null
+  try {
+    effView.value = await iamApi.effectivePermissions(user.id)
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '有效权限加载失败')
+  } finally {
+    effLoading.value = false
+  }
+}
+
+async function handleExplain() {
+  if (!effView.value || !queryCode.value.trim()) return
+  explainLoading.value = true
+  try {
+    explanation.value = await iamApi.explainPermission(effView.value.userId, queryCode.value.trim())
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '解释失败')
+  } finally {
+    explainLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -311,8 +348,9 @@ const canResetPwd = computed(() =>
             {{ row.lastLoginAt ? new Date(row.lastLoginAt).toLocaleString('zh-CN') : '从未登录' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="340" fixed="right">
           <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="openEffective(row)">有效权限</el-button>
             <el-button v-if="canEdit" link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
             <el-button v-if="canAssignRole" link type="primary" size="small" @click="openAssignRole(row)">分配角色</el-button>
             <el-button v-if="canResetPwd" link type="warning" size="small" @click="openResetPwd(row)">重置密码</el-button>
@@ -436,6 +474,69 @@ const canResetPwd = computed(() =>
         <el-button type="primary" :loading="roleSaving" @click="handleAssignRole">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 有效权限与来源抽屉 -->
+    <el-drawer v-model="effVisible" title="有效权限与来源" size="600px" direction="rtl">
+      <div v-loading="effLoading" class="eff-box">
+        <template v-if="effView">
+          <div class="eff-user">
+            <span class="eff-username">{{ effView.displayName }}（{{ effView.username }}）</span>
+          </div>
+
+          <div class="eff-section-title">有效角色（{{ effView.roles.length }}）</div>
+          <div class="eff-roles">
+            <el-tag v-for="r in effView.roles" :key="r.id" size="small" class="eff-tag">
+              {{ r.name }}（{{ r.code }}）
+            </el-tag>
+            <span v-if="effView.roles.length === 0" class="eff-empty">无有效角色</span>
+          </div>
+
+          <el-divider />
+
+          <div class="eff-section-title">权限解释</div>
+          <div class="eff-query">
+            <el-input
+              v-model="queryCode"
+              placeholder="输入权限编码，如 sys:config:list:view"
+              clearable
+              @keyup.enter="handleExplain"
+            />
+            <el-button type="primary" :loading="explainLoading" @click="handleExplain">查询</el-button>
+          </div>
+          <div v-if="explanation" class="eff-explain">
+            <el-tag :type="explanation.owned ? 'success' : 'info'" size="small" effect="dark">
+              {{ explanation.owned ? '拥有' : '未拥有' }}
+            </el-tag>
+            <template v-if="explanation.owned">
+              <span class="eff-explain-text">来源角色：</span>
+              <el-tag v-for="r in explanation.sourceRoles" :key="r.id" size="small" class="eff-tag">
+                {{ r.code }}
+              </el-tag>
+            </template>
+            <span v-else class="eff-explain-text">{{ explanation.reason }}</span>
+          </div>
+
+          <el-divider />
+
+          <div class="eff-section-title">最终有效权限（{{ effView.permissions.length }}）</div>
+          <el-scrollbar max-height="340px">
+            <div v-for="p in effView.permissions" :key="p.permissionCode" class="eff-perm">
+              <div class="eff-perm-head">
+                <span class="eff-perm-code">{{ p.permissionCode }}</span>
+                <span class="eff-perm-name">{{ p.permissionName }}</span>
+              </div>
+              <div class="eff-perm-sources">
+                <span class="eff-from-label">来源：</span>
+                <el-tag v-for="r in p.sourceRoles" :key="r.id" size="small" type="info" class="eff-tag">
+                  {{ r.code }}
+                </el-tag>
+              </div>
+            </div>
+            <div v-if="effView.permissions.length === 0" class="eff-empty">该用户无有效权限</div>
+          </el-scrollbar>
+        </template>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -489,5 +590,96 @@ const canResetPwd = computed(() =>
 .org-sub {
   font-size: 11px;
   color: var(--iam-text-muted);
+}
+
+/* ============ 有效权限抽屉 ============ */
+.eff-box {
+  padding: 0 20px 20px;
+}
+
+.eff-user {
+  margin-bottom: 14px;
+}
+
+.eff-username {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--iam-text-strong);
+}
+
+.eff-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--iam-text-strong);
+  margin-bottom: 10px;
+}
+
+.eff-tag {
+  margin: 0 8px 8px 0;
+}
+
+.eff-empty {
+  font-size: 13px;
+  color: var(--iam-text-muted);
+}
+
+.eff-query {
+  display: flex;
+  gap: 10px;
+}
+
+.eff-explain {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--el-fill-color-light);
+  border-radius: 8px;
+}
+
+.eff-explain-text {
+  font-size: 13px;
+  color: var(--iam-text-base);
+}
+
+.eff-perm {
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.eff-perm-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.eff-perm-code {
+  font-family: monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--iam-primary);
+}
+
+.eff-perm-name {
+  font-size: 12px;
+  color: var(--iam-text-muted);
+}
+
+.eff-perm-sources {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.eff-from-label {
+  font-size: 12px;
+  color: var(--iam-text-muted);
+  margin-right: 6px;
 }
 </style>

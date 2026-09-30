@@ -32,6 +32,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/system/MenuPermView.vue'),
         meta: { title: '菜单与权限', perm: 'iam:menu:tree:view' },
       },
+      {
+        path: 'system/health',
+        name: 'system-health',
+        component: () => import('@/views/system/PermissionHealthView.vue'),
+        meta: { title: '权限健康', perm: 'iam:role:list:view' },
+      },
     ],
   },
   {

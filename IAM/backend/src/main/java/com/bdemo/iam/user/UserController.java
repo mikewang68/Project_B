@@ -1,6 +1,9 @@
 package com.bdemo.iam.user;
 
 import com.bdemo.iam.common.R;
+import com.bdemo.iam.insight.EffectivePermissionService;
+import com.bdemo.iam.insight.EffectivePermissionView;
+import com.bdemo.iam.insight.PermissionExplanation;
 import com.bdemo.iam.log.OperationLogger;
 import com.bdemo.iam.security.JwtAuthFilter;
 import com.bdemo.iam.security.LoginUser;
@@ -29,10 +32,13 @@ public class UserController {
 
     private final UserService userService;
     private final OperationLogger operationLogger;
+    private final EffectivePermissionService effectivePermissionService;
 
-    public UserController(UserService userService, OperationLogger operationLogger) {
+    public UserController(UserService userService, OperationLogger operationLogger,
+                          EffectivePermissionService effectivePermissionService) {
         this.userService = userService;
         this.operationLogger = operationLogger;
+        this.effectivePermissionService = effectivePermissionService;
     }
 
     @GetMapping
@@ -47,6 +53,19 @@ public class UserController {
     @RequirePerm("iam:user:list:view")
     public R<User> detail(@PathVariable String id) {
         return R.ok(userService.get(id));
+    }
+
+    @GetMapping("/{id}/effective-permissions")
+    @RequirePerm("iam:user:list:view")
+    public R<EffectivePermissionView> effectivePermissions(@PathVariable String id) {
+        return R.ok(effectivePermissionService.getView(id));
+    }
+
+    @GetMapping("/{id}/permission-explanation")
+    @RequirePerm("iam:user:list:view")
+    public R<PermissionExplanation> explainPermission(@PathVariable String id,
+                                                      @RequestParam String code) {
+        return R.ok(effectivePermissionService.explain(id, code));
     }
 
     @PostMapping

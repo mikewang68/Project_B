@@ -5,6 +5,11 @@ import { createClient } from './request'
 import type { Role, User } from '@/iam/types'
 import type { MenuNode } from '@/iam/menu-tree'
 import type { OrgNode } from '@/iam/org-tree'
+import type {
+  EffectivePermissionView,
+  PermissionExplanation,
+  PermissionHealthReport,
+} from '@/iam/insight'
 
 export const TOKEN_KEY = 'b-iam-token'
 const client = createClient({ tokenKey: TOKEN_KEY, prefix: 'iam' })
@@ -87,4 +92,11 @@ export const iamApi = {
   // ---------------- 权限目录 / 组织 ----------------
   permissionTree: () => client.request<MenuNode[]>('/permissions/tree'),
   orgTree: () => client.request<OrgNode[]>('/orgs/tree'),
+
+  // ---------------- 有效权限 / 权限健康 ----------------
+  effectivePermissions: (id: string) =>
+    client.request<EffectivePermissionView>(`/users/${id}/effective-permissions`),
+  explainPermission: (id: string, code: string) =>
+    client.request<PermissionExplanation>(`/users/${id}/permission-explanation`, { query: { code } }),
+  permissionHealth: () => client.request<PermissionHealthReport>('/health/permissions'),
 }
