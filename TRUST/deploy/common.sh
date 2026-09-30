@@ -9,9 +9,12 @@ load_deployment() {
     export "$key=$value"
   done <<< "$values"
 }
-mkdir -p "$ROOT"/{tools,artifacts,runtime/{logs,pids,secrets,backups}}
-chmod 700 "$ROOT/runtime" "$ROOT/runtime/secrets" "$ROOT/runtime/backups"
+initialize_runtime() {
+  mkdir -p "$ROOT"/{tools,artifacts,runtime/{logs,pids,secrets,backups}}
+  chmod 700 "$ROOT/runtime" "$ROOT/runtime/secrets" "$ROOT/runtime/backups"
+}
 start_process() {
+  initialize_runtime
   local name=$1; shift
   local pf="$ROOT/runtime/pids/$name.pid"
   if [[ -f "$pf" ]] && kill -0 "$(cat "$pf")" 2>/dev/null; then

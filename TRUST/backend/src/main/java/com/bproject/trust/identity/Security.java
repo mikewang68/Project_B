@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
@@ -45,7 +46,17 @@ public class Security {
   }
 
   @Bean
-  SecurityFilterChain chain(HttpSecurity http) throws Exception {
+  SecurityFilterChain chain(
+      HttpSecurity http,
+      @Qualifier("iamClient") com.bproject.trust.ports.PlatformIdentity iamClient,
+      com.bproject.trust.adapters.iam.SimulatedIamClient simulatedIam,
+      IntegrationSettings settings)
+      throws Exception {
+    com.bproject.trust.ports.PlatformIdentity iam =
+        settings.read().simulated() ? simulatedIam : iamClient;
+    http.addFilterBefore(
+        new PlatformIdentityFilter(iam, settings),
+        org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
     http.authorizeHttpRequests(
             a ->
                 a.requestMatchers(
@@ -54,18 +65,29 @@ public class Security {
                         "/assets/**",
                         "/favicon.ico",
                         "/api/v1/csrf",
+                        "/api/v1/identity-mode",
                         "/api/v1/login",
+                        "/api/v1/iam/login",
                         "/api/v1/dev-login",
                         "/actuator/health")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
-        .csrf(c -> c.csrfTokenRepository(new HttpSessionCsrfTokenRepository()))
+        .csrf(
+            c ->
+                c.csrfTokenRepository(new HttpSessionCsrfTokenRepository())
+                    .ignoringRequestMatchers("/api/v1/integrations/**"))
         .formLogin(
             f ->
                 f.loginProcessingUrl("/api/v1/login")
                     .successHandler(
                         (q, s, a) -> {
+                          var session = q.getSession(false);
+                          if (session != null) {
+                            session.removeAttribute("IAM_TOKEN");
+                            session.removeAttribute("IAM_ORG");
+                            session.removeAttribute("IAM_USER");
+                          }
                           s.setContentType("application/json;charset=UTF-8");
                           s.getWriter().write("{\"ok\":true}");
                         })

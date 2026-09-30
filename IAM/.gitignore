@@ -16,3 +16,21 @@ dist-ssr
 .DS_Store
 *.suo
 *.sw?
+
+.local/
+runtime/
+artifacts/
+**/target/
+*.pem
+*.key
+*.p12
+*.dump
+*.env
+!*.env.example
+
+# Reports, operational evidence and site-specific scripts stay local.
+docs/test-results/
+docs/reports/
+docs/evidence/
+docs/handoffs/
+docs/conversation-prompts/

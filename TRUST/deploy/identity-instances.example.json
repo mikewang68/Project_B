@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "instances": {
+    "identity-dev": {
+      "root": "/srv/b-project-identity/TRUST",
+      "databaseUrl": "jdbc:opengauss://127.0.0.1:25432/trust_iam_dev",
+      "appRole": "trust_iam_dev_app",
+      "migrationRole": "trust_iam_dev_migrate",
+      "channel": "trust-iam-dev",
+      "port": 28185,
+      "queryKeyRef": "identity-dev-query-v1"
+    },
+    "identity-test": {
+      "root": "/srv/b-project-identity-test/TRUST",
+      "databaseUrl": "jdbc:opengauss://127.0.0.1:25432/trust_iam_dev_test",
+      "appRole": "trust_iam_test_app",
+      "migrationRole": "trust_iam_test_migrate",
+      "channel": "trust-iam-dev-test",
+      "port": 28187,
+      "queryKeyRef": "identity-test-query-v1"
+    }
+  }
+}

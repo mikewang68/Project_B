@@ -1,7 +1,5 @@
 # 应用导航与单层 HTTP 网关
 
-2026-09-22 更新：三端口已正式启用，实际登录、资源、业务计数和公网隔离检查通过，见 [上线验收](test-results/three-port-release-20260922.md)。下文“本地准备”是当日切换前记录。
-
 网页链路拆分为：
 
 ```text
@@ -12,7 +10,7 @@
 
 网关按监听 IP 和端口接收访问，通过内网 HTTP 直连 TRUST 应用。应用节点不增加 Nginx。数据库、IPFS、Fabric 的独立分工和连接方式不变。公网只通过 Cloudflare Tunnel 发布导航，不直接开放网关防火墙入站范围。
 
-80 端口只显示配置了 `publicUrl` 的已发布业务应用，卡片直接打开对应公网 HTTPS 域名，不包含 TRUST、公共能力、运维工具、内网地址和端口说明。18081 端口显示内部完整清单，卡片沿用应用节点现有地址和协议。TRUST 在 18080 端口独立提供前端、API 和文件下载。三端口共享外观偏好，但不提供统一登录。详细分配见 [端口规划](gateway-port-plan.md)。
+80 端口只显示配置了 `publicUrl` 的已发布业务应用，卡片直接打开对应公网 HTTPS 域名，不包含 TRUST、公共能力、运维工具、内网地址和端口说明。18081 端口显示内部完整清单，卡片沿用应用节点现有地址和协议。TRUST 在 18080 端口独立提供前端、API 和文件下载。三端口共享外观偏好，但不提供统一登录。具体端口与服务清单以私有配置为准。
 
 ## 在已运行的网关上增加导航
 
@@ -20,7 +18,7 @@
 
 首次从旧单端口配置切换到三端口时，网络范围和防火墙规则会变化，不能使用只更新页面的 `update`。维护窗口内先回退本项目旧网关配置，再应用新配置：
 
-回退前必须检查 SELinux HTTP 端口类型，确保 18080 和 18081 已登记为 `http_port_t`；否则 Nginx 会被拒绝绑定新端口。具体检查与本次修正见上线验收记录。
+回退前必须检查 SELinux HTTP 端口类型，确保 18080 和 18081 已登记为 `http_port_t`；否则 Nginx 会被拒绝绑定新端口。将检查结果保存在本地。
 
 ```bash
 sudo python3 deploy/http-access-admin.py rollback --role gateway
@@ -33,11 +31,7 @@ sudo python3 deploy/http-access-admin.py apply --role gateway
 
 静态页面源文件位于 `deploy/portal/`，无需重新构建 Java 或 Vue 应用。本地可执行 `python tests/portal-preview.py --audience public --port 18280` 预览公网导航，执行 `python tests/portal-preview.py --audience internal --port 18281` 预览内部导航；内部预览需要可访问现有 TRUST 网关，也可通过 `--trust-origin http://127.0.0.1:18181` 指向本地 TRUST。结束后关闭预览进程。这些预览不是正式 Nginx 部署。`node tests/portal-browser.cjs` 检查导航分类、搜索、跳转与手机布局；已有 `tests/browser-smoke.cjs` 可用 `TRUST_BASE_URL=http://网关地址:18080` 回归真实 TRUST 页面。
 
-2026-09-22 三端口导航已完成本地生成、前端构建和浏览器检查，尚未修改 Cloudflare 或正式网关。首次切换须按上文在维护窗口执行旧配置回退和新配置应用；完成后才能把结果记为线上验收。2026-09-16 的 [导航准备验证](test-results/portal-preparation-20260916.md) 是旧单端口方案的历史记录，不代表当前三端口方案已上线。
-
-## 环境依据与修正
-
-2026-09-16 正式启用旧方案时，系统服务不能在用户目录写入日志和 PID，应用接入服务反复启动失败。旧脚本的单次服务状态检查误报成功；普通账号的回环预演未覆盖正式 systemd 权限环境。这些结果不能视为上线验收。
+## 网关与应用约束
 
 当前实现复用网关的 `nginx.service`，只添加 `/etc/nginx/conf.d/b-project-trust.conf`；沿用系统 PID、缓存目录，项目日志在 `/var/log/nginx/`。不安装额外 Nginx，不新增网关 systemd 单元，也不关闭 SELinux。网关需已允许 Nginx 对上游建立网络连接；工具检查 `httpd_can_network_connect`，不自行放宽该设置。
 
@@ -101,7 +95,7 @@ python3 deploy/http-access-admin.py status --role application
 python3 deploy/http-access-admin.py status --role gateway
 ```
 
-以上两条分别在各自角色节点运行。原单层入口已完成跨机来源拒绝和浏览器检查，仍未演练重启恢复；新增三端口导航仍需正式入口验证。普通账号在应用节点运行 `python3 tests/http-access-preview.py` 验证单层 Nginx 与真实应用的回环交互及已配置导航；不能替代系统服务权限、80、18080、18081 端口和防火墙验收。
+以上两条分别在各自角色节点运行。实际入口需要单独验证跨机来源限制、系统权限和重启恢复。普通账号在应用节点运行 `python3 tests/http-access-preview.py` 验证单层 Nginx 与真实应用的回环交互及已配置导航；不能替代系统服务权限、80、18080、18081 端口和防火墙验收。
 
 ## 回退
 

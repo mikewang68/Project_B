@@ -13,7 +13,13 @@ public class CurrentIdentity {
   }
 
   public String org(Authentication authentication) {
+    if (authentication.getPrincipal() instanceof PlatformPrincipal p) return p.orgId();
     return db.queryForObject(
         "SELECT org_id FROM trust_users WHERE username=?", String.class, authentication.getName());
+  }
+
+  public String actor(Authentication authentication) {
+    if (authentication.getPrincipal() instanceof PlatformPrincipal p) return "iam:" + p.userId();
+    return authentication.getName();
   }
 }

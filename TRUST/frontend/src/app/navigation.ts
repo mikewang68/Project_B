@@ -4,6 +4,8 @@ export const nav = [
   ["trace", "批次溯源", "03"],
   ["tasks", "补办任务", "04"],
   ["status", "运行状态", "05"],
+  ["wallets", "托管钱包", "06"],
+  ["identities", "用户身份", "07"],
 ];
 export const descriptions: Record<string, string> = {
   events: "关联业务事件、原始证据与链上记录。",
@@ -11,4 +13,6 @@ export const descriptions: Record<string, string> = {
   trace: "沿批次和交接关系，查看来源与去向。",
   tasks: "查看处理进度、失败原因和补办结果。",
   status: "查看独立组件状态与最近操作。",
+  identities: "查看业务用户的 Fabric 身份、证书及网络核验状态。",
+  wallets: "按组织与来源系统管理签名身份、证书版本及变更复核。",
 };

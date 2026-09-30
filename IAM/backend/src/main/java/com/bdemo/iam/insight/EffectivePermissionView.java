@@ -9,6 +9,12 @@ import java.util.List;
  */
 public class EffectivePermissionView {
 
+    private boolean enabled;
+    private boolean superAdmin;
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public boolean isSuperAdmin() { return superAdmin; }
+    public void setSuperAdmin(boolean superAdmin) { this.superAdmin = superAdmin; }
     private String userId;
     private String username;
     private String displayName;

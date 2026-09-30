@@ -1,0 +1,19 @@
+-- REVIEW ONLY: use an explicitly approved independent openGauss instance.
+-- DBA supplies unique passwords out of band; do not execute legacy IAM/SYS bootstrap.
+-- Repeat with exact manifest-approved names for dev/test; database DDL is not transactional.
+CREATE USER iam_identity_dev_migrate PASSWORD '<PRIVATE>' NOCREATEDB NOCREATEROLE;
+CREATE USER iam_identity_dev_app PASSWORD '<PRIVATE>' NOCREATEDB NOCREATEROLE;
+CREATE DATABASE iam_identity_dev OWNER iam_identity_dev_migrate;
+REVOKE ALL ON DATABASE iam_identity_dev FROM PUBLIC;
+GRANT CONNECT ON DATABASE iam_identity_dev TO iam_identity_dev_app;
+-- Connect only to iam_identity_dev: revoke CREATE on public from PUBLIC, run IAM migration.
+CREATE USER trust_iam_dev_migrate PASSWORD '<PRIVATE>' NOCREATEDB NOCREATEROLE;
+CREATE USER trust_iam_dev_app PASSWORD '<PRIVATE>' NOCREATEDB NOCREATEROLE;
+CREATE DATABASE trust_iam_dev OWNER trust_iam_dev_migrate;
+REVOKE ALL ON DATABASE trust_iam_dev FROM PUBLIC;
+GRANT CONNECT ON DATABASE trust_iam_dev TO trust_iam_dev_app;
+-- Connect only to trust_iam_dev as migration owner:
+-- CREATE SCHEMA trust_data AUTHORIZATION trust_iam_dev_migrate;
+-- REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+-- GRANT USAGE ON SCHEMA trust_data TO trust_iam_dev_app;
+-- Run IsolatedMigration. No SYS grants, no existing database mutations.

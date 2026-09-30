@@ -53,6 +53,12 @@ public class DevLoginController {
         UsernamePasswordAuthenticationToken.unauthenticated(account.get("username"), account.get("password")));
     new ChangeSessionIdAuthenticationStrategy().onAuthentication(auth, request, response);
     new CsrfAuthenticationStrategy(new HttpSessionCsrfTokenRepository()).onAuthentication(auth, request, response);
+    var session = request.getSession(false);
+    if (session != null) {
+      session.removeAttribute("IAM_TOKEN");
+      session.removeAttribute("IAM_ORG");
+      session.removeAttribute("IAM_USER");
+    }
     var context = SecurityContextHolder.createEmptyContext();
     context.setAuthentication(auth);
     SecurityContextHolder.setContext(context);

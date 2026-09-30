@@ -20,7 +20,7 @@ public class PermissionController {
     }
 
     @GetMapping("/tree")
-    @RequirePerm("iam:menu:tree:view")
+    @RequirePerm({"iam:menu:tree:view", "iam:role:perm:edit", "iam:role:perm:execute"})
     public R<List<PermissionNode>> tree() {
         return R.ok(permissionService.tree());
     }

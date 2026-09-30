@@ -1,0 +1,77 @@
+[
+  {
+    "sourceSystem": "WMS",
+    "sourceEventId": "RECEIPT-100",
+    "eventType": "WAREHOUSE_IN",
+    "businessObjectId": "SIM-ORDER-001",
+    "batchId": "SIM-BATCH-001",
+    "occurredAt": "2026-09-24T01:00:00Z",
+    "quantity": 100,
+    "unit": "吨",
+    "bundleIds": [],
+    "relatedBatchIds": [],
+    "relatedEventRefs": [],
+    "evidenceIds": [],
+    "details": {
+      "simulation": "true",
+      "companyCode": "C01",
+      "warehouseCode": "WH01",
+      "ownerCode": "O01",
+      "operatorId": "simulated-operator-1",
+      "operatorName": "模拟作业员",
+      "evidenceStatus": "NOT_PROVIDED"
+    }
+  },
+  {
+    "sourceSystem": "WMS",
+    "sourceEventId": "DISPATCH-60",
+    "eventType": "DISPATCH",
+    "businessObjectId": "SIM-ORDER-001",
+    "batchId": "SIM-BATCH-001",
+    "occurredAt": "2026-09-24T02:00:00Z",
+    "quantity": 60,
+    "unit": "吨",
+    "bundleIds": [],
+    "relatedBatchIds": [],
+    "relatedEventRefs": [
+      "WMS:RECEIPT-100"
+    ],
+    "evidenceIds": [],
+    "details": {
+      "simulation": "true",
+      "companyCode": "C01",
+      "warehouseCode": "WH01",
+      "ownerCode": "O01",
+      "operatorId": "simulated-operator-1",
+      "operatorName": "模拟作业员",
+      "evidenceStatus": "NOT_PROVIDED",
+      "allocationId": "SIM-ALLOCATION-60"
+    }
+  },
+  {
+    "sourceSystem": "WMS",
+    "sourceEventId": "DISPATCH-40",
+    "eventType": "DISPATCH",
+    "businessObjectId": "SIM-ORDER-001",
+    "batchId": "SIM-BATCH-001",
+    "occurredAt": "2026-09-24T03:00:00Z",
+    "quantity": 40,
+    "unit": "吨",
+    "bundleIds": [],
+    "relatedBatchIds": [],
+    "relatedEventRefs": [
+      "WMS:RECEIPT-100"
+    ],
+    "evidenceIds": [],
+    "details": {
+      "simulation": "true",
+      "companyCode": "C01",
+      "warehouseCode": "WH01",
+      "ownerCode": "O01",
+      "operatorId": "simulated-operator-1",
+      "operatorName": "模拟作业员",
+      "evidenceStatus": "NOT_PROVIDED",
+      "allocationId": "SIM-ALLOCATION-40"
+    }
+  }
+]

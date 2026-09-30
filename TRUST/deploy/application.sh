@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Keep the historical entry point safe when this source is used in an isolated instance.
+if [[ -f "$(dirname "$0")/../runtime/secrets/isolated.env" ]]; then
+  exec bash "$(dirname "$0")/isolated-app.sh" "${@:-status}"
+fi
 source "$(dirname "$0")/common.sh"
 application_health() {
   curl --connect-timeout 1 --max-time 2 -fsS http://127.0.0.1:28182/actuator/health 2>/dev/null

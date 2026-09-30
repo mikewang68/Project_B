@@ -6,10 +6,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 
 @SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
+@org.springframework.scheduling.annotation.EnableScheduling
 @MapperScan("com.bdemo.iam.**.mapper")
 public class IamApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(IamApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(IamApplication.class, args);
+  }
 }

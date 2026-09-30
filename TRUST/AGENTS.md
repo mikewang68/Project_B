@@ -6,8 +6,8 @@
 
 - IPFS、数据库、Fabric、应用分别位于四台机器；IPFS 独立部署、独立启停。
 - 真实环境由 Git 排除的 `.local/deployment.json` 配置；服务器读取 `runtime/secrets/deployment.json`。模板是 `deploy/deployment.example.json`，禁止把真实配置提交到 Git。
-- 版本与操作步骤见 README 和部署脚本；历史测试摘要见 `docs/test-results/README.md`，不代表当前服务在线状态。
-- 功能与验收边界见 `docs/implementation-status.md` 和 `docs/requirements-coverage.md`。真实组件、故障注入和模拟接口页面测试分别记录。
+- 通用配置与操作步骤见 README、部署脚本及 `docs/identity-delivery.md`。实际环境、历史决策与验收证据以本地 `.local/` 私有记录为准；不得从源码文档推断服务在线状态。
+- 真实组件、故障注入和模拟接口测试分别记录在本地；不得把模拟测试表述为真实跨模块接入。
 - 仅管理本工程的进程、实例和开发数据。SSH 放行脚本仅由管理员执行，保留主机身份核验和限定转发范围。
 
 ## 开发与验证
@@ -15,6 +15,7 @@
 - 顶层按工程职责、内部按业务功能组织；外部协议位于 adapters，业务代码依赖 ports。详见 `docs/project-structure.md`。
 - 接入事件与处理任务同事务提交；同号冲突、追加更正、证据摘要和组织范围是核心正确性约束。
 - 构建命令与验证入口见 README。涉及事务/恢复时使用独立测试数据库；故障演练只在专门的开发实例执行。
-- 详细测试结果、截图、证据包写入 `.local/test-results`，公开目录只保留脱敏摘要。变更 API 后更新 OpenAPI 与语义说明。
+- 验收报告、工作汇报、部署回执、现场操作记录、截图、证据包及脱敏摘要全部留在本地 `.local/`，不提交 Git，也不复制到 PR 正文或评论。公开文档只保留通用设计、安装、配置和接口说明。变更 API 后更新 OpenAPI 与语义说明。
+- 提交前执行 `scripts/check-identity-publication.py --base <最新远端main的SHA> --head HEAD`，检查最终树及全部待推送提交；扫描通过不能替代人工审查。禁止通过强制添加、压缩或编码方式绕过私有资料规则。
 - 提交前检查配置、凭据、运行数据及内部环境信息。同步包必须仅包含 TRUST 模块源码，不包含父仓库。
 - 不用桌面 GUI；需要界面检查时使用独立配置的无界面浏览器。

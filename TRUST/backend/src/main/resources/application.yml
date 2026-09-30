@@ -18,6 +18,7 @@ spring:
       maximum-pool-size: 8
       connection-timeout: 5000
   liquibase:
+    enabled: false
     change-log: classpath:db/changelog.xml
     default-schema: trust_data
   servlet:
@@ -33,10 +34,16 @@ management:
       exposure:
         include: health
 trust:
+  instance: ${TRUST_INSTANCE:}
+  instance-allowlist: ${TRUST_INSTANCE_ALLOWLIST:}
+  dev-quick-login:
+    enabled: ${TRUST_DEV_QUICK_LOGIN_ENABLED:false}
   root: ${TRUST_ROOT}
   ipfs-url: ${TRUST_IPFS_URL:http://127.0.0.1:25001}
   fabric-endpoint: ${TRUST_FABRIC_ENDPOINT:127.0.0.1:27051}
   fabric-server-name: peer0.org1.trust
-  fabric-channel: trust
+  fabric-channel: ${TRUST_FABRIC_CHANNEL:trust}
+  fabric-query-key-ref: ${TRUST_FABRIC_QUERY_KEY_REF:}
+  isolation-enabled: ${TRUST_ISOLATION_ENABLED:true}
   fabric-contract: evidence
   storage-budget: 10737418240

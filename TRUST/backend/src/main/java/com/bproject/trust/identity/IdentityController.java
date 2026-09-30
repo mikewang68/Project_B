@@ -12,8 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class IdentityController {
   private final CurrentIdentity identity;
 
-  public IdentityController(CurrentIdentity identity) {
+  private final IntegrationSettings settings;
+
+  public IdentityController(CurrentIdentity identity, IntegrationSettings settings) {
     this.identity = identity;
+    this.settings = settings;
   }
 
   @GetMapping("/csrf")
@@ -21,14 +24,26 @@ public class IdentityController {
     return Map.of("token", token.getToken(), "headerName", token.getHeaderName());
   }
 
+  @GetMapping("/identity-mode")
+  public Map<String, Object> mode(jakarta.servlet.http.HttpServletResponse response) {
+    response.setHeader("Cache-Control", "no-store");
+    var configuration = settings.read();
+    return Map.of("simulated", configuration.simulated(), "iamRequired", configuration.iamRequired(),
+        "localLoginEnabled", settings.localLoginEnabled(configuration));
+  }
+
   @GetMapping("/me")
   public Map<String, Object> me(Authentication a) {
     return Map.of(
         "username",
-        a.getName(),
+        a.getPrincipal() instanceof PlatformPrincipal p ? p.username() : a.getName(),
         "orgId",
         identity.org(a),
         "roles",
-        a.getAuthorities().stream().map(Object::toString).toList());
+        a.getAuthorities().stream().map(Object::toString).toList(),
+        "identityProvider",
+        a.getPrincipal() instanceof PlatformPrincipal ? "IAM" : "LOCAL",
+        "simulated",
+        a.getPrincipal() instanceof PlatformPrincipal && settings.read().simulated());
   }
 }

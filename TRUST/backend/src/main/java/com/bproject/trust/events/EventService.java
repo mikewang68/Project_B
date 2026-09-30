@@ -37,6 +37,10 @@ public class EventService {
     try {
       return tx.execute(
           status -> {
+            // Serialize source ingestion so a parent and child arriving concurrently cannot
+            // both pass their missing-counterpart checks with inconsistent snapshots.
+            if (actor.startsWith("source:"))
+              db.execute("LOCK TABLE events IN SHARE ROW EXCLUSIVE MODE");
             var existing =
                 db.queryForList(
                     "SELECT * FROM events WHERE org_id=? AND source_system=? AND source_event_id=?",
@@ -44,6 +48,7 @@ public class EventService {
                     input.sourceSystem(),
                     input.sourceEventId());
             if (!existing.isEmpty()) return replay(existing.get(0), request);
+            if (actor.startsWith("source:")) relations.validateSourceRelations(input, org);
             String id = UUID.randomUUID().toString(), root = id;
             int version = 1;
             if (previous != null) {
@@ -101,6 +106,8 @@ public class EventService {
                 previous);
             for (String eid : input.evidenceIds())
               db.update("INSERT INTO event_evidence VALUES(?,?)", id, eid);
+            if (actor.startsWith("iam:") || actor.startsWith("source:"))
+              db.update("UPDATE events SET signing_required=TRUE WHERE id=?", id);
             link(id, "BATCH", input.batchId());
             for (String b : input.relatedBatchIds())
               if (!b.equals(input.batchId())) link(id, "BATCH", b);

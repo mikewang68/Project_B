@@ -1,1 +1,1686 @@
-{"openapi":"3.1.0","info":{"title":"OpenAPI definition","version":"v0"},"servers":[{"url":"http://localhost","description":"Generated server url"}],"paths":{"/api/v1/imports":{"post":{"tags":["event-import-controller"],"operationId":"importFile","requestBody":{"content":{"multipart/form-data":{"schema":{"type":"object","properties":{"file":{"type":"string","format":"binary"}},"required":["file"]}}}},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object","additionalProperties":{}}}}}}}},"/api/v1/evidence":{"post":{"tags":["evidence-controller"],"operationId":"upload","requestBody":{"content":{"multipart/form-data":{"schema":{"type":"object","properties":{"file":{"type":"string","format":"binary"}},"required":["file"]}}}},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object","additionalProperties":{}}}}}}}},"/api/v1/events":{"get":{"tags":["event-controller"],"operationId":"list","parameters":[{"name":"q","in":"query","required":false,"schema":{"type":"string","default":""}},{"name":"page","in":"query","required":false,"schema":{"type":"integer","format":"int32","default":0}},{"name":"size","in":"query","required":false,"schema":{"type":"integer","format":"int32","default":30}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object","additionalProperties":{}}}}}}},"post":{"tags":["event-controller"],"operationId":"submit","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EventInput"}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object"}}}}}}},"/api/v1/events/{id}/verify":{"post":{"tags":["verification-controller"],"operationId":"verify","parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object","additionalProperties":{}}}}}}}},"/api/v1/events/{id}/retry":{"post":{"tags":["task-controller"],"operationId":"retry","parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object","additionalProperties":{}}}}}}}},"/api/v1/events/{id}/export":{"post":{"tags":["verification-controller"],"operationId":"export","parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"string","format":"binary"}}}}}}},"/api/v1/events/{id}/corrections":{"post":{"tags":["event-controller"],"operationId":"correct","parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/EventInput"}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object"}}}}}}},"/api/v1/trace":{"get":{"tags":["trace-controller"],"operationId":"trace","parameters":[{"name":"kind","in":"query","required":true,"schema":{"type":"string"}},{"name":"value","in":"query","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object","additionalProperties":{}}}}}}}},"/api/v1/tasks":{"get":{"tags":["task-controller"],"operationId":"tasks","responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"array","items":{"type":"object","additionalProperties":{}}}}}}}}},"/api/v1/status":{"get":{"tags":["operations-controller"],"operationId":"status","responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object","additionalProperties":{}}}}}}}},"/api/v1/me":{"get":{"tags":["identity-controller"],"operationId":"me","responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object","additionalProperties":{}}}}}}}},"/api/v1/evidence/{id}/download":{"get":{"tags":["evidence-controller"],"operationId":"download","parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"string","format":"byte"}}}}}}},"/api/v1/events/{id}":{"get":{"tags":["event-controller"],"operationId":"detail","parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object","additionalProperties":{}}}}}}}},"/api/v1/csrf":{"get":{"tags":["identity-controller"],"operationId":"csrf","parameters":[{"name":"token","in":"query","required":true,"schema":{"$ref":"#/components/schemas/CsrfToken"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object","additionalProperties":{"type":"string"}}}}}}}},"/api/v1/audit":{"get":{"tags":["audit-controller"],"operationId":"audit","responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"array","items":{"type":"object","additionalProperties":{}}}}}}}}}},"components":{"schemas":{"EventInput":{"type":"object","properties":{"sourceSystem":{"type":"string","minLength":1,"pattern":"[A-Za-z0-9._-]{1,80}"},"sourceEventId":{"type":"string","minLength":1,"pattern":"[A-Za-z0-9._-]{1,120}"},"eventType":{"type":"string","minLength":1,"pattern":"[A-Z_]{1,40}"},"businessObjectId":{"type":"string","maxLength":120,"minLength":0},"batchId":{"type":"string","maxLength":120,"minLength":0},"occurredAt":{"type":"string","format":"date-time"},"bundleIds":{"type":"array","items":{"type":"string","maxLength":120,"minLength":0},"maxItems":80,"minItems":0},"handoverId":{"type":"string","maxLength":120,"minLength":0},"relatedBatchIds":{"type":"array","items":{"type":"string","maxLength":120,"minLength":0},"maxItems":80,"minItems":0},"relatedEventRefs":{"type":"array","items":{"type":"string","pattern":"[A-Za-z0-9._-]{1,80}:[A-Za-z0-9._-]{1,120}"},"maxItems":80,"minItems":0},"quantity":{"type":"number","minimum":0},"unit":{"type":"string","maxLength":20,"minLength":0},"location":{"type":"string","maxLength":200,"minLength":0},"supplier":{"type":"string","maxLength":200,"minLength":0},"receiver":{"type":"string","maxLength":200,"minLength":0},"evidenceIds":{"type":"array","items":{"type":"string","pattern":"[a-f0-9-]{36}"},"maxItems":20,"minItems":0},"details":{"type":"object","additionalProperties":{"type":"string"}}},"required":["batchId","businessObjectId","eventType","occurredAt","sourceEventId","sourceSystem"]},"CsrfToken":{"type":"object","properties":{"parameterName":{"type":"string"},"token":{"type":"string"},"headerName":{"type":"string"}}}}}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TRUST 接收、托管钱包与核验接口",
+    "version": "0.2.0",
+    "description": "TRUST 接收端契约。来源发送不代表真实 WMS 已接通；模拟 IAM 仅在明确隔离配置启用。POST 会话接口需 CSRF，来源接口使用受限 Bearer 凭据。"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "当前隔离实例或经批准的目标实例"
+    }
+  ],
+  "paths": {
+    "/api/v1/imports": {
+      "post": {
+        "tags": [
+          "event-import-controller"
+        ],
+        "operationId": "importFile",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evidence": {
+      "post": {
+        "tags": [
+          "evidence-controller"
+        ],
+        "operationId": "upload",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "tags": [
+          "event-controller"
+        ],
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "event-controller"
+        ],
+        "operationId": "submit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/{id}/verify": {
+      "post": {
+        "tags": [
+          "verification-controller"
+        ],
+        "operationId": "verify",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/{id}/retry": {
+      "post": {
+        "tags": [
+          "task-controller"
+        ],
+        "operationId": "retry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/{id}/export": {
+      "post": {
+        "tags": [
+          "verification-controller"
+        ],
+        "operationId": "export",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/{id}/corrections": {
+      "post": {
+        "tags": [
+          "event-controller"
+        ],
+        "operationId": "correct",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trace": {
+      "get": {
+        "tags": [
+          "trace-controller"
+        ],
+        "operationId": "trace",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "description": "EVENT 的 value 必须为 sourceSystem:sourceEventId，不是内部 UUID。BATCH/BUNDLE/HANDOVER 用于选择起点，后续只遍历显式 EVENT 边；同批次本身不是父子证据。missingReferences 为尚未接收的来源事件引用。"
+      }
+    },
+    "/api/v1/tasks": {
+      "get": {
+        "tags": [
+          "task-controller"
+        ],
+        "operationId": "tasks",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/status": {
+      "get": {
+        "tags": [
+          "operations-controller"
+        ],
+        "operationId": "status",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "identity-controller"
+        ],
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evidence/{id}/download": {
+      "get": {
+        "tags": [
+          "evidence-controller"
+        ],
+        "operationId": "download",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/{id}": {
+      "get": {
+        "tags": [
+          "event-controller"
+        ],
+        "operationId": "detail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/csrf": {
+      "get": {
+        "tags": [
+          "identity-controller"
+        ],
+        "operationId": "csrf",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "tags": [
+          "audit-controller"
+        ],
+        "operationId": "audit",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/iam/login": {
+      "post": {
+        "tags": [
+          "身份"
+        ],
+        "summary": "IAM 登录",
+        "description": "先 GET /csrf，携带 X-CSRF-TOKEN；成功后重新获取 CSRF。每次请求重新检查 IAM 身份、组织与权限。",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IamLogin"
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/identity-mode": {
+      "get": {
+        "tags": [
+          "身份"
+        ],
+        "summary": "查询身份模式",
+        "description": "返回 simulated、iamRequired 与 localLoginEnabled；无需登录，供页面展示身份来源和测试标识。隔离模拟 IAM 可显式启用本地开发登录，但本地账号无钱包权限；真实 IAM 不允许此兼容入口。",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/wallets": {
+      "get": {
+        "tags": [
+          "托管钱包"
+        ],
+        "summary": "列出本组织钱包、绑定、申请和签名审计",
+        "description": "需要 IAM 身份及 trust:wallet:read；开发管理员不具钱包权限。",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallets/requests": {
+      "post": {
+        "tags": [
+          "托管钱包"
+        ],
+        "summary": "申请登记、绑定或停用",
+        "description": "需要 trust:wallet:read 和 trust:wallet:manage。REGISTER 预置 keyRef/label/mspId；BIND 指定 walletId/sourceSystem/expectedRevision；DISABLE 指定 walletId。",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WalletProposal"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallets/requests/{id}/review": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "托管钱包"
+        ],
+        "summary": "另一稳定身份复核申请",
+        "description": "需要 trust:wallet:read 和 trust:wallet:review；拒绝自审、跨组织和过期绑定版本。",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WalletReview"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallets/requests/{id}/policy": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "revision",
+          "in": "query",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "托管钱包"
+        ],
+        "summary": "导出当前已批准绑定的链上授权策略",
+        "description": "平台导出不代表链上授权已完成；仅专用隔离通道由网络管理员登记。 导出eventTypes白名单；2.1合约对所有来源逐项校验，旧策略省略时仅允许首批收货/发运。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignerPolicy"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/wms/events": {
+      "post": {
+        "tags": [
+          "WMS 接收"
+        ],
+        "summary": "接收收货/实际发运快照",
+        "description": "服务凭据固化组织/来源/公司/仓库/货主。同号同文返回原记录，同号异文 409。无需会话 CSRF。返回 id 用于查询状态，202 不代表上链。",
+        "responses": {
+          "202": {
+            "description": "已受理；存证状态需单独查询"
+          },
+          "400": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WmsEventInput"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sourceBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/wms/events/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "WMS 接收"
+        ],
+        "summary": "查询该服务提交事件的存证状态",
+        "description": "id 为接收响应内部 UUID；返回 fileState/chainState/txId/lastError。其他服务记录返回 404。",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "输入、授权、冲突或依赖错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sourceBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EventInput": {
+        "type": "object",
+        "properties": {
+          "sourceSystem": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[A-Za-z0-9._-]{1,80}"
+          },
+          "sourceEventId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[A-Za-z0-9._-]{1,120}"
+          },
+          "eventType": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "[A-Z_]{1,40}"
+          },
+          "businessObjectId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "batchId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bundleIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 120,
+              "minLength": 0
+            },
+            "maxItems": 80,
+            "minItems": 0
+          },
+          "handoverId": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "relatedBatchIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 120,
+              "minLength": 0
+            },
+            "maxItems": 80,
+            "minItems": 0
+          },
+          "relatedEventRefs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "[A-Za-z0-9._-]{1,80}:[A-Za-z0-9._-]{1,120}"
+            },
+            "maxItems": 80,
+            "minItems": 0
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "supplier": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "receiver": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "[a-f0-9-]{36}"
+            },
+            "maxItems": 20,
+            "minItems": 0
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "batchId",
+          "businessObjectId",
+          "eventType",
+          "occurredAt",
+          "sourceEventId",
+          "sourceSystem"
+        ]
+      },
+      "CsrfToken": {
+        "type": "object",
+        "properties": {
+          "parameterName": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "headerName": {
+            "type": "string"
+          }
+        }
+      },
+      "IamLogin": {
+        "type": "object",
+        "required": [
+          "username",
+          "password",
+          "orgId"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "orgId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        }
+      },
+      "WalletChange": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "mspId": {
+            "type": "string"
+          },
+          "keyRef": {
+            "type": "string"
+          },
+          "walletId": {
+            "type": "string"
+          },
+          "sourceSystem": {
+            "type": "string"
+          },
+          "certificateFingerprint": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "WalletProposal": {
+        "type": "object",
+        "required": [
+          "action",
+          "change",
+          "reason"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "REGISTER",
+              "BIND",
+              "DISABLE"
+            ]
+          },
+          "change": {
+            "$ref": "#/components/schemas/WalletChange"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "WalletReview": {
+        "type": "object",
+        "required": [
+          "approve"
+        ],
+        "properties": {
+          "approve": {
+            "type": "boolean"
+          }
+        }
+      },
+      "WmsEventInput": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EventInput"
+          },
+          {
+            "type": "object",
+            "required": [
+              "quantity",
+              "unit",
+              "details"
+            ],
+            "properties": {
+              "eventType": {
+                "type": "string",
+                "enum": [
+                  "WAREHOUSE_IN",
+                  "DISPATCH"
+                ]
+              },
+              "quantity": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "object",
+                "required": [
+                  "companyCode",
+                  "warehouseCode",
+                  "ownerCode",
+                  "operatorId"
+                ],
+                "properties": {
+                  "companyCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "warehouseCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "ownerCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "operatorId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "allocationId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "description": "DISPATCH 还必须含 details.allocationId 和非空 relatedEventRefs。引用仅允许同来源其他收货事件，父子须同批次、单位和公司/仓库/货主，收货业务时间不能晚于发运。允许来源收货迟到，缺失引用明确展示；WAREHOUSE_IN 不接受 relatedEventRefs。"
+      },
+      "SignerPolicy": {
+        "type": "object",
+        "required": [
+          "orgId",
+          "sourceSystem",
+          "mspId",
+          "fingerprint",
+          "enabled",
+          "revision",
+          "changeId",
+          "eventTypes"
+        ],
+        "properties": {
+          "orgId": {
+            "type": "string"
+          },
+          "sourceSystem": {
+            "type": "string"
+          },
+          "mspId": {
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "changeId": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eventTypes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 80,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z_]{1,40}$"
+            },
+            "description": "每个managed来源均按此明确白名单授权。当前TRUST导出WAREHOUSE_IN与DISPATCH；SetSigner去重排序。历史策略省略/null时只兼容这两类，不代表任意类型。显式空数组拒绝。"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "JSESSIONID"
+      },
+      "sourceBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "来源服务专用凭据，非 IAM 用户令牌"
+      }
+    }
+  },
+  "security": [
+    {
+      "sessionCookie": []
+    }
+  ]
+}

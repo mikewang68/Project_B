@@ -7,12 +7,20 @@
  * 权限编码规则：<系统前缀>:<二级菜单>:<功能点>:<操作>
  * 操作类型：view / add / edit / delete / execute / export / import / approve
  *
- * 本文件是前端动态菜单渲染、按钮级 v-perm 指令、角色授权页面的唯一数据来源。
+ * 本文件保留应用导航与兼容类型；角色授权与权限目录页面读取真实后端目录。
  */
 
-export type PermOp = 'view' | 'add' | 'edit' | 'delete' | 'execute' | 'export' | 'import' | 'approve'
+export type PermOp = 'view' | 'add' | 'edit' | 'delete' | 'execute' | 'export' | 'import' | 'approve' | 'read' | 'submit' | 'correct' | 'upload' | 'verify' | 'retry' | 'manage' | 'review'
 
 export interface PermSet {
+  read?: string
+  submit?: string
+  correct?: string
+  upload?: string
+  verify?: string
+  retry?: string
+  manage?: string
+  review?: string
   view?: string
   add?: string
   edit?: string
@@ -518,6 +526,11 @@ export function filterMenuByPerms(tree: MenuNode[], perms: Set<string>): MenuNod
  * 避免出现"有新增按钮权限、却因缺少列表查看权限而进不去页面"的孤立授权。
  */
 const EXTRA_VIEW_DEPS: Record<string, string[]> = {
+  'iam:identity:retry:execute': ['iam:user:list:view'],
+  'iam:identity:rotate:execute': ['iam:user:list:view'],
+  'iam:identity:revoke:execute': ['iam:user:list:view'],
+  'trust:wallet:manage': ['trust:wallet:read'],
+  'trust:wallet:review': ['trust:wallet:read'],
   'iam:user:add:add': ['iam:user:list:view'],
   'iam:user:edit:edit': ['iam:user:list:view'],
   'iam:user:delete:delete': ['iam:user:list:view'],
@@ -539,8 +552,8 @@ const EXTRA_VIEW_DEPS: Record<string, string[]> = {
  * 规则1：同一功能点下，非 view 操作连带该功能点 view（六业务系统内聚功能点）。
  * 规则2：IAM 独立操作功能点按 EXTRA_VIEW_DEPS 联动对应列表 view。
  */
-export function ensureViewPerms(codes: string[]): string[] {
-  const allCodes = new Set(collectAllPerms().map((p) => p.code))
+export function ensureViewPerms(codes: string[], tree: MenuNode[] = MENU_TREE): string[] {
+  const allCodes = new Set(collectAllPerms(tree).map((p) => p.code))
   const result = new Set(codes)
   for (const code of result) {
     const parts = code.split(':')

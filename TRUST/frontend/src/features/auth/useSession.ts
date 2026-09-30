@@ -32,5 +32,11 @@ export function useSession() {
     await resetCsrf();
     me.value = await currentUser();
   }
-  return { me, canWrite, canAdmin, signIn, signOut, quickSignIn };
+  async function iamSignIn(username: string, password: string, orgId: string) {
+    await resetCsrf();
+    await post("/iam/login", { username, password, orgId });
+    await resetCsrf();
+    me.value = await currentUser();
+  }
+  return { me, canWrite, canAdmin, signIn, signOut, quickSignIn, iamSignIn };
 }
