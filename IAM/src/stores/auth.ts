@@ -91,7 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** 登出（尽力调用后端记录日志，无论成败都清空本地会话） */
+  /** 登出（调用后端撤销会话并记录日志，无论成败都清空本地会话） */
   async function logout() {
     try {
       await iamApi.logout()

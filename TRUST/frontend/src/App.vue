@@ -11,8 +11,11 @@ import EventEntryPage from "./features/events/EventEntryPage.vue";
 import TracePage from "./features/trace/TracePage.vue";
 import TasksPage from "./features/archiving/TasksPage.vue";
 import OperationsPage from "./features/operations/OperationsPage.vue";
+import IdentityPage from "./features/identities/IdentityPage.vue";
+import WalletPage from "./features/wallet/WalletPage.vue";
 const { run } = provideFeedback();
-const { me, canWrite, canAdmin, signIn, signOut, quickSignIn } = useSession();
+const { me, canWrite, canAdmin, signIn, signOut, quickSignIn, iamSignIn } =
+  useSession();
 const tab = ref("events"),
   selectedId = ref(""),
   correction = ref<ApiRecord | null>(null);
@@ -43,7 +46,12 @@ async function logout() {
 </script>
 
 <template>
-  <LoginPage v-if="!me" :sign-in="signIn" :quick-sign-in="quickSignIn" />
+  <LoginPage
+    v-if="!me"
+    :sign-in="signIn"
+    :quick-sign-in="quickSignIn"
+    :iam-sign-in="iamSignIn"
+  />
   <WorkspaceShell
     v-else
     :me="me"
@@ -60,8 +68,10 @@ async function logout() {
       @correct="correct"
     />
     <KeepAlive>
+      <IdentityPage v-if="!selectedId && tab === 'identities'" />
+      <WalletPage v-else-if="!selectedId && tab === 'wallets'" :me="me" />
       <EventLedgerPage
-        v-if="!selectedId && tab === 'events'"
+        v-else-if="!selectedId && tab === 'events'"
         :can-write="canWrite"
         @open="openEvent"
         @create="navigate('create')"

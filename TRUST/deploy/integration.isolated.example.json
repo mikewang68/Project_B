@@ -1,0 +1,17 @@
+{
+  "iamUrl": "",
+  "iamMode": "simulated",
+  "isolationEnabled": true,
+  "orgMap": { "ORG-A": "B-PROJECT", "ORG-B": "ORG-B" },
+  "services": [
+    {
+      "id": "wms-simulator",
+      "tokenSha256": "REPLACE_WITH_SHA256_OF_RANDOM_SERVICE_TOKEN",
+      "orgId": "B-PROJECT",
+      "sourceSystem": "WMS",
+      "companyCode": "C01",
+      "warehouseCode": "WH01",
+      "ownerCode": "O01"
+    }
+  ]
+}

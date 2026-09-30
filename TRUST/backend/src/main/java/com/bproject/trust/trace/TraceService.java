@@ -25,7 +25,8 @@ public class TraceService {
 
   public Map<String, Object> trace(String org, String kind, String value) {
     if (!Set.of("BATCH", "BUNDLE", "HANDOVER", "EVENT").contains(kind)
-        || value == null
+        || value == null || value.isBlank()
+        || ("EVENT".equals(kind) && !value.matches("[A-Za-z0-9._-]{1,80}:[A-Za-z0-9._-]{1,120}"))
         || value.length() > 210) throw new ApiError(400, "查询条件不正确");
     LinkedHashMap<String, Map<String, Object>> found = new LinkedHashMap<>();
     var queue = new ArrayDeque<String>();
@@ -46,7 +47,13 @@ public class TraceService {
         if (found.size() >= 500) break;
         found.put(id, row);
         queue.add("EVENT\n" + row.get("source_system") + ":" + row.get("source_event_id"));
-        for (var l : db.queryForList("SELECT kind,target FROM event_links WHERE event_id=?", id))
+        for (var version : db.queryForList(
+            "SELECT source_system,source_event_id FROM events WHERE root_id=? AND org_id=?",
+            row.get("root_id"), org))
+          queue.add("EVENT\n" + version.get("source_system") + ":" + version.get("source_event_id"));
+        // Batch, bundle and handover are search indexes, not evidence of parentage.
+        // After finding the starting records, follow only explicit event relationships.
+        for (var l : db.queryForList("SELECT kind,target FROM event_links WHERE event_id=? AND kind='EVENT'", id))
           queue.add(l.get("kind") + "\n" + l.get("target"));
       }
     }

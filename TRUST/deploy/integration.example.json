@@ -1,0 +1,15 @@
+{
+  "iamUrl": "http://127.0.0.1:8081/api/v1/iam",
+  "orgMap": { "REPLACE_WITH_IAM_ORG_CODE": "B-PROJECT" },
+  "services": [
+    {
+      "id": "wms-demo",
+      "tokenSha256": "REPLACE_WITH_SHA256_OF_RANDOM_SERVICE_TOKEN",
+      "orgId": "B-PROJECT",
+      "sourceSystem": "WMS",
+      "companyCode": "DEMO",
+      "warehouseCode": "WH-DEMO",
+      "ownerCode": "OWNER-DEMO"
+    }
+  ]
+}

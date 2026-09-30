@@ -1,0 +1,7 @@
+{
+  "iamUrl": "http://127.0.0.1:28184/api/v1/iam",
+  "iamMode": "real",
+  "isolationEnabled": true,
+  "orgMap": {"c-dl-port": "B-PROJECT", "c-my-factory": "B-PROJECT-ORG2"},
+  "services": []
+}

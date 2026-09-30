@@ -1,85 +1,93 @@
 package com.bdemo.iam.org.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 组织节点（ZONE/COMPANY/DEPT/GROUP 四级）。JSON 与前端 iam/org-tree.ts 的 OrgNode 对齐。
- */
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
+/** 组织节点（ZONE/COMPANY/DEPT/GROUP 四级）。JSON 与前端 iam/org-tree.ts 的 OrgNode 对齐。 */
 public class OrgNode {
 
-    @JsonIgnore
-    private String parentId;
-    private String id;
-    private String name;
-    /** zone / company / dept / group */
-    private String type;
-    private String code;
-    private String path;
-    private List<OrgNode> children;
+  @JsonIgnore private String status;
 
-    public String getParentId() {
-        return parentId;
-    }
+  public String getStatus() {
+    return status;
+  }
 
-    public void setParentId(String parentId) {
-        this.parentId = parentId;
-    }
+  public void setStatus(String status) {
+    this.status = status;
+  }
 
-    public String getId() {
-        return id;
-    }
+  private String parentId;
+  private String id;
+  private String name;
 
-    public void setId(String id) {
-        this.id = id;
-    }
+  /** zone / company / dept / group */
+  private String type;
 
-    public String getName() {
-        return name;
-    }
+  private String code;
+  private String path;
+  private List<OrgNode> children;
 
-    public void setName(String name) {
-        this.name = name;
-    }
+  public String getParentId() {
+    return parentId;
+  }
 
-    public String getType() {
-        return type;
-    }
+  public void setParentId(String parentId) {
+    this.parentId = parentId;
+  }
 
-    public void setType(String type) {
-        this.type = type;
-    }
+  public String getId() {
+    return id;
+  }
 
-    public String getCode() {
-        return code;
-    }
+  public void setId(String id) {
+    this.id = id;
+  }
 
-    public void setCode(String code) {
-        this.code = code;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public String getPath() {
-        return path;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public void setPath(String path) {
-        this.path = path;
-    }
+  public String getType() {
+    return type;
+  }
 
-    public List<OrgNode> getChildren() {
-        return children;
-    }
+  public void setType(String type) {
+    this.type = type;
+  }
 
-    public void setChildren(List<OrgNode> children) {
-        this.children = children;
-    }
+  public String getCode() {
+    return code;
+  }
 
-    public void addChild(OrgNode child) {
-        if (children == null) {
-            children = new ArrayList<>();
-        }
-        children.add(child);
+  public void setCode(String code) {
+    this.code = code;
+  }
+
+  public String getPath() {
+    return path;
+  }
+
+  public void setPath(String path) {
+    this.path = path;
+  }
+
+  public List<OrgNode> getChildren() {
+    return children;
+  }
+
+  public void setChildren(List<OrgNode> children) {
+    this.children = children;
+  }
+
+  public void addChild(OrgNode child) {
+    if (children == null) {
+      children = new ArrayList<>();
     }
+    children.add(child);
+  }
 }

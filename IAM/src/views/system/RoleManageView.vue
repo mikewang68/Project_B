@@ -3,9 +3,11 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useIamStore } from '@/stores/iam'
 import { useAuthStore } from '@/stores/auth'
-import { MENU_TREE, ensureViewPerms, type MenuNode, type PermOp } from '@/iam/menu-tree'
+import { ensureViewPerms, type MenuNode, type PermOp } from '@/iam/menu-tree'
+import { iamApi } from '@/api/iam'
 import type { Role } from '@/iam/types'
 
+const serverTree = ref<MenuNode[]>([])
 const iam = useIamStore()
 const auth = useAuthStore()
 
@@ -15,7 +17,7 @@ onMounted(() => {
 
 async function reload() {
   try {
-    await Promise.all([iam.fetchRoles(), iam.fetchUsers()])
+    await Promise.all([iam.fetchRoles(), iam.fetchUsers(), iamApi.permissionTree().then(tree => { serverTree.value = tree })])
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : '数据加载失败')
   }
@@ -123,7 +125,7 @@ const permTreeRef = ref()
 const permSaving = ref(false)
 
 /**
- * 将 MENU_TREE 转为 el-tree 权限树结构。
+ * 将真实后端目录转为 el-tree 权限树结构。
  * 叶子节点为具体权限编码（view/add/edit/delete/execute/export/import/approve）。
  */
 interface PermTreeNode {
@@ -134,6 +136,7 @@ interface PermTreeNode {
 }
 
 const OP_LABELS: Record<PermOp, string> = {
+  read: '查看', submit: '提交', correct: '更正', upload: '上传', verify: '核验', retry: '重试', manage: '申请变更', review: '复核',
   view: '查看',
   add: '新增',
   edit: '编辑',
@@ -145,7 +148,7 @@ const OP_LABELS: Record<PermOp, string> = {
 }
 
 function buildPermTree(): PermTreeNode[] {
-  const opOrder: PermOp[] = ['view', 'add', 'edit', 'delete', 'execute', 'approve', 'import', 'export']
+  const opOrder: PermOp[] = ['view', 'add', 'edit', 'delete', 'execute', 'approve', 'import', 'export', 'read', 'submit', 'correct', 'upload', 'verify', 'retry', 'manage', 'review']
   const walk = (node: MenuNode): PermTreeNode => {
     const children: PermTreeNode[] = []
     if (node.perms) {
@@ -168,12 +171,13 @@ function buildPermTree(): PermTreeNode[] {
       children: children.length > 0 ? children : undefined,
     }
   }
-  return MENU_TREE.map(walk)
+  return serverTree.value.map(walk)
 }
 
 const permTreeData = computed(() => buildPermTree())
 
 function openPermAssign(role: Role) {
+  if (!serverTree.value.length) { ElMessage.error('权限目录尚未加载，不能修改授权'); return }
   permForm.roleId = role.id
   permForm.roleName = role.name
   permForm.checkedPerms = [...role.permCodes]
@@ -187,7 +191,7 @@ async function handlePermSubmit() {
   const leafCodes = [...checked, ...halfChecked].filter((c) => c.includes(':'))
   if (permSaving.value) return
   // 自动补全查看权限：勾选操作权限时连带其 view，避免孤立授权
-  const allChecked = ensureViewPerms(leafCodes)
+  const allChecked = ensureViewPerms(leafCodes, serverTree.value)
   permSaving.value = true
   try {
     const result = await iam.assignRolePerms(permForm.roleId, allChecked)
@@ -210,7 +214,7 @@ const totalPermCount = computed(() => {
       if (n.children) walk(n.children)
     }
   }
-  walk(MENU_TREE)
+  walk(serverTree.value)
   return count
 })
 

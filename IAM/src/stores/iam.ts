@@ -14,6 +14,7 @@ import { useAuthStore } from './auth'
 
 interface OpResult {
   success: boolean
+  pending?: boolean
   message?: string
 }
 
@@ -36,7 +37,7 @@ export const useIamStore = defineStore('iam', () => {
     }
   }
 
-  async function addUser(data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<OpResult> {
+  async function addUser(data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>, requestKey: string): Promise<OpResult> {
     if (!data.roleIds || data.roleIds.length === 0) {
       return { success: false, message: '请至少为用户分配一个角色' }
     }
@@ -54,9 +55,9 @@ export const useIamStore = defineStore('iam', () => {
         orgCodes: data.orgCodes,
         status: data.status,
       }
-      const created = await iamApi.createUser(payload)
-      users.value.push(created)
-      return { success: true }
+      const created = await iamApi.createUser(payload, requestKey)
+      if (!users.value.some(u => u.id === created.id)) users.value.push(created)
+      return { success: true, pending: created.fabricIdentity?.state !== 'READY' }
     } catch (e) {
       return fail(e)
     }

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "instances": {
+    "identity-dev": {
+      "root": "/srv/b-project-identity/IAM",
+      "databaseUrl": "jdbc:postgresql://127.0.0.1:25432/iam_identity_dev?currentSchema=iam",
+      "appRole": "iam_identity_dev_app",
+      "migrationRole": "iam_identity_dev_migrate",
+      "port": 28184
+    },
+    "identity-test": {
+      "root": "/srv/b-project-identity-test/IAM",
+      "databaseUrl": "jdbc:postgresql://127.0.0.1:25432/iam_identity_dev_test?currentSchema=iam",
+      "appRole": "iam_identity_test_app",
+      "migrationRole": "iam_identity_test_migrate",
+      "port": 28186
+    }
+  }
+}

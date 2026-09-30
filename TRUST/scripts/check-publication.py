@@ -6,11 +6,15 @@ import re
 import subprocess
 import sys
 import urllib.parse
+import importlib.util
+
+spec = importlib.util.spec_from_file_location('identity_publication', pathlib.Path(__file__).with_name('check-identity-publication.py'))
+publication = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(publication)
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 RULES = {
     'personal-path': re.compile(r'[A-Z]:[\\/]Users[\\/](?!developer[\\/])[^\\/\s]+', re.I),
-    'private-key': re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----'),
     'token': re.compile(r'\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|AKIA[A-Z0-9]{16}|xox[baprs]-[A-Za-z0-9-]{20,})\b'),
 }
 def main():
@@ -59,12 +63,16 @@ def main():
         if not path.is_file():
             continue
         count += 1
+        if publication.local_only_path(name):
+            findings.append((name, 0, 'local-only-operational-material'))
         if any(part in {'.local', '.ssh', 'node_modules'} for part in pathlib.PurePosixPath(name).parts) or name.startswith('TRUST/runtime/') or path.suffix.lower() in {'.pem', '.key', '.p12', '.pfx'}:
             findings.append((name, 0, 'private-file-path'))
         if path.stat().st_size > 5_000_000:
             skipped += 1
             continue
         raw = path.read_bytes()
+        if publication.RULES['private-key-material'].search(raw):
+            findings.append((name, 0, 'private-key'))
         if b'\0' in raw:
             skipped += 1
             continue

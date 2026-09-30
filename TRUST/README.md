@@ -4,7 +4,7 @@ Project_B 的平台公共能力，版本 **0.1.0，开发联调版**。支持统
 
 业务事实来自来源系统或开发录入。原业务审批、现场控制和库存核算仍由业务系统负责。归档核验检查记录一致性与文件完整性，不证明实物或原始业务事实真实。
 
-## 功能与验证状态
+## 功能
 
 | 能力 | 本版内容 |
 |---|---|
@@ -15,26 +15,11 @@ Project_B 的平台公共能力，版本 **0.1.0，开发联调版**。支持统
 | 件料溯源 | 批次、捆号、交接单、来源事件查询，来源与分批发运相互追溯 |
 | 核验与导出 | 数据库/IPFS/Fabric 分项核验、证据 ZIP、离线文件摘要工具 |
 
-2026-09-13 的独立开发环境中，100 吨钢材的十条模拟业务事件已全部真实归档并上链；60/40 吨两次发运可反查来源，两个实际证据包通过在线与离线核验。13 项真实接口/恢复检查与 8 项实际页面检查通过。业务样例和附件均明确标注为模拟材料。
-
-2026-09-14 已从 Project_B/TRUST 发布新应用制品，原 19 条事件的摘要、CID 和交易关联保持一致。8 项真实页面回归及新增 10 项真实页面流程检查通过，覆盖附件上传、JSON/CSV 导入、更正、60/40 吨发运溯源、授权下载和在线核验后导出。详见 [本次发布与页面验收](docs/test-results/application-release-20260914.md)。
-
-2026-09-15 同组备份恢复、真实链确认超时、强制退出后双进程接管、真实证据缺失/替换及恢复等 7 项检查通过。原开发应用的 29 条事件保持一致；隔离恢复库新增 2 条模拟故障事件，真实交易和证据保留。详见 [恢复与故障验收](docs/test-results/recovery-acceptance-20260915.md)。
-
-详见 [验证摘要](docs/test-results/README.md)、[实施状态](docs/implementation-status.md) 和 [逐条需求覆盖](docs/requirements-coverage.md)。带待办任务的检查点恢复、全联盟灾难恢复及生产高可用仍待验证。
-
-## 工程与节点
+## 工程与组件
 
 `TRUST/` 是普通子目录，使用 Project_B 的 Git 历史；开发、打包与同步均从本模块发起。源代码按 `backend`、`frontend`、`contracts`、`deploy`、`scripts`、`tests`、`samples`、`docs` 组织，内部规则见 [目录与依赖约定](docs/project-structure.md)。
 
-| 节点角色 | 内容 | 本机监听 / 应用侧转发 |
-|---|---|---|
-| IPFS 独立节点 | Kubo 0.43.0，离线模式，固定保存 | 5001 / 25001；网关 8080 |
-| 数据库节点 | openGauss 6.0.5 独立开发实例 | 25432 / 25432 |
-| Fabric 节点 | Fabric 3.1.5；双组织、双 Peer、单 Raft Orderer | Peer 27051、29051，Orderer 27050；应用转发 27051 |
-| 应用节点 | Java 后端、任务处理、Vue 中文页面 | 28182；开发电脑通过 SSH 转发到 18180 |
-
-组件接口仅监听回环地址。IPFS 与 Fabric 分别搭建、管理和验收。首版单 IPFS 节点加备份，Fabric 组织为开发模拟组织；生产多副本、自动故障切换、正式组织治理及 X-RAFT 属于后续范围。
+应用通过官方客户端接入 openGauss、IPFS 和 Fabric。各组件使用独立配置；真实节点、端口映射和部署状态保存在私有配置及本地运维记录中。模板中的回环地址和端口用于说明配置约束，不代表当前服务器状态。
 
 ## 依赖
 
@@ -81,9 +66,7 @@ PowerShell 默认使用 PATH 中的 `python`，也可设置 `TRUST_PYTHON` 指�
 
 IPFS 启动会等待 RPC 就绪并核对仓库路径。既有仓库升级离线配置时，在 IPFS 节点执行 `bash deploy/ipfs.sh configure-offline`，重启 IPFS 后生效；工具保留旧配置。当前脚本尚未安装开机自启或进程守护。
 
-需要直接通过网关的内网或 VPN 地址访问页面时，可选用 [单层 HTTP 网关部署](docs/http-access.md)：网关系统 Nginx 直连应用节点的 Java 服务。应用节点不增加代理。2026-09-16 开发环境入口已启用并通过实际 HTTP、页面及来源限制检查；地址由私有配置指定。验证范围和剩余工作见 [实施状态](docs/implementation-status.md)。
-
-网关应用入口按三个端口隔离：80 为精简公网导航，18080 为 TRUST 独立入口，18081 为内部完整导航。公网清单只生成配置了 `publicUrl` 的已发布应用；内部清单保留业务系统、公共能力和运维工具，未完成系统以 `enabled=false` 预留端口但不显示卡片。入口清单位于私有配置 `httpAccess.portal.services`；静态源码位于 `deploy/portal/`。见 [端口规划](docs/gateway-port-plan.md) 与 [操作说明](docs/http-access.md)。
+需要通过网关访问时，参见 [单层 HTTP 网关部署](docs/http-access.md)。实际入口清单由私有配置决定，修改共享网关前须由维护方审核。
 
 ## 构建与日常开发
 
@@ -129,13 +112,13 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 - 前端目录 `pnpm test:e2e`：实际应用无界面页面检查；传入 `--preview` 需要另行提供明确的界面预览服务。
 - 前端目录 `pnpm test:e2e:write`：真实页面写入验收，默认使用私有账号文件中的录入员 `editor`；每次生成独立的 `UI-` 模拟批次，成功完成时新增 5 条事件与 2 份模拟附件。连接真实 IPFS/Fabric，只用于独立开发实例。结果输出到 `.local/test-results/UI-<本次标识>/`；失败时已提交记录会保留。可用 `TRUST_BASE_URL`、`TRUST_UI_ACCOUNT`、`TRUST_PYTHON` 指定应用入口、已有测试账号和离线核验所用 Python。
 - `tests/offline-export-test.py`：合成证据包的离线正常、替换、缺失和错误参考摘要分支。
-- `tests/recovery/run.py`：同组冷备份恢复、真实链确认超时、强制退出后双进程接管及真实证据异常检查。会临时停止本工程应用/IPFS，创建隔离恢复库并增加真实开发链交易；准备、执行和中断恢复方法见 [专项验收说明](docs/test-results/recovery-acceptance-20260915.md)。
+- `tests/recovery/run.py`：同组冷备份恢复、真实链确认超时、强制退出后双进程接管及真实证据异常检查。会临时停止本工程应用/IPFS，创建隔离恢复库并增加真实开发链交易；执行前由操作员核对隔离范围、备份和中断恢复方案，过程及结果保存在本地。
 
-详细结果、截图和证据包默认保存在 `.local/test-results`，不提交 Git。公开目录仅保留日期、测试方式、结论和限制的摘要；历史原件由项目维护者本机保存。不得把模拟接口截图当作真实业务存证结果。
+验收报告、工作汇报、详细结果、截图和证据包仅保存在本地 `.local/test-results`，不提交 Git，脱敏摘要也不例外。不得把模拟接口截图当作真实业务存证结果。
 
 单文件上限 20 MiB，导入上限 200 行 / 1 MiB，IPFS 开发预算 10 GiB；不自动删除固定保存的证据。任务并行度 4，采用持久任务、租约和退避策略。
 
-`scripts/backup.ps1` 编排应用暂存、IPFS 与数据库备份，`-DryRun` 只校验配置；单组件恢复工具位于 deploy。2026-09-15 的同组恢复通过专项协调器 `tests/recovery/run.py` 验证，前提是暂停写入且任务已完成，Fabric 保留原账本；不代表日常备份脚本的所有路径均完成验收。凭据、备份和原始运行数据不存入 Git，备份不等同于在线多副本。
+`scripts/backup.ps1` 编排应用暂存、IPFS 与数据库备份，`-DryRun` 只校验配置；单组件恢复工具位于 deploy。恢复前暂停写入并核对任务与账本检查点；凭据、备份和原始运行数据不存入 Git。备份不等同于在线多副本或全联盟灾难恢复能力。
 
 ## 参考
 
@@ -143,3 +126,7 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 - [Fabric 外部链码](https://hyperledger-fabric.readthedocs.io/en/latest/cc_service.html)
 - [IPFS 固定保存](https://docs.ipfs.tech/how-to/pin-files/)
 - [openGauss 极简安装](https://docs.opengauss.org/zh/docs/6.0.0/docs/InstallationGuide/%E6%9E%81%E7%AE%80%E7%89%88%E5%AE%89%E8%A3%85.html)
+
+## TRUST＋IAM 身份联调版本
+
+公用 Fabric 身份供给 API、IAM 自动供给及独立环境配置见 [身份集成说明](docs/identity-delivery.md)、[身份 OpenAPI](docs/identity-openapi.json)。托管签名和 WMS 接收端契约见 [托管身份与 WMS 接入](docs/managed-wallet-wms.md)。真实 WMS 业务推送、SYS 集成和正式入口切换需要相应维护方配合，不由本模块自动实施。

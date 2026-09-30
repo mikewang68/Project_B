@@ -2,7 +2,7 @@
  * IAM 后端 REST API 封装（context-path: /api/v1/iam）。
  */
 import { createClient } from './request'
-import type { Role, User } from '@/iam/types'
+import type { Role, User, FabricIdentityTask } from '@/iam/types'
 import type { MenuNode } from '@/iam/menu-tree'
 import type { OrgNode } from '@/iam/org-tree'
 import type {
@@ -64,8 +64,8 @@ export const iamApi = {
   // ---------------- 用户 ----------------
   listUsers: () => client.request<User[]>('/users').then((list) => list.map(normalizeUser)),
   getUser: (id: string) => client.request<User>(`/users/${id}`).then(normalizeUser),
-  createUser: (payload: UserUpsertPayload) =>
-    client.request<User>('/users', { method: 'POST', body: payload }).then(normalizeUser),
+  createUser: (payload: UserUpsertPayload, key: string) =>
+    client.request<User>('/users', { method: 'POST', body: payload, headers: { 'Idempotency-Key': key } }).then(normalizeUser),
   updateUser: (id: string, payload: Partial<UserUpsertPayload>) =>
     client.request<User>(`/users/${id}`, { method: 'PUT', body: payload }).then(normalizeUser),
   deleteUser: (id: string) => client.request<void>(`/users/${id}`, { method: 'DELETE' }),
@@ -75,6 +75,10 @@ export const iamApi = {
     client.request<void>(`/users/${id}/password`, { method: 'PUT', body: { password: newPassword } }),
   assignUserRoles: (id: string, roleIds: string[]) =>
     client.request<void>(`/users/${id}/roles`, { method: 'PUT', body: { roleIds } }),
+
+  identity: (id: string) => client.request<FabricIdentityTask>(`/users/${id}/identity`),
+  identityOperation: (id: string, action: 'retry' | 'rotate' | 'revoke', key: string) =>
+    client.request<FabricIdentityTask>(`/users/${id}/identity/${action}`, { method: 'POST', headers: { 'Idempotency-Key': key } }),
 
   // ---------------- 角色 ----------------
   listRoles: () => client.request<Role[]>('/roles'),

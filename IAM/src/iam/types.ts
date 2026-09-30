@@ -13,7 +13,17 @@ export type UserStatus = 'active' | 'disabled'
 export type RoleStatus = 'active' | 'inactive'
 
 /** 系统用户 */
+export interface FabricIdentityTask {
+  state: string
+  taskId?: string
+  identityId?: string
+  desiredState?: string
+  errorCode?: string
+  identity?: { certificates: Record<string, unknown>[]; errorCode?: string }
+}
+
 export interface User {
+  fabricIdentity?: FabricIdentityTask
   id: string
   /** 登录用户名（唯一） */
   username: string

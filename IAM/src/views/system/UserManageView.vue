@@ -4,10 +4,15 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { useIamStore } from '@/stores/iam'
 import { useAuthStore } from '@/stores/auth'
 import type { User } from '@/iam/types'
-import { ORG_TREE, ORG_CASCADER_PROPS } from '@/iam/org-tree'
-import { iamApi } from '@/api/iam'
+import { ORG_CASCADER_PROPS, type OrgNode } from '@/iam/org-tree'
 import type { EffectivePermissionView, PermissionExplanation } from '@/iam/insight'
 
+import { iamApi } from '@/api/iam'
+import FabricIdentityPanel from './FabricIdentityPanel.vue'
+import { identityLabel } from '@/iam/identity-display'
+const orgTree = ref<OrgNode[]>([])
+const identityUser = ref('')
+const creationKey = ref('')
 const iam = useIamStore()
 const auth = useAuthStore()
 
@@ -22,7 +27,7 @@ onMounted(() => {
 
 async function reload() {
   try {
-    await Promise.all([iam.fetchUsers(), iam.fetchRoles()])
+    await Promise.all([iam.fetchUsers(), iam.fetchRoles(), iamApi.orgTree().then(v => { orgTree.value = v })])
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : '数据加载失败')
   }
@@ -115,6 +120,7 @@ const rules = computed<FormRules>(() => ({
 const isEditingSelf = computed(() => form.id === auth.currentUser?.id)
 
 function openAdd() {
+  creationKey.value = crypto.randomUUID()
   dialogMode.value = 'add'
   Object.assign(form, {
     username: '', name: '', phone: '', email: '', password: '',
@@ -136,9 +142,10 @@ async function handleSubmit() {
     saving.value = true
     try {
       if (dialogMode.value === 'add') {
-        const result = await iam.addUser(form as Omit<User, 'id' | 'createdAt' | 'updatedAt'>)
+        const result = await iam.addUser(form as Omit<User, 'id' | 'createdAt' | 'updatedAt'>, creationKey.value)
         if (result.success) {
-          ElMessage.success('用户创建成功')
+          if (result.pending) ElMessage.info('用户记录已保存，身份仍在处理中；请在身份详情中查询任务')
+          else ElMessage.success('用户及 Fabric 身份创建成功')
           dialogVisible.value = false
         } else {
           ElMessage.error(result.message || '创建失败')
@@ -330,10 +337,9 @@ async function handleExplain() {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="区块链ID" width="180">
+        <el-table-column label="Fabric 身份" width="180">
           <template #default="{ row }">
-            <span v-if="row.blockchainId" class="bc-id">{{ row.blockchainId }}</span>
-            <span v-else style="color:var(--el-text-color-placeholder)">未绑定</span>
+            <el-button link type="primary" @click="identityUser = row.id">{{ identityLabel(row.fabricIdentity?.state || 'NOT_PROVISIONED') }}</el-button>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="80">
@@ -362,6 +368,10 @@ async function handleExplain() {
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-dialog :model-value="!!identityUser" title="Fabric 身份详情" width="min(900px, 96vw)" @close="identityUser = ''">
+      <FabricIdentityPanel v-if="identityUser" :user-id="identityUser" />
+    </el-dialog>
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog v-model="dialogVisible" :title="dialogMode === 'add' ? '新增用户' : '编辑用户'" width="640px" destroy-on-close>
@@ -405,7 +415,7 @@ async function handleExplain() {
             <el-form-item label="所属组织" prop="orgCodes">
               <el-cascader
                 v-model="form.orgCodes"
-                :options="ORG_TREE"
+                :options="orgTree"
                 :props="orgProps"
                 placeholder="请依次选择 区域 / 公司 / 部门 / 组（列表选择，不可手动输入）"
                 filterable
@@ -422,19 +432,7 @@ async function handleExplain() {
             </el-form-item>
           </el-col>
         </el-row>
-        <el-divider content-position="left">区块链身份（预留，后续上链溯源）</el-divider>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="区块链ID">
-              <el-input v-model="form.blockchainId" placeholder="如 did:bproject:user:001" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="钱包地址">
-              <el-input v-model="form.blockchainAddress" placeholder="0x..." />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-alert title="保存用户后自动供给 Fabric 身份，处理结果可在身份详情中查询。" type="info" :closable="false" />
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -476,9 +474,11 @@ async function handleExplain() {
     </el-dialog>
 
     <!-- 有效权限与来源抽屉 -->
-    <el-drawer v-model="effVisible" title="有效权限与来源" size="600px" direction="rtl">
+    <el-drawer v-model="effVisible" title="有效权限与来源" size="min(600px, 100vw)" direction="rtl">
       <div v-loading="effLoading" class="eff-box">
         <template v-if="effView">
+          <el-alert v-if="!effView.enabled" title="用户已停用，所有权限均不生效" type="warning" :closable="false" />
+          <el-alert v-else-if="effView.superAdmin" title="超级管理员具有全部接口权限；下方列出已登记权限" type="info" :closable="false" />
           <div class="eff-user">
             <span class="eff-username">{{ effView.displayName }}（{{ effView.username }}）</span>
           </div>

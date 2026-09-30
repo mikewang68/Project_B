@@ -1,0 +1,38 @@
+{
+  "operator": "REPLACE_OPERATOR",
+  "peerBinary": "/opt/fabric/bin/peer",
+  "peerSha256": "REPLACE_SHA256",
+  "decoderBinary": "/opt/fabric/bin/configtxlator",
+  "decoderSha256": "REPLACE_SHA256",
+  "contract": "evidence",
+  "controlKeyRef": "identity-control-v1",
+  "controlMsp": "Org1MSP",
+  "controlOrg": "B-PROJECT",
+  "controlUser": "REPLACE_CONTROL_USER",
+  "peers": [
+    {
+      "endpoint": "127.0.0.1:27051",
+      "serverName": "peer0.org1.trust",
+      "environment": {
+        "CORE_PEER_ADDRESS": "127.0.0.1:27051",
+        "CORE_PEER_LOCALMSPID": "Org1MSP",
+        "CORE_PEER_MSPCONFIGPATH": "/operator/private/org1/msp",
+        "CORE_PEER_TLS_ENABLED": "true",
+        "CORE_PEER_TLS_ROOTCERT_FILE": "/operator/private/org1/tls-ca.crt",
+        "CORE_PEER_TLS_SERVERHOSTOVERRIDE": "peer0.org1.trust"
+      }
+    },
+    {
+      "endpoint": "127.0.0.1:29051",
+      "serverName": "peer0.org2.trust",
+      "environment": {
+        "CORE_PEER_ADDRESS": "127.0.0.1:29051",
+        "CORE_PEER_LOCALMSPID": "Org2MSP",
+        "CORE_PEER_MSPCONFIGPATH": "/operator/private/org2/msp",
+        "CORE_PEER_TLS_ENABLED": "true",
+        "CORE_PEER_TLS_ROOTCERT_FILE": "/operator/private/org2/tls-ca.crt",
+        "CORE_PEER_TLS_SERVERHOSTOVERRIDE": "peer0.org2.trust"
+      }
+    }
+  ]
+}
