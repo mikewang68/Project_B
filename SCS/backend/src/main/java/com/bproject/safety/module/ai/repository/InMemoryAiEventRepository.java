@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Repository;
  * 修改 find 返回对象但不 save 不会落库。清空仅通过 {@link DemoClearableStore} 供 Demo / Test 使用。</p>
  */
 @Repository
+@Profile("!server")
 public class InMemoryAiEventRepository implements AiEventRepository, DemoClearableStore {
 
     private final ConcurrentHashMap<String, DemoAiEvent> store = new ConcurrentHashMap<>();

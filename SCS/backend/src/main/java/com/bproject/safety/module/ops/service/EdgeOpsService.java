@@ -614,6 +614,7 @@ public class EdgeOpsService {
     }
 
     /** 让某条离线事件下一次补传失败一次（任务书第三十五节故障补传演示）。 */
+    @Transactional
     public EdgePendingEvent armFailure(String eventId) {
         // Phase B：load detached copy → 标记 transient failNextReplay → 显式 save。
         EdgePendingEvent event = queueRepository.findByEventId(eventId)
@@ -625,6 +626,7 @@ public class EdgeOpsService {
     // ==================== 运维模拟场景 / 节点维护 ====================
 
     /** 运维页模拟场景：deviceFault 设备故障 / cacheAlert 缓存告警 / timeDrift 时钟漂移。 */
+    @Transactional
     public Map<String, Object> simulate(String scenario, String targetId) {
         return switch (scenario == null ? "" : scenario) {
             case "timeDrift" -> {
@@ -674,10 +676,10 @@ public class EdgeOpsService {
         return fault;
     }
 
-    @Transactional
     private DemoEdgeNode simulateCacheAlert(String nodeId) {
         DemoEdgeNode n = loadNode(nodeId);
-        n.diskUsage = Math.min(96, n.diskUsage + 12);
+        int currentDisk = n.diskUsage == null ? 40 : n.diskUsage;
+        n.diskUsage = Math.min(96, currentDisk + 12);
         n.cacheParts = List.of(
                 new DemoEdgeNode.CachePart("事件缓存", Math.min(99, n.diskUsage + 6)),
                 new DemoEdgeNode.CachePart("视频证据缓存", Math.min(99, n.diskUsage + 11)),

@@ -34,7 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class AnalyticsModuleIntegrationTest {
 
     private static final String FROM = "2026-09-01T00:00:00+08:00";
-    private static final String TO = "2026-09-30T23:59:59+08:00";
+    private static final String TO = "2026-12-31T23:59:59+08:00";
 
     @Autowired
     private MockMvc mvc;

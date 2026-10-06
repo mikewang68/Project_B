@@ -49,6 +49,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * AI 事件服务：识别事件 / 证据 / 置信度 / 人工复核 / 派单入口。
@@ -134,6 +135,7 @@ public class AiEventService {
     // ---------- 人工复核 ----------
 
     /** 确认违规：待复核/不确定 → 已确认违规，并创建关联 Alert（幂等防重复创建）。 */
+    @Transactional
     public DemoAiEvent confirm(String id, ReviewRequest body, String idemKey) {
         return mutate(id, idemKey, "reviewed",
                 List.of(AiReviewStatuses.PENDING, AiReviewStatuses.UNCERTAIN), event -> {
@@ -155,6 +157,7 @@ public class AiEventService {
     }
 
     /** 标记误报：永不创建 Alert。 */
+    @Transactional
     public DemoAiEvent falsePositive(String id, FalsePositiveRequest body, String idemKey) {
         return mutate(id, idemKey, "reviewed",
                 List.of(AiReviewStatuses.PENDING, AiReviewStatuses.UNCERTAIN), event -> {
@@ -171,6 +174,7 @@ public class AiEventService {
     }
 
     /** 暂不确定：进入人工复核队列，不生成 Alert。 */
+    @Transactional
     public DemoAiEvent uncertain(String id, UncertainRequest body, String idemKey) {
         return mutate(id, idemKey, "changed", List.of(AiReviewStatuses.PENDING), event -> {
             String reviewer = pick(body == null ? null : body.reviewer());
@@ -186,6 +190,7 @@ public class AiEventService {
      * AI 派单：无关联 Alert 时先创建 Alert 并复用 confirm→assign 主链；
      * 已有关联 Alert 时按其当前状态补齐确认后直接派单。不实现第二套派单系统。
      */
+    @Transactional
     public DemoAiEvent assign(String id, AiAssignRequest body, String idemKey) {
         return mutate(id, idemKey, "reviewed",
                 List.of(AiReviewStatuses.PENDING, AiReviewStatuses.UNCERTAIN, AiReviewStatuses.CONFIRMED), event -> {
@@ -236,6 +241,7 @@ public class AiEventService {
     }
 
     /** 标记处理中：同步推进关联 Alert 的 start（待处理 → 处理中）。 */
+    @Transactional
     public DemoAiEvent process(String id, ProcessRequest body, String idemKey) {
         return mutate(id, idemKey, "changed", List.of(AiReviewStatuses.ASSIGNED), event -> {
             String operator = pick(body == null ? null : body.operator());
@@ -253,6 +259,7 @@ public class AiEventService {
     }
 
     /** 关闭 AI 事件（不联动关闭 Alert，处置闭环仍以 Alert 主链为准）。 */
+    @Transactional
     public DemoAiEvent close(String id, ProcessRequest body, String idemKey) {
         return mutate(id, idemKey, "changed", List.of(AiReviewStatuses.PROCESSING), event -> {
             event.statusCode = AiReviewStatuses.CLOSED;
@@ -264,6 +271,7 @@ public class AiEventService {
     // ---------- Demo 模拟 ----------
 
     /** 模拟新 AI 事件 / 低置信度 / 摄像头异常（SIMULATED，默认不生成 Alert）。 */
+    @Transactional
     public DemoAiEvent simulate(SimulateRequest body, String idemKey) {
         String kind = body == null || body.kind() == null ? "new" : body.kind();
         String[] createdId = new String[1];

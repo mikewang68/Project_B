@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
  * NNN 为当日已有同前缀事件数 + 1。单实例口径，<b>不保证多实例唯一</b>。
  */
 @Component
+@Profile("!server")
 public class DemoAiEventNumberGenerator implements AiEventNumberGenerator {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");

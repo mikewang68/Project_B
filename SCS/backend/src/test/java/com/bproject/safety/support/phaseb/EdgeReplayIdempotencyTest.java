@@ -185,4 +185,54 @@ class EdgeReplayIdempotencyTest {
         assertThat(afterRetry.linkedAlertId).isEqualTo(retried.alertId());
         assertThat(afterRetry.retryCount).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("Case B: 模拟崩溃丢失内存队列状态后重放：AlertService 去重键保护，不重复建单且不重复追加时间线")
+    void replayAfterQueueStateLossReusesExistingAlert() {
+        EdgeReplayService replay = newReplayService();
+        OffsetDateTime occurredAt = OffsetDateTime.now(clock).minusMinutes(15);
+        EdgePendingEvent original = pending("EDGE-EVT-CRASH-01", "IDEM-CRASH-01", occurredAt);
+        queue.save(original);
+
+        EdgeReplayService.ReplayResult first = replay.replayOne(original, node);
+        assertThat(first.status()).isEqualTo(PendingEventStatuses.SYNCED);
+        String alertId = first.alertId();
+        int initialTimelineSize = alerts.findById(alertId).orElseThrow().timeline.size();
+        assertThat(initialTimelineSize).isEqualTo(7);
+        long alertCountAfterFirst = alerts.count();
+
+        // 模拟边缘队列状态丢失（如 JVM 崩溃重启）：新队列未记录该事件，全新 PENDING 事件再次到达
+        InMemoryEdgeEventQueueRepository newQueue = new InMemoryEdgeEventQueueRepository();
+        EdgePendingEvent lostStateEvent = pending("EDGE-EVT-CRASH-01", "IDEM-CRASH-01", occurredAt);
+        newQueue.save(lostStateEvent);
+
+        EdgeReplayService newReplayService = new EdgeReplayService(newQueue, logs, alertService, opsNotifier, clock, gate);
+        EdgeReplayService.ReplayResult second = newReplayService.replayOne(lostStateEvent, node);
+
+        assertThat(second.status()).isEqualTo(PendingEventStatuses.SYNCED);
+        assertThat(second.alertId()).isEqualTo(alertId);
+        // 告警总数未增加
+        assertThat(alerts.count()).isEqualTo(alertCountAfterFirst);
+        // 初始时间线节点不重复追加
+        assertThat(alerts.findById(alertId).orElseThrow().timeline).hasSize(initialTimelineSize);
+    }
+
+    @Test
+    @DisplayName("Case D: 不同 offlineEventId 产生不同告警")
+    void differentOfflineEventProducesDifferentAlert() {
+        EdgeReplayService replay = newReplayService();
+        OffsetDateTime occurredAt = OffsetDateTime.now(clock).minusMinutes(5);
+        EdgePendingEvent e1 = pending("EDGE-EVT-DIFF-01", "IDEM-DIFF-01", occurredAt);
+        EdgePendingEvent e2 = pending("EDGE-EVT-DIFF-02", "IDEM-DIFF-02", occurredAt.plusSeconds(30));
+        queue.save(e1);
+        queue.save(e2);
+
+        EdgeReplayService.ReplayResult r1 = replay.replayOne(e1, node);
+        EdgeReplayService.ReplayResult r2 = replay.replayOne(e2, node);
+
+        assertThat(r1.status()).isEqualTo(PendingEventStatuses.SYNCED);
+        assertThat(r2.status()).isEqualTo(PendingEventStatuses.SYNCED);
+        assertThat(r1.alertId()).isNotEqualTo(r2.alertId());
+        assertThat(alerts.count()).isGreaterThanOrEqualTo(2);
+    }
 }

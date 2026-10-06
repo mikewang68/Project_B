@@ -1,26 +1,33 @@
 package com.bproject.safety.common.realtime;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * 实时事件发布门（Phase B：跨聚合工作流“先全部 save、后统一发布”的唯一收口点）。
+ * 实时事件发布门（Phase B / Phase 1：跨聚合工作流“先全部 save、后统一发布”的唯一收口点）。
  *
- * <p>背景：InMemory 阶段没有数据库事务，但 AI confirm / Edge replay 等跨聚合流程会连续写多个
- * Repository 并在中途广播 LiveEvent，可能出现“alert.new 已推送、AI 事件尚未 save”的半流程广播。
- * 顶层 workflow 用 {@link #buffer(Supplier)} 包裹持久化阶段：期间所有实时出口
- * （DomainLivePublisher / Alert / Ai ChangeNotifier）调用 {@link #emit(Runnable)} 时只入队，
- * 待所有 Repository save 成功后按入队顺序统一执行；任一保存抛异常则 {@code discard}，
- * 不产生任何广播。</p>
+ * <p>背景：跨聚合流程连续写多个 Repository 并在中途广播 LiveEvent。
+ * 顶层 workflow 用 {@link #buffer(Supplier)} 包裹持久化阶段：期间所有实时出口调用
+ * {@link #emit(Runnable)} 时只入队；待事务提交成功（afterCommit）统一执行；
+ * 事务回滚或保存抛异常则丢弃，不产生任何广播。</p>
  *
- * <p>未开启缓冲时 {@link #emit(Runnable)} 立即执行，单聚合命令行为与此前完全一致。</p>
- *
- * <p>未来 openGauss 阶段，本类是唯一替换点：flush 段改为事务 {@code AFTER_COMMIT} 回调
- * （或 Transactional Outbox → RocketMQ），业务 Service / 状态机无需改动。本阶段不实现 Outbox。</p>
+ * <p>特性保证：
+ * <ul>
+ *   <li>无事务：最外层 {@link #buffer} 执行成功后立即发布；</li>
+ *   <li>有事务：最外层 {@link #buffer} 成功后延迟至事务 {@code AFTER_COMMIT} 统一发布；</li>
+ *   <li>事务回滚 / 异常：缓冲事件彻底丢弃，绝不广播；</li>
+ *   <li>嵌套事务（REQUIRES_NEW）：内层事务与外层事务的上下文、发布时机与回滚隔离，互不污染；</li>
+ *   <li>同线程连续事务：无 ThreadLocal 泄漏，事务完成后状态彻底清理。</li>
+ * </ul>
+ * </p>
  */
 @Component
 public class LiveEventGate {
@@ -30,10 +37,13 @@ public class LiveEventGate {
     private static class Context {
         int depth = 0;
         boolean failed = false;
+        boolean flushed = false;
+        boolean syncRegistered = false;
         final List<Runnable> queue = new ArrayList<>();
     }
 
     private final ThreadLocal<Context> contextHolder = new ThreadLocal<>();
+    private final ThreadLocal<Deque<Context>> suspendedHolder = ThreadLocal.withInitial(ArrayDeque::new);
 
     /** 当前线程是否处于缓冲区间。 */
     public boolean isBuffering() {
@@ -60,8 +70,57 @@ public class LiveEventGate {
         if (ctx == null) {
             ctx = new Context();
             contextHolder.set(ctx);
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                registerTransactionSynchronization(ctx);
+            }
         }
         ctx.depth++;
+    }
+
+    private void registerTransactionSynchronization(Context ctx) {
+        ctx.syncRegistered = true;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void suspend() {
+                Context current = contextHolder.get();
+                if (current != null) {
+                    suspendedHolder.get().push(current);
+                    contextHolder.remove();
+                }
+            }
+
+            @Override
+            public void resume() {
+                Deque<Context> suspended = suspendedHolder.get();
+                if (!suspended.isEmpty()) {
+                    contextHolder.set(suspended.pop());
+                }
+            }
+
+            @Override
+            public void afterCommit() {
+                if (!ctx.failed && ctx.flushed) {
+                    List<Runnable> pending = new ArrayList<>(ctx.queue);
+                    for (Runnable broadcast : pending) {
+                        try {
+                            broadcast.run();
+                        } catch (RuntimeException ex) {
+                            log.warn("buffered live event broadcast failed: {}", ex.getMessage());
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                ctx.queue.clear();
+                contextHolder.remove();
+                Deque<Context> stack = suspendedHolder.get();
+                if (stack != null && stack.isEmpty()) {
+                    suspendedHolder.remove();
+                }
+            }
+        });
     }
 
     /** 按入队顺序执行缓冲的全部广播，然后清空缓冲区（仅最外层退出时统一执行）。 */
@@ -79,21 +138,8 @@ public class LiveEventGate {
             return;
         }
 
-        if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
-            List<Runnable> pending = new ArrayList<>(ctx.queue);
-            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
-                    new org.springframework.transaction.support.TransactionSynchronization() {
-                        @Override
-                        public void afterCommit() {
-                            for (Runnable broadcast : pending) {
-                                try {
-                                    broadcast.run();
-                                } catch (RuntimeException ex) {
-                                    log.warn("buffered live event broadcast failed: {}", ex.getMessage());
-                                }
-                            }
-                        }
-                    });
+        if (ctx.syncRegistered && TransactionSynchronizationManager.isActualTransactionActive()) {
+            ctx.flushed = true;
         } else {
             for (Runnable broadcast : ctx.queue) {
                 try {

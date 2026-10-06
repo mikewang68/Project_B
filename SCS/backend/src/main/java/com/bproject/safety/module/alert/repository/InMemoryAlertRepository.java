@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Repository;
  * 与未来 JDBC 实现语义一致。清空仅通过 {@link DemoClearableStore} 供 Demo / Test 使用。</p>
  */
 @Repository
+@Profile("!server")
 public class InMemoryAlertRepository implements AlertRepository, DemoClearableStore {
 
     private final ConcurrentHashMap<String, DemoAlert> store = new ConcurrentHashMap<>();

@@ -27,6 +27,7 @@ import com.bproject.safety.module.alert.model.TreatmentRecord;
 import com.bproject.safety.module.alert.repository.AlertRepository;
 import com.bproject.safety.module.alert.repository.AlertQuery;
 import com.bproject.safety.module.alert.seed.AlertDemoSeeder;
+import com.bproject.safety.support.concurrency.KeyedLock;
 import com.bproject.safety.support.demo.DemoUserProperties;
 import com.bproject.safety.support.masterdata.DemoMasterData;
 import com.bproject.safety.support.masterdata.DemoMasterData.DemoUser;
@@ -37,10 +38,16 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 告警中心业务服务（Backend Demo）：状态流转、时间线追加、SLA 计算、指标聚合、幂等包装。
@@ -67,10 +74,15 @@ public class AlertService {
     private final Clock clock;
     private final AlertChangeNotifier notifier;
     private final AlertNumberGenerator numberGenerator;
+    private final TransactionTemplate transactionTemplate;
+    private final KeyedLock keyedLock;
 
+    @Autowired
     public AlertService(AlertRepository repository, IdempotencyService idempotency,
                         DemoUserProperties demoUser, DemoMasterData masterData, Clock clock,
-                        AlertChangeNotifier notifier, AlertNumberGenerator numberGenerator) {
+                        AlertChangeNotifier notifier, AlertNumberGenerator numberGenerator,
+                        @Nullable PlatformTransactionManager transactionManager,
+                        @Nullable KeyedLock keyedLock) {
         this.repository = repository;
         this.idempotency = idempotency;
         this.demoUser = demoUser;
@@ -78,6 +90,22 @@ public class AlertService {
         this.clock = clock;
         this.notifier = notifier == null ? AlertChangeNotifier.NOOP : notifier;
         this.numberGenerator = numberGenerator;
+        this.transactionTemplate = transactionManager != null ? new TransactionTemplate(transactionManager) : null;
+        this.keyedLock = keyedLock != null ? keyedLock : new KeyedLock();
+    }
+
+    /** 兼容历史测试直接初始化的 7 参数构造函数 */
+    public AlertService(AlertRepository repository, IdempotencyService idempotency,
+                        DemoUserProperties demoUser, DemoMasterData masterData, Clock clock,
+                        AlertChangeNotifier notifier, AlertNumberGenerator numberGenerator) {
+        this(repository, idempotency, demoUser, masterData, clock, notifier, numberGenerator, null, null);
+    }
+
+    private <T> T executeInTransaction(Supplier<T> action) {
+        if (transactionTemplate != null) {
+            return transactionTemplate.execute(status -> action.get());
+        }
+        return action.get();
     }
 
     // ---------- 查询 ----------
@@ -109,6 +137,7 @@ public class AlertService {
     // ---------- 写操作 ----------
 
     /** 确认事件：待确认（兼容已确认）→ 待派单。 */
+    @Transactional
     public DemoAlert confirm(String id, ConfirmRequest req, String idemKey) {
         String operator = pickOperator(req == null ? null : req.operator());
         return mutate(id, idemKey, "confirm",
@@ -123,6 +152,7 @@ public class AlertService {
     }
 
     /** 派单：待派单 → 待处理，写入责任人 code / 姓名快照、优先级与 SLA 截止时间。 */
+    @Transactional
     public DemoAlert assign(String id, AssignRequest req, String idemKey) {
         return mutate(id, idemKey, "assign", List.of(AlertStatuses.PENDING_ASSIGNMENT), alert -> {
             DemoUser user = resolveAssignee(
@@ -153,6 +183,7 @@ public class AlertService {
     }
 
     /** 接单 / 开始处理：待处理 → 处理中。 */
+    @Transactional
     public DemoAlert start(String id, StartRequest req, String idemKey) {
         return mutate(id, idemKey, "start", List.of(AlertStatuses.PENDING_PROCESS), alert -> {
             alert.statusCode = AlertStatuses.PROCESSING;
@@ -165,6 +196,7 @@ public class AlertService {
     }
 
     /** 移动端接单：主状态保持待处理，仅推进 mobileStage 至 ACCEPTED。 */
+    @Transactional
     public DemoAlert mobileAccept(String id, StartRequest req, String idemKey) {
         String operator = pickOperator(req == null ? null : firstNonBlank(req.handler(), req.operator()));
         return mutate(id, idemKey, "accept", List.of(AlertStatuses.PENDING_PROCESS), alert -> {
@@ -179,6 +211,7 @@ public class AlertService {
     }
 
     /** 移动端确认到场：mobileStage ACCEPTED → ARRIVED，主状态保持待处理。 */
+    @Transactional
     public DemoAlert mobileArrive(String id, StartRequest req, String idemKey) {
         String operator = pickOperator(req == null ? null : firstNonBlank(req.handler(), req.operator()));
         return mutate(id, idemKey, "arrive", List.of(AlertStatuses.PENDING_PROCESS), alert -> {
@@ -193,6 +226,7 @@ public class AlertService {
     }
 
     /** 提交处置结果：处理中 → 待复核（严重/紧急事件必须再经 review 才能关闭）。 */
+    @Transactional
     public DemoAlert treatment(String id, TreatmentRequest req, String idemKey) {
         if (req == null || req.measures() == null || req.measures().isEmpty()) {
             throw ApiException.unprocessable("处置措施不能为空");
@@ -215,6 +249,7 @@ public class AlertService {
     }
 
     /** 复核通过并关闭：待复核 → 已关闭。 */
+    @Transactional
     public DemoAlert review(String id, ReviewRequest req, String idemKey) {
         String reviewer = pickOperator(req == null ? null : firstNonBlank(req.reviewer(), req.operator()));
         return mutate(id, idemKey, "review", List.of(AlertStatuses.PENDING_REVIEW), alert -> {
@@ -230,6 +265,7 @@ public class AlertService {
     }
 
     /** 复核驳回：待复核 → 处理中。 */
+    @Transactional
     public DemoAlert reviewReject(String id, ReviewRejectRequest req, String idemKey) {
         String reason = req != null && req.reason() != null ? req.reason() : "处置不充分";
         return mutate(id, idemKey, "review-reject", List.of(AlertStatuses.PENDING_REVIEW), alert -> {
@@ -241,6 +277,7 @@ public class AlertService {
     }
 
     /** 转派：状态不变，更换责任人 code / 姓名快照并记录时间线。 */
+    @Transactional
     public DemoAlert transfer(String id, TransferRequest req, String idemKey) {
         return mutate(id, idemKey, "transfer",
                 List.of(AlertStatuses.PENDING_ASSIGNMENT, AlertStatuses.PENDING_PROCESS,
@@ -263,6 +300,7 @@ public class AlertService {
     }
 
     /** 事件升级：记录原等级 code、更新风险等级（状态不变）。 */
+    @Transactional
     public DemoAlert escalate(String id, EscalateRequest req, String idemKey) {
         return mutate(id, idemKey, "escalate", List.of(
                         AlertStatuses.PENDING_CONFIRM, AlertStatuses.CONFIRMED, AlertStatuses.PENDING_ASSIGNMENT,
@@ -294,6 +332,7 @@ public class AlertService {
     }
 
     /** 人工接管（PLC 联动失败兜底，仅记录业务，不连接真实 PLC）。 */
+    @Transactional
     public DemoAlert takeover(String id, TakeoverRequest req, String idemKey) {
         String operator = pickOperator(req == null ? null : req.operator());
         return mutate(id, idemKey, "takeover", List.of(
@@ -310,6 +349,7 @@ public class AlertService {
     }
 
     /** 发起联动演示：mode=success 七步全部成功；mode=fail 在 PLC 回执处失败。 */
+    @Transactional
     public DemoAlert linkage(String id, LinkageRequest req, String idemKey) {
         boolean failMode = req != null && "fail".equalsIgnoreCase(req.mode());
         return mutate(id, idemKey, "linkage", List.of(
@@ -351,7 +391,12 @@ public class AlertService {
      * 通用风险建单：人员越界、设备碰撞等感知模块统一入口。
      * 入参 risk 为风险机器 code（{@link RiskLevels}），provenance 三字段记录判定来源。
      */
-    public synchronized DemoAlert createRiskAlert(NewRiskAlert draft) {
+    public DemoAlert createRiskAlert(NewRiskAlert draft) {
+        String dedupKey = draft.dedupKey();
+        return keyedLock.execute(dedupKey, () -> executeInTransaction(() -> doCreateRiskAlert(draft)));
+    }
+
+    private DemoAlert doCreateRiskAlert(NewRiskAlert draft) {
         if (draft.dedupKey() != null && !draft.dedupKey().isBlank()) {
             DemoAlert open = findOpenByDedupKey(draft.dedupKey());
             if (open != null) {
@@ -407,22 +452,25 @@ public class AlertService {
      * 风险升级（如碰撞距离从严重继续下降到紧急）：更新同一告警等级 code 并广播 alert.escalated，
      * 不新建第二条告警；不改变处置主状态。入参 target 可为 code 或中文标签。
      */
-    public synchronized DemoAlert upgradeRisk(String id, String targetCodeOrLabel, String reason) {
-        DemoAlert alert = requireAlert(id);
-        String target = RiskLevels.normalize(targetCodeOrLabel);
-        if (!RiskLevels.isValid(target)) {
-            throw ApiException.unprocessable("非法风险等级: " + targetCodeOrLabel);
-        }
-        String old = alert.riskCode;
-        alert.upgradedFromCode = old;
-        alert.riskCode = target;
-        alert.linkageAvailable = true;
-        addEvent(alert, AlertTimelineEventTypes.ESCALATED, "active",
-                "风险由" + RiskLevels.label(old) + "升级为" + RiskLevels.label(target) + "：" + reason);
-        alert.updatedAt = OffsetDateTime.now(clock);
-        repository.save(alert);
-        notifier.changed("escalate", alert);
-        return get(id);
+    @Transactional
+    public DemoAlert upgradeRisk(String id, String targetCodeOrLabel, String reason) {
+        return keyedLock.execute(id, () -> {
+            DemoAlert alert = requireAlert(id);
+            String target = RiskLevels.normalize(targetCodeOrLabel);
+            if (!RiskLevels.isValid(target)) {
+                throw ApiException.unprocessable("非法风险等级: " + targetCodeOrLabel);
+            }
+            String old = alert.riskCode;
+            alert.upgradedFromCode = old;
+            alert.riskCode = target;
+            alert.linkageAvailable = true;
+            addEvent(alert, AlertTimelineEventTypes.ESCALATED, "active",
+                    "风险由" + RiskLevels.label(old) + "升级为" + RiskLevels.label(target) + "：" + reason);
+            alert.updatedAt = OffsetDateTime.now(clock);
+            repository.save(alert);
+            notifier.changed("escalate", alert);
+            return get(id);
+        });
     }
 
     /** 由已确认违规的 AI 事件创建一条新的安全告警（状态：待确认，来源：AI违规）。 */
@@ -438,7 +486,17 @@ public class AlertService {
     }
 
     /** 边缘断网事件补传建单（不新建 EdgeAlert，仍是同一条 Alert 主链）。 */
-    public synchronized DemoAlert createEdgeReplayAlert(EdgeReplayDraft draft) {
+    public DemoAlert createEdgeReplayAlert(EdgeReplayDraft draft) {
+        String dedupKey = "EDGE-REPLAY:" + draft.edgeNodeId() + ":" + draft.offlineEventId();
+        return keyedLock.execute(dedupKey, () -> executeInTransaction(() -> doCreateEdgeReplayAlert(draft, dedupKey)));
+    }
+
+    private DemoAlert doCreateEdgeReplayAlert(EdgeReplayDraft draft, String dedupKey) {
+        DemoAlert open = findOpenByDedupKey(dedupKey);
+        if (open != null) {
+            log.info("命中未关闭边缘重放去重键 {}，复用告警 {}", dedupKey, open.id);
+            return open;
+        }
         String riskCode = RiskLevels.normalize(draft.risk());
         String id = nextAlertId();
         OffsetDateTime occurredAt = draft.edgeOccurredAt();
@@ -457,7 +515,7 @@ public class AlertService {
         a.origin = "EDGE_REPLAY";
         a.statusCode = AlertStatuses.PENDING_CONFIRM;
         a.assignee = UNASSIGNED;
-        a.dedupKey = "EDGE-REPLAY:" + draft.edgeNodeId() + ":" + draft.offlineEventId();
+        a.dedupKey = dedupKey;
         applyProvenance(a, draft.ruleId(), draft.ruleVersionUsed(),
                 draft.decisionSourceType(), draft.decisionSourceCode(), draft.decisionSourceVersion());
         a.durationSec = draft.durationSec() == null ? 0 : draft.durationSec();
@@ -528,55 +586,58 @@ public class AlertService {
     public static final String DEMO_RISK_ALERT_ID = "ALM-DEMO-RISK";
 
     /** 首页风险演示开关（SIMULATED）：走真实存储与 WS 广播。 */
+    @Transactional
     public DemoAlert demoRisk(boolean active) {
-        DemoAlert existing = repository.findById(DEMO_RISK_ALERT_ID).orElse(null);
-        if (active) {
-            if (existing != null && !AlertStatuses.CLOSED.equals(existing.statusCode)) {
-                return existing;
+        return keyedLock.execute(DEMO_RISK_ALERT_ID, () -> {
+            DemoAlert existing = repository.findById(DEMO_RISK_ALERT_ID).orElse(null);
+            if (active) {
+                if (existing != null && !AlertStatuses.CLOSED.equals(existing.statusCode)) {
+                    return existing;
+                }
+                OffsetDateTime now = OffsetDateTime.now(clock);
+                String hms = now.format(HMS);
+                DemoAlert a = existing == null ? new DemoAlert() : existing;
+                a.id = DEMO_RISK_ALERT_ID;
+                a.title = "人员进入龙门吊作业区域";
+                a.riskCode = RiskLevels.URGENT;
+                a.eventType = "危险区域闯入";
+                a.time = hms;
+                a.area = "龙门吊作业区";
+                a.target = "赵磊（P-1003）";
+                a.source = "人员安全";
+                a.statusCode = AlertStatuses.PENDING_CONFIRM;
+                a.assignee = UNASSIGNED;
+                // 演示开关语义为“规则引擎判定”，provenance 标记为 RULE。
+                applyProvenance(a, "RULE-PER-001", "v3.3", DecisionSources.RULE, "RULE-PER-001", "v3.3");
+                a.durationSec = 0;
+                a.evidence = PersonnelEvidence.of(java.util.List.of(),
+                        "龙门吊作业区 · 动态禁入区内", "吊装作业禁入区（红色边界）",
+                        "BAND-1003", "在线 · 持续震动提醒中", "116 次/分");
+                a.linkageAvailable = true;
+                a.linkage = AlertDemoSeeder.linkageTemplate();
+                a.occurredAt = now;
+                a.updatedAt = now;
+                int seq = 1;
+                List<TimelineEvent> nodes = new ArrayList<>();
+                seq = add(nodes, now, hms, "赵磊进入龙门吊电子围栏范围", "done", AlertTimelineEventTypes.CREATED, seq);
+                seq = add(nodes, now, hms, "规则引擎判定为紧急事件", "done", AlertTimelineEventTypes.NOTE, seq);
+                add(nodes, now, hms, "通知已生成，等待安全员人工确认", "active", AlertTimelineEventTypes.NOTE, seq);
+                a.timeline = nodes;
+                repository.save(a);
+                notifier.changed("new", a);
+                return get(a.id);
             }
-            OffsetDateTime now = OffsetDateTime.now(clock);
-            String hms = now.format(HMS);
-            DemoAlert a = existing == null ? new DemoAlert() : existing;
-            a.id = DEMO_RISK_ALERT_ID;
-            a.title = "人员进入龙门吊作业区域";
-            a.riskCode = RiskLevels.URGENT;
-            a.eventType = "危险区域闯入";
-            a.time = hms;
-            a.area = "龙门吊作业区";
-            a.target = "赵磊（P-1003）";
-            a.source = "人员安全";
-            a.statusCode = AlertStatuses.PENDING_CONFIRM;
-            a.assignee = UNASSIGNED;
-            // 演示开关语义为“规则引擎判定”，provenance 标记为 RULE。
-            applyProvenance(a, "RULE-PER-001", "v3.3", DecisionSources.RULE, "RULE-PER-001", "v3.3");
-            a.durationSec = 0;
-            a.evidence = PersonnelEvidence.of(java.util.List.of(),
-                    "龙门吊作业区 · 动态禁入区内", "吊装作业禁入区（红色边界）",
-                    "BAND-1003", "在线 · 持续震动提醒中", "116 次/分");
-            a.linkageAvailable = true;
-            a.linkage = AlertDemoSeeder.linkageTemplate();
-            a.occurredAt = now;
-            a.updatedAt = now;
-            int seq = 1;
-            List<TimelineEvent> nodes = new ArrayList<>();
-            seq = add(nodes, now, hms, "赵磊进入龙门吊电子围栏范围", "done", AlertTimelineEventTypes.CREATED, seq);
-            seq = add(nodes, now, hms, "规则引擎判定为紧急事件", "done", AlertTimelineEventTypes.NOTE, seq);
-            add(nodes, now, hms, "通知已生成，等待安全员人工确认", "active", AlertTimelineEventTypes.NOTE, seq);
-            a.timeline = nodes;
-            repository.save(a);
-            notifier.changed("new", a);
-            return get(a.id);
-        }
-        if (existing != null && !AlertStatuses.CLOSED.equals(existing.statusCode)) {
-            OffsetDateTime now = OffsetDateTime.now(clock);
-            addEvent(existing, AlertTimelineEventTypes.CLOSED, "done", "风险演示解除，事件关闭");
-            existing.statusCode = AlertStatuses.CLOSED;
-            existing.updatedAt = now;
-            repository.save(existing);
-            notifier.changed("review", existing);
-            return get(existing.id);
-        }
-        return existing;
+            if (existing != null && !AlertStatuses.CLOSED.equals(existing.statusCode)) {
+                OffsetDateTime now = OffsetDateTime.now(clock);
+                addEvent(existing, AlertTimelineEventTypes.CLOSED, "done", "风险演示解除，事件关闭");
+                existing.statusCode = AlertStatuses.CLOSED;
+                existing.updatedAt = now;
+                repository.save(existing);
+                notifier.changed("review", existing);
+                return get(existing.id);
+            }
+            return existing;
+        });
     }
 
     /** 生成下一个告警编号（Phase B：委托 {@link AlertNumberGenerator}，格式 ALM-yyyyMMdd-NNN 不变）。 */
@@ -610,7 +671,7 @@ public class AlertService {
 
     private DemoAlert mutate(String id, String idemKey, String op, List<String> allowed,
                              UnaryOperator<DemoAlert> changer) {
-        synchronized (id.intern()) {
+        return keyedLock.execute(id, () -> executeInTransaction(() -> {
             idempotency.process(idemKey, () -> {
                 DemoAlert alert = requireAlert(id);
                 requireStatus(alert, allowed);
@@ -624,7 +685,7 @@ public class AlertService {
                 return op + ":" + id;
             });
             return get(id);
-        }
+        }));
     }
 
     private DemoAlert requireAlert(String id) {

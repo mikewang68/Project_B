@@ -5,6 +5,7 @@ import com.bproject.safety.module.alert.service.AlertNumberGenerator;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
  * 受 Spring Bean 装配保证全局只有一个实例；编号格式与历史 Demo 完全一致。</p>
  */
 @Component
+@Profile("!server")
 public class DemoAlertNumberGenerator implements AlertNumberGenerator {
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyyMMdd");
