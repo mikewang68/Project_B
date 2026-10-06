@@ -1,0 +1,12 @@
+# SCS Edge AI Inference Service Requirements
+# Storage Governance: Pip cache must be redirected to E:\AI_Cache\pip
+ultralytics>=8.0.0
+fastapi>=0.100.0
+uvicorn>=0.20.0
+opencv-python>=4.7.0
+shapely>=2.0.0
+requests>=2.28.0
+pydantic>=2.0.0
+python-multipart>=0.0.9
+numpy>=1.24.0
+pillow>=9.5.0
