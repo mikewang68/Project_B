@@ -89,6 +89,24 @@ class PPEDetector:
             pw = px2 - px1
             ph = py2 - py1
             
+            # Normalized percentage coordinates (0 ~ 100%) for frontend SVG rendering
+            p_x_pct = round(px1 / float(img_w) * 100.0, 1)
+            p_y_pct = round(py1 / float(img_h) * 100.0, 1)
+            p_w_pct = round(pw / float(img_w) * 100.0, 1)
+            p_h_pct = round(ph / float(img_h) * 100.0, 1)
+
+            # Person silhouette box
+            boxes.append({
+                "id": f"person-{idx+1}",
+                "label": "PERSON",
+                "score": round(pconf * 100, 1),
+                "x": p_x_pct,
+                "y": p_y_pct,
+                "w": p_w_pct,
+                "h": p_h_pct,
+                "tone": "person"
+            })
+
             # Head ROI (top 25% of person)
             head_box = (px1, py1, px2, py1 + ph * 0.25)
             
@@ -100,7 +118,6 @@ class PPEDetector:
             for item in ppe_items:
                 lbl = item["label"].lower()
                 ix1, iy1, ix2, iy2 = item["box"]
-                # Check center inside head box
                 cx = (ix1 + ix2) / 2.0
                 cy = (iy1 + iy2) / 2.0
                 if head_box[0] <= cx <= head_box[2] and head_box[1] <= cy <= head_box[3]:
@@ -118,20 +135,21 @@ class PPEDetector:
                 violations.append({
                     "type": violation_type,
                     "confidence": v_conf,
-                    "target_box": {"x": px1, "y": py1, "w": pw, "h": ph * 0.25},
+                    "target_box": {"x": p_x_pct, "y": p_y_pct, "w": p_w_pct, "h": round(p_h_pct * 0.25, 1)},
                     "person_id": idx + 1,
                     "rule": "RULE-PPE-HELMET",
                     "judge": f"作业人员头部未识别到安全帽，违规置信度 {v_conf}%"
                 })
-                # Add bounding box
                 boxes.append({
-                    "label": "未戴安全帽 (no_helmet)",
-                    "x": float(round(px1, 1)),
-                    "y": float(round(py1, 1)),
-                    "w": float(round(pw, 1)),
-                    "h": float(round(ph * 0.25, 1)),
+                    "id": f"no-helmet-{idx+1}",
+                    "label": "NO HELMET",
+                    "score": v_conf,
+                    "x": p_x_pct,
+                    "y": p_y_pct,
+                    "w": p_w_pct,
+                    "h": round(p_h_pct * 0.25, 1),
                     "confidence": v_conf,
-                    "tone": "danger"
+                    "tone": "violation"
                 })
                 # Draw on annotated image (Red)
                 cv2.rectangle(annotated_img, (int(px1), int(py1)), (int(px2), int(py1 + ph * 0.25)), (0, 0, 230), 2)
@@ -139,11 +157,13 @@ class PPEDetector:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 230), 2)
             else:
                 boxes.append({
-                    "label": "安全帽 (helmet)",
-                    "x": float(round(px1, 1)),
-                    "y": float(round(py1, 1)),
-                    "w": float(round(pw, 1)),
-                    "h": float(round(ph * 0.25, 1)),
+                    "id": f"helmet-{idx+1}",
+                    "label": "HELMET",
+                    "score": round(helmet_conf * 100, 1),
+                    "x": p_x_pct,
+                    "y": p_y_pct,
+                    "w": p_w_pct,
+                    "h": round(p_h_pct * 0.25, 1),
                     "confidence": round(helmet_conf * 100, 1),
                     "tone": "normal"
                 })
@@ -151,49 +171,47 @@ class PPEDetector:
 
             # 4. Check Reflective Vest in Torso ROI
             has_vest, vest_ratio = self._check_reflective_vest(image, px1, py1, pw, ph)
-            torso_box = {
-                "x": float(round(px1, 1)),
-                "y": float(round(py1 + ph * 0.20, 1)),
-                "w": float(round(pw, 1)),
-                "h": float(round(ph * 0.50, 1))
-            }
+            torso_y_pct = round(p_y_pct + p_h_pct * 0.20, 1)
+            torso_h_pct = round(p_h_pct * 0.50, 1)
 
             if not has_vest:
                 vest_conf = round(max(85.0, pconf * 100), 1)
                 violations.append({
                     "type": "未穿反光衣",
                     "confidence": vest_conf,
-                    "target_box": torso_box,
+                    "target_box": {"x": p_x_pct, "y": torso_y_pct, "w": p_w_pct, "h": torso_h_pct},
                     "person_id": idx + 1,
                     "rule": "RULE-PPE-VEST",
                     "judge": f"作业人员上躯干反光荧光占比仅 {vest_ratio*100:.1f}% (低于标准 {VEST_COLOR_RATIO_THRESHOLD*100:.0f}%)"
                 })
                 boxes.append({
-                    "label": "未穿反光衣 (no_vest)",
-                    "x": torso_box["x"],
-                    "y": torso_box["y"],
-                    "w": torso_box["w"],
-                    "h": torso_box["h"],
+                    "id": f"no-vest-{idx+1}",
+                    "label": "NO VEST",
+                    "score": vest_conf,
+                    "x": p_x_pct,
+                    "y": torso_y_pct,
+                    "w": p_w_pct,
+                    "h": torso_h_pct,
                     "confidence": vest_conf,
-                    "tone": "danger"
+                    "tone": "violation"
                 })
-                # Draw Red box for no vest
                 cv2.rectangle(annotated_img, (int(px1), int(py1 + ph * 0.20)), (int(px2), int(py1 + ph * 0.70)), (0, 140, 255), 2)
                 cv2.putText(annotated_img, f"No Vest {vest_ratio*100:.1f}%", (int(px1), int(py1 + ph * 0.20) - 5),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 140, 255), 2)
             else:
                 boxes.append({
-                    "label": "反光衣 (vest)",
-                    "x": torso_box["x"],
-                    "y": torso_box["y"],
-                    "w": torso_box["w"],
-                    "h": torso_box["h"],
+                    "id": f"vest-{idx+1}",
+                    "label": "VEST",
+                    "score": round(pconf * 100, 1),
+                    "x": p_x_pct,
+                    "y": torso_y_pct,
+                    "w": p_w_pct,
+                    "h": torso_h_pct,
                     "confidence": round(pconf * 100, 1),
                     "tone": "normal"
                 })
                 cv2.rectangle(annotated_img, (int(px1), int(py1 + ph * 0.20)), (int(px2), int(py1 + ph * 0.70)), (0, 220, 0), 2)
 
-            # Draw outer person box
             cv2.rectangle(annotated_img, (int(px1), int(py1)), (int(px2), int(py2)), (200, 200, 200), 1)
 
         return {

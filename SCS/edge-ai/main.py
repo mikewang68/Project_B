@@ -245,7 +245,26 @@ def simulate_trigger(req: SimulationRequest):
     # If scenario expected violation was not caught by default models on synthetic image,
     # augment with synthetic ground-truth violation
     expected_v = meta.get("expected_violation")
+    img_w, img_h = 1280.0, 720.0
+    p_x = round(wx1 / img_w * 100.0, 1)
+    p_y = round(wy1 / img_h * 100.0, 1)
+    p_w = round((wx2 - wx1) / img_w * 100.0, 1)
+    p_h = round((wy2 - wy1) / img_h * 100.0, 1)
+
     if expected_v and not any(v["type"] == expected_v for v in all_violations):
+        # Ensure person silhouette box is present
+        if not any(b.get("tone") == "person" for b in all_boxes):
+            all_boxes.append({
+                "id": "person-1",
+                "label": "PERSON",
+                "score": 98.0,
+                "x": p_x,
+                "y": p_y,
+                "w": p_w,
+                "h": p_h,
+                "tone": "person"
+            })
+
         if expected_v == "未佩戴安全帽":
             all_violations.append({
                 "type": "未佩戴安全帽",
@@ -254,13 +273,15 @@ def simulate_trigger(req: SimulationRequest):
                 "judge": "合成推流检测：作业人员未佩戴符合标准的安全帽 (置信度 96.8%)"
             })
             all_boxes.append({
-                "label": "未戴安全帽 (no_helmet)",
-                "x": float(wx1),
-                "y": float(wy1),
-                "w": float(wx2 - wx1),
-                "h": float((wy2 - wy1) * 0.25),
+                "id": "no-helmet-1",
+                "label": "NO HELMET",
+                "score": 96.8,
+                "x": p_x,
+                "y": p_y,
+                "w": p_w,
+                "h": round(p_h * 0.25, 1),
                 "confidence": 96.8,
-                "tone": "danger"
+                "tone": "violation"
             })
         elif expected_v == "未穿反光衣":
             all_violations.append({
@@ -270,13 +291,15 @@ def simulate_trigger(req: SimulationRequest):
                 "judge": "合成推流检测：作业人员未穿戴符合标准的荧光反光衣 (置信度 94.5%)"
             })
             all_boxes.append({
-                "label": "未穿反光衣 (no_vest)",
-                "x": float(wx1),
-                "y": float(wy1 + (wy2 - wy1) * 0.22),
-                "w": float(wx2 - wx1),
-                "h": float((wy2 - wy1) * 0.45),
+                "id": "no-vest-1",
+                "label": "NO VEST",
+                "score": 94.5,
+                "x": p_x,
+                "y": round(p_y + p_h * 0.22, 1),
+                "w": p_w,
+                "h": round(p_h * 0.45, 1),
                 "confidence": 94.5,
-                "tone": "danger"
+                "tone": "violation"
             })
 
     # Save snapshot

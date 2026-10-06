@@ -79,6 +79,24 @@ class IntrusionDetector:
                     2
                 )
 
+        # Add zones as SVG zone boxes
+        for z_id, z_data in cam_zones.items():
+            pts_norm = z_data.get("polygon", [])
+            if pts_norm:
+                min_x = min(p[0] for p in pts_norm) * 100.0
+                min_y = min(p[1] for p in pts_norm) * 100.0
+                max_x = max(p[0] for p in pts_norm) * 100.0
+                max_y = max(p[1] for p in pts_norm) * 100.0
+                boxes.append({
+                    "id": f"zone-{z_id}",
+                    "label": "DANGER ZONE",
+                    "x": round(min_x, 1),
+                    "y": round(min_y, 1),
+                    "w": round(max_x - min_x, 1),
+                    "h": round(max_y - min_y, 1),
+                    "tone": "zone"
+                })
+
         # Evaluate each person
         for p_idx, (px1, py1, px2, py2, pconf) in enumerate(detected_persons):
             pw = px2 - px1
@@ -113,13 +131,15 @@ class IntrusionDetector:
                     violations.append(violation)
 
                     box_item = {
-                        "label": f"越界违规: {z_name}",
-                        "x": float(round(px1, 1)),
-                        "y": float(round(py1, 1)),
-                        "w": float(round(pw, 1)),
-                        "h": float(round(ph, 1)),
+                        "id": f"violation-intrusion-{p_idx+1}",
+                        "label": "INTRUSION",
+                        "score": conf_pct,
+                        "x": float(round(px1 / float(img_w) * 100.0, 1)),
+                        "y": float(round(py1 / float(img_h) * 100.0, 1)),
+                        "w": float(round(pw / float(img_w) * 100.0, 1)),
+                        "h": float(round(ph / float(img_h) * 100.0, 1)),
                         "confidence": conf_pct,
-                        "tone": "danger"
+                        "tone": "violation"
                     }
                     boxes.append(box_item)
 
