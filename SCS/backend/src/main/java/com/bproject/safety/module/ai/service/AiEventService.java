@@ -7,6 +7,7 @@ import com.bproject.safety.module.ai.dto.AiDtos.AiEventPage;
 import com.bproject.safety.module.ai.dto.AiDtos.AiFacets;
 import com.bproject.safety.module.ai.dto.AiDtos.AiMetrics;
 import com.bproject.safety.module.ai.dto.AiRequests.AiAssignRequest;
+import com.bproject.safety.module.ai.dto.AiRequests.AiIngestRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.FalsePositiveRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.ProcessRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.ReviewRequest;
@@ -266,6 +267,84 @@ public class AiEventService {
             event.processStatus = "已完成";
             appendTimeline(event, "处置完成，事件关闭", "done", AiTimelineEventTypes.CLOSED);
         });
+    }
+
+    // ---------- 边端真实 AI 视觉上报 ----------
+
+    /**
+     * 接收边端真实 AI 视觉检测上报事件（支持 YOLO 标注框、置信度、快照等）。
+     *
+     * <p>写入 openGauss 数据库主表与审计时间线，并触发实时告警广播。</p>
+     */
+    @Transactional
+    public DemoAiEvent ingest(AiIngestRequest body, String idemKey) {
+        if (body == null) {
+            throw ApiException.badRequest("上报内容不能为空");
+        }
+        String type = body.eventType() != null && !body.eventType().isBlank()
+                ? body.eventType().trim() : "AI 视觉异常";
+
+        String eventId = idempotency.process(idemKey, () -> gate.buffer(() -> {
+            DemoAiEvent event = new DemoAiEvent();
+            event.id = nextAiId();
+            event.type = type;
+            event.camera = body.cameraCode() != null && !body.cameraCode().isBlank() ? body.cameraCode().trim() : "CAM-01";
+            event.cameraName = body.cameraName() != null && !body.cameraName().isBlank() ? body.cameraName().trim() : event.camera;
+            event.area = body.areaCode() != null && !body.areaCode().isBlank() ? body.areaCode().trim() : "现场作业区";
+            event.confidence = body.confidence() != null ? body.confidence() : 90.0;
+            event.threshold = body.threshold() != null ? body.threshold() : 80.0;
+            event.durationSec = body.durationSec() != null ? body.durationSec() : 1.0;
+            event.model = body.modelCode() != null && !body.modelCode().isBlank() ? body.modelCode().trim() : "YOLOv8-Edge";
+
+            // 风险等级：若未传入则根据置信度与类型自动推导
+            String risk = body.riskCode();
+            if (risk == null || risk.isBlank()) {
+                risk = event.confidence >= 90.0 ? AiRiskLevels.HIGH : AiRiskLevels.MEDIUM;
+            } else if (AiRiskLevels.label(risk) != null) {
+                risk = risk.toUpperCase();
+            } else {
+                risk = AiRiskLevels.fromLabel(risk);
+            }
+            event.riskCode = risk;
+
+            event.statusCode = AiReviewStatuses.PENDING;
+            event.health = "正常";
+            event.scene = body.sceneType() != null && !body.sceneType().isBlank()
+                    ? body.sceneType().trim() : AiDemoSeeder.sceneOf(type);
+            event.boxes = body.boxes() != null ? new ArrayList<>(body.boxes()) : new ArrayList<>();
+            event.rule = body.ruleCode() != null && !body.ruleCode().isBlank()
+                    ? body.ruleCode().trim() : "作业区安全规范";
+            event.relatedPerson = body.relatedPerson() != null && !body.relatedPerson().isBlank()
+                    ? body.relatedPerson().trim() : "现场作业人员";
+            event.relatedDevice = body.relatedDevice() != null && !body.relatedDevice().isBlank()
+                    ? body.relatedDevice().trim() : event.camera;
+            event.judgeText = body.judgeText() != null && !body.judgeText().isBlank()
+                    ? body.judgeText().trim()
+                    : String.format("AI 边缘视觉识别到 %s，置信度 %.1f%%，高于 %.1f%% 判定阈值。",
+                    type, event.confidence, event.threshold);
+
+            OffsetDateTime occurred = body.occurredAt() != null
+                    ? body.occurredAt() : OffsetDateTime.now(clock.withZone(ZONE));
+            event.occurredAt = occurred;
+            event.updatedAt = occurred;
+            event.time = occurred.format(HMS);
+            event.fresh = Boolean.TRUE;
+
+            // 时间线：检测发现 -> 进入复核队列
+            event.timeline = List.of(
+                    new AiTimelineNode(event.time, "AI 边缘视觉引擎检测到违规行为：" + type, "done",
+                            AiTimelineEventTypes.DETECTED, 1),
+                    new AiTimelineNode(event.time, "事件已进入人工复核队列", "active",
+                            AiTimelineEventTypes.QUEUED, 2)
+            );
+
+            repository.save(event);
+            notifier.changed("new", event);
+            log.info("边端 AI 视觉事件上报成功 id={} type={} camera={}", event.id, type, event.camera);
+            return event.id;
+        }));
+
+        return eventId == null ? null : get(eventId);
     }
 
     // ---------- Demo 模拟 ----------

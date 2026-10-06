@@ -2,6 +2,7 @@ package com.bproject.safety.module.ai.web;
 
 import com.bproject.safety.module.ai.dto.AiDtos.AiEventPage;
 import com.bproject.safety.module.ai.dto.AiRequests.AiAssignRequest;
+import com.bproject.safety.module.ai.dto.AiRequests.AiIngestRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.FalsePositiveRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.ProcessRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.ReviewRequest;
@@ -110,6 +111,13 @@ public class AiEventController {
                              @RequestBody(required = false) ProcessRequest body,
                              @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
         return service.close(id, body, idemKey);
+    }
+
+    @PostMapping("/ai-events/ingest")
+    @Operation(summary = "边缘 AI 视觉事件接入（Python YOLO 推理端点上报，自动落库并广播）")
+    public DemoAiEvent ingest(@RequestBody AiIngestRequest body,
+                              @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
+        return service.ingest(body, idemKey);
     }
 
     @PostMapping("/ai-events/simulate")

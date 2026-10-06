@@ -34,4 +34,28 @@ public final class AiRequests {
      */
     public record SimulateRequest(String kind) {
     }
+
+    /**
+     * 边端真实 AI 视觉检测上报请求体（来自 Python/C++ 边缘计算节点）。
+     */
+    public record AiIngestRequest(
+            String eventType,
+            String cameraCode,
+            String cameraName,
+            String areaCode,
+            Double confidence,
+            Double threshold,
+            Double durationSec,
+            String modelCode,
+            String riskCode,
+            String sceneType,
+            String ruleCode,
+            String judgeText,
+            String snapshotUrl,
+            java.util.List<com.bproject.safety.module.ai.model.AiBox> boxes,
+            String relatedPerson,
+            String relatedDevice,
+            java.time.OffsetDateTime occurredAt
+    ) {
+    }
 }
