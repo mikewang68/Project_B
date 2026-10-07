@@ -84,4 +84,23 @@ describe('ai event api client', () => {
     expect(String(url)).toBe('/api/v1/ai-events/simulate')
     expect(JSON.parse(String(init?.body))).toEqual({ kind: 'new' })
   })
+
+  it('calls edge AI status and trigger endpoints with proper bodies', async () => {
+    mockFetchOnce({ online: true, service: 'scs-edge-ai' })
+    const status = await aiEventApi.getEdgeStatus()
+    expect(status.online).toBe(true)
+    expect(String(lastCall()[0])).toBe('/api/v1/ai-events/edge-status')
+
+    mockFetchOnce({ status: 'ok', event_id: 'AI-E-20261007-001' })
+    await aiEventApi.triggerEdge({ scenario: 'no_helmet' })
+    const [trigUrl, trigInit] = lastCall()
+    expect(String(trigUrl)).toBe('/api/v1/ai-events/trigger-edge')
+    expect(JSON.parse(String(trigInit?.body))).toEqual({ scenario: 'no_helmet' })
+
+    mockFetchOnce({ status: 'ok', running: true, interval_sec: 5 })
+    await aiEventApi.toggleEdgeStream('start', 5)
+    const [streamUrl, streamInit] = lastCall()
+    expect(String(streamUrl)).toContain('/api/v1/ai-events/edge-stream/start?intervalSec=5')
+    expect(streamInit?.method).toBe('POST')
+  })
 })

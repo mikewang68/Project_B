@@ -1,5 +1,5 @@
 import { apiRequest, postJson } from './http'
-import type { AiEvent } from '@/types/ai'
+import type { AiEvent, EdgeScenario, EdgeStatus } from '@/types/ai'
 import { mapAiEvent, mapAiEventPage, mapCameraInfo, type AiEventPageDto, type CameraInfo } from '@/adapters/aiEvent'
 
 /**
@@ -76,6 +76,25 @@ export const aiEventApi = {
 
   simulate: async (kind: 'new' | 'low-confidence' | 'camera-fault' = 'new'): Promise<AiEvent> =>
     mapAiEvent(await postJson('/ai-events/simulate', { kind })),
+
+  /** 查询边缘 AI 视觉服务运行状态 */
+  getEdgeStatus: async (): Promise<EdgeStatus> =>
+    apiRequest<EdgeStatus>('/ai-events/edge-status'),
+
+  /** 触发边缘 AI 推理 */
+  triggerEdge: async (params: {
+    scenario: EdgeScenario
+    cameraCode?: string
+    personName?: string
+  }): Promise<{ status: string; event_id?: string; detail?: string; fallback?: boolean }> =>
+    postJson('/ai-events/trigger-edge', params),
+
+  /** 控制边缘 AI 视频巡检推流 */
+  toggleEdgeStream: async (
+    action: 'start' | 'stop',
+    intervalSec: number = 5,
+  ): Promise<{ status: string; running: boolean; interval_sec?: number }> =>
+    postJson(`/ai-events/edge-stream/${action}?intervalSec=${intervalSec}`, {}),
 
   getCameras: async (): Promise<CameraInfo[]> =>
     (await apiRequest<unknown[]>('/cameras')).map(mapCameraInfo),

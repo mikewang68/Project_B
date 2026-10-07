@@ -88,7 +88,7 @@ export function mapAiEvent(input: unknown): AiEvent {
     timeline: mapTimeline(dto.timeline),
   }
   const optional = ['reviewer', 'reviewTime', 'falseReason', 'assignee', 'assignmentPriority',
-    'processStatus', 'assignmentNote', 'linkedAlertId', 'occurredAt', 'fresh'] as const
+    'processStatus', 'assignmentNote', 'linkedAlertId', 'snapshotUrl', 'occurredAt', 'fresh'] as const
   optional.forEach((key) => {
     if (dto[key] !== undefined && dto[key] !== null) {
       ;(event as unknown as Record<string, unknown>)[key] = dto[key]

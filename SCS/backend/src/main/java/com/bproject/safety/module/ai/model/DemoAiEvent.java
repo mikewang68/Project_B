@@ -55,6 +55,9 @@ public class DemoAiEvent {
     /** 确认违规后关联的统一告警 ID（Alert 主链）；误报永远为空。 */
     public String linkedAlertId;
 
+    /** 边缘 AI 抓拍图片相对 URL（/api/v1/ai-events/snapshots/xxx.jpg）。 */
+    public String snapshotUrl;
+
     public OffsetDateTime occurredAt;
     public OffsetDateTime updatedAt;
 
@@ -105,6 +108,7 @@ public class DemoAiEvent {
         c.assignmentNote = assignmentNote;
         c.timeline = timeline == null ? new ArrayList<>() : new ArrayList<>(timeline);
         c.linkedAlertId = linkedAlertId;
+        c.snapshotUrl = snapshotUrl;
         c.occurredAt = occurredAt;
         c.updatedAt = updatedAt;
         c.fresh = fresh;

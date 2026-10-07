@@ -58,4 +58,8 @@ public final class AiRequests {
             java.time.OffsetDateTime occurredAt
     ) {
     }
+
+    /** 触发边缘 AI 推理请求。 */
+    public record TriggerEdgeRequest(String scenario, String cameraCode, String personName) {
+    }
 }

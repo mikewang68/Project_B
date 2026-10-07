@@ -13,8 +13,9 @@ defineEmits<{ open: [event: AiEvent] }>()
 <template>
   <article class="ai-event-card" :class="{ 'is-fresh': event.fresh }" @click="$emit('open', event)">
     <div class="ai-event-card__shot">
-      <AIDetectionImage :scene="event.scene" :boxes="event.boxes" :health="event.health" :camera="event.camera" :time="event.time" compact />
+      <AIDetectionImage :scene="event.scene" :boxes="event.boxes" :health="event.health" :camera="event.camera" :time="event.time" :snapshot-url="event.snapshotUrl" compact />
       <span class="ai-event-card__risk" :data-risk="event.risk">{{ event.risk }}风险</span>
+      <span v-if="event.snapshotUrl" class="ai-event-card__edge-tag">边缘视觉</span>
     </div>
     <div class="ai-event-card__body">
       <header>

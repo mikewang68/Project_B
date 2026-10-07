@@ -7,6 +7,7 @@ import com.bproject.safety.module.ai.dto.AiRequests.FalsePositiveRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.ProcessRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.ReviewRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.SimulateRequest;
+import com.bproject.safety.module.ai.dto.AiRequests.TriggerEdgeRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.UncertainRequest;
 import com.bproject.safety.module.ai.model.CameraInfo;
 import com.bproject.safety.module.ai.model.DemoAiEvent;
@@ -15,6 +16,10 @@ import com.bproject.safety.module.ai.service.AiEventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,6 +40,9 @@ public class AiEventController {
 
     private final AiEventService service;
     private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
+
+    @Value("${scs.edge-ai.url:http://127.0.0.1:18090}")
+    private String edgeAiUrl;
 
     public AiEventController(AiEventService service,
                              com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
@@ -118,6 +126,32 @@ public class AiEventController {
     public DemoAiEvent ingest(@RequestBody AiIngestRequest body,
                               @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
         return service.ingest(body, idemKey);
+    }
+
+    @GetMapping("/ai-events/edge-status")
+    @Operation(summary = "查询边缘 AI 视觉服务运行状态")
+    public Map<String, Object> edgeStatus() {
+        return service.getEdgeStatus(edgeAiUrl);
+    }
+
+    @PostMapping("/ai-events/trigger-edge")
+    @Operation(summary = "触发边缘 AI 视觉推理（调用 Python 端点运行真实检测并自动上报落库）")
+    public Map<String, Object> triggerEdge(@RequestBody(required = false) TriggerEdgeRequest body,
+                                           @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
+        return service.triggerEdge(edgeAiUrl, body, idemKey);
+    }
+
+    @PostMapping("/ai-events/edge-stream/{action}")
+    @Operation(summary = "控制边缘 AI 连续视频巡检推流 (start/stop)")
+    public Map<String, Object> edgeStream(@PathVariable String action,
+                                          @RequestParam(required = false, defaultValue = "5") Integer intervalSec) {
+        return service.controlEdgeStream(edgeAiUrl, action, intervalSec);
+    }
+
+    @GetMapping(value = "/ai-events/snapshots/{filename}", produces = MediaType.IMAGE_JPEG_VALUE)
+    @Operation(summary = "获取边缘抓拍原图（代理转发）")
+    public ResponseEntity<byte[]> getSnapshot(@PathVariable String filename) {
+        return service.getSnapshot(edgeAiUrl, filename);
     }
 
     @PostMapping("/ai-events/simulate")

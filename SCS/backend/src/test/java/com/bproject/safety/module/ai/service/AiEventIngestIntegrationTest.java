@@ -144,4 +144,32 @@ class AiEventIngestIntegrationTest {
                         .content(""))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("边缘 AI 状态代理：端点可访问且在边缘服务离线时优雅返回离线标识")
+    void testEdgeStatusEndpoint() throws Exception {
+        mvc.perform(get("/api/v1/ai-events/edge-status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.online").exists())
+                .andExpect(jsonPath("$.service", is("scs-edge-ai")));
+    }
+
+    @Test
+    @DisplayName("边缘 AI 触发推理代理：离线时自动平滑降级为后端模拟事件，不中断前端演示")
+    void testTriggerEdgeFallback() throws Exception {
+        mvc.perform(post("/api/v1/ai-events/trigger-edge")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scenario\":\"no_helmet\",\"cameraCode\":\"CAM-01\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("ok")))
+                .andExpect(jsonPath("$.event_id").exists());
+    }
+
+    @Test
+    @DisplayName("边缘 AI 巡检推流控制代理：返回推流状态字典")
+    void testEdgeStreamControl() throws Exception {
+        mvc.perform(post("/api/v1/ai-events/edge-stream/stop"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.running").value(false));
+    }
 }

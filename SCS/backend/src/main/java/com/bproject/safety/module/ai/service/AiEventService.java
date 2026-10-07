@@ -12,7 +12,18 @@ import com.bproject.safety.module.ai.dto.AiRequests.FalsePositiveRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.ProcessRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.ReviewRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.SimulateRequest;
+import com.bproject.safety.module.ai.dto.AiRequests.TriggerEdgeRequest;
 import com.bproject.safety.module.ai.dto.AiRequests.UncertainRequest;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import com.bproject.safety.module.ai.model.AiBox;
 import com.bproject.safety.module.ai.model.AiReviewStatuses;
 import com.bproject.safety.module.ai.model.AiRiskLevels;
@@ -76,12 +87,16 @@ public class AiEventService {
     private final AiEventNumberGenerator numberGenerator;
     private final LiveEventGate gate;
     private final List<CameraInfo> cameras;
+    private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AiEventService(AiEventRepository repository, AlertService alertService,
                           IdempotencyService idempotency, AiChangeNotifier notifier,
                           DemoUserProperties demoUser, DemoMasterData masterData,
                           DemoDeviceMasterData deviceMasterData, Clock clock,
-                          AiEventNumberGenerator numberGenerator, LiveEventGate gate) {
+                          AiEventNumberGenerator numberGenerator, LiveEventGate gate,
+                          @org.springframework.beans.factory.annotation.Autowired(required = false) ObjectMapper objectMapper) {
         this.repository = repository;
         this.alertService = alertService;
         this.idempotency = idempotency;
@@ -92,7 +107,20 @@ public class AiEventService {
         this.clock = clock;
         this.numberGenerator = numberGenerator;
         this.gate = gate;
+        this.objectMapper = (objectMapper != null) ? objectMapper : new ObjectMapper();
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(1500))
+                .build();
         this.cameras = new ArrayList<>(AiDemoSeeder.buildCameras(deviceMasterData));
+    }
+
+    public AiEventService(AiEventRepository repository, AlertService alertService,
+                          IdempotencyService idempotency, AiChangeNotifier notifier,
+                          DemoUserProperties demoUser, DemoMasterData masterData,
+                          DemoDeviceMasterData deviceMasterData, Clock clock,
+                          AiEventNumberGenerator numberGenerator, LiveEventGate gate) {
+        this(repository, alertService, idempotency, notifier, demoUser, masterData,
+                deviceMasterData, clock, numberGenerator, gate, null);
     }
 
     // ---------- 查询 ----------
@@ -323,6 +351,8 @@ public class AiEventService {
                     : String.format("AI 边缘视觉识别到 %s，置信度 %.1f%%，高于 %.1f%% 判定阈值。",
                     type, event.confidence, event.threshold);
 
+            event.snapshotUrl = body.snapshotUrl();
+
             OffsetDateTime occurred = body.occurredAt() != null
                     ? body.occurredAt() : OffsetDateTime.now(clock.withZone(ZONE));
             event.occurredAt = occurred;
@@ -533,6 +563,152 @@ public class AiEventService {
             case "人员滞留" -> RiskLevels.WARNING;
             default -> RiskLevels.NORMAL;
         };
+    }
+
+    // ---------- 边端视觉服务代理与控制 ----------
+
+    /** 查询边缘 AI 视觉服务运行状态与推流状态。 */
+    public Map<String, Object> getEdgeStatus(String edgeUrl) {
+        String base = (edgeUrl != null && !edgeUrl.isBlank()) ? edgeUrl : "http://127.0.0.1:18090";
+        String url = base + "/health";
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofMillis(1500))
+                    .GET()
+                    .build();
+            HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() == 200) {
+                Map<String, Object> json = objectMapper.readValue(res.body(), new TypeReference<Map<String, Object>>() {});
+                boolean streamRunning = false;
+                try {
+                    HttpRequest sReq = HttpRequest.newBuilder()
+                            .uri(URI.create(base + "/api/v1/stream/status"))
+                            .timeout(Duration.ofMillis(1000))
+                            .GET()
+                            .build();
+                    HttpResponse<String> sRes = httpClient.send(sReq, HttpResponse.BodyHandlers.ofString());
+                    if (sRes.statusCode() == 200) {
+                        Map<String, Object> sJson = objectMapper.readValue(sRes.body(), new TypeReference<Map<String, Object>>() {});
+                        if (Boolean.TRUE.equals(sJson.get("running"))) {
+                            streamRunning = true;
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+                return Map.of(
+                        "online", true,
+                        "service", json.getOrDefault("service", "scs-edge-ai"),
+                        "streamRunning", streamRunning,
+                        "detail", json
+                );
+            }
+        } catch (Exception e) {
+            log.debug("Edge AI service unreachable at {}: {}", url, e.getMessage());
+        }
+        return Map.of(
+                "online", false,
+                "service", "scs-edge-ai",
+                "streamRunning", false,
+                "message", "Edge AI 服务未就绪或未启动"
+        );
+    }
+
+    /** 触发边缘 AI 视觉推理（调用 Python 端点运行真实检测并自动上报落库，支持平滑降级）。 */
+    public Map<String, Object> triggerEdge(String edgeUrl, TriggerEdgeRequest body, String idemKey) {
+        String base = (edgeUrl != null && !edgeUrl.isBlank()) ? edgeUrl : "http://127.0.0.1:18090";
+        String scenario = (body != null && body.scenario() != null) ? body.scenario() : "no_helmet";
+        String cameraCode = (body != null && body.cameraCode() != null) ? body.cameraCode() : "CAM-01";
+        String personName = (body != null && body.personName() != null) ? body.personName() : "张伟";
+
+        try {
+            Map<String, Object> payload = Map.of(
+                    "scenario", scenario,
+                    "camera_code", cameraCode,
+                    "person_name", personName
+            );
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(base + "/api/v1/simulate/trigger"))
+                    .timeout(Duration.ofSeconds(6))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
+                    .build();
+            HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() == 200) {
+                return objectMapper.readValue(res.body(), new TypeReference<Map<String, Object>>() {});
+            }
+        } catch (Exception e) {
+            log.warn("Edge AI trigger failed, falling back to simulated event: {}", e.getMessage());
+        }
+
+        // 自动平滑降级：服务未启动时使用内部模拟器，保证系统可用性
+        DemoAiEvent simulated = simulate(new SimulateRequest("new"), idemKey);
+        return Map.of(
+                "status", "ok",
+                "fallback", true,
+                "event_id", simulated.id,
+                "detail", "边缘 AI 服务连接失败，已自动降级为内置模拟事件"
+        );
+    }
+
+    /** 控制边缘 AI 视频巡检连续推流 (start/stop)。 */
+    public Map<String, Object> controlEdgeStream(String edgeUrl, String action, Integer intervalSec) {
+        String base = (edgeUrl != null && !edgeUrl.isBlank()) ? edgeUrl : "http://127.0.0.1:18090";
+        int interval = (intervalSec != null && intervalSec > 0) ? intervalSec : 5;
+        String act = "start".equalsIgnoreCase(action) ? "start" : "stop";
+
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(base + "/api/v1/stream/" + act + (act.equals("start") ? "?interval_sec=" + interval : "")))
+                    .timeout(Duration.ofSeconds(3))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+            HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() == 200) {
+                return objectMapper.readValue(res.body(), new TypeReference<Map<String, Object>>() {});
+            }
+        } catch (Exception e) {
+            log.warn("Edge AI stream control failed: {}", e.getMessage());
+        }
+        return Map.of("status", "error", "running", false, "message", "边缘 AI 推流控制失败");
+    }
+
+    /** 获取边缘抓拍图片字节流（代理转发至 edge-ai /snapshots/ 静态端点）。 */
+    public ResponseEntity<byte[]> getSnapshot(String edgeUrl, String filename) {
+        if (filename == null || filename.isBlank() || filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+            return ResponseEntity.badRequest().build();
+        }
+        String base = (edgeUrl != null && !edgeUrl.isBlank()) ? edgeUrl : "http://127.0.0.1:18090";
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(base + "/snapshots/" + filename))
+                    .timeout(Duration.ofSeconds(4))
+                    .GET()
+                    .build();
+            HttpResponse<byte[]> res = httpClient.send(req, HttpResponse.BodyHandlers.ofByteArray());
+            if (res.statusCode() == 200) {
+                return ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_JPEG)
+                        .cacheControl(CacheControl.maxAge(Duration.ofHours(1)))
+                        .body(res.body());
+            }
+        } catch (Exception e) {
+            log.debug("Proxy snapshot {} from {} failed: {}", filename, base, e.getMessage());
+        }
+
+        // 尝试从本地路径加载（开发环境本地支持）
+        try {
+            java.nio.file.Path localPath = java.nio.file.Paths.get("storage/temp/snapshots", filename);
+            if (java.nio.file.Files.exists(localPath)) {
+                byte[] bytes = java.nio.file.Files.readAllBytes(localPath);
+                return ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_JPEG)
+                        .body(bytes);
+            }
+        } catch (Exception ignored) {
+        }
+
+        return ResponseEntity.notFound().build();
     }
 
     private String pick(String explicit) {

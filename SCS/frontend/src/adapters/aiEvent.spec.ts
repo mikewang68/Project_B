@@ -61,4 +61,13 @@ describe('ai event adapter', () => {
     expect(camera.online).toBe(true)
     expect(camera.state).toBe('正常')
   })
+
+  it('maps snapshotUrl when present from edge inference', () => {
+    const event = mapAiEvent({
+      id: 'AI-E-20261007-001',
+      type: '未佩戴安全帽',
+      snapshotUrl: '/api/v1/ai-events/snapshots/snap_test.jpg',
+    })
+    expect(event.snapshotUrl).toBe('/api/v1/ai-events/snapshots/snap_test.jpg')
+  })
 })

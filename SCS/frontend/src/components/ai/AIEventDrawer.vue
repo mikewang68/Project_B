@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Close } from '@element-plus/icons-vue'
-import { ElDrawer } from 'element-plus'
+import { Close, Picture } from '@element-plus/icons-vue'
+import { ElDrawer, ElImage } from 'element-plus'
 import AIDetectionImage from './AIDetectionImage.vue'
 import AIEventStatusBadge from './AIEventStatusBadge.vue'
 import ConfidenceBadge from './ConfidenceBadge.vue'
@@ -47,7 +47,24 @@ const emit = defineEmits<{
         </div>
 
         <AIDetectionImage class="ai-drawer-shot" :scene="event.scene" :boxes="event.boxes" :health="event.health"
-          :camera="event.camera" :time="event.time" />
+          :camera="event.camera" :time="event.time" :snapshot-url="event.snapshotUrl" />
+
+        <section v-if="event.snapshotUrl" class="ai-snapshot-evidence">
+          <div class="ai-snapshot-evidence__header">
+            <h4><el-icon><Picture /></el-icon>现场抓拍原图与视觉特征</h4>
+            <span class="ai-snapshot-evidence__hint">点击缩略图可开启高清放大审阅</span>
+          </div>
+          <div class="ai-snapshot-evidence__preview">
+            <ElImage
+              :src="event.snapshotUrl"
+              :preview-src-list="[event.snapshotUrl]"
+              fit="cover"
+              class="ai-snapshot-evidence__img"
+              loading="lazy"
+              preview-teleported
+            />
+          </div>
+        </section>
 
         <dl class="ai-drawer-grid">
           <div><dt>事件类型</dt><dd>{{ event.type }}</dd></div>
@@ -62,7 +79,7 @@ const emit = defineEmits<{
           <div><dt>关联人员</dt><dd>{{ event.relatedPerson }}</dd></div>
           <div><dt>关联设备</dt><dd>{{ event.relatedDevice }}</dd></div>
           <div v-if="event.linkedAlertId" class="wide"><dt>关联告警</dt>
-            <dd><RouterLink class="ai-linked-alert" to="/alarms">{{ event.linkedAlertId }}（进入告警主链处置）</RouterLink></dd>
+            <dd><RouterLink class="ai-linked-alert" to="/alarms">{{ event.linkedAlertId }}（已进入统一告警主链）</RouterLink></dd>
           </div>
         </dl>
 

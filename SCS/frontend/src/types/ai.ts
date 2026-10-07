@@ -72,8 +72,20 @@ export interface AiEvent {
   fresh?: boolean | undefined
   /** 确认违规 / 派单后关联的统一告警 ID（Alert 主链）；误报永远为空 */
   linkedAlertId?: string | undefined
+  /** 现场抓拍图片 URL（边缘 AI 推理抓拍证据） */
+  snapshotUrl?: string | undefined
   /** ISO-8601 事件时间（后端返回，前端展示仍用 time 的 HH:mm:ss） */
   occurredAt?: string | undefined
+}
+
+export type EdgeScenario = 'no_helmet' | 'danger_zone' | 'no_vest'
+
+export interface EdgeStatus {
+  online: boolean
+  service?: string
+  streamRunning?: boolean
+  models?: string[]
+  message?: string
 }
 
 export const AI_EVENT_TYPES: AiEventType[] = ['未佩戴安全帽', '翻越护栏', '闯入危险区域', '人员滞留', '摄像头异常']
@@ -83,3 +95,4 @@ export const REVIEW_STATUSES: ReviewStatus[] = ['待复核', '已确认违规', 
 export const FALSE_REASONS = ['遮挡误判', '光照问题', '目标识别错误', '区域配置问题', '其他'] as const
 
 export const ASSIGNEES = ['安全员 王建国', '安全员 李娜', '班长 刘志明', '值班员 陈晓'] as const
+

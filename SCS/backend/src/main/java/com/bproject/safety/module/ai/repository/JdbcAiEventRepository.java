@@ -255,11 +255,18 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
             threshBd = BigDecimal.valueOf(Math.min(1.0, Math.max(0.0, t))).setScale(4, RoundingMode.HALF_UP);
         }
 
-        // JSONB detection_boxes
+        // JSONB detection_boxes (若有 snapshotUrl，打包存入 JSONB，0 DDL 架构升级)
         PGobject boxesPgo = new PGobject();
         boxesPgo.setType("jsonb");
         try {
-            boxesPgo.setValue(objectMapper.writeValueAsString(e.boxes == null ? Collections.emptyList() : e.boxes));
+            if (e.snapshotUrl != null && !e.snapshotUrl.isBlank()) {
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("boxes", e.boxes == null ? Collections.emptyList() : e.boxes);
+                payload.put("snapshotUrl", e.snapshotUrl);
+                boxesPgo.setValue(objectMapper.writeValueAsString(payload));
+            } else {
+                boxesPgo.setValue(objectMapper.writeValueAsString(e.boxes == null ? Collections.emptyList() : e.boxes));
+            }
         } catch (Exception ex) {
             try {
                 boxesPgo.setValue("[]");
@@ -521,7 +528,19 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
         String boxesJson = rs.getString("detection_boxes");
         if (boxesJson != null && !boxesJson.isBlank()) {
             try {
-                e.boxes = objectMapper.readValue(boxesJson, new TypeReference<List<AiBox>>() {});
+                if (boxesJson.trim().startsWith("{")) {
+                    com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(boxesJson);
+                    if (node.has("boxes")) {
+                        e.boxes = objectMapper.convertValue(node.get("boxes"), new TypeReference<List<AiBox>>() {});
+                    } else {
+                        e.boxes = new ArrayList<>();
+                    }
+                    if (node.has("snapshotUrl") && !node.get("snapshotUrl").isNull()) {
+                        e.snapshotUrl = node.get("snapshotUrl").asText(null);
+                    }
+                } else {
+                    e.boxes = objectMapper.readValue(boxesJson, new TypeReference<List<AiBox>>() {});
+                }
             } catch (Exception ex) {
                 e.boxes = new ArrayList<>();
             }

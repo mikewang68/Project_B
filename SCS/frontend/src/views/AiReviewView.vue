@@ -11,7 +11,7 @@ import MockAIEventButton from '@/components/ai/MockAIEventButton.vue'
 import { aiEventApi, confidenceParam, timeBucketParam } from '@/api/aiEvents'
 import { ApiError } from '@/api/http'
 import { useLiveStore } from '@/stores/live'
-import { AI_EVENT_TYPES, REVIEW_STATUSES, type AiEvent } from '@/types/ai'
+import { AI_EVENT_TYPES, REVIEW_STATUSES, type AiEvent, type EdgeScenario } from '@/types/ai'
 
 const CURRENT_REVIEWER = '李娜'
 
@@ -226,6 +226,60 @@ async function simulateCameraFault(): Promise<void> {
   }
 }
 
+// ---------- 边缘 AI 视觉推理控制与状态 ----------
+const edgeOnline = ref(true)
+const streamRunning = ref(false)
+const edgeLoading = ref(false)
+let edgePollTimer: ReturnType<typeof setInterval> | undefined
+
+async function checkEdgeStatus(): Promise<void> {
+  try {
+    const status = await aiEventApi.getEdgeStatus()
+    edgeOnline.value = Boolean(status.online)
+    if (typeof status.streamRunning === 'boolean') {
+      streamRunning.value = status.streamRunning
+    }
+  } catch {
+    edgeOnline.value = false
+  }
+}
+
+async function triggerEdgeInference(scenario: EdgeScenario): Promise<void> {
+  edgeLoading.value = true
+  try {
+    const res = await aiEventApi.triggerEdge({ scenario })
+    if (res.fallback) {
+      ElMessage.warning(res.detail || '边缘服务离线，已自动降级为内置模拟事件')
+    } else {
+      const scenarioMap: Record<EdgeScenario, string> = {
+        no_helmet: '👷 未佩戴安全帽检测',
+        no_vest: '🦺 未穿反光衣检测',
+        danger_zone: '⛔ 危险区域越界入侵',
+      }
+      ElMessage.success(`已触发【${scenarioMap[scenario]}】边缘视觉推理`)
+    }
+    await loadList()
+  } catch (error) {
+    reportError(error, '触发边缘推理失败')
+  } finally {
+    edgeLoading.value = false
+  }
+}
+
+async function toggleStream(action: 'start' | 'stop'): Promise<void> {
+  try {
+    const res = await aiEventApi.toggleEdgeStream(action, 5)
+    streamRunning.value = Boolean(res.running)
+    if (action === 'start') {
+      ElMessage.success('已开启边缘 AI 连续视频巡检推流（每5秒分析1帧）')
+    } else {
+      ElMessage.info('已停止视频巡检推流')
+    }
+  } catch (error) {
+    reportError(error, '控制视频巡检推流失败')
+  }
+}
+
 // ---------- WebSocket：ai.* 实时增量；重连后全量同步 ----------
 const liveStore = useLiveStore()
 let disposeLive: (() => void) | undefined
@@ -233,6 +287,8 @@ let disposeReconnect: (() => void) | undefined
 
 onMounted(() => {
   void loadList()
+  void checkEdgeStatus()
+  edgePollTimer = setInterval(() => void checkEdgeStatus(), 15000)
   disposeLive = liveStore.onAlertEvent((event) => {
     if (!event.type.startsWith('ai.')) return
     // 本地刚发起的写操作已乐观更新，这里做一次权威同步即可
@@ -251,6 +307,7 @@ onUnmounted(() => {
   disposeReconnect?.()
   freshTimers.forEach(clearTimeout)
   if (searchTimer) clearTimeout(searchTimer)
+  if (edgePollTimer) clearInterval(edgePollTimer)
 })
 
 const listCountText = computed(() => (loading.value ? '加载中…' : `共 <b>${total.value}</b> 条事件`))
@@ -259,7 +316,16 @@ const listCountText = computed(() => (loading.value ? '加载中…' : `共 <b>$
 <template>
   <section class="page-content ai-review-page">
     <header class="module-intro header-actions-only">
-      <MockAIEventButton @simulate="simulateEvent" @low-confidence="simulateLowConfidence" @camera-fault="simulateCameraFault" />
+      <MockAIEventButton
+        :edge-online="edgeOnline"
+        :stream-running="streamRunning"
+        :loading="edgeLoading"
+        @trigger-edge="triggerEdgeInference"
+        @toggle-stream="toggleStream"
+        @simulate="simulateEvent"
+        @low-confidence="simulateLowConfidence"
+        @camera-fault="simulateCameraFault"
+      />
     </header>
 
     <AIOverview :today="metrics.today" :pending="metrics.pending" :confirmed="metrics.confirmed"
