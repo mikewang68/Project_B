@@ -363,7 +363,7 @@ async def _stream_loop(interval_sec: float = 8.0):
     logger.info("Background streaming loop stopped.")
 
 @app.post("/api/v1/stream/start")
-def start_stream(interval_sec: float = Query(10.0, description="Seconds between simulation frames")):
+async def start_stream(interval_sec: float = Query(10.0, description="Seconds between simulation frames")):
     global stream_running, background_stream_task
     if stream_running:
         return {"status": "ALREADY_RUNNING", "message": "Stream simulation is already active"}
@@ -372,7 +372,7 @@ def start_stream(interval_sec: float = Query(10.0, description="Seconds between 
     return {"status": "STARTED", "message": f"Stream simulation started with {interval_sec}s interval"}
 
 @app.post("/api/v1/stream/stop")
-def stop_stream():
+async def stop_stream():
     global stream_running, background_stream_task
     if not stream_running:
         return {"status": "NOT_RUNNING", "message": "Stream simulation is not running"}
