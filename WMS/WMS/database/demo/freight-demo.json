@@ -1,0 +1,69 @@
+{
+  "marker": "DEMO-FREIGHT-20261007",
+  "referenceDate": "2026-10-07",
+  "description": "虚构货运演示数据，容量、单价和每捆重量仅用于功能测试，不用于实际运输或安全核算。",
+  "areas": [
+    {"code":"FD-STEEL","name":"钢材堆场（演示）","type":"STORAGE"},
+    {"code":"FD-BULK","name":"散货储存区（演示）","type":"STORAGE"},
+    {"code":"FD-CEMENT","name":"水泥储存区（演示）","type":"STORAGE"}
+  ],
+  "partners": [
+    {"code":"FD-SUP-STEEL-A","name":"港湾钢材供应商（演示）","type":"SUPPLIER","contact":"钢材演示联系人"},
+    {"code":"FD-SUP-STEEL-B","name":"金桥型钢供应商（演示）","type":"SUPPLIER","contact":"型钢演示联系人"},
+    {"code":"FD-SUP-ASH","name":"华丰粉煤灰供应商（演示）","type":"SUPPLIER","contact":"粉煤灰演示联系人"},
+    {"code":"FD-SUP-BULK","name":"绿源散货供应商（演示）","type":"SUPPLIER","contact":"散货演示联系人"},
+    {"code":"FD-SUP-CEMENT","name":"海岳水泥供应商（演示）","type":"SUPPLIER","contact":"水泥演示联系人"},
+    {"code":"FD-CUS-ROAD","name":"城际道路工程客户（演示）","type":"CLIENT","contact":"工程演示联系人"},
+    {"code":"FD-CUS-BRIDGE","name":"滨江桥梁工程客户（演示）","type":"CLIENT","contact":"桥梁演示联系人"},
+    {"code":"FD-EXP-TRUCK","name":"联合公路承运商（演示）","type":"EXPRESS","contact":"公路演示调度员"},
+    {"code":"FD-EXP-BULK","name":"联通散货承运商（演示）","type":"EXPRESS","contact":"散货演示调度员"}
+  ],
+  "categories": [
+    {"code":"FD-CAT-STEEL","name":"钢材与型材（演示）"},
+    {"code":"FD-CAT-ASH","name":"粉煤灰及矿粉（演示）"},
+    {"code":"FD-CAT-CEMENT","name":"水泥（演示）"},
+    {"code":"FD-CAT-AGGREGATE","name":"砂石骨料（演示）"}
+  ],
+  "locations": [
+    {"code":"FD-S01","parentCode":"FD-STEEL","quantity":50000},
+    {"code":"FD-S02","parentCode":"FD-STEEL","quantity":22000},
+    {"code":"FD-S03","parentCode":"FD-STEEL","quantity":40000},
+    {"code":"FD-S04","parentCode":"FD-STEEL","quantity":18000},
+    {"code":"FD-S05","parentCode":"FD-STEEL","quantity":30000},
+    {"code":"FD-A01","parentCode":"FD-BULK","quantity":150000},
+    {"code":"FD-A02","parentCode":"FD-BULK","quantity":60000},
+    {"code":"FD-A03","parentCode":"FD-BULK","quantity":100000},
+    {"code":"FD-C01","parentCode":"FD-CEMENT","quantity":80000},
+    {"code":"FD-G01","parentCode":"FD-BULK","quantity":400000},
+    {"code":"FD-EMPTY","parentCode":"FD-STEEL","quantity":30000}
+  ],
+  "goods": [
+    {"code":"FD-REBAR12","name":"热轧带肋钢筋 HRB400E 12mm（演示）","parentCode":"FD-CAT-STEEL","barcode":"FD-BC-001","specification":"螺纹钢 Φ12×9m；演示换算 2000kg/捆","unit":"捆","quantity":5,"price":7200,"weightKg":2000},
+    {"code":"FD-REBAR20","name":"热轧带肋钢筋 HRB400E 20mm（演示）","parentCode":"FD-CAT-STEEL","barcode":"FD-BC-002","specification":"螺纹钢 Φ20×12m；演示换算 2300kg/捆","unit":"捆","quantity":12,"price":8500,"weightKg":2300},
+    {"code":"FD-HBEAM","name":"热轧 H 型钢 Q355B（演示）","parentCode":"FD-CAT-STEEL","barcode":"FD-BC-003","specification":"H200×200；演示换算 1800kg/捆","unit":"捆","quantity":6,"price":6800,"weightKg":1800},
+    {"code":"FD-PLATE-HOT","name":"热轧钢板 Q235B（演示）","parentCode":"FD-CAT-STEEL","barcode":"FD-BC-004","specification":"8mm；演示换算 2500kg/捆","unit":"捆","quantity":4,"price":9500,"weightKg":2500},
+    {"code":"FD-PLATE-COLD","name":"冷轧钢板 SPCC（演示）","parentCode":"FD-CAT-STEEL","barcode":"FD-BC-005","specification":"1.5mm；演示换算 1500kg/捆","unit":"捆","quantity":4,"price":6400,"weightKg":1500},
+    {"code":"FD-ASH-I","name":"一级粉煤灰（演示）","parentCode":"FD-CAT-ASH","barcode":"FD-BC-006","specification":"散装 I 级；灰料、飞灰","unit":"吨","quantity":60,"price":180,"weightKg":1000},
+    {"code":"FD-ASH-II","name":"二级粉煤灰（演示）","parentCode":"FD-CAT-ASH","barcode":"FD-BC-007","specification":"散装 II 级；灰料、飞灰","unit":"吨","quantity":50,"price":135,"weightKg":1000},
+    {"code":"FD-SLAG","name":"粒化高炉矿渣粉 S95（演示）","parentCode":"FD-CAT-ASH","barcode":"FD-BC-008","specification":"散装矿粉；矿渣微粉","unit":"吨","quantity":30,"price":260,"weightKg":1000},
+    {"code":"FD-CEMENT","name":"普通硅酸盐水泥 P.O42.5（演示）","parentCode":"FD-CAT-CEMENT","barcode":"FD-BC-009","specification":"散装水泥","unit":"吨","quantity":25,"price":320,"weightKg":1000},
+    {"code":"FD-AGGREGATE","name":"道路工程碎石骨料（演示）","parentCode":"FD-CAT-AGGREGATE","barcode":"FD-BC-010","specification":"5～20mm 碎石；石子","unit":"吨","quantity":100,"price":90,"weightKg":1000}
+  ],
+  "receipts": [
+    {"key":"R01","goodCode":"FD-REBAR12","quantity":10,"locationCode":"FD-S01","supplierCode":"FD-SUP-STEEL-A","batchCode":"FD-20261005-R12-A","daysAgo":2},
+    {"key":"R02","goodCode":"FD-REBAR12","quantity":4,"locationCode":"FD-S01","supplierCode":"FD-SUP-STEEL-B","batchCode":"FD-20261006-R12-B","daysAgo":1},
+    {"key":"R03","goodCode":"FD-REBAR12","quantity":3,"locationCode":"FD-S01","supplierCode":"FD-SUP-STEEL-A","batchCode":"FD-20261001-R12-C","daysAgo":6},
+    {"key":"R04","goodCode":"FD-REBAR20","quantity":9,"locationCode":"FD-S02","supplierCode":"FD-SUP-STEEL-A","batchCode":"FD-20261005-R20-A","daysAgo":2},
+    {"key":"R05","goodCode":"FD-HBEAM","quantity":8,"locationCode":"FD-S03","supplierCode":"FD-SUP-STEEL-B","batchCode":"FD-20261005-HB-A","daysAgo":2},
+    {"key":"R06","goodCode":"FD-HBEAM","quantity":4,"locationCode":"FD-S03","supplierCode":"FD-SUP-STEEL-B","batchCode":"FD-20261007-HB-B","daysAgo":0},
+    {"key":"R07","goodCode":"FD-PLATE-HOT","quantity":8,"locationCode":"FD-S04","supplierCode":"FD-SUP-STEEL-A","batchCode":"FD-20261004-PH-A","daysAgo":3},
+    {"key":"R08","goodCode":"FD-PLATE-COLD","quantity":8,"locationCode":"FD-S05","supplierCode":"FD-SUP-STEEL-B","batchCode":"FD-20261003-PC-A","daysAgo":4},
+    {"key":"R09","goodCode":"FD-ASH-I","quantity":80,"locationCode":"FD-A01","supplierCode":"FD-SUP-ASH","batchCode":"FD-20261005-ASH1-A","daysAgo":2},
+    {"key":"R10","goodCode":"FD-ASH-I","quantity":40,"locationCode":"FD-A01","supplierCode":"FD-SUP-BULK","batchCode":"FD-20261006-ASH1-B","daysAgo":1},
+    {"key":"R11","goodCode":"FD-ASH-II","quantity":35,"locationCode":"FD-A02","supplierCode":"FD-SUP-ASH","batchCode":"FD-20261004-ASH2-A","daysAgo":3},
+    {"key":"R12","goodCode":"FD-SLAG","quantity":70,"locationCode":"FD-A03","supplierCode":"FD-SUP-BULK","batchCode":"FD-20261002-SLAG-A","daysAgo":5},
+    {"key":"R13","goodCode":"FD-CEMENT","quantity":50,"locationCode":"FD-C01","supplierCode":"FD-SUP-CEMENT","batchCode":"FD-20261006-CEM-A","daysAgo":1},
+    {"key":"R14","goodCode":"FD-AGGREGATE","quantity":200,"locationCode":"FD-G01","supplierCode":"FD-SUP-BULK","batchCode":"FD-20261001-STONE-A","daysAgo":6},
+    {"key":"R15","goodCode":"FD-AGGREGATE","quantity":100,"locationCode":"FD-G01","supplierCode":"FD-SUP-BULK","batchCode":"FD-20261007-STONE-B","daysAgo":0}
+  ]
+}

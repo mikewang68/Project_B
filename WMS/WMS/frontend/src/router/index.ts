@@ -11,6 +11,7 @@ import StockoutView from '@/views/StockoutView.vue'
 import FinanceView from '@/views/FinanceView.vue'
 import IntegrationView from '@/views/IntegrationView.vue'
 import { useAuthStore } from '@/stores/auth'
+const AgentView = () => import('@/views/AgentView.vue')
 
 export interface WmsRouteMeta {
   title: string
@@ -22,6 +23,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: LoginView, meta: { title: '登录', public: true } },
   { path: '/', name: 'dashboard', component: DashboardView, meta: { title: '仓储工作台', permission: 'dashboard:view' } },
   { path: '/inventory', name: 'inventory', component: InventoryView, meta: { title: '库存查询', permission: 'inventory:read' } },
+  { path: '/agent', name: 'agent', component: AgentView, meta: { title: '仓储智能体', permission: 'agent:read' } },
   { path: '/system/users', name: 'users', component: UserManagementView, meta: { title: '用户管理', permission: 'system:user:read' } },
   { path: '/master-data', name: 'master-data', component: MasterDataView, meta: { title: '仓库基础资料', permission: 'master:read' } },
   { path: '/stockin', name: 'stockin', component: StockinView, meta: { title: '入库管理', permission: 'stockin:read' } },

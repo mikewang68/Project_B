@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 const props = defineProps<{ path: string }>()
 const paths: Record<string, string> = {
+  '/agent': 'M4 4h16v12H9l-5 4z M8 9h1 M12 9h1 M16 9h1',
   '/': 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
   '/inventory': 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
   '/master-data': 'M3 21V7l9-4 9 4v14 M7 21v-9h10v9 M7 16h10',

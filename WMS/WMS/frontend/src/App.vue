@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import { usePreferenceStore, THEME_OPTIONS, LAYOUT_OPTIONS } from '@/stores/preference'
 import NavigationIcon from '@/components/NavigationIcon.vue'
+import { agentAlerts } from '@/api/agent'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,6 +22,16 @@ const passwordSaving = ref(false)
 const tenantForm = reactive({ warehouseCode: '', ownerCode: '' })
 const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const isLogin = computed(() => route.name === 'login')
+const agentUnread = ref(0)
+let agentTimer: ReturnType<typeof setInterval> | undefined
+async function refreshAgentAlerts() {
+  if (!auth.authenticated || !auth.hasPermission('agent:read')) { agentUnread.value = 0; return }
+  try { agentUnread.value = (await agentAlerts()).filter(x => x.state === 'OPEN' && !x.read_at).length }
+  catch { /* 新功能故障不阻塞原有页面。 */ }
+}
+watch(() => auth.user?.tenant, refreshAgentAlerts)
+onMounted(() => { agentTimer = setInterval(refreshAgentAlerts, 60_000); window.addEventListener('wms-agent-alerts', refreshAgentAlerts); void refreshAgentAlerts() })
+onUnmounted(() => { clearInterval(agentTimer); window.removeEventListener('wms-agent-alerts', refreshAgentAlerts) })
 
 watch(() => auth.user?.tenant, (tenant) => {
   if (!tenant) return
@@ -77,6 +88,7 @@ async function signOut(): Promise<void> {
       <header class="topbar">
         <div class="topbar-heading"><strong>{{ prefs.layout === 'top' ? 'W · 仓储管理系统' : route.meta.title }}</strong><small>{{ prefs.layout === 'top' ? route.meta.title : '仓储管理系统' }} / {{ auth.user?.companyName }}</small></div>
         <div class="topbar-actions">
+          <el-badge v-if="auth.hasPermission('agent:read')" :value="agentUnread" :hidden="!agentUnread"><el-button plain @click="router.push({ path: '/agent', query: { tab: 'alerts' } })">站内预警</el-button></el-badge>
           <el-button class="pref-btn" plain @click="prefVisible = true">外观设置</el-button>
           <button class="tenant" type="button" @click="tenantDialog = true">{{ auth.user?.tenant.currentWarehouse.name }} · {{ auth.user?.tenant.currentOwner.name }}</button>
           <el-dropdown trigger="click"><button class="user-trigger" type="button">{{ auth.user?.displayName }} ▾</button><template #dropdown><el-dropdown-menu><el-dropdown-item @click="passwordDialog = true">修改密码</el-dropdown-item><el-dropdown-item divided @click="signOut">退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown>

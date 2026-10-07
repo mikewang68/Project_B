@@ -41,3 +41,25 @@ logging:
 
 wms:
   timezone: Asia/Shanghai
+  agent:
+    enabled: ${WMS_AGENT_ENABLED:true}
+    mail-enabled: ${WMS_MAIL_ENABLED:false}
+    base-url: ${WMS_AGENT_BASE_URL:http://100.65.200.125:18047/v1}
+    api-key: ${WMS_AGENT_API_KEY:}
+    model: ${WMS_AGENT_MODEL:Qwen3.8-27B}
+    timeout-seconds: ${WMS_AGENT_TIMEOUT_SECONDS:30}
+    mail-from: ${WMS_MAIL_FROM:}
+
+spring.mail:
+  host: ${WMS_SMTP_HOST:}
+  port: ${WMS_SMTP_PORT:587}
+  username: ${WMS_SMTP_USERNAME:}
+  password: ${WMS_SMTP_PASSWORD:}
+  properties:
+    mail.smtp.auth: ${WMS_SMTP_AUTH:true}
+    mail.smtp.starttls.enable: ${WMS_SMTP_STARTTLS:true}
+    mail.smtp.ssl.enable: ${WMS_SMTP_SSL:false}
+    mail.smtp.ssl.checkserveridentity: true
+    mail.smtp.connectiontimeout: 10000
+    mail.smtp.timeout: 10000
+    mail.smtp.writetimeout: 10000
