@@ -14,11 +14,11 @@ class UserTaskTest {
 
     @Test void completedTaskKeepsCompletionTimeAndRejectsEditing() {
         UserTask task = UserTask.create("task-1", "告警处置", "ALARM", "A-1", "核验告警",
-                "现场复核", "gt-01", "闫鑫钰", "机修二班", "P1 高", NOW.plusSeconds(3600), NOW);
-        UserTask completed = task.complete("闫鑫钰", NOW.plusSeconds(600));
+                "现场复核", "gt-01", "运维工程师", "机修二班", "P1 高", NOW.plusSeconds(3600), NOW);
+        UserTask completed = task.complete("运维工程师", NOW.plusSeconds(600));
         assertEquals("COMPLETED", completed.status());
         assertNotNull(completed.completedAt());
         assertThrows(DomainConflictException.class, () -> completed.revise("修改", null, "GT-01",
-                "闫鑫钰", "机修二班", "P1 高", NOW, "OPEN", NOW.plusSeconds(700)));
+                "运维工程师", "机修二班", "P1 高", NOW, "OPEN", NOW.plusSeconds(700)));
     }
 }

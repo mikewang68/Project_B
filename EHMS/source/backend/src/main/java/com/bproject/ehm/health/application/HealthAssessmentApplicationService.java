@@ -16,14 +16,11 @@ import com.bproject.ehm.monitoring.application.DataQualitySummary;
 import com.bproject.ehm.shared.error.DomainConflictException;
 import com.bproject.ehm.shared.error.ResourceNotFoundException;
 import com.bproject.ehm.shared.error.ValidationException;
-import com.bproject.ehm.shared.page.PageQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -33,7 +30,6 @@ import java.util.UUID;
 public class HealthAssessmentApplicationService {
     private static final String HEALTH_MODEL = "rule-health-baseline-v1.0";
     private static final String FEATURE_VERSION = "threshold-utilization-v1.0";
-    private static final String RUL_MODEL = "demo-statistical-rul-v1.0";
 
     private final HealthAssessmentRepository assessments;
     private final AssetQueryFacade assets;
@@ -59,13 +55,21 @@ public class HealthAssessmentApplicationService {
     }
 
     public HealthAssessment run(String assetCode) {
+        return assess(assetCode, false);
+    }
+
+    public HealthAssessment replay(String assetCode) {
+        return assess(assetCode, true);
+    }
+
+    private HealthAssessment assess(String assetCode, boolean replay) {
         String code = Asset.normalizeCode(assetCode);
         DeviceView asset = assets.get(code);
-        DataQualitySummary quality = dataQuality.summary(code);
+        List<DataQualityPointView> points = replay ? dataQuality.historicalPoints(code) : dataQuality.allPoints(code);
+        DataQualitySummary quality = dataQuality.summarize(code, points);
         if (!quality.healthAssessmentAllowed()) {
             throw new DomainConflictException("数据质量未达到自动健康评估门槛：" + quality.assessmentMessage());
         }
-        List<DataQualityPointView> points = dataQuality.list(code, new PageQuery(0, 200), null).content();
         List<HealthFactor> factors = points.stream()
                 .filter(DataQualityPointView::enabled)
                 .filter(point -> "GOOD".equals(point.qualityStatus()))
@@ -81,17 +85,25 @@ public class HealthAssessmentApplicationService {
         int score = (int) Math.round(Math.max(0, 100 - primary - secondary - tertiary));
         double confidence = Math.min(82, 62 + factors.size() * 3 + quality.availabilityPercent() * 0.05);
         Instant now = clock.instant();
-        RulPrediction prediction = predictionOf(asset, quality, now);
+        RulPrediction prediction = RulPrediction.unavailable("尚未接入经验证的寿命模型、故障终点和工况标签；台账RUL字段不是模型预测结果");
+        Instant inputStart = points.stream().filter(p -> "GOOD".equals(p.qualityStatus()))
+                .map(DataQualityPointView::sourceTimestamp).min(Instant::compareTo).orElse(now);
+        Instant inputEnd = points.stream().filter(p -> "GOOD".equals(p.qualityStatus()))
+                .map(DataQualityPointView::sourceTimestamp).max(Instant::compareTo).orElse(now);
         List<String> limitations = List.of(
                 "当前健康分采用阈值利用率规则基线，尚未替代经甲方验收的设备专用模型",
-                "RUL使用Demo统计外推，仅用于验证页面、接口和人工审核流程",
-                "设备工况、维修标签和同型设备基线接入后需要重新标定模型"
+                "可信度是规则覆盖度提示，不是经校准的统计置信概率；RUL未启用",
+                replay ? "历史回放：仅核验数据库中已有样本的规则结果，不能代表设备当前健康状态"
+                        : "仅使用当前有效测点快照，不等同于连续采集窗口或经训练AI预测"
         );
-        HealthAssessment result = HealthAssessment.completed(
+        HealthAssessment result = new HealthAssessment(
                 "HA-" + code.replace("-", "") + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT),
-                code, asset.name(), score, confidence, "规则健康基线 + Demo统计趋势外推",
+                code, asset.name(), score, score >= 85 ? "健康" : score >= 70 ? "关注" : score >= 50 ? "异常" : "严重",
+                round(confidence), "COMPLETED", replay ? "历史回放 · 阈值利用率规则评估" : "阈值利用率规则评估（非AI寿命模型）",
                 HEALTH_MODEL, FEATURE_VERSION, quality.availabilityPercent(), factors, prediction,
-                limitations, now.minus(30, ChronoUnit.MINUTES), now, now.plus(30, ChronoUnit.MINUTES));
+                limitations, inputStart, inputEnd, now, replay ? now : inputEnd.plusSeconds(
+                        points.stream().filter(DataQualityPointView::enabled).mapToLong(p -> Math.max(30, p.sampleIntervalSeconds() * 5L)).min().orElse(30)),
+                null, null, null);
         return assessments.save(result);
     }
 
@@ -126,10 +138,11 @@ public class HealthAssessmentApplicationService {
         }
         RulPrediction prediction = current.prediction();
         WorkOrderView order = workOrders.create(new WorkOrderCommand(current.assetCode(),
-                fallback(title, current.assetName() + "预测风险专项检查"), priorityOf(prediction.riskLevel()),
+                fallback(title, current.assetName() + "规则评估专项核查"), priorityOf(current.healthScore()<70?"高":current.healthScore()<85?"中":"低"),
                 fallback(assignee, "设备机修班"), "健康评估 " + current.assessmentId(),
-                "人工已接受预测建议。健康分" + current.healthScore() + "；RUL区间"
-                        + rangeOf(prediction) + "；建议：" + prediction.recommendation(),
+                "人工已接受核查建议。评估方式：" + current.method() + "；输入截止：" + current.inputWindowEnd()
+                        + "；规则健康分" + current.healthScore() + "；RUL区间" + rangeOf(prediction)
+                        + "。先核验现场状态与高贡献测点；不作为自动停机依据。",
                 fallback(plannedWindow, prediction.maintenanceWindow()), fallback(operator, "Demo设备工程师")));
         return assessments.save(current.linkWorkOrder(order.orderNo(), clock.instant()));
     }
@@ -158,21 +171,6 @@ public class HealthAssessmentApplicationService {
         return Math.abs(point.lastValue() / point.upperLimit()) * 100;
     }
 
-    private RulPrediction predictionOf(DeviceView asset, DataQualitySummary quality, Instant now) {
-        if (asset.rulDays() == null) return RulPrediction.unavailable("没有经过标定的退化时间基线或寿命标签");
-        int expected = Math.max(1, asset.rulDays());
-        int margin = Math.max(5, (int) Math.round(expected * 0.25));
-        int lower = Math.max(1, expected - margin);
-        int upper = expected + margin;
-        String risk = expected <= 30 ? "高" : expected <= 90 ? "中" : "低";
-        String window = expected <= 30 ? "建议7天内安排检查窗口"
-                : expected <= 90 ? "建议30天内纳入计划" : "按现行周期持续监测";
-        double confidence = Math.min(75, 50 + quality.availabilityPercent() * 0.2);
-        return new RulPrediction("DEMO_ESTIMATE", RUL_MODEL, lower, expected, upper, round(confidence), risk,
-                "当前主风险对应部件性能劣化", window,
-                "先核验高贡献测点与工况；人工确认后再进入维保计划，不直接下发控制指令",
-                "未使用真实故障终点训练；结果不得作为安全联锁或强制停机依据");
-    }
 
     private String priorityOf(String risk) {
         return "高".equals(risk) ? "P1 高" : "中".equals(risk) ? "P2 中" : "P3 低";

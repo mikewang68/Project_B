@@ -1,6 +1,7 @@
 package com.bproject.ehm.monitoring.adapter.out.opengemini;
 
 import com.bproject.ehm.monitoring.ports.TelemetrySeriesPort;
+import com.bproject.ehm.shared.error.DependencyUnavailableException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.net.URLEncoder;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -28,6 +30,7 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
     private final ObjectMapper objectMapper;
     private final String database;
     private final boolean writeEnabled;
+    private final String baseUrl;
 
     public OpenGeminiTelemetryAdapter(
             RestClient.Builder builder,
@@ -51,17 +54,22 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
         this.objectMapper = objectMapper;
         this.database = required(database, "openGemini数据库");
         this.writeEnabled = writeEnabled;
+        this.baseUrl = trimSlash(baseUrl);
     }
 
     @Override
     public void write(TelemetrySample sample) {
-        if (!writeEnabled) return;
-        client.post()
-                .uri("/write?db=" + encode(database) + "&precision=ns")
+        if (!writeEnabled) throw new DependencyUnavailableException("openGemini写入已关闭，样本未保存");
+        try {
+          client.post()
+                .uri(URI.create(baseUrl + "/write?db=" + encode(database) + "&precision=ns"))
                 .contentType(MediaType.TEXT_PLAIN)
                 .body(lineProtocol(sample))
                 .retrieve()
                 .toBodilessEntity();
+        } catch (org.springframework.web.client.RestClientException exception) {
+            throw new DependencyUnavailableException("openGemini样本写入失败，请检查时序服务、数据库和写入权限", exception);
+        }
     }
 
     @Override
@@ -69,14 +77,22 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
         int bounded = Math.max(1, Math.min(limit, 2000));
         Instant end = to == null ? Instant.now() : to;
         Instant start = from == null ? end.minus(Duration.ofHours(24)) : from;
+        if (start.isAfter(end)) throw new IllegalArgumentException("开始时间不得晚于结束时间");
         String query = "SELECT value,quality,unit,metric,asset_code,source_timestamp,received_at FROM "
-                + MEASUREMENT + " WHERE point_code='" + influxString(pointCode)
+                + MEASUREMENT + " WHERE point_code='" + influxLiteral(pointCode)
                 + "' AND time >= '" + start + "' AND time <= '" + end
                 + "' ORDER BY time DESC LIMIT " + bounded;
-        String body = client.get()
-                .uri("/query?db=" + encode(database) + "&epoch=ms&q=" + encode(query))
-                .retrieve().body(String.class);
-        return decodeHistory(body, pointCode);
+        try {
+            // URI overload preserves the single encoding; String overload encodes % a second time.
+            String body = client.get().uri(queryUri(query)).retrieve().body(String.class);
+            return decodeHistory(body, pointCode);
+        } catch (org.springframework.web.client.RestClientException exception) {
+            throw new DependencyUnavailableException("openGemini历史查询失败，请检查时序数据库、查询权限和测点入库状态", exception);
+        }
+    }
+
+    URI queryUri(String query) {
+        return URI.create(baseUrl + "/query?db=" + encode(database) + "&epoch=ms&q=" + encode(query));
     }
 
     @Override
@@ -103,13 +119,16 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
     List<TelemetrySample> decodeHistory(String body, String pointCode) {
         if (body == null || body.isBlank()) return List.of();
         try {
-            JsonNode series = objectMapper.readTree(body).path("results").path(0).path("series").path(0);
-            if (!series.isObject()) return List.of();
+            JsonNode root = objectMapper.readTree(body);
+            if (root.hasNonNull("error")) throw new DependencyUnavailableException("openGemini拒绝查询，请核查数据库与查询权限");
+            List<TelemetrySample> values = new ArrayList<>();
+            for (JsonNode result : root.path("results")) {
+            if (result.hasNonNull("error")) throw new DependencyUnavailableException("openGemini返回查询错误，请核查数据库与测点表");
+            for (JsonNode series : result.path("series")) {
             Map<String, Integer> columns = new HashMap<>();
             for (int i = 0; i < series.path("columns").size(); i++) {
                 columns.put(series.path("columns").path(i).asText(), i);
             }
-            List<TelemetrySample> values = new ArrayList<>();
             for (JsonNode row : series.path("values")) {
                 values.add(new TelemetrySample(
                         pointCode,
@@ -122,9 +141,13 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
                         instant(text(row, columns, "received_at"))
                 ));
             }
+            }
+            }
             return values;
+        } catch (DependencyUnavailableException exception) {
+            throw exception;
         } catch (Exception exception) {
-            throw new IllegalStateException("无法解析openGemini查询结果", exception);
+            throw new DependencyUnavailableException("openGemini历史结果格式异常", exception);
         }
     }
 
@@ -154,6 +177,10 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
 
     private static String influxString(String value) {
         return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private static String influxLiteral(String value) {
+        return required(value, "测点编码").replace("\\", "\\\\").replace("'", "\\'");
     }
 
     private static String encode(String value) {

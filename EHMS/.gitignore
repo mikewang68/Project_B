@@ -2,7 +2,14 @@
 .env
 .env.*
 !.env.example
+!*.env.example
 config/ehm-server.env
+config/ehm-ai.env
+config/ehm-ai.env.*
+!config/ehm-ai.env.example
+config/.lab-model-api-key*
+config/.deepseek-api-key*
+config/.ehm-ai-*
 config/*.local.*
 
 # Credentials and certificates
@@ -18,6 +25,15 @@ run/
 source/backend/target/
 app/*.jar
 *.log
+*.bak
+*.bak-*
+*.zip
+*.tar
+*.tar.gz
+backups/
+dist/
+__pycache__/
+*.pyc
 
 # Editor and operating-system files
 .idea/

@@ -53,22 +53,50 @@ public class DataQualityApplicationService {
         Instant now = clock.instant();
         return pointPage.map(point -> DataQualityPointView.compose(point,
                 snapshots.getOrDefault(point.code(), PointQualitySnapshot.missing(
-                        point.code(), point.assetCode(), point.enabled(), now))));
+                        point.code(), point.assetCode(), point.enabled(), now)).recheck(point.enabled(),
+                        point.sampleIntervalSeconds(), point.lowerLimit(), point.upperLimit(), now)));
     }
 
     public DataQualitySummary summary(String assetCode) {
         String normalizedAsset = requireAsset(assetCode);
-        List<String> activeCodes = points.activeCodes(normalizedAsset);
-        List<String> enabledCodes = points.enabledCodes(normalizedAsset);
-        long total = activeCodes.size();
-        long enabled = enabledCodes.size();
-        Map<QualityStatus, Long> counts = quality.countByStatus(normalizedAsset, activeCodes);
+        return summarize(normalizedAsset, allPoints(normalizedAsset));
+    }
+
+    public List<DataQualityPointView> allPoints(String assetCode) {
+        java.util.ArrayList<DataQualityPointView> items = new java.util.ArrayList<>();
+        PageResult<DataQualityPointView> page;
+        int index = 0;
+        do {
+            page = list(assetCode, new PageQuery(index++, 200), null);
+            items.addAll(page.content());
+        } while (index < page.totalPages());
+        return List.copyOf(items);
+    }
+
+    /** Re-evaluate stored snapshots at their latest source time, never present replay as live telemetry. */
+    public List<DataQualityPointView> historicalPoints(String assetCode) {
+        List<DataQualityPointView> items = allPoints(assetCode);
+        Instant asOf = items.stream().filter(DataQualityPointView::enabled).map(DataQualityPointView::sourceTimestamp)
+                .filter(java.util.Objects::nonNull).max(Instant::compareTo).orElse(clock.instant());
+        return items.stream().map(p -> {
+            PointQualitySnapshot snapshot = PointQualitySnapshot.assess(p.pointCode(), p.assetCode(), p.enabled(),
+                    p.sampleIntervalSeconds(), p.lowerLimit(), p.upperLimit(), p.lastValue(), p.sourceTimestamp(),
+                    p.receivedAt(), null, asOf);
+            return new DataQualityPointView(p.pointCode(), p.assetCode(), p.componentCode(), p.name(), p.metric(),
+                    p.unit(), p.sourceProtocol(), p.sourceAddress(), p.sampleIntervalSeconds(), p.lowerLimit(),
+                    p.upperLimit(), p.enabled(), snapshot.status().name(), snapshot.status().label(), p.lastValue(),
+                    p.sourceTimestamp(), p.receivedAt(), asOf, snapshot.message(), p.consecutiveFailures());
+        }).toList();
+    }
+
+    public DataQualitySummary summarize(String normalizedAsset, List<DataQualityPointView> items) {
+        long total = items.size();
+        long enabled = items.stream().filter(DataQualityPointView::enabled).count();
+        Map<QualityStatus, Long> counts = items.stream().collect(Collectors.groupingBy(
+                p -> QualityStatus.valueOf(p.qualityStatus()), Collectors.counting()));
         long good = count(counts, QualityStatus.GOOD);
         long disabled = count(counts, QualityStatus.DISABLED) + Math.max(0, total - enabled - count(counts, QualityStatus.DISABLED));
-        long observedEnabled = counts.entrySet().stream()
-                .filter(entry -> entry.getKey() != QualityStatus.DISABLED)
-                .mapToLong(Map.Entry::getValue).sum();
-        long missing = count(counts, QualityStatus.MISSING) + Math.max(0, enabled - observedEnabled);
+        long missing = count(counts, QualityStatus.MISSING);
         long delayed = count(counts, QualityStatus.DELAYED);
         long outOfRange = count(counts, QualityStatus.OUT_OF_RANGE);
         long invalid = count(counts, QualityStatus.INVALID);

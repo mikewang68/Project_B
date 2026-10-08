@@ -11,12 +11,25 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OpenGeminiTelemetryAdapterTest {
     private final OpenGeminiTelemetryAdapter adapter = new OpenGeminiTelemetryAdapter(
             RestClient.builder(), new ObjectMapper().findAndRegisterModules(),
             "http://127.0.0.1:8086", "ehm_telemetry", "", "",
             Duration.ofSeconds(1), Duration.ofSeconds(1), false);
+
+    @Test
+    void queryUriIsEncodedOnceAndErrorsAreNotEmptyResults() {
+        String query="SELECT value FROM ehm_point_value WHERE point_code='GT01-VIB-RMS'";
+        String raw=adapter.queryUri(query).getRawQuery();
+        assertTrue(raw.contains("q=SELECT+value"));
+        assertTrue(!raw.contains("%25"));
+        assertTrue(java.net.URLDecoder.decode(raw, java.nio.charset.StandardCharsets.UTF_8).contains(query));
+        assertThrows(com.bproject.ehm.shared.error.DependencyUnavailableException.class,
+                () -> adapter.decodeHistory("{\"results\":[{\"error\":\"database not found\"}]}","P-1"));
+        assertTrue(adapter.decodeHistory("{\"results\":[{}]}","P-1").isEmpty());
+    }
 
     @Test
     void createsEscapedInfluxLineProtocolWithNanosecondTimestamp() {

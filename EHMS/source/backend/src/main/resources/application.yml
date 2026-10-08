@@ -31,10 +31,15 @@ ehm:
     path: ${EHM_CONFIG_PATH:../.config.json}
   ai:
     enabled: ${EHM_AI_ENABLED:false}
-    base-url: ${EHM_AI_BASE_URL:}
+    base-url: ${EHM_AI_BASE_URL:https://api.deepseek.com}
     api-key: ${EHM_AI_API_KEY:}
-    model: ${EHM_AI_MODEL:}
-    timeout-seconds: ${EHM_AI_TIMEOUT_SECONDS:60}
+    api-key-file: ${EHM_AI_API_KEY_FILE:}
+    model: ${EHM_AI_MODEL:deepseek-flash}
+    data-policy: ${EHM_AI_DATA_POLICY:disabled}
+    timeout-seconds: ${EHM_AI_TIMEOUT_SECONDS:45}
+    provider: ${EHM_AI_PROVIDER:}
+    trusted-http-origin: ${EHM_AI_TRUSTED_HTTP_ORIGIN:}
+    tools-enabled: ${EHM_AI_TOOLS_ENABLED:true}
   security:
     jwt-enabled: ${EHM_JWT_ENABLED:false}
     rbac-enabled: ${EHM_RBAC_ENABLED:false}

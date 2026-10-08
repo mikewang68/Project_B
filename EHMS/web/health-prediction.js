@@ -9,11 +9,8 @@ function selectedHealthAsset(){
 }
 
 async function healthRequest(path,options={}){
-  const headers={Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})};
-  const response=await fetch(`${API_BASE}${path}`,{...options,headers});
-  if(response.status===404)return null;
-  if(!response.ok){let message=`HTTP ${response.status}`;try{const body=await response.json();message=body.message||message;}catch{}throw new Error(message);}
-  return response.status===204?null:response.json();
+  try{return await apiRequest(path,options);}
+  catch(error){if(error.status===404 && path.endsWith('/latest'))return null;throw error;}
 }
 
 async function loadHealthFlow(showMessage=false){
@@ -22,13 +19,17 @@ async function loadHealthFlow(showMessage=false){
   if(HEALTH_PAGES.has(state.page))renderPage();
   try{
     const code=encodeURIComponent(asset.code);
-    const [latest,history,quality]=await Promise.all([
+    const results=await Promise.allSettled([
       healthRequest(`/devices/${code}/health-assessments/latest`),
       healthRequest(`/devices/${code}/health-assessments?limit=12`),
       healthRequest(`/data-quality/summary?assetCode=${code}`)
     ]);
     if(seq!==state.healthFlow.requestSeq)return;
-    state.healthFlow.latest=latest;state.healthFlow.history=history||[];state.healthFlow.quality=quality;
+    const [latest,history,quality]=results;
+    state.healthFlow.latest=latest.status==='fulfilled'?latest.value:null;
+    state.healthFlow.history=history.status==='fulfilled'?(history.value||[]):[];
+    state.healthFlow.quality=quality.status==='fulfilled'?quality.value:null;
+    state.healthFlow.error=results.filter(r=>r.status==='rejected').map(r=>r.reason.message).join('；');
     state.healthFlow.loading=false;if(HEALTH_PAGES.has(state.page))renderPage();
     if(showMessage)toast(`${asset.code} 的评估结果和数据质量已刷新。`);
   }catch(error){
@@ -80,7 +81,7 @@ function historyPanel(){
 
 function healthBody(value){
   if(state.page==='baseline')return `${factorTable(value)}${lineagePanel(value)}`;
-  if(state.page==='degradation')return `${panel('劣化趋势的当前输入',`<div class="notice-bar"><strong>本阶段已落地</strong><span>保存当前窗口的测点贡献和评估历史；接入openGemini后，历史特征序列可直接替换此投影。</span>${tag('适配器待切换','info')}</div>${lineChart(value.factors.map(item=>Math.min(100,item.utilizationPercent)),value.factors.map(()=>65),{threshold:85})}`)}${historyPanel()}`;
+  if(state.page==='degradation')return `${panel('已保存评估的健康分趋势',typeof healthHistoryChart==='function'?healthHistoryChart(): '<p>请刷新评估历史。</p>')}${historyPanel()}`;
   if(state.page==='rul')return `<div class="grid cols-2">${predictionPanel(value)}${lineagePanel(value)}</div>${historyPanel()}`;
   if(state.page==='maintenance-advice')return `<div class="grid cols-2">${predictionPanel(value)}${reviewPanel(value)}</div>${factorTable(value)}`;
   return `<div class="health-overview"><section class="panel score-card"><div class="score-ring" style="--score:${value.healthScore}"><b>${value.healthScore}</b><span>健康分</span></div><div><h2>${esc(value.assetCode)} · ${esc(value.assetName)}</h2><p>${esc(value.method)}</p>${tag(value.healthGrade,value.healthScore<70?'severe':value.healthScore<85?'warn':'good')}${tag('可信度 '+value.confidencePercent+'%','purple')}</div></section><div class="grid cols-2">${predictionPanel(value)}${reviewPanel(value)}</div></div>${factorTable(value)}${historyPanel()}`;
@@ -88,20 +89,23 @@ function healthBody(value){
 
 function renderHealthFlow(){
   const s=state.healthFlow;
-  const head=pageHead('健康评估与预测','从可信测点形成可解释、带版本和有效期的结果，再经人工审核进入维保流程。',`${healthSelector()}${button('刷新','reloadHealthFlow')}${button('运行新评估','runHealthAssessment','primary')}`);
+  const head=pageHead('健康评估与预测','当前实现规则评估、历史回放与人工审核；真正的寿命预测需设备专用模型与有效标签。',`${healthSelector()}${button('刷新','reloadHealthFlow')}${button('历史样本回放','confirmHealthReplay')}${button('运行当前评估','runHealthAssessment','primary')}`);
   if(s.loading)return `<div class="page">${head}${healthTabs()}${panel('正在加载','<div class="empty-state"><b>读取数据质量和评估历史…</b></div>')}</div>`;
-  if(s.error)return `<div class="page">${head}${healthTabs()}${panel('暂不可用',`<div class="callout warning"><h3>加载失败</h3><p>${esc(s.error)}</p>${button('重试','reloadHealthFlow')}</div>`)}</div>`;
-  return `<div class="page">${head}${healthTabs()}${qualityGate()}${s.latest?healthBody(s.latest):noHealthResult()}</div>`;
+  const error=s.error?panel('部分数据暂不可用',`<div class="callout warning"><p>${esc(s.error)}</p>${button('重试','reloadHealthFlow')}</div>`):'';
+  return `<div class="page">${head}${healthTabs()}${error}${qualityGate()}${s.latest?healthBody(s.latest):noHealthResult()}</div>`;
 }
 
 async function runHealthAssessment(){
-  const asset=selectedHealthAsset();try{const value=await apiRequest(`/devices/${encodeURIComponent(asset.code)}/health-assessments/run`,{method:'POST'});state.healthFlow.latest=value;await loadHealthFlow();toast(`已生成${asset.code}评估：${value.healthScore}分，${value.healthGrade}。`);}catch(error){toast('评估未执行：'+error.message);}
+  const asset=selectedHealthAsset();if(!asset||state.healthFlow.running)return;
+  state.healthFlow.running=true;renderPage();
+  try{const value=await apiRequest(`/devices/${encodeURIComponent(asset.code)}/health-assessments/run`,{method:'POST'});state.healthFlow.latest=value;await loadHealthFlow();toast(`已保存${value.assessmentId}：${value.healthScore}分，${value.healthGrade}。`);}catch(error){state.healthFlow.error='评估未执行：'+error.message;}
+  finally{state.healthFlow.running=false;renderPage();}
 }
 
 function openHealthReview(){const value=state.healthFlow.latest;if(!value)return;openModal('健康预测','人工审核建议',`<div class="risk-confirm"><strong>审核前请确认：</strong>设备工况、测点质量、现场状态和模型限制。审核不会触发PLC控制。</div><div class="form-grid"><div class="field"><label>审核决定</label><select id="healthReviewDecision"><option value="ACCEPTED">接受建议，允许转工单</option><option value="OBSERVE" selected>继续观察</option><option value="REJECTED">不采纳</option></select></div><div class="field"><label>审核人</label><input id="healthReviewer" value="Demo设备工程师"/></div><div class="field full"><label>审核意见</label><textarea id="healthReviewComment">已核验当前工况与测点质量，建议继续观察并补充现场检查结果。</textarea></div></div>`,'保存审核记录',submitHealthReview);}
-async function submitHealthReview(){const value=state.healthFlow.latest;try{state.healthFlow.latest=await apiRequest(`/health-assessments/${encodeURIComponent(value.assessmentId)}/review`,{method:'POST',body:JSON.stringify({decision:$('#healthReviewDecision')?.value,comment:$('#healthReviewComment')?.value,reviewer:$('#healthReviewer')?.value})});await loadHealthFlow();toast('人工审核已保存，原算法结果未被覆盖。');}catch(error){toast('审核失败：'+error.message);}}
+async function submitHealthReview(){const value=state.healthFlow.latest;try{state.healthFlow.latest=await apiRequest(`/health-assessments/${encodeURIComponent(value.assessmentId)}/review`,{method:'POST',body:JSON.stringify({decision:$('#healthReviewDecision')?.value,comment:$('#healthReviewComment')?.value,reviewer:$('#healthReviewer')?.value})});await loadHealthFlow();toast('人工审核已保存，原算法结果未被覆盖。');return true;}catch(error){toast('审核失败：'+error.message);return false;}}
 function openHealthWorkOrder(){const value=state.healthFlow.latest;if(value?.review?.decision!=='ACCEPTED'){toast('请先人工审核并选择“接受建议”。');return;}openModal('预测建议','转为待审批工单',`<div class="form-grid"><div class="field full"><label>工单主题</label><input id="healthWorkTitle" value="${esc(value.assetName)}预测风险专项检查"/></div><div class="field"><label>责任班组</label><input id="healthWorkAssignee" value="设备机修班"/></div><div class="field"><label>计划窗口</label><input id="healthWorkWindow" value="${esc(value.prediction.maintenanceWindow)}"/></div><div class="field"><label>操作人</label><input id="healthWorkOperator" value="Demo设备工程师"/></div></div>`,'创建待审批工单',submitHealthWorkOrder);}
-async function submitHealthWorkOrder(){const value=state.healthFlow.latest;try{state.healthFlow.latest=await apiRequest(`/health-assessments/${encodeURIComponent(value.assessmentId)}/work-order`,{method:'POST',body:JSON.stringify({title:$('#healthWorkTitle')?.value,assignee:$('#healthWorkAssignee')?.value,plannedWindow:$('#healthWorkWindow')?.value,operator:$('#healthWorkOperator')?.value})});await loadBackendData();await loadHealthFlow();toast(`已创建并关联工单 ${state.healthFlow.latest.workOrderNo}。`);}catch(error){toast('转工单失败：'+error.message);}}
+async function submitHealthWorkOrder(){const value=state.healthFlow.latest;try{state.healthFlow.latest=await apiRequest(`/health-assessments/${encodeURIComponent(value.assessmentId)}/work-order`,{method:'POST',body:JSON.stringify({title:$('#healthWorkTitle')?.value,assignee:$('#healthWorkAssignee')?.value,plannedWindow:$('#healthWorkWindow')?.value,operator:$('#healthWorkOperator')?.value})});await loadBackendData();await loadHealthFlow();toast(`已创建并关联工单 ${state.healthFlow.latest.workOrderNo}。`);return true;}catch(error){toast('转工单失败：'+error.message);return false;}}
 
 const baseRenderPageHealth=renderPage;renderPage=function(){if(!HEALTH_PAGES.has(state.page))return baseRenderPageHealth();$('#pageView').innerHTML=renderHealthFlow();syncNav();$('#content').scrollTop=0;bindPageEvents();};
 const baseSetPageHealth=setPage;setPage=function(page){baseSetPageHealth(page);if(HEALTH_PAGES.has(page))loadHealthFlow();};

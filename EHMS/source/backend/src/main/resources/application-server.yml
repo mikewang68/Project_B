@@ -26,6 +26,8 @@ spring:
         type: none
 
 ehm:
+  release:
+    version: 1.6.1-server
   cors:
     allowed-origins: ${EHM_ALLOWED_ORIGINS:http://192.0.2.74:18090}
   persistence:

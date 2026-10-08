@@ -31,10 +31,16 @@ public record PointQualitySnapshot(
                 null, null, null, now, enabled ? "尚未接收到测点数据" : "测点已停用", enabled ? 1 : 0, null);
     }
 
+    public PointQualitySnapshot recheck(boolean enabled, int interval, Double lower, Double upper, Instant now) {
+        QualityDecision decision = decide(enabled, interval, lower, upper, value, sourceTimestamp, receivedAt, now);
+        return new PointQualitySnapshot(pointCode, assetCode, decision.status(), value, sourceTimestamp,
+                receivedAt, now, decision.message(), consecutiveFailures, version);
+    }
+
     private static QualityDecision decide(boolean enabled, int interval, Double lower, Double upper, Double value,
                                           Instant sourceTimestamp, Instant receivedAt, Instant now) {
         if (!enabled) return new QualityDecision(QualityStatus.DISABLED, "测点已停用，不参与健康评估");
-        if (value == null) return new QualityDecision(QualityStatus.INVALID, "采样值为空");
+        if (value == null || !Double.isFinite(value)) return new QualityDecision(QualityStatus.INVALID, "采样值为空或非有限数字");
         if (sourceTimestamp == null || receivedAt == null) {
             return new QualityDecision(QualityStatus.INVALID, "缺少源时间或接收时间");
         }

@@ -43,7 +43,7 @@ public class DemoOperationsInitializer implements CommandLineRunner {
         if (tasks.count() == 0) {
             tasks.save(UserTask.create("TASK-DEMO-001", "告警处置", "ALARM", "EHM-ALM-0902-001",
                     "确认GT-01起升减速机L3告警", "核验传感器安装、油样与振动频谱",
-                    "GT-01", "闫鑫钰", "机修二班", "P1 高", now.plus(2, ChronoUnit.HOURS), now));
+                    "GT-01", "运维工程师", "机修二班", "P1 高", now.plus(2, ChronoUnit.HOURS), now));
             tasks.save(UserTask.create("TASK-DEMO-002", "校准提醒", "CALIBRATION", "CAL-DEMO-001",
                     "QC-02制动响应传感器即将到期", "安排计量校准并上传证书",
                     "QC-02", "计量员", "电气班", "P2 中", now.plus(7, ChronoUnit.DAYS), now));

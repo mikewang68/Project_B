@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="./reliability-governance.css?v=1.0" />
   <link rel="stylesheet" href="./delivery-console.css?v=1.0" />
   <link rel="stylesheet" href="./unified-theme.css?v=2.0" />
+  <link rel="stylesheet" href="./ai-assistant.css?v=1.5.0" />
 </head>
 <body>
   <div class="app-shell" id="appShell" data-layout="side">
@@ -22,7 +23,7 @@
         <div class="brand-mark">EHM</div>
         <div>
           <strong>设备健康管理系统</strong>
-          <span>B项目 · 服务器联调版 1.4.0</span>
+          <span>B项目 · 服务器联调版 1.6.1</span>
         </div>
       </div>
 
@@ -61,10 +62,10 @@
           <button class="plain-button" id="commandView" type="button">指挥大屏</button>
           <button class="plain-button" id="mobileView" type="button">移动作业端</button>
           <button class="status-button" id="runtimeStatus" type="button"><span></span>系统运行正常</button>
-          <button class="icon-button has-count" data-tip="未读告警" type="button" data-goto="alarm-center">告<span>7</span></button>
-          <button class="icon-button has-count" data-tip="我的待办" type="button" data-goto="my-tasks">办<span>12</span></button>
+          <button class="icon-button has-count" data-tip="活动告警" type="button" data-goto="alarm-center">告<span>—</span></button>
+          <button class="icon-button has-count" data-tip="我的待办" type="button" data-goto="my-tasks">办<span>—</span></button>
           <div class="shift"><b>白班</b><span id="clock">--</span></div>
-          <button class="avatar" type="button" aria-label="用户菜单">闫</button>
+          <button class="avatar" type="button" aria-label="用户菜单">维</button>
         </div>
       </header>
 
@@ -115,44 +116,48 @@
   </div>
 
   <button class="assistant-entry" id="assistantEntry" type="button" aria-label="打开智能运维助手">
-    <span>辅</span><b>智能辅助</b><i>正在连接</i>
+    <span>AI</span><b>设备助手</b><i>检测连接</i>
   </button>
 
   <aside class="assistant-panel" id="assistantPanel" aria-hidden="true">
     <div class="assistant-head">
-      <div><span>智能运维辅助</span><b>可审计规则 / 外部API可切换</b></div>
-      <button id="assistantClose" type="button">×</button>
+      <div><span>AI设备助手</span><b id="assistantModelLabel">大模型 · 系统数据检索</b></div>
+      <div class="assistant-head-actions"><button id="assistantExpand" type="button" aria-label="展开对话">展开</button><button id="assistantClose" type="button" aria-label="关闭助手">×</button></div>
     </div>
     <div class="capability-notice">
-      <strong>当前回答会结合服务器中的设备、告警和工单数据</strong>
-      <p>未配置外部AI时使用可审计规则；配置后由Java后端代理调用。所有回答仍需人工复核。</p>
+      <strong id="assistantStatusText">正在检查模型连接状态…</strong>
+      <p>使用系统记录回答；发送到外部模型前脱敏。维护和交接建议需人工确认。</p>
     </div>
-    <div class="assistant-messages" id="assistantMessages">
-      <div class="message system">我可以解释当前演示告警、生成检查清单，或说明某项AI能力还缺少哪些启用条件。所有结论均需人工复核。</div>
+    <div class="assistant-toolbar"><label>设备范围 <select id="assistantDevice" aria-label="助手设备范围"><option value="">全场设备</option></select></label><button id="assistantTest" type="button">测试连接</button><button id="assistantClear" type="button">新对话</button></div>
+    <div class="assistant-messages" id="assistantMessages" aria-live="polite">
+      <div class="message system">可以问我“哪些设备优先检修？”、“GT-01的异常可能有哪些原因？”或“根据未完工单写一份夜班交接摘要”。我会显示检索来源；缺失的数据会明确指出。</div>
     </div>
     <div class="assistant-prompts">
-      <button type="button">解释GT-01风险</button>
-      <button type="button">生成现场检查项</button>
-      <button type="button">RUL为何未启用</button>
+      <button type="button">全场哪些设备优先检修？</button>
+      <button type="button">生成当前设备的现场检查清单</button>
+      <button type="button">汇总未完工单，写夜班交接摘要</button>
+      <button type="button">有哪些校准记录需要关注？</button>
     </div>
     <form class="assistant-form" id="assistantForm">
-      <input id="assistantInput" placeholder="输入设备、告警或工单问题" />
-      <button type="submit">发送</button>
+      <textarea id="assistantInput" rows="2" maxlength="2000" placeholder="输入问题，可连续追问；Enter发送，Shift+Enter换行" aria-label="助手问题"></textarea>
+      <button id="assistantSend" type="submit">发送</button>
     </form>
   </aside>
 
   <div class="toast" id="toast" role="status"></div>
 
   <script src="./governance-console.js?v=1.0"></script>
-  <script src="./app.js?v=4.1"></script>
+  <script src="./app.js?v=1.6.0.1"></script>
   <script src="./asset-structure.js?v=1.0"></script>
   <script src="./closed-loop.js?v=1.0"></script>
-  <script src="./health-prediction.js?v=1.0"></script>
+  <script src="./health-prediction.js?v=1.6.0"></script>
   <script src="./maintenance-program.js?v=1.0"></script>
   <script src="./spares-inventory.js?v=1.0"></script>
   <script src="./reliability-governance.js?v=1.0"></script>
   <script src="./delivery-console.js?v=1.0"></script>
-  <script src="./crud-console.js?v=1.0"></script>
+  <script src="./ai-assistant.js?v=1.6.1"></script>
+  <script src="./crud-console.js?v=1.6.0.1"></script>
+  <script src="./live-visuals.js?v=1.6.0.1"></script>
   <script id="prototype-fallback">
     document.addEventListener('click', function(event){
       const button = event.target.closest('button');

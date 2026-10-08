@@ -31,6 +31,12 @@ public class HealthAssessmentController {
         return health.run(assetCode);
     }
 
+    @PostMapping("/devices/{assetCode}/health-assessments/replay")
+    @ResponseStatus(HttpStatus.CREATED)
+    public HealthAssessment replay(@PathVariable String assetCode) {
+        return health.replay(assetCode);
+    }
+
     @GetMapping("/devices/{assetCode}/health-assessments/latest")
     public HealthAssessment latest(@PathVariable String assetCode) {
         return health.latest(assetCode);

@@ -28,7 +28,8 @@ function renderDeviceCrud(){
   const filtered=EQUIPMENT.filter(item=>{
     const keyword=c.keyword.trim().toLowerCase();
     const hit=!keyword || [item.code,item.name,item.type,item.area,item.owner].some(value=>String(value||'').toLowerCase().includes(keyword));
-    return hit && (!c.area||item.area===c.area) && (!c.type||item.type===c.type) && (!c.condition||item.condition===c.condition);
+    const band=item.health==null?'未登记评分':item.health>=80?'健康 80–100':item.health>=60?'关注 60–79':'异常 0–59';
+    return hit && (!c.area||item.area===c.area) && (!c.type||item.type===c.type) && (!c.condition||item.condition===c.condition) && (!c.healthBand||c.healthBand===band);
   });
   const rows=filtered.map(item=>`<tr>
     <td><button class="table-link" data-action="openAsset" data-id="${esc(item.code)}"><strong>${esc(item.code)}</strong><small>${esc(item.name)}</small></button></td>
@@ -49,6 +50,7 @@ function renderDeviceCrud(){
         <select class="control" id="deviceArea">${optionList(EQUIPMENT.map(x=>x.area),c.area,'全部区域')}</select>
         <select class="control" id="deviceType">${optionList(EQUIPMENT.map(x=>x.type),c.type,'全部类型')}</select>
         <select class="control" id="deviceCondition">${optionList(EQUIPMENT.map(x=>x.condition),c.condition,'全部状态')}</select>
+        <select class="control" id="deviceHealthBand">${optionList(['健康 80–100','关注 60–79','异常 0–59','未登记评分'],c.healthBand,'全部台账评分')}</select>
         <button class="button" data-action="clearDeviceFilters">重置</button>
       </div><div class="tool-actions"><span class="mini-badge">显示 ${filtered.length} / ${EQUIPMENT.length} 台</span>${button('保存筛选','saveFilter')}</div></div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>设备编码 / 名称</th><th>类型</th><th>区域</th><th>状态</th><th class="num">健康分</th><th>风险</th><th class="num">数据质量</th><th>接入状态</th><th>下次维护</th><th>责任组</th><th>操作</th></tr></thead><tbody>${rows||'<tr><td colspan="11"><div class="empty-state"><b>没有符合条件的设备</b><p>请调整查询条件或新建设备。</p></div></td></tr>'}</tbody></table></div>
@@ -263,7 +265,7 @@ handleAction=function(event){
   if(action==='archiveAsset') return confirmArchiveAsset(button.dataset.id||state.asset);
   if(action==='editComponent') return openEditComponent(button.dataset.id);
   if(action==='editPoint') return openEditPoint(button.dataset.id);
-  if(action==='clearDeviceFilters'){Object.assign(state.crud,{keyword:'',area:'',type:'',condition:''});return renderPage();}
+  if(action==='clearDeviceFilters'){Object.assign(state.crud,{keyword:'',area:'',type:'',condition:'',healthBand:''});return renderPage();}
   if(action==='saveFilter') return saveDeviceFilter();
   if(action==='subscribe'){
     const code=state.asset;

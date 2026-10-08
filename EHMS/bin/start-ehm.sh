@@ -24,6 +24,10 @@ fi
 set -a
 # shellcheck source=/dev/null
 source "${ENV_FILE}"
+AI_ENV_FILE="${EHM_AI_ENV_FILE:-$(dirname "${ENV_FILE}")/ehm-ai.env}"
+if [[ -f "${AI_ENV_FILE}" ]]; then
+  source "${AI_ENV_FILE}"
+fi
 set +a
 export SPRING_PROFILES_ACTIVE=server
 

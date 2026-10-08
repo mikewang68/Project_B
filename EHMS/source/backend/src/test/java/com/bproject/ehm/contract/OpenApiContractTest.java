@@ -20,7 +20,12 @@ class OpenApiContractTest {
         Map<String, Object> info = (Map<String, Object>) root.get("info");
         Map<String, Object> paths = (Map<String, Object>) root.get("paths");
 
-        assertEquals("1.9.0", info.get("version"));
+        assertEquals("1.11.0", info.get("version"));
+        assertTrue(paths.containsKey("/analytics/overview"));
+        assertTrue(paths.containsKey("/devices/{assetCode}/health-assessments/replay"));
+        assertTrue(paths.containsKey("/assistant/status"));
+        assertTrue(paths.containsKey("/assistant/test"));
+        assertTrue(paths.containsKey("/assistant/sessions/{id}"));
         assertTrue(paths.containsKey("/assets/{assetCode}/components"));
         assertTrue(paths.containsKey("/assets/{assetCode}/measurement-points"));
         assertTrue(paths.containsKey("/data-quality/summary"));

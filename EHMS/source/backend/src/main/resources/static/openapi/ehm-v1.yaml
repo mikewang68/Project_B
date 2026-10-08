@@ -1,11 +1,35 @@
 openapi: 3.0.3
 info:
   title: 设备健康管理系统 API
-  version: 1.9.0
+  version: 1.11.0
   description: EHM可交付Demo契约，覆盖资产、监测、告警闭环、健康预测、维保点检、备件库存、可靠性治理、个人待办、班组交接、设备模板、计量校准和配置变更履历，并增加openGemini时序历史、能力接入状态、交付就绪检查和接口操作审计。
 servers:
   - url: /api/ehm/v1
 paths:
+  /analytics/overview:
+    get:
+      summary: 全分页业务聚合统计（设备分布、告警及工单状态、每日创建/关闭量）
+      parameters:
+        - {name: days, in: query, schema: {type: integer, minimum: 1, maximum: 366, default: 30}}
+      responses:
+        '200':
+          description: 实际业务记录统计，包含source、calculatedAt、from、to、分布、dailyEvents和口径说明；不是健康历史回填
+          content:
+            application/json:
+              schema: {type: object}
+        '400': {description: 时间范围不合法}
+  /devices/{assetCode}/health-assessments/replay:
+    post:
+      summary: 明确标注的历史快照规则回放（不改变样本源时间，不代表当前健康）
+      parameters:
+        - {name: assetCode, in: path, required: true, schema: {type: string}}
+      responses:
+        '201':
+          description: 生成带实际输入时间和历史回放标记的持久化评估；RUL未启用
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/HealthAssessment'}
+        '409': {description: 历史样本不足或质量不符合准入条件}
   /devices:
     get:
       summary: 分页查询设备综合视图
@@ -676,7 +700,7 @@ paths:
         '200': {description: 聚合指标}
   /assistant/chat:
     post:
-      summary: 运维辅助问答
+      summary: DeepSeek多轮对话和脱敏只读业务检索
       requestBody:
         required: true
         content:
@@ -685,9 +709,60 @@ paths:
               type: object
               required: [message]
               properties:
-                message: {type: string}
+                message: {type: string, minLength: 1, maxLength: 2000}
+                sessionId: {type: string, maxLength: 64, description: 首次不传，由服务端返回；空闲20分钟过期}
+                deviceCode: {type: string, maxLength: 80, description: 可选设备范围}
       responses:
-        '200': {description: AI或规则降级回答}
+        '200':
+          description: 回答、模式、来源和模型异常说明
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answer: {type: string}
+                  mode: {type: string, enum: [model, deepseek, local-data, local-fallback]}
+                  provider: {type: string, description: 当前模型服务显示名称}
+                  sessionId: {type: string}
+                  answeredAt: {type: string, format: date-time}
+                  warning: {type: string}
+                  model: {type: string}
+                  promptTokens: {type: integer}
+                  completionTokens: {type: integer}
+                  deviceCode: {type: string}
+                  sources:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ref: {type: string}
+                        title: {type: string}
+                        page: {type: string}
+                        matchedRows: {type: integer}
+                        queriedAt: {type: string, format: date-time}
+        '400': {description: 问题或会话参数超限}
+        '429': {description: 全局最大2个并行请求已占满}
+  /assistant/status:
+    get:
+      summary: 查询模型配置状态（不返回密钥、路径或服务端地址）
+      responses:
+        '200': {description: enabled、keyConfigured、ready、provider、model、dataPolicy、message；ready仅代表配置完整}
+  /assistant/test:
+    post:
+      summary: 使用不含业务数据的测试问题验证模型连通性
+      responses:
+        '200': {description: success、message、可选错误code与model}
+        '429': {description: 并行请求已占满}
+  /assistant/sessions/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    get:
+      summary: 恢复最近10轮对话；会话只存后端内存，重启或过期后清除
+      responses:
+        '200': {description: role、content、at组成的消息数组}
+    delete:
+      summary: 清除本会话
+      responses:
+        '200': {description: 已清除}
   /my-tasks:
     get:
       summary: 查询个人或班组待办

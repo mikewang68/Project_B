@@ -1,6 +1,6 @@
 const MENU = [
   { id:'workbench', icon:'总', label:'工作台', children:[
-    ['dashboard','综合驾驶舱'],['my-tasks','我的待办'],['shift-handover','班组交接']
+    ['dashboard','综合驾驶舱'],['my-tasks','我的待办'],['shift-handover','班组交接'],['ai-assistant','AI设备助手']
   ]},
   { id:'operations', icon:'运', label:'运行态势', children:[
     ['fleet','全场设备群态势'],['area-map','区域 / 设备分布'],['realtime','实时监测'],['diagnosis','诊断分析工作台']
@@ -64,14 +64,26 @@ const state = { page:'dashboard', asset:'GT-01', assetTab:'overview', drawer:nul
 
 async function apiRequest(path,options={}){
   const headers={Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})};
-  const response=await fetch(`${API_BASE}${path}`,{...options,headers});
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),options.timeoutMs||25000);
+  let response;
+  try{response=await fetch(`${API_BASE}${path}`,{...options,headers,signal:options.signal||controller.signal});}
+  catch(error){throw new Error(error.name==='AbortError'?'请求超时，请重试或检查服务状态':'无法连接后端，请检查SSH隧道或服务器连接');}
+  finally{clearTimeout(timer);}
   if(!response.ok){
     let message=`HTTP ${response.status}`;
-    try{const body=await response.json();message=body.detail||body.message||message;}catch{}
-    throw new Error(message);
+    try{const body=await response.json();message=body.detail||body.message||message;if(body.traceId)message+=`（跟踪号 ${body.traceId.slice(0,8)}）`;}catch{}
+    const error=new Error(message);error.status=response.status;throw error;
   }
   if(response.status===204)return null;
   return response.json();
+}
+
+async function apiList(path){
+  const rows=[];let page=0,total=1;
+  while(page<total){const result=await apiRequest(`${path}${path.includes('?')?'&':'?'}page=${page}&size=200`);
+    if(Array.isArray(result))return result;
+    rows.push(...(result?.content||[]));total=result?.totalPages||1;page++;}
+  return rows;
 }
 
 function mapDevice(device){return {...device,maint:device.maintenanceDate??device.maint,updatedAt:device.updatedAt};}
@@ -87,19 +99,20 @@ function fallbackSummary(){
 }
 async function loadBackendData(showMessage=false){
   try{
-    const [summary,devices,alarms,orders]=await Promise.all([apiRequest('/dashboard/summary'),apiRequest('/devices'),apiRequest('/alarms'),apiRequest('/work-orders')]);
+    const [summary,devices,alarms,orders]=await Promise.all([apiRequest('/dashboard/summary'),apiList('/devices'),apiList('/alarms'),apiList('/work-orders')]);
     const deviceItems=Array.isArray(devices)?devices:(devices?.content||[]);
     const alarmItems=Array.isArray(alarms)?alarms:(alarms?.content||[]);
     const orderItems=Array.isArray(orders)?orders:(orders?.content||[]);
     state.summary=summary;EQUIPMENT=deviceItems.map(mapDevice);ALARMS=alarmItems;WORK_ORDERS=orderItems;state.backendConnected=true;state.backendError='';
     const status=$('#runtimeStatus');if(status){status.classList.add('connected');status.innerHTML='<span></span>服务器后端已连接';}
-    const assistantBadge=$('#assistantEntry i');if(assistantBadge)assistantBadge.textContent='数据已接入';
+    if(typeof refreshAssistantStatus==='function')refreshAssistantStatus();
     renderPage();
     if(showMessage)toast('已从openGauss刷新设备、告警和工单数据。');
   }catch(error){
     state.backendConnected=false;state.backendError=error.message;
     const status=$('#runtimeStatus');if(status){status.classList.remove('connected');status.innerHTML='<span></span>离线演示模式';}
-    if(showMessage)toast('后端暂不可用，已保留本地演示数据：'+error.message);
+    if(showMessage)toast('后端暂不可用，当前数据未刷新：'+error.message);
+    renderPage();
   }
 }
 function resolveRoot(root=document){
@@ -117,7 +130,7 @@ function gotoButton(text,page,cls=''){return `<button class="button ${cls}" type
 function pageHead(title,desc,actions=''){return `<div class="page-head"><div><h1>${title}</h1><p>${desc}</p></div><div class="page-actions">${actions}</div></div>`;}
 function metric(label,value,unit,foot,cls=''){return `<article class="panel metric ${cls}"><div class="metric-label"><span>${label}</span><span>?</span></div><div class="metric-value">${value}<small>${unit||''}</small></div><div class="metric-foot">${foot}</div></article>`;}
 function panel(title,body,extra='',foot=''){return `<section class="panel"><div class="panel-head"><h2>${title}</h2>${extra}</div><div class="panel-body">${body}</div>${foot?`<div class="panel-foot">${foot}</div>`:''}</section>`;}
-function pager(total='24'){return `<div class="table-pagination"><span>共 ${total} 条 · 每页 20 条</span><div class="pagination-buttons"><button>‹</button><button class="active">1</button><button>2</button><button>›</button></div></div>`;}
+function pager(total='0'){return `<div class="table-pagination"><span>本次返回 ${esc(total)} 条 · 已展示当前查询返回的记录</span></div>`;}
 function lineChart(primary=[62,64,61,66,68,70,69,73,76,74,78,82],secondary=[42,41,43,44,46,45,48,50,53,55,54,58],opts={}){
   const w=660,h=210,p=28; const make=(arr)=>arr.map((v,i)=>`${p+i*(w-p*2)/(arr.length-1)},${h-p-(v/100)*(h-p*2)}`).join(' ');
   return `<svg class="svg-chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="趋势图">
@@ -219,11 +232,12 @@ function renderFleet(){
 
 function renderAssetDetail(){
   const e=EQUIPMENT.find(x=>x.code===state.asset)||EQUIPMENT[0];
+  if(!e)return `<div class="page">${pageHead('设备详情','没有活动设备档案。',gotoButton('进入台账','fleet'))}${panel('暂无设备','请先新建或导入设备档案。')}</div>`;
   const score=e.health??'—';
   const tabs=[['overview','概览'],['realtime','实时监测'],['trend','趋势分析'],['components','部件健康'],['alarm','告警诊断'],['prediction','预测维护'],['maintenance','维保记录'],['history','数字履历'],['docs','技术档案']];
   return `<div class="page">
     <div class="asset-head"><div class="asset-title-row"><div class="asset-identity"><div class="device-icon">${e.type.slice(0,2)}</div><div><h1>${e.code} · ${e.name}</h1><p>${e.area} · ${e.type} · A类关键设备 · 演示设备</p><div class="identity-flags">${tag(e.condition,e.condition==='运行'||e.condition==='重载作业'?'good':'maintenance')}${tag(e.risk,e.riskClass,true)}${mini(e.ready,e.ready==='已接入'?'ready':'pending')}</div></div></div><div class="page-actions">${button('订阅','subscribe')}${button('查看数字履历','showHistory')}${button('发起诊断','toDiagnosis')}${button('创建工单','createWork','primary')}</div></div>
-      <div class="asset-kpis"><div><span>健康分 / 等级</span><b class="${e.health!==null&&e.health<70?'text-danger':'text-success'}">${score}${e.health!==null?' / 关注':''}</b></div><div><span>数据可信度</span><b>${e.quality??'—'}${e.quality?'%':''}</b></div><div><span>当前主风险</span><b class="small">${e.alarm}</b></div><div><span>责任班组</span><b class="small">${e.owner}</b></div><div><span>更新时间</span><b class="small mono">2026-09-02 10:24:15</b></div></div>
+      <div class="asset-kpis"><div><span>台账登记健康分</span><b class="${e.health!==null&&e.health<70?'text-danger':'text-success'}">${score}</b></div><div><span>台账登记质量</span><b>${e.quality??'—'}${e.quality?'%':''}</b></div><div><span>登记风险说明</span><b class="small">${esc(e.alarm)}</b></div><div><span>责任班组</span><b class="small">${esc(e.owner)}</b></div><div><span>登记更新时间</span><b class="small mono">${e.updatedAt?new Date(e.updatedAt).toLocaleString('zh-CN',{hour12:false}):'—'}</b></div></div>
     </div>
     <div class="tabs">${tabs.map(t=>`<button class="tab ${state.assetTab===t[0]?'active':''}" data-action="assetTab" data-tab="${t[0]}">${t[1]}</button>`).join('')}</div>
     <div class="tab-content">${renderAssetTab(e)}</div>
@@ -531,11 +545,11 @@ function init(){
   $('#stackEntry').onclick=openStack;$('#runtimeStatus').onclick=openStack;
   $('#commandView').onclick=()=>setPage('command');$('#mobileView').onclick=()=>setPage('mobile');
   $('#siteSelect').onclick=()=>toast('原型默认单场站，已预留多场站切换。');
-  $('#globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){if(/GT-01|门式/.test(e.target.value)){state.asset='GT-01';setPage('asset-detail');}else toast('未找到真实数据；当前仅提供演示设备。');}});
+  $('#globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter'&&typeof searchSystemData==='function')searchSystemData(e.target.value);});
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#globalSearch').focus();}if(e.key==='Escape'){closeDrawer();closeModal();$('#assistantPanel').classList.remove('open');}});
   $('#assistantEntry').onclick=()=>$('#assistantPanel').classList.add('open');$('#assistantClose').onclick=()=>$('#assistantPanel').classList.remove('open');
   $$('.assistant-prompts button').forEach(b=>b.onclick=()=>{ $('#assistantInput').value=b.textContent;$('#assistantForm').requestSubmit(); });
-  $('#assistantForm').onsubmit=async e=>{e.preventDefault();const q=$('#assistantInput').value.trim();if(!q)return;$('#assistantMessages').insertAdjacentHTML('beforeend',`<div class="message user">${esc(q)}</div><div class="message answer" id="assistantPending">正在结合设备、告警和工单数据分析…</div>`);$('#assistantInput').value='';$('#assistantMessages').scrollTop=$('#assistantMessages').scrollHeight;let answer;try{if(!state.backendConnected)throw new Error('backend offline');const result=await apiRequest('/assistant/chat',{method:'POST',body:JSON.stringify({message:q})});answer=result.answer+'\n\n回答模式：'+result.mode;}catch{answer=assistantAnswer(q)+'\n\n回答模式：前端离线规则';}const pending=$('#assistantPending');if(pending){pending.removeAttribute('id');pending.textContent=answer;}$('#assistantMessages').scrollTop=$('#assistantMessages').scrollHeight;};
+  // The assistant module owns conversation, retrieval status and error handling.
   const tick=()=>{$('#clock').textContent=new Date().toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replaceAll('/','-')};tick();setInterval(tick,30000);
 }
 

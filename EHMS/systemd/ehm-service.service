@@ -9,6 +9,7 @@ User=ehm
 Group=ehm
 WorkingDirectory=/opt/b-project/ehm
 EnvironmentFile=/opt/b-project/ehm/config/ehm-server.env
+EnvironmentFile=-/opt/b-project/ehm/config/ehm-ai.env
 Environment=SPRING_PROFILES_ACTIVE=server
 ExecStart=/usr/bin/env java -XX:InitialRAMPercentage=10 -XX:MaxRAMPercentage=60 -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai -jar /opt/b-project/ehm/app/ehm-service.jar
 SuccessExitStatus=143
