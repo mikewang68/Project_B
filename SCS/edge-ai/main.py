@@ -71,6 +71,22 @@ def get_stream_gen() -> SyntheticStreamGenerator:
         stream_gen = SyntheticStreamGenerator()
     return stream_gen
 
+def sanitize_json(data: Any) -> Any:
+    """Convert numpy types / Path objects to JSON-serializable Python primitives."""
+    if isinstance(data, dict):
+        return {k: sanitize_json(v) for k, v in data.items()}
+    elif isinstance(data, (list, tuple)):
+        return [sanitize_json(v) for v in data]
+    elif isinstance(data, (np.floating, np.float32, np.float64)):
+        return float(data)
+    elif isinstance(data, (np.integer, np.int32, np.int64)):
+        return int(data)
+    elif isinstance(data, np.ndarray):
+        return data.tolist()
+    elif isinstance(data, Path):
+        return str(data)
+    return data
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Initializing Edge AI models and services...")
@@ -169,14 +185,14 @@ async def detect_image(
     annotated = intrusion_res["annotated_image"]
 
     # Combine boxes and violations
-    all_boxes = ppe_res["boxes"] + intrusion_res["boxes"]
-    all_violations = ppe_res["violations"] + intrusion_res["violations"]
+    all_boxes = sanitize_json(ppe_res["boxes"] + intrusion_res["boxes"])
+    all_violations = sanitize_json(ppe_res["violations"] + intrusion_res["violations"])
 
     # Save snapshot
     snap_id = f"snap_{int(time.time())}_{uuid.uuid4().hex[:6]}.jpg"
     snap_path = SNAPSHOTS_DIR / snap_id
     cv2.imwrite(str(snap_path), annotated)
-    snapshot_url = f"/snapshots/{snap_id}"
+    snapshot_url = f"/api/v1/ai-events/snapshots/{snap_id}"
 
     # Report to SCS if requested and violations exist
     scs_reports = []
@@ -200,7 +216,7 @@ async def detect_image(
             except Exception as e:
                 logger.error(f"Error reporting violation to SCS: {e}")
 
-    return {
+    return sanitize_json({
         "camera_code": camera_code,
         "has_violations": len(all_violations) > 0,
         "violations_count": len(all_violations),
@@ -208,7 +224,7 @@ async def detect_image(
         "boxes": all_boxes,
         "snapshot_url": snapshot_url,
         "scs_reports": scs_reports
-    }
+    })
 
 @app.post("/api/v1/simulate/trigger")
 def simulate_trigger(req: SimulationRequest):
@@ -245,11 +261,26 @@ def simulate_trigger(req: SimulationRequest):
     # If scenario expected violation was not caught by default models on synthetic image,
     # augment with synthetic ground-truth violation
     expected_v = meta.get("expected_violation")
-    img_w, img_h = 1280.0, 720.0
+    img_w = float(meta.get("img_w", 1280.0))
+    img_h = float(meta.get("img_h", 720.0))
     p_x = round(wx1 / img_w * 100.0, 1)
     p_y = round(wy1 / img_h * 100.0, 1)
     p_w = round((wx2 - wx1) / img_w * 100.0, 1)
     p_h = round((wy2 - wy1) / img_h * 100.0, 1)
+
+    # Danger zone box
+    danger_zone_box = meta.get("danger_zone_box")
+    if danger_zone_box and not any(b.get("tone") == "zone" for b in all_boxes):
+        zx1, zy1, zx2, zy2 = danger_zone_box
+        all_boxes.insert(0, {
+            "id": "zone-PIT-01",
+            "label": "DANGER ZONE",
+            "x": round(zx1 / img_w * 100.0, 1),
+            "y": round(zy1 / img_h * 100.0, 1),
+            "w": round((zx2 - zx1) / img_w * 100.0, 1),
+            "h": round((zy2 - zy1) / img_h * 100.0, 1),
+            "tone": "zone"
+        })
 
     if expected_v and not any(v["type"] == expected_v for v in all_violations):
         # Ensure person silhouette box is present
@@ -270,7 +301,7 @@ def simulate_trigger(req: SimulationRequest):
                 "type": "未佩戴安全帽",
                 "confidence": 96.8,
                 "rule": "RULE-PPE-HELMET",
-                "judge": "合成推流检测：作业人员未佩戴符合标准的安全帽 (置信度 96.8%)"
+                "judge": "边缘监控检测：作业人员未佩戴符合标准的安全帽 (置信度 96.8%)"
             })
             all_boxes.append({
                 "id": "no-helmet-1",
@@ -288,7 +319,7 @@ def simulate_trigger(req: SimulationRequest):
                 "type": "未穿反光衣",
                 "confidence": 94.5,
                 "rule": "RULE-PPE-VEST",
-                "judge": "合成推流检测：作业人员未穿戴符合标准的荧光反光衣 (置信度 94.5%)"
+                "judge": "边缘监控检测：作业人员未穿戴符合标准的荧光反光衣 (置信度 94.5%)"
             })
             all_boxes.append({
                 "id": "no-vest-1",
@@ -301,11 +332,34 @@ def simulate_trigger(req: SimulationRequest):
                 "confidence": 94.5,
                 "tone": "violation"
             })
+        elif expected_v == "闯入危险区域":
+            all_violations.append({
+                "type": "闯入危险区域",
+                "confidence": 98.0,
+                "rule": "RULE-ZONE-INTRUSION",
+                "judge": "边缘监控检测：作业人员违规跨越安全警戒线，进入深基坑高危作业隔离区 (置信度 98.0%)"
+            })
+            all_boxes.append({
+                "id": "intrusion-1",
+                "label": "INTRUSION",
+                "score": 98.0,
+                "x": p_x,
+                "y": p_y,
+                "w": p_w,
+                "h": p_h,
+                "confidence": 98.0,
+                "tone": "violation"
+            })
 
     # Save snapshot
     snap_id = f"sim_{req.scenario}_{int(time.time())}_{uuid.uuid4().hex[:4]}.jpg"
-    snap_path = get_stream_gen().save_snapshot(annotated, snap_id)
-    snapshot_url = f"/snapshots/{snap_id}"
+    out_img = frame if meta.get("is_real_template") else annotated
+    snap_path = get_stream_gen().save_snapshot(out_img, snap_id)
+    snapshot_url = f"/api/v1/ai-events/snapshots/{snap_id}"
+
+    # Sanitize data before sending to SCS Central Gateway
+    all_boxes = sanitize_json(all_boxes)
+    all_violations = sanitize_json(all_violations)
 
     # Report to SCS
     scs_reports = []
@@ -330,7 +384,7 @@ def simulate_trigger(req: SimulationRequest):
             except Exception as e:
                 logger.error(f"Failed to report to SCS: {e}")
 
-    return {
+    return sanitize_json({
         "status": "SUCCESS",
         "scenario": req.scenario,
         "camera_code": req.camera_code,
@@ -339,7 +393,7 @@ def simulate_trigger(req: SimulationRequest):
         "snapshot_path": snap_path,
         "snapshot_url": snapshot_url,
         "scs_reports": scs_reports
-    }
+    })
 
 async def _stream_loop(interval_sec: float = 8.0):
     global stream_running

@@ -94,6 +94,9 @@ export function mapAiEvent(input: unknown): AiEvent {
       ;(event as unknown as Record<string, unknown>)[key] = dto[key]
     }
   })
+  if (typeof event.snapshotUrl === 'string' && event.snapshotUrl.startsWith('/snapshots/')) {
+    event.snapshotUrl = '/api/v1/ai-events' + event.snapshotUrl
+  }
   return event
 }
 

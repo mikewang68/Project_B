@@ -5,15 +5,30 @@ Governed by E-Drive Storage Governance Protocol.
 import os
 from pathlib import Path
 
-# Base Paths (Strictly on E: drive)
-STORAGE_BASE = Path(os.getenv("AI_STORAGE_BASE", "E:/AI_Cache"))
+# Base Paths (Strictly governed by storage policy)
+def _resolve_storage_base() -> Path:
+    env_path = os.getenv("AI_STORAGE_BASE")
+    if env_path:
+        return Path(env_path)
+    linux_server_path = Path("/home/jingchanglong/Project_B/SCS/edge-ai/storage")
+    if linux_server_path.exists():
+        return linux_server_path
+    e_drive_path = Path("E:/AI_Cache")
+    if e_drive_path.exists():
+        return e_drive_path
+    local_storage = Path(__file__).resolve().parent / "storage"
+    return local_storage
+
+STORAGE_BASE = _resolve_storage_base()
 MODELS_DIR = STORAGE_BASE / "models"
 TEMP_DIR = STORAGE_BASE / "temp"
 SNAPSHOTS_DIR = TEMP_DIR / "snapshots"
+TEMPLATES_DIR = STORAGE_BASE / "templates"
 
 # Ensure directories exist
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
 
 # SCS Central Backend Gateway
 SCS_BACKEND_URL = os.getenv("SCS_BACKEND_URL", "http://127.0.0.1:18080")

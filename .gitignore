@@ -78,3 +78,15 @@ tmp/
 
 # Claude Code 本地态
 .claude/settings.local.json
+
+# SCS Edge AI 运行时缓存与模型权重（保留 storage/templates/）
+SCS/edge-ai/storage/models/
+SCS/edge-ai/storage/temp/
+SCS/edge-ai/venv/
+
+# 临时部署与测试文件
+*.tar.gz
+fix_firewall.bat
+scs-18088.conf
+trigger.json
+trigger_all.sh
