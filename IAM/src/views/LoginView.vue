@@ -19,14 +19,22 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
-// 演示账号（点击快速填充）；密码已逐一在当前 openGauss iam.iam_user 上实测可登录
-const demoAccounts = [
-  { label: '系统管理员', username: 'admin', password: 'Admin@123', desc: '全部权限' },
-  { label: '调度管理员', username: 'dispatcher01', password: 'Dispatch@123', desc: '无IAM后台权限' },
-  { label: '运维工程师', username: 'operator01', password: 'Operate@123', desc: '无IAM后台权限' },
-  { label: '现场操作员', username: 'field01', password: 'Field@123', desc: '无IAM后台权限' },
-  { label: '大屏访客', username: 'viewer', password: 'Viewer@123', desc: '只读业务' },
-]
+type DemoAccount = { label: string; username: string; password: string; desc: string }
+function configuredAccounts(): DemoAccount[] {
+  try {
+    const value: unknown = JSON.parse(import.meta.env.VITE_LOGIN_ACCOUNTS || '[]')
+    if (!Array.isArray(value)) return []
+    return value.filter((item) => item && typeof item.label === 'string' && typeof item.username === 'string')
+      .map((item) => ({
+        label: item.label, username: item.username,
+        password: typeof item.password === 'string' ? item.password : '',
+        desc: typeof item.description === 'string' ? item.description : '',
+      }))
+  } catch {
+    return []
+  }
+}
+const demoAccounts = configuredAccounts()
 
 function fillAccount(acc: { username: string; password: string }) {
   form.username = acc.username
@@ -89,7 +97,7 @@ async function handleLogin() {
         </div>
         <div class="feature-item">
           <span class="feature-dot feature-dot-reserved"></span>
-          <span>创建用户时自动供给 Fabric 身份，状态可查询</span>
+          <span>区块链身份 ID 预留（后续操作上链溯源）</span>
         </div>
       </div>
       <div class="brand-footer">

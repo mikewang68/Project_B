@@ -8,6 +8,8 @@ JWT 带持久会话标识；退出撤销该用户全部现有会话。每次请�
 
 本地前端：在 IAM 目录执行 `pnpm --ignore-workspace install --frozen-lockfile` 和 `pnpm --ignore-workspace run build`。开发时使用 `pnpm --ignore-workspace exec vite --host 127.0.0.1`；`VITE_DEV_API_TARGET` 指向获准的独立 IAM 后端。认证接口返回 HTML 会显示明确错误，不回退为模拟登录。
 
+需要登录页开发账号选择按钮时，在私有 `.env.local` 或构建环境中配置 `VITE_LOGIN_ACCOUNTS` JSON 数组（格式见 `.env.example`），未配置时隐藏。填写可公开的 `label`、`username`、`description`；可选 `password` 仅用于明确允许公开的开发账号密码，不得填写未经授权公开的凭据或 token。点击后填入账号及配置的密码；未配置密码时清空密码框。全部配置会进入公开前端，即使来自私有环境文件也不保密。登录仍由真实后端验证，账号权限由后端决定。
+
 后端：`mvn -f backend/pom.xml test package`。隔离保护默认开启；按 `deploy/instances.example.json`、`deploy/identity.example.json` 和 `deploy/isolated.env.example` 生成私有配置，真实文件只放 `runtime/secrets/`。没有默认密码或业务用户种子。通过 `IamBootstrap` 在独立库创建初始管理员，业务验收用户必须通过 API 创建。
 
 只运行 `backend/db/isolated` 下的迁移，由 `IamMigration` 校验已执行脚本摘要。旧 `backend/db` 初始化脚本包含 SYS 边界内容，不适用于此实例。审计写入 IAM 自有追加表；`SysAuditSink` 是默认未接通的可选接口。任何 SYS 单点登录或日志导出需要维护方确认，不跨库查询或写入 SYS。
