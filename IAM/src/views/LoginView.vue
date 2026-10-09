@@ -19,6 +19,20 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
+// 演示账号（点击快速填充）；密码已逐一在当前 openGauss iam.iam_user 上实测可登录
+const demoAccounts = [
+  { label: '系统管理员', username: 'admin', password: 'Admin@123', desc: '全部权限' },
+  { label: '调度管理员', username: 'dispatcher01', password: 'Dispatch@123', desc: '无IAM后台权限' },
+  { label: '运维工程师', username: 'operator01', password: 'Operate@123', desc: '无IAM后台权限' },
+  { label: '现场操作员', username: 'field01', password: 'Field@123', desc: '无IAM后台权限' },
+  { label: '大屏访客', username: 'viewer', password: 'Viewer@123', desc: '只读业务' },
+]
+
+function fillAccount(acc: { username: string; password: string }) {
+  form.username = acc.username
+  form.password = acc.password
+}
+
 async function handleLogin() {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
@@ -103,7 +117,21 @@ async function handleLogin() {
           </el-form-item>
         </el-form>
 
-
+        <div class="demo-section">
+          <div class="demo-title">演示账号（点击快速填充）</div>
+          <div class="demo-grid">
+            <div
+              v-for="acc in demoAccounts"
+              :key="acc.username"
+              class="demo-account"
+              @click="fillAccount(acc)"
+            >
+              <div class="demo-acc-name">{{ acc.label }}</div>
+              <div class="demo-acc-user">{{ acc.username }}</div>
+              <div class="demo-acc-desc">{{ acc.desc }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
