@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_DEV_API_TARGET?: string
   /** 子路径部署前缀，如 /iam/ */
   readonly VITE_BASE?: string
+  /** 可选的开发账号列表；全部字段公开，password 仅用于明确允许公开的开发账号密码 */
+  readonly VITE_LOGIN_ACCOUNTS?: string
 }
 
 interface ImportMeta {
