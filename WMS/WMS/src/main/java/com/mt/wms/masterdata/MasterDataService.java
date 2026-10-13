@@ -14,9 +14,14 @@ import java.util.List;
 class MasterDataService {
     private final MasterDataRepository repository;
     private final TenantContextService tenantService;
-    MasterDataService(MasterDataRepository repository,TenantContextService tenantService){this.repository=repository;this.tenantService=tenantService;}
+    private final MasterDeletionGuard deletionGuard;
+    MasterDataService(MasterDataRepository repository,TenantContextService tenantService,MasterDeletionGuard deletionGuard){this.repository=repository;this.tenantService=tenantService;this.deletionGuard=deletionGuard;}
 
     List<MasterDataModels.Item> list(MasterResource resource,WmsPrincipal p,HttpSession session){AuthModels.TenantView t=tenantService.current(p,session);return repository.list(resource,p.companyId(),t.currentWarehouse().id(),t.currentOwner().id());}
+    @Transactional void delete(MasterResource resource,long id,WmsPrincipal p,HttpSession session){
+        AuthModels.TenantView t=tenantService.current(p,session);
+        repository.logicalDelete(resource,id,p.companyId(),t.currentWarehouse().id(),t.currentOwner().id(),p.userId(),deletionGuard);
+    }
     @Transactional MasterDataModels.Item save(MasterResource resource,Long id,MasterDataModels.SaveRequest body,WmsPrincipal p,HttpSession session){
         AuthModels.TenantView t=tenantService.current(p,session);
         try {

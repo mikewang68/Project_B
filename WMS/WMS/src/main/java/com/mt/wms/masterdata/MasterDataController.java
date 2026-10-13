@@ -19,6 +19,8 @@ class MasterDataController {
     MasterDataController(MasterDataService service){this.service=service;}
     @GetMapping("/{resource}") @PreAuthorize("hasAuthority('master:read')")
     ApiResponse<List<MasterDataModels.Item>> list(@PathVariable String resource,Authentication auth,HttpSession session,HttpServletRequest req){return ApiResponse.ok(service.list(MasterResource.fromPath(resource),(WmsPrincipal)auth.getPrincipal(),session),id(req));}
+    @DeleteMapping("/{resource}/{itemId}") @PreAuthorize("hasAuthority('master:write')")
+    ApiResponse<Void> delete(@PathVariable String resource,@PathVariable long itemId,Authentication auth,HttpSession session,HttpServletRequest req){service.delete(MasterResource.fromPath(resource),itemId,(WmsPrincipal)auth.getPrincipal(),session);return ApiResponse.ok(null,id(req));}
     @PostMapping("/{resource}") @PreAuthorize("hasAuthority('master:write')")
     ApiResponse<MasterDataModels.Item> create(@PathVariable String resource,@Valid @RequestBody MasterDataModels.SaveRequest body,Authentication auth,HttpSession session,HttpServletRequest req){return ApiResponse.ok(service.save(MasterResource.fromPath(resource),null,body,(WmsPrincipal)auth.getPrincipal(),session),id(req));}
     @PutMapping("/{resource}/{itemId}") @PreAuthorize("hasAuthority('master:write')")

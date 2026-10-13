@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { ApiError } from '@/api/http'
-import { listMasterData, saveMasterData, type MasterItem, type MasterResource, type SaveMasterItem } from '@/api/masterData'
+import { deleteMasterData, listMasterData, saveMasterData, type MasterItem, type MasterResource, type SaveMasterItem } from '@/api/masterData'
 import { useAuthStore } from '@/stores/auth'
 
 const auth=useAuthStore()
@@ -21,12 +21,17 @@ function defaults(){return{code:'',name:'',type:active.value==='areas'?'STORAGE'
 function create(){editingId.value=null;Object.assign(form,defaults());dialog.value=true}
 function edit(row:MasterItem){editingId.value=row.id;Object.assign(form,defaults(),row);dialog.value=true}
 async function submit(){if(!form.code.trim()||!form.name.trim())return void ElMessage.warning('请填写编码和名称');saving.value=true;try{await saveMasterData(active.value,editingId.value,form);ElMessage.success(`${currentLabel.value}已保存`);dialog.value=false;await load();if(active.value==='warehouses'||active.value==='owners')await auth.refreshSession()}catch(e){ElMessage.error(e instanceof ApiError?e.message:'保存失败')}finally{saving.value=false}}
+async function remove(row:MasterItem){
+  const resource=active.value
+  try{await ElMessageBox.confirm(`删除 ${row.code} 后将从日常查询中隐藏，历史记录保留。确认删除？`,'逻辑删除',{type:'warning'})}catch{return}
+  try{await deleteMasterData(resource,row.id);ElMessage.success('已删除，历史数据保留');if(resource==='warehouses'||resource==='owners')await auth.refreshSession();await load()}catch(e){ElMessage.error(e instanceof ApiError?e.message:'删除失败')}
+}
 onMounted(load)
 </script>
 
 <template>
   <div class="page-stack">
-    <header class="page-heading"><div><p class="eyebrow">MASTER DATA</p><h1>仓库基础资料</h1><p>资料按当前公司、仓库和货主自动隔离；切换业务范围后显示对应数据。</p></div><el-button type="primary" @click="create">新建{{ currentLabel }}</el-button></header>
+    <header class="page-heading"><div><p class="eyebrow">MASTER DATA</p><h1>仓库基础资料</h1><p>资料按当前公司、仓库和货主自动隔离；切换业务范围后显示对应数据。</p></div><el-button v-if="auth.hasPermission('master:write')" type="primary" @click="create">新建{{ currentLabel }}</el-button></header>
     <section class="panel master-panel">
       <el-tabs v-model="active" @tab-change="load"><el-tab-pane v-for="tab in tabs" :key="tab.key" :label="tab.label" :name="tab.key" /></el-tabs>
       <el-table v-loading="loading" :data="items" stripe>
@@ -38,7 +43,7 @@ onMounted(load)
         <el-table-column v-if="active==='components'" prop="quantity" label="组件数量" min-width="110" />
         <el-table-column v-if="showContact" prop="contact" label="联系人" min-width="110" /><el-table-column v-if="showContact" prop="telephone" label="联系电话" min-width="130" />
         <el-table-column label="状态" width="90"><template #default="scope"><el-tag :type="scope.row.status==='ENABLED'?'success':'info'">{{ scope.row.status==='ENABLED'?'启用':'停用' }}</el-tag></template></el-table-column>
-        <el-table-column label="操作" width="90" fixed="right"><template #default="scope"><el-button link type="primary" @click="edit(scope.row)">编辑</el-button></template></el-table-column>
+        <el-table-column v-if="auth.hasPermission('master:write')" label="操作" width="150" fixed="right"><template #default="scope"><el-button link type="primary" @click="edit(scope.row)">编辑</el-button><el-button link type="danger" @click="remove(scope.row)">删除</el-button></template></el-table-column>
       </el-table>
     </section>
 

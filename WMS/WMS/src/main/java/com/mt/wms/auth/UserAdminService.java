@@ -56,6 +56,12 @@ class UserAdminService {
         }
     }
 
+    @Transactional
+    void delete(WmsPrincipal principal,long userId) {
+        if (userId==principal.userId()) throw new IllegalArgumentException("不能删除当前登录账号");
+        if(repository.logicalDelete(principal.companyId(),userId,principal.userId())!=1) throw new IllegalArgumentException("用户不存在或已删除");
+    }
+
     private UserAdminModels.UserView view(UserAdminRepository.UserRow row) {
         return new UserAdminModels.UserView(row.id(), row.username(), row.mobile(), row.displayName(), row.status(),
                 row.loginEnabled(), row.passwordChangeRequired(), repository.roles(row.id()),

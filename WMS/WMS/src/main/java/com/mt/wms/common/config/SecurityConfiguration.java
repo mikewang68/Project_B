@@ -1,6 +1,8 @@
 package com.mt.wms.common.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mt.wms.auth.ActiveAccountFilter;
+import com.mt.wms.auth.AuthRepository;
 import com.mt.wms.common.api.ApiResponse;
 import com.mt.wms.common.web.RequestIdFilter;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,7 +25,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
-                                            SecurityContextRepository securityContextRepository) throws Exception {
+                                            SecurityContextRepository securityContextRepository, AuthRepository authRepository) throws Exception {
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookiePath("/");
         CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
@@ -56,6 +58,7 @@ public class SecurityConfiguration {
                                     String.valueOf(request.getAttribute(RequestIdFilter.ATTRIBUTE))));
                         }))
                 .sessionManagement(Customizer.withDefaults());
+        http.addFilterBefore(new ActiveAccountFilter(authRepository,objectMapper),org.springframework.security.web.access.intercept.AuthorizationFilter.class);
         return http.build();
     }
 
