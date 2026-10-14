@@ -31,9 +31,15 @@ public class DemoFence {
     public int edgeSynced;
     public int edgeTotal = 4;
     public List<FencePoint> polygon = new ArrayList<>();
+    /** 物理围栏外围逻辑缓冲区距离（百分比/米，默认 5.0），用于形成预警隔离带。 */
+    public double bufferDistance = 5.0;
+    /** 预计算的外围逻辑缓冲区（隔离带）多边形顶点，供地图渲染预警外圈。 */
+    public List<FencePoint> bufferPolygon = new ArrayList<>();
     public List<EdgeNode> nodes = new ArrayList<>();
     public OffsetDateTime createdAt;
     public OffsetDateTime updatedAt;
+    /** 逻辑删除标记（true 为已删除，查询统一过滤）。 */
+    public boolean isDeleted = false;
 
     /** 风险等级中文标签（由 riskCode 派生，API 兼容）。 */
     @com.fasterxml.jackson.annotation.JsonProperty("riskLevel")
@@ -84,9 +90,12 @@ public class DemoFence {
         f.edgeSynced = edgeSynced;
         f.edgeTotal = edgeTotal;
         f.polygon = polygon == null ? new ArrayList<>() : new ArrayList<>(polygon);
+        f.bufferDistance = bufferDistance;
+        f.bufferPolygon = bufferPolygon == null ? new ArrayList<>() : new ArrayList<>(bufferPolygon);
         f.nodes = nodes == null ? new ArrayList<>() : new ArrayList<>(nodes);
         f.createdAt = createdAt;
         f.updatedAt = updatedAt;
+        f.isDeleted = isDeleted;
         return f;
     }
 }

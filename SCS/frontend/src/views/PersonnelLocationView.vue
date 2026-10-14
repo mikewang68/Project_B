@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Warning, Position } from '@element-plus/icons-vue'
+import { Position, RefreshRight, Search, Timer, Warning } from '@element-plus/icons-vue'
 import SafetyMapCanvas from '@/components/shared/SafetyMapCanvas.vue'
 import PersonnelList from '@/components/personnel/PersonnelList.vue'
 import PersonnelDetailDrawer from '@/components/personnel/PersonnelDetailDrawer.vue'
@@ -20,8 +20,10 @@ const people = ref<PersonnelRecord[]>([])
 const fences = ref<FenceRecord[]>([])
 const track = ref<TrackPoint[]>([])
 const backendStats = ref({ online: 0, abnormal: 0, bandOffline: 0, lowBattery: 0 })
+const refreshInterval = ref(1000)
 let timer: ReturnType<typeof setInterval> | undefined
 let reloadTimer: ReturnType<typeof setTimeout> | undefined
+let livePollTimer: ReturnType<typeof setInterval> | undefined
 let disposeLive: (() => void) | undefined
 
 const filteredPeople = computed(() => people.value)
@@ -54,6 +56,38 @@ async function loadFences(): Promise<void> {
     fences.value = (await fenceApi.list()).filter((f) => f.status !== '已停用')
   } catch {
     fences.value = []
+  }
+}
+
+async function loadConfig(): Promise<void> {
+  try {
+    const cfg = await personnelApi.getConfig()
+    if (cfg?.refreshIntervalMs) {
+      refreshInterval.value = cfg.refreshIntervalMs
+      restartLiveTimer()
+    }
+  } catch {
+    // 保持默认 1000ms
+  }
+}
+
+async function onRefreshIntervalChange(val: number): Promise<void> {
+  try {
+    const updated = await personnelApi.updateConfig({ refreshIntervalMs: val })
+    refreshInterval.value = updated.refreshIntervalMs
+    restartLiveTimer()
+    ElMessage.success(`人员定位刷新频率已更新为 ${val >= 1000 ? (val / 1000).toFixed(1) + ' 秒/次' : val + 'ms/次'}`)
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '更新刷新频率失败')
+  }
+}
+
+function restartLiveTimer(): void {
+  if (livePollTimer) clearInterval(livePollTimer)
+  if (refreshInterval.value > 0) {
+    livePollTimer = setInterval(() => {
+      void loadList()
+    }, refreshInterval.value)
   }
 }
 
@@ -91,11 +125,22 @@ async function toggleDemo(): Promise<void> {
   }
 }
 
+/** 模拟进入外围逻辑缓冲区（隔离带预警）：黄色手环震动提醒折返，未触红线不停机 */
+async function simulateApproach(): Promise<void> {
+  try {
+    await personnelApi.simulateAbnormal('P-ZHAO', 'approach')
+    ElMessage.warning('赵磊靠近龙门吊外围逻辑隔离带，触发黄色手环震动预警（未触红线不停机）')
+    await loadList()
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '隔离带预警模拟失败')
+  }
+}
+
 /** 模拟赵磊进入已生效危险围栏：后端 PIP 命中后经 AlertService 建单并广播五端 */
 async function simulateIntrusion(): Promise<void> {
   try {
     await personnelApi.simulateAbnormal('P-ZHAO', 'intrusion')
-    ElMessage.warning('赵磊进入龙门吊动态禁区，已生成人员越界告警')
+    ElMessage.error('赵磊跨越龙门吊核心红线，触发高危人员越界告警并联动紧急停机')
     await loadList()
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '越界模拟失败')
@@ -129,9 +174,17 @@ watch([playing, speed], () => { if (timer) clearInterval(timer); timer = playing
 onMounted(() => {
   void loadList()
   void loadFences()
+  void loadConfig()
   sharedLiveSocket.connect()
   disposeLive = sharedLiveSocket.onMessage((raw) => {
     if (!isDomainLiveEvent(raw)) return
+    if (String(raw.type) === 'person.config_changed') {
+      const data = raw.data as { refreshIntervalMs?: number } | undefined
+      if (data?.refreshIntervalMs) {
+        refreshInterval.value = data.refreshIntervalMs
+        restartLiveTimer()
+      }
+    }
     if (String(raw.type).startsWith('person.')) void loadList()
     if (String(raw.type) === 'fence.changed') void loadFences()
   })
@@ -139,6 +192,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
   if (reloadTimer) clearTimeout(reloadTimer)
+  if (livePollTimer) clearInterval(livePollTimer)
   disposeLive?.()
 })
 </script>
@@ -147,9 +201,25 @@ onBeforeUnmount(() => {
   <section class="page-content personnel-page">
     <header class="module-intro header-actions-only">
       <div class="module-stats">
-        <div v-for="item in stats" :key="item.label" :data-tone="item.tone"><small>{{ item.label }}</small><strong>{{ item.value }}</strong></div>
-        <button type="button" class="demo-outline-button" :class="{ active: lowBatteryDemo }" @click="toggleDemo"><el-icon><Warning /></el-icon>{{ lowBatteryDemo ? '恢复人员正常' : '模拟低电量' }}</button>
-        <button type="button" class="demo-outline-button" @click="simulateIntrusion"><el-icon><Position /></el-icon>模拟越界</button>
+        <div v-for="item in stats" :key="item.label" :data-tone="item.tone">
+          <small>{{ item.label }}</small>
+          <strong>{{ item.value }}</strong>
+        </div>
+        <div data-tone="primary">
+          <small>刷新周期</small>
+          <strong style="font-size: 13px; line-height: 24px;">
+            {{ refreshInterval >= 1000 ? (refreshInterval / 1000).toFixed(1) + 's' : refreshInterval + 'ms' }}
+          </strong>
+        </div>
+        <button type="button" class="demo-outline-button" :class="{ active: lowBatteryDemo }" @click="toggleDemo">
+          <el-icon><Warning /></el-icon>{{ lowBatteryDemo ? '恢复人员正常' : '模拟低电量' }}
+        </button>
+        <button type="button" class="demo-outline-button" style="border-color: #f3d19e; color: #b87a1e; background: #fdf6ec;" @click="simulateApproach">
+          <el-icon><Warning /></el-icon>靠近隔离带(预警)
+        </button>
+        <button type="button" class="demo-outline-button" style="border-color: #fde2e2; color: #f56c6c; background: #fef0f0;" @click="simulateIntrusion">
+          <el-icon><Position /></el-icon>越界红线(紧急停机)
+        </button>
       </div>
     </header>
 
@@ -160,6 +230,19 @@ onBeforeUnmount(() => {
       <el-select v-model="state" clearable placeholder="人员状态"><el-option label="正常" value="正常" /><el-option label="异常" value="异常" /></el-select>
       <el-select v-model="bracelet" clearable placeholder="手环状态"><el-option label="在线" value="在线" /><el-option label="低电量" value="低电量" /><el-option label="离线" value="离线" /></el-select>
       <label>仅看异常<el-switch v-model="onlyAbnormal" /></label>
+      <div class="refresh-rate-select">
+        <el-select
+          :model-value="refreshInterval"
+          placeholder="刷新频率"
+          @update:model-value="onRefreshIntervalChange"
+        >
+          <template #prefix><el-icon><Timer /></el-icon></template>
+          <el-option :value="500" label="刷新率: 500ms (高频 2.0Hz)" />
+          <el-option :value="1000" label="刷新率: 1.0s (标准推荐)" />
+          <el-option :value="2000" label="刷新率: 2.0s (0.5Hz)" />
+          <el-option :value="5000" label="刷新率: 5.0s (节能模式)" />
+        </el-select>
+      </div>
     </div>
 
     <div class="personnel-workspace">

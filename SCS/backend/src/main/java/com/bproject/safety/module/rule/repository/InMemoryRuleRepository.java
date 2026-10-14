@@ -26,12 +26,17 @@ public class InMemoryRuleRepository implements RuleRepository, DemoClearableStor
 
     @Override
     public List<DemoRule> findAll() {
-        return store.values().stream().map(DemoRule::copy).sorted(ORDER).toList();
+        return store.values().stream()
+                .filter(r -> !r.isDeleted)
+                .map(DemoRule::copy)
+                .sorted(ORDER).toList();
     }
 
     @Override
     public List<DemoRule> filter(RuleQuery q) {
-        return store.values().stream().map(DemoRule::copy)
+        return store.values().stream()
+                .filter(r -> !r.isDeleted)
+                .map(DemoRule::copy)
                 .filter(r -> q.category() == null || q.category().isBlank() || q.category().equals(r.category))
                 .filter(r -> q.status() == null || q.status().isBlank()
                         || RuleStatuses.normalize(q.status()).equals(r.statusCode))
@@ -46,7 +51,7 @@ public class InMemoryRuleRepository implements RuleRepository, DemoClearableStor
     @Override
     public Optional<DemoRule> findById(String id) {
         DemoRule r = store.get(id);
-        return r == null ? Optional.empty() : Optional.of(r.copy());
+        return (r == null || r.isDeleted) ? Optional.empty() : Optional.of(r.copy());
     }
 
     @Override
@@ -58,7 +63,7 @@ public class InMemoryRuleRepository implements RuleRepository, DemoClearableStor
 
     @Override
     public long count() {
-        return store.size();
+        return store.values().stream().filter(r -> !r.isDeleted).count();
     }
 
     /** 清空存储（DemoClearableStore，仅 Demo / 测试调用）。 */

@@ -9,6 +9,7 @@ const EXPECTED_PATHS = [
   '/fences',
   '/devices',
   '/ai',
+  '/ai/models',
   '/alarms',
   '/analytics',
   '/rules',
@@ -29,10 +30,10 @@ afterEach(() => {
 })
 
 describe('AppSidebar 导航', () => {
-  it('渲染全部 9 个业务菜单，且每个都是指向真实路由的链接', async () => {
+  it('渲染全部 10 个业务菜单，且每个都是指向真实路由的链接', async () => {
     const wrapper = await mountSidebar()
     const links = wrapper.findAll('.nav-link:not(.nav-link--external)')
-    expect(links).toHaveLength(9)
+    expect(links).toHaveLength(10)
     const hrefs = links.map((l) => l.attributes('href'))
     for (const path of EXPECTED_PATHS) {
       expect(hrefs).toContain(path)

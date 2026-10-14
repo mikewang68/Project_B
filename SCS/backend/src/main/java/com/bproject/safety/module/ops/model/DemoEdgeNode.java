@@ -63,6 +63,8 @@ public class DemoEdgeNode {
     public long uptimeSec;
     public OffsetDateTime lastSyncAt;
     public String lastError;
+    /** 逻辑删除标记（true 为已删除，查询统一过滤）。 */
+    public boolean isDeleted = false;
 
     /** 恢复流程时间线（仅 RECOVERING 期间有值）。 */
     public List<RecoveryPhase> recoveryPhases = new ArrayList<>();
@@ -107,6 +109,7 @@ public class DemoEdgeNode {
         n.uptimeSec = uptimeSec;
         n.lastSyncAt = lastSyncAt;
         n.lastError = lastError;
+        n.isDeleted = isDeleted;
         n.recoveryPhases = recoveryPartsCopy();
         n.recoveryPhase = recoveryPhase;
         n.cacheParts = cacheParts == null ? new ArrayList<>() : cacheParts.stream().map(CachePart::copy).toList();

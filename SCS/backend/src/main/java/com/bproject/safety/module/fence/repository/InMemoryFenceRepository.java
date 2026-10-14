@@ -76,6 +76,8 @@ public class InMemoryFenceRepository implements FenceRepository, DemoResettableS
         f.teams = teams;
         f.approver = approver;
         f.polygon = new java.util.ArrayList<>(polygon);
+        f.bufferDistance = 5.0;
+        f.bufferPolygon = com.bproject.safety.common.geo.Polygon2D.expandPolygon(f.polygon, f.bufferDistance);
         f.edgeTotal = 4;
         boolean effective = FenceStatuses.EFFECTIVE.equals(status);
         f.nodes = effective ? DemoFence.successNodes() : DemoFence.pendingNodes();
@@ -87,14 +89,16 @@ public class InMemoryFenceRepository implements FenceRepository, DemoResettableS
 
     @Override
     public List<DemoFence> findAll() {
-        return store.values().stream().map(DemoFence::copy)
+        return store.values().stream()
+                .filter(f -> !f.isDeleted)
+                .map(DemoFence::copy)
                 .sorted(Comparator.comparing(f -> f.id)).toList();
     }
 
     @Override
     public Optional<DemoFence> findById(String id) {
         DemoFence f = store.get(id);
-        return f == null ? Optional.empty() : Optional.of(f.copy());
+        return (f == null || f.isDeleted) ? Optional.empty() : Optional.of(f.copy());
     }
 
     @Override
@@ -106,6 +110,6 @@ public class InMemoryFenceRepository implements FenceRepository, DemoResettableS
 
     @Override
     public long count() {
-        return store.size();
+        return store.values().stream().filter(f -> !f.isDeleted).count();
     }
 }

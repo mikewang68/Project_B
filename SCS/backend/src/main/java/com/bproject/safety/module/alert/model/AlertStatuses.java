@@ -21,6 +21,7 @@ public final class AlertStatuses {
     public static final String PROCESSING = "PROCESSING";
     public static final String PENDING_REVIEW = "PENDING_REVIEW";
     public static final String CLOSED = "CLOSED";
+    public static final String CANCELLED = "CANCELLED";
     /**
      * @deprecated Phase B.5 (B5-01): 事件升级为风险等级变化，不再作为主生命周期状态；
      * 仅保留用于历史展示与反向映射向后兼容。
@@ -40,6 +41,7 @@ public final class AlertStatuses {
             Map.entry(PROCESSING, "处理中"),
             Map.entry(PENDING_REVIEW, "待复核"),
             Map.entry(CLOSED, "已关闭"),
+            Map.entry(CANCELLED, "已作废"),
             Map.entry(ESCALATED, "已升级"));
 
     private static final Map<String, String> BY_LABEL = LABELS.entrySet().stream()

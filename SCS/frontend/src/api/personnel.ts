@@ -1,6 +1,6 @@
-import { apiRequest, postJson } from './http'
+import { apiRequest, postJson, putJson } from './http'
 import type { AlertEvent } from '@/types/alert'
-import type { LivePosition, PersonnelRecord, TrackPoint } from '@/types/personnel'
+import type { LivePosition, PersonnelConfig, PersonnelRecord, TrackPoint } from '@/types/personnel'
 import { mapLivePositions, mapPerson, mapPersonnelList, mapTrack } from '@/adapters/personnel'
 
 /** 人员定位 API Client —— 对应后端 PersonnelController（/api/v1/personnel）。 */
@@ -47,4 +47,10 @@ export const personnelApi = {
 
   simulateAbnormal: async (id: string, kind: string): Promise<PersonnelRecord> =>
     mapPerson(await postJson(`/personnel/simulate-abnormal`, { id, kind })),
+
+  getConfig: async (): Promise<PersonnelConfig> =>
+    (await apiRequest(`/personnel/config`)) as PersonnelConfig,
+
+  updateConfig: async (config: { refreshIntervalMs: number; trackRetentionMinutes?: number }): Promise<PersonnelConfig> =>
+    (await putJson(`/personnel/config`, config)) as PersonnelConfig,
 }

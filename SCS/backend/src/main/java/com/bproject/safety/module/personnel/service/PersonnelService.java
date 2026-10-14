@@ -51,6 +51,9 @@ public class PersonnelService {
     private final Clock clock;
     private final LiveEventGate gate;
 
+    private volatile int refreshIntervalMs = 1000;
+    private volatile double defaultBufferDistance = 5.0;
+
     public PersonnelService(PersonnelRepository repository, FenceRepository fenceRepository,
                             AlertRepository alertRepository, AlertService alertService,
                             DomainLivePublisher publisher, Clock clock, LiveEventGate gate) {
@@ -61,6 +64,39 @@ public class PersonnelService {
         this.publisher = publisher;
         this.clock = clock;
         this.gate = gate;
+    }
+
+    public PersonnelConfig getConfig() {
+        return new PersonnelConfig(
+                refreshIntervalMs,
+                Math.round((1000.0 / refreshIntervalMs) * 10.0) / 10.0,
+                defaultBufferDistance,
+                "良好",
+                List.of(500, 1000, 2000, 3000, 5000));
+    }
+
+    public PersonnelConfig updateConfig(UpdatePersonnelConfigRequest req) {
+        if (req != null) {
+            if (req.refreshIntervalMs() != null) {
+                if (req.refreshIntervalMs() < 200 || req.refreshIntervalMs() > 60000) {
+                    throw ApiException.unprocessable("刷新间隔必须在 200ms ~ 60000ms 范围内");
+                }
+                this.refreshIntervalMs = req.refreshIntervalMs();
+            }
+            if (req.defaultBufferDistance() != null) {
+                if (req.defaultBufferDistance() < 0.5 || req.defaultBufferDistance() > 50.0) {
+                    throw ApiException.unprocessable("默认缓冲区距离必须在 0.5 ~ 50 范围内");
+                }
+                this.defaultBufferDistance = req.defaultBufferDistance();
+            }
+        }
+        PersonnelConfig cfg = getConfig();
+        publisher.publish(LiveEventTypes.PERSON_CONFIG_CHANGED, Map.of(
+                "refreshIntervalMs", cfg.refreshIntervalMs(),
+                "frequencyHz", cfg.frequencyHz(),
+                "defaultBufferDistance", cfg.defaultBufferDistance()
+        ));
+        return cfg;
     }
 
     // ---------- 查询 ----------
@@ -168,6 +204,7 @@ public class PersonnelService {
                     p.state = "warning";
                     p.lastUpdated = "刚刚";
                 }
+                case "approach", "buffer" -> approach(p);
                 case "intrusion" -> intrude(p);
                 default -> throw ApiException.unprocessable("不支持的模拟类型: " + k);
             }
@@ -206,6 +243,34 @@ public class PersonnelService {
                         fence.area + " · 围栏内", fence.name, p.braceletId, "在线 · 持续震动提醒中", "—"),
                 p.name + " 进入电子围栏 " + fence.name + " 范围",
                 "Point-In-Polygon 判定命中（围栏 " + fence.id + " v" + fence.version + "），生成人员越界告警"));
+        p.activeAlertIds = List.of(alert.id);
+    }
+
+    /** 人员靠近已生效危险围栏外围逻辑缓冲区（隔离带）：预警建单，手环提前提醒，不等到红线才报警。 */
+    private void approach(DemoPersonnel p) {
+        DemoFence fence = fenceRepository.findAll().stream()
+                .filter(f -> FenceStatuses.EFFECTIVE.equals(f.statusCode))
+                .filter(f -> "危险区域".equals(f.kind) || "预警区域".equals(f.kind))
+                .findFirst()
+                .orElseThrow(() -> ApiException.unprocessable("当前没有已生效的危险围栏可供隔离带演示"));
+        FencePoint bufferPoint = com.bproject.safety.common.geo.Polygon2D.bufferApproachPoint(fence.polygon, fence.bufferDistance);
+        p.x = bufferPoint.x();
+        p.y = bufferPoint.y();
+        p.area = fence.area;
+        p.riskCode = PersonRiskLevels.ATTENTION;
+        p.state = "warning";
+        p.lastUpdated = "刚刚";
+        double dist = com.bproject.safety.common.geo.Polygon2D.distanceToPolygon(p.x, p.y, fence.polygon);
+        String dedup = "PERSON_BUFFER_WARNING:" + p.id + ":" + fence.id;
+        DemoAlert alert = alertService.createRiskAlert(new AlertService.NewRiskAlert(
+                "人员安全", dedup,
+                p.name + "靠近" + fence.name + "隔离带", "靠近禁区", RiskLevels.WARNING, fence.area,
+                p.name + "（" + p.jobNo + "）", null, null,
+                DecisionSources.FENCE, fence.id, fence.version, 0,
+                PersonnelEvidence.of(List.of(new AlertEvidence.Point((int) p.x, (int) p.y)),
+                        fence.area + " · 隔离缓冲带", fence.name, p.braceletId, "在线 · 预警震动提醒中", "—"),
+                p.name + " 进入外围逻辑缓冲区（距禁区红线约 " + dist + "m）",
+                "逻辑缓冲隔离带空间判定触发（围栏 " + fence.id + " 缓冲区 " + fence.bufferDistance + "m），提前预警拦截"));
         p.activeAlertIds = List.of(alert.id);
     }
 
@@ -279,5 +344,14 @@ public class PersonnelService {
     }
 
     public record RemindResult(boolean sent, String time, String message) {
+    }
+
+    public record PersonnelConfig(int refreshIntervalMs, double frequencyHz,
+                                  double defaultBufferDistance, String qualityThreshold,
+                                  List<Integer> supportedIntervals) {
+    }
+
+    public record UpdatePersonnelConfigRequest(Integer refreshIntervalMs,
+                                               Double defaultBufferDistance) {
     }
 }

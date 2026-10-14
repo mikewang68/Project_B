@@ -42,3 +42,11 @@ export interface LivePosition {
   state: string
   ts: string
 }
+
+export interface PersonnelConfig {
+  refreshIntervalMs: number
+  frequencyHz: number
+  defaultBufferDistance: number
+  qualityThreshold: string
+  supportedIntervals: number[]
+}

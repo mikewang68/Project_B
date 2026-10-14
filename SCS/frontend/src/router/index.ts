@@ -5,6 +5,7 @@ const PersonnelLocationView = () => import('@/views/PersonnelLocationView.vue')
 const FenceManagementView = () => import('@/views/FenceManagementView.vue')
 const CollisionOverviewView = () => import('@/views/CollisionOverviewView.vue')
 const AiReviewView = () => import('@/views/AiReviewView.vue')
+const AiModelManagementView = () => import('@/views/AiModelManagementView.vue')
 const AlertCenterView = () => import('@/views/AlertCenterView.vue')
 const AnalyticsView = () => import('@/views/AnalyticsView.vue')
 const RuleConfigView = () => import('@/views/RuleConfigView.vue')
@@ -38,6 +39,10 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/ai', name: 'ai-review', component: AiReviewView,
     meta: { title: 'AI违规识别', subtitle: '集中复核现场 AI 识别事件与安全证据' },
+  },
+  {
+    path: '/ai/models', name: 'ai-models', component: AiModelManagementView,
+    meta: { title: 'AI模型管理', subtitle: '工业视觉AI模型选用、参数调优与在线识别体验' },
   },
   {
     path: '/alarms', name: 'alert-center', component: AlertCenterView,

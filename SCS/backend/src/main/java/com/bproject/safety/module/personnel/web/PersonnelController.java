@@ -11,18 +11,19 @@ import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 人员定位接口：列表 / 详情 / 轨迹 / 实时位置 / 手环提醒 / 相关告警 / 异常模拟。
+ * 人员定位接口：列表 / 详情 / 轨迹 / 实时位置 / 配置 / 手环提醒 / 相关告警 / 异常模拟。
  * 成功响应直接返回业务体（不包装 code/data）。
  */
 @RestController
 @RequestMapping("/api/v1/personnel")
-@Tag(name = "人员定位", description = "人员台账、轨迹、实时位置与越界风险（风险进入 Alert 主链）")
+@Tag(name = "人员定位", description = "人员台账、轨迹、实时位置、刷新配置与越界风险")
 public class PersonnelController {
 
     private final PersonnelService service;
@@ -32,6 +33,18 @@ public class PersonnelController {
                                com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.service = service;
         this.demoGuard = demoGuard;
+    }
+
+    @GetMapping("/config")
+    @Operation(summary = "获取人员定位配置（刷新频率与预警距离）")
+    public PersonnelService.PersonnelConfig config() {
+        return service.getConfig();
+    }
+
+    @PutMapping("/config")
+    @Operation(summary = "修改人员定位配置（动态调整刷新频率与预警距离）")
+    public PersonnelService.PersonnelConfig updateConfig(@RequestBody PersonnelService.UpdatePersonnelConfigRequest req) {
+        return service.updateConfig(req);
     }
 
     @GetMapping

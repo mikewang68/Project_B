@@ -90,7 +90,9 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
             return Optional.empty();
         }
         return store.values().stream()
-                .filter(a -> dedupKey.equals(a.dedupKey) && !AlertStatuses.CLOSED.equals(a.statusCode))
+                .filter(a -> dedupKey.equals(a.dedupKey)
+                        && !AlertStatuses.CLOSED.equals(a.statusCode)
+                        && !AlertStatuses.CANCELLED.equals(a.statusCode))
                 .findFirst()
                 .map(DemoAlert::copy);
     }

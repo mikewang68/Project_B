@@ -17,6 +17,8 @@ export interface FenceDto {
   edgeSynced: number
   edgeTotal: number
   polygon: Array<{ x: number; y: number }>
+  bufferDistance?: number
+  bufferPolygon?: Array<{ x: number; y: number }>
   nodes: Array<{ id: string; state: EdgeNodeStatus['state'] }>
 }
 
@@ -38,6 +40,8 @@ export function mapFence(dto: unknown): FenceRecord {
     edgeSynced: d.edgeSynced ?? 0,
     edgeTotal: d.edgeTotal ?? 4,
     polygon: Array.isArray(d.polygon) ? d.polygon.map((p) => ({ x: p.x, y: p.y })) : [],
+    bufferDistance: typeof d.bufferDistance === 'number' ? d.bufferDistance : (d.bufferDistance ? Number(d.bufferDistance) : 5.0),
+    bufferPolygon: Array.isArray(d.bufferPolygon) ? d.bufferPolygon.map((p) => ({ x: p.x, y: p.y })) : undefined,
     nodes: Array.isArray(d.nodes)
       ? d.nodes.map((n) => ({ id: n.id, state: n.state }))
       : [],

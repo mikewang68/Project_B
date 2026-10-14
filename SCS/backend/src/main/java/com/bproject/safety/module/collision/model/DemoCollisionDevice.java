@@ -31,6 +31,8 @@ public class DemoCollisionDevice {
     /** 地图百分比坐标。 */
     public double x;
     public double y;
+    /** 逻辑删除标记（true 为已删除，查询统一过滤）。 */
+    public boolean isDeleted = false;
 
     /** 风险中文标签：雷达不确定时展示“待确认”（健康态），否则展示碰撞风险等级（API 兼容）。 */
     @com.fasterxml.jackson.annotation.JsonProperty("risk")
@@ -72,6 +74,7 @@ public class DemoCollisionDevice {
         d.latestAlert = latestAlert;
         d.x = x;
         d.y = y;
+        d.isDeleted = isDeleted;
         return d;
     }
 }

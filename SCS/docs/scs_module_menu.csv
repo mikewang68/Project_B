@@ -1,0 +1,21 @@
+menu_id,parent_id,menu_name,menu_type,route_name,route_path,component_path,icon,permission_code,sort_order,visible,is_external,is_keep_alive,group_label,description
+scs-root,0,安全卡控系统,M,scs-root,/,Layout,Warning,safety,1,1,0,1,,装卸作业安全卡控系统顶级根节点
+scs-overview,scs-root,安全态势,C,overview,/overview,views/OverviewView.vue,Monitor,safety:home:map:view,10,1,0,1,,掌握现场风险、告警与作业运行状态
+scs-grp-work,scs-root,作业安全,M,work-safety,/work-safety,Layout,UserFilled,safety:work:view,20,1,0,1,作业安全,作业安全管控分类目录
+scs-people,scs-grp-work,人员定位,C,people,/people,views/PersonnelLocationView.vue,User,safety:person:map:view,21,1,0,1,作业安全,实时掌握作业人员位置、手环状态与区域安全情况
+scs-fences,scs-grp-work,电子围栏,C,fences,/fences,views/FenceManagementView.vue,Location,safety:fence:list:view,22,1,0,1,作业安全,配置人员作业区域、危险区域及临时安全边界
+scs-devices,scs-grp-work,设备防碰撞,C,devices,/devices,views/CollisionOverviewView.vue,Aim,safety:module:collision:view,23,1,0,1,作业安全,实时监测设备间距、运行趋势与碰撞风险
+scs-ai,scs-grp-work,AI违规识别,C,ai-review,/ai,views/AiReviewView.vue,Camera,safety:module:ai:view,24,1,0,1,作业安全,集中复核现场 AI 识别事件与安全证据
+scs-ai-models,scs-grp-work,AI模型管理,C,ai-models,/ai/models,views/AiModelManagementView.vue,Cpu,safety:module:ai:model:view,25,1,0,1,作业安全,工业视觉AI模型选用、参数阈值调优与在线识别体验
+scs-grp-event,scs-root,事件管理,M,event-mgmt,/event-mgmt,Layout,BellFilled,safety:event:view,30,1,0,1,事件管理,安全事件闭环管理分类目录
+scs-alarms,scs-grp-event,告警中心,C,alert-center,/alarms,views/AlertCenterView.vue,Bell,safety:module:alert:view,31,1,0,1,事件管理,统一管理人员、设备、AI与系统安全事件
+scs-analytics,scs-grp-event,统计分析,C,analytics,/analytics,views/AnalyticsView.vue,DataAnalysis,safety:module:stat:view,32,1,0,1,事件管理,分析安全风险趋势、重点区域与告警处置效率
+scs-grp-sys,scs-root,系统管理,M,sys-mgmt,/sys-mgmt,Layout,Setting,safety:sys:view,40,1,0,1,系统管理,安全卡控系统配置与运行维护分类目录
+scs-rules,scs-grp-sys,规则配置,C,rules,/rules,views/RuleConfigView.vue,Setting,safety:module:rule:view,41,1,0,1,系统管理,统一管理安全判定、告警升级与设备联动策略
+scs-operations,scs-grp-sys,运维监控,C,operations,/operations,views/OperationsView.vue,Operation,safety:module:ops:view,42,1,0,1,系统管理,实时监控平台服务、边缘节点、感知设备与关键接口运行状态
+scs-grp-display,scs-root,展示端入口,M,display-ends,/display,Layout,FullScreen,safety:screen:view,50,1,0,1,展示端入口,独立展示与移动端处置入口
+scs-screen,scs-grp-display,安全大屏（全屏）,E,safety-screen,/safety-screen,views/SafetyScreenView.vue,Monitor,safety:screen:view,51,1,1,0,展示端入口,安全态势中心独立全屏大屏
+scs-mobile-layout,scs-grp-display,移动端告警处置,E,mobile,/mobile,components/mobile/MobileLayout.vue,Cellphone,safety:mobile:view,52,1,1,0,展示端入口,移动端现场处置独立入口
+scs-mobile-home,scs-mobile-layout,移动工作台首页,C,mobile-home,/mobile/home,views/mobile/MobileHomeView.vue,HomeFilled,safety:mobile:view,53,0,0,1,移动端子页,移动端综合任务与态势简报
+scs-mobile-alerts,scs-mobile-layout,移动告警列表,C,mobile-alerts,/mobile/alerts,views/mobile/MobileAlertsView.vue,List,safety:mobile:view,54,0,0,1,移动端子页,移动端待办告警清单与筛选
+scs-mobile-detail,scs-mobile-layout,移动告警处置详情,C,mobile-alert-detail,/mobile/alert/:id,views/mobile/MobileAlertDetailView.vue,Document,safety:mobile:view,55,0,0,0,移动端子页,移动端单条告警接单、核实与处置提交

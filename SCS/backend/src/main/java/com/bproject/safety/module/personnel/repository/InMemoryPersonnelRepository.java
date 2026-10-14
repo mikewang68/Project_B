@@ -81,14 +81,16 @@ public class InMemoryPersonnelRepository implements PersonnelRepository, DemoRes
 
     @Override
     public List<DemoPersonnel> findAll() {
-        return store.values().stream().map(DemoPersonnel::copy)
+        return store.values().stream()
+                .filter(p -> !p.isDeleted)
+                .map(DemoPersonnel::copy)
                 .sorted(Comparator.comparing(p -> p.id)).toList();
     }
 
     @Override
     public Optional<DemoPersonnel> findById(String id) {
         DemoPersonnel p = store.get(id);
-        return p == null ? Optional.empty() : Optional.of(p.copy());
+        return (p == null || p.isDeleted) ? Optional.empty() : Optional.of(p.copy());
     }
 
     @Override

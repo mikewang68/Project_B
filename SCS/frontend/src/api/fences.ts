@@ -28,6 +28,7 @@ export interface FenceSavePayload {
   startsAt?: string
   endsAt?: string
   polygon: FencePoint[]
+  bufferDistance?: number
   submitReview?: boolean
 }
 
@@ -40,6 +41,7 @@ export function draftToPayload(draft: FenceDraft & { polygon: FencePoint[] }): F
     startsAt: draft.startsAt,
     endsAt: draft.endsAt,
     polygon: draft.polygon,
+    bufferDistance: draft.bufferDistance ?? 5.0,
   }
 }
 

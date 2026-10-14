@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import RuleOverview, { type RuleKpi } from '@/components/rules/RuleOverview.vue'
 import RuleCategoryNav from '@/components/rules/RuleCategoryNav.vue'
@@ -275,13 +275,13 @@ onMounted(async () => {
       const target = await ruleApi.detail(q)
       upsert(target)
       setTimeout(() => openDetail(target), 300)
+      // 消费完查询参数后静默清理 URL query，避免刷新重复打开详情，且绝不阻塞路由离开
+      router.replace({ path: route.path, query: {} })
     } catch {
       // 规则不存在时忽略跳转
     }
   }
 })
-// 离开页面时清空路由上的 rule 查询参数（组件内守卫随卸载自动移除）
-onBeforeRouteLeave(() => { router.replace({ query: {} }); return true })
 onUnmounted(() => {
   offMessage()
   if (reloadTimer) clearTimeout(reloadTimer)
