@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Repository;
  * 清空仅通过 {@link DemoClearableStore} 供 Demo / Test 使用。</p>
  */
 @Repository
+@Profile("!server")
 public class InMemoryRuleRepository implements RuleRepository, DemoClearableStore {
 
     private final ConcurrentHashMap<String, DemoRule> store = new ConcurrentHashMap<>();

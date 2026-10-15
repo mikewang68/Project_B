@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Repository;
  * 修改 find 返回的对象（含 polygon / nodes）但不调用 save 不会影响仓储内部状态。</p>
  */
 @Repository
+@Profile("!server")
 public class InMemoryFenceRepository implements FenceRepository, DemoResettableStore {
 
     private final ConcurrentHashMap<String, DemoFence> store = new ConcurrentHashMap<>();
