@@ -133,4 +133,21 @@ class WebLayerTest {
                 .andExpect(header().string("X-Trace-Id",
                         org.hamcrest.Matchers.not("bad trace id")));
     }
+
+    @Test
+    void stateReturnsSafetySnapshot() throws Exception {
+        mockMvc.perform(get("/api/v1/state"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.schemaVersion").value("1.0.0"))
+                .andExpect(jsonPath("$.dataQuality").value("valid"))
+                .andExpect(jsonPath("$.workPlan.id").exists())
+                .andExpect(jsonPath("$.people").isArray())
+                .andExpect(jsonPath("$.fences").isArray())
+                .andExpect(jsonPath("$.devices").isArray())
+                .andExpect(jsonPath("$.aiEvents").isArray())
+                .andExpect(jsonPath("$.alarms").isArray())
+                .andExpect(jsonPath("$.rules").isArray())
+                .andExpect(jsonPath("$.scenarios").isArray())
+                .andExpect(jsonPath("$.system.cloudConnected").value(true));
+    }
 }

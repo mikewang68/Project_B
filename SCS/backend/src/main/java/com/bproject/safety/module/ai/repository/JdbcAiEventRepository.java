@@ -246,12 +246,12 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
         // 置信度与阈值转为 openGauss NUMERIC(5,4) 范围：0.0000 ~ 1.0000
         BigDecimal confBd = null;
         if (e.confidence > 0) {
-            double c = e.confidence > 1.0 ? e.confidence / 100.0 : e.confidence;
+            double c = e.confidence >= 1.0 ? e.confidence / 100.0 : e.confidence;
             confBd = BigDecimal.valueOf(Math.min(1.0, Math.max(0.0, c))).setScale(4, RoundingMode.HALF_UP);
         }
         BigDecimal threshBd = null;
         if (e.threshold > 0) {
-            double t = e.threshold > 1.0 ? e.threshold / 100.0 : e.threshold;
+            double t = e.threshold >= 1.0 ? e.threshold / 100.0 : e.threshold;
             threshBd = BigDecimal.valueOf(Math.min(1.0, Math.max(0.0, t))).setScale(4, RoundingMode.HALF_UP);
         }
 

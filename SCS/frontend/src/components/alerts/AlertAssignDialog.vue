@@ -1,28 +1,63 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ElDialog } from 'element-plus'
-import { ALERT_ASSIGNEES } from '@/types/alert'
+import { useDictionaryStore } from '@/stores/dictionary'
 
 const props = defineProps<{ modelValue: boolean; mode: '派单' | '转派'; current?: string | undefined }>()
 const emit = defineEmits<{
   'update:modelValue': [v: boolean]
-  confirm: [payload: { assignee: string; priority: '普通' | '紧急'; limitMin: number; note: string }]
+  confirm: [payload: { assignee: string; priority: '普通' | '紧急'; limitMin: number; note: string; assigneeId?: string | undefined; assigneeName?: string | undefined }]
 }>()
 
-const assignee = ref('安全员 王建国')
+const dictStore = useDictionaryStore()
+const selectedAssigneeId = ref<string>('')
 const priority = ref<'普通' | '紧急'>('普通')
 const limitMin = ref(30)
 const note = ref('')
 
+const assignees = computed(() => dictStore.dictionaries.assignees)
+
+function syncDefaultAssignee(): void {
+  if (assignees.value.length === 0) return
+  if (props.current && props.current !== '待分配') {
+    const match = assignees.value.find((a) => a.value === props.current || a.label === props.current)
+    if (match) {
+      selectedAssigneeId.value = match.value
+      return
+    }
+  }
+  selectedAssigneeId.value = assignees.value[0]?.value || ''
+}
+
 watch(() => props.modelValue, (open) => {
   if (open) {
-    assignee.value = props.current && props.current !== '待分配' ? props.current : '安全员 王建国'
-    priority.value = '普通'; limitMin.value = 30; note.value = ''
+    priority.value = '普通'
+    limitMin.value = 30
+    note.value = ''
+    void dictStore.ensureLoaded().then(() => {
+      syncDefaultAssignee()
+    })
+  }
+}, { immediate: true })
+
+watch(assignees, (list) => {
+  if (list.length > 0 && (!selectedAssigneeId.value || !list.some((a) => a.value === selectedAssigneeId.value))) {
+    syncDefaultAssignee()
   }
 })
 
 function submit(): void {
-  emit('confirm', { assignee: assignee.value, priority: priority.value, limitMin: limitMin.value, note: note.value.trim() })
+  const target = assignees.value.find((a) => a.value === selectedAssigneeId.value)
+  const name = target ? target.label : selectedAssigneeId.value
+  const id = target ? target.value : undefined
+  emit('confirm', {
+    assignee: name,
+    assigneeId: id,
+    assigneeName: name,
+    priority: priority.value,
+    limitMin: limitMin.value,
+    note: note.value.trim(),
+  })
   emit('update:modelValue', false)
 }
 </script>
@@ -34,10 +69,17 @@ function submit(): void {
       <div class="alert-dialog-heading"><span>INCIDENT {{ mode.toUpperCase() }}</span>
         <h2>{{ mode === '转派' ? '转派责任人' : '事件派单' }}</h2><p>选择责任人和处置要求，派发后进入待处理状态</p></div>
     </template>
-    <div class="alert-form">
+    <div v-if="dictStore.error" class="dict-error-state" style="padding: 16px; color: #f56c6c; text-align: center;">
+      <p>人员字典加载失败: {{ dictStore.error }}</p>
+      <button type="button" @click="dictStore.refresh().then(() => syncDefaultAssignee())">重试</button>
+    </div>
+    <div v-else class="alert-form">
       <label><small>责任人</small>
-        <el-select v-model="assignee" style="width: 100%">
-          <el-option v-for="p in ALERT_ASSIGNEES" :key="p" :label="p" :value="p" />
+        <el-select v-model="selectedAssigneeId" style="width: 100%">
+          <el-option v-for="p in assignees" :key="p.value" :label="p.label" :value="p.value">
+            <span>{{ p.label }}</span>
+            <span v-if="p.team" style="margin-left: 8px; color: #909399; font-size: 12px;">{{ p.team }}</span>
+          </el-option>
         </el-select>
       </label>
       <div class="alert-form-row">
@@ -60,7 +102,7 @@ function submit(): void {
     </div>
     <template #footer>
       <button type="button" @click="emit('update:modelValue', false)">取消</button>
-      <button type="button" class="primary" @click="submit">确认{{ mode }}</button>
+      <button type="button" class="primary" :disabled="!!dictStore.error" @click="submit">确认{{ mode }}</button>
     </template>
   </ElDialog>
 </template>

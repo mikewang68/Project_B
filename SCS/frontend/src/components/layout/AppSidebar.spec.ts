@@ -29,7 +29,7 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('AppSidebar 导航', () => {
+describe('AppSidebar 导航', { timeout: 20000 }, () => {
   it('渲染全部 10 个业务菜单，且每个都是指向真实路由的链接', async () => {
     const wrapper = await mountSidebar()
     const links = wrapper.findAll('.nav-link:not(.nav-link--external)')

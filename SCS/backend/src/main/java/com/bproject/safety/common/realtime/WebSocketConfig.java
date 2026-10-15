@@ -2,6 +2,8 @@ package com.bproject.safety.common.realtime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
+import java.util.Arrays;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
@@ -19,17 +21,26 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final WebSocketSessionRegistry registry;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final String[] allowedOrigins;
 
-    public WebSocketConfig(WebSocketSessionRegistry registry, ObjectMapper objectMapper, Clock clock) {
+    public WebSocketConfig(
+            WebSocketSessionRegistry registry,
+            ObjectMapper objectMapper,
+            Clock clock,
+            @Value("${app.cors.allowed-origins}") String allowedOrigins) {
         this.registry = registry;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
     }
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry handlerRegistry) {
         handlerRegistry
                 .addHandler(new LiveWebSocketHandler(registry, objectMapper, clock), "/ws/live")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(allowedOrigins);
     }
 }
