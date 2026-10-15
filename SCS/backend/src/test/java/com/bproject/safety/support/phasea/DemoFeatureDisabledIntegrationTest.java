@@ -61,4 +61,14 @@ class DemoFeatureDisabledIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("DEMO_FEATURE_DISABLED"));
     }
+
+    @Test
+    @DisplayName("关闭 simulator：AI 边缘模拟端点 /trigger-edge 返回 403 DEMO_FEATURE_DISABLED")
+    void triggerEdgeRejectedWhenDisabled() throws Exception {
+        mvc.perform(post("/api/v1/ai-events/trigger-edge")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cameraCode\":\"CAM-01\",\"eventType\":\"NO_HELMET\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("DEMO_FEATURE_DISABLED"));
+    }
 }
