@@ -11,6 +11,8 @@ use([LineChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer
 
 const props = defineProps<{ points: TrendPoint[]; active: boolean }>()
 
+const hasDemoBaseline = computed(() => props.points.some((p) => p.demoBaseline))
+
 const option = computed(() => ({
   color: [CHART_COLORS.primary, CHART_COLORS.danger],
   tooltip: {
@@ -22,7 +24,8 @@ const option = computed(() => ({
       const p = props.points[first.dataIndex]
       if (!p) return ''
       const rows = list.map((x) => `${x.marker}${x.seriesName}：<b>${x.value}</b> 起`).join('<br/>')
-      return `<div style="font-weight:700;margin-bottom:3px">${p.date}</div>${rows}`
+      const note = p.demoBaseline ? '<div style="margin-top:4px;color:#e6a23c;font-size:11px">⚠️ 含演示基线数据</div>' : ''
+      return `<div style="font-weight:700;margin-bottom:3px">${p.date}</div>${rows}${note}`
     },
   },
   legend: {
@@ -64,7 +67,30 @@ const { el } = useEChart(option, true)
 
 <template>
   <div class="chart-card trend-chart-card" :data-active="active">
-    <header><div><span>SAFETY TREND</span><h3>安全事件趋势</h3></div></header>
+    <header>
+      <div>
+        <span>SAFETY TREND</span>
+        <h3>
+          安全事件趋势
+          <span v-if="hasDemoBaseline" class="demo-baseline-badge">含演示基线</span>
+        </h3>
+      </div>
+    </header>
     <div ref="el" class="chart-canvas trend-canvas"></div>
   </div>
 </template>
+
+<style scoped>
+.demo-baseline-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #b87a1e;
+  background: #fdf6ec;
+  border: 1px solid #faecd8;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+</style>

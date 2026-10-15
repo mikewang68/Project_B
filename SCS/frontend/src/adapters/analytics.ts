@@ -56,7 +56,7 @@ export function mapDataset(dto: unknown): AnalyticsDataset {
       }))
     : []
   const trend: TrendPoint[] = Array.isArray(d.trend)
-    ? d.trend.map((t) => ({ date: t.date, total: num(t.total), high: num(t.high) }))
+    ? d.trend.map((t) => ({ date: t.date, total: num(t.total), high: num(t.high), demoBaseline: !!t.demoBaseline }))
     : []
   const riskTypes = Array.isArray(d.riskTypes) ? d.riskTypes : []
   const areas: AreaRisk[] = Array.isArray(d.areas)

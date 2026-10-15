@@ -15,6 +15,7 @@ describe('analytics adapter', () => {
     })
     expect(ds.kpi[0]!.value).toBe('12')
     expect(ds.trend[0]!.total).toBe(12)
+    expect(ds.trend[0]!.demoBaseline).toBe(false)
     expect(ds.areas[0]!.area).toBe('装卸区 A')
     expect((ds.areas[0] as unknown as Record<string, unknown>).score).toBeUndefined()
     expect(ds.teams[0]!.confirmSec).toBe(0)

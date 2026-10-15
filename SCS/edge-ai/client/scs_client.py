@@ -11,13 +11,18 @@ from typing import Dict, Any, Optional
 
 from config import SCS_INGEST_ENDPOINT
 
+import os
+
 logger = logging.getLogger("edge_ai.client")
 
 class ScsClient:
-    def __init__(self, ingest_url: str = SCS_INGEST_ENDPOINT, timeout: float = 5.0, api_key: str = "scs-edge-key-2026"):
+    def __init__(self, ingest_url: str = SCS_INGEST_ENDPOINT, timeout: float = 5.0, api_key: Optional[str] = None):
         self.ingest_url = ingest_url
         self.timeout = timeout
-        self.api_key = api_key
+        resolved_key = api_key or os.getenv("SCS_API_KEY") or os.getenv("APP_SECURITY_API_KEY")
+        if not resolved_key:
+            raise ValueError("SCS API key must be provided via constructor or SCS_API_KEY / APP_SECURITY_API_KEY environment variable")
+        self.api_key = resolved_key
         logger.info(f"ScsClient configured with endpoint: {self.ingest_url}")
 
     def report_event(

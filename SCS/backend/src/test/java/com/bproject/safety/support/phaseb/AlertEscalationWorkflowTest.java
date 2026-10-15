@@ -8,6 +8,7 @@ import com.bproject.safety.common.idempotency.IdempotencyService;
 import com.bproject.safety.module.alert.dto.AlertRequests.AssignRequest;
 import com.bproject.safety.module.alert.dto.AlertRequests.ConfirmRequest;
 import com.bproject.safety.module.alert.dto.AlertRequests.EscalateRequest;
+import com.bproject.safety.module.alert.dto.AlertRequests.ReviewRejectRequest;
 import com.bproject.safety.module.alert.dto.AlertRequests.ReviewRequest;
 import com.bproject.safety.module.alert.dto.AlertRequests.StartRequest;
 import com.bproject.safety.module.alert.dto.AlertRequests.TreatmentRequest;
@@ -140,5 +141,47 @@ class AlertEscalationWorkflowTest {
         // 依然可以顺利接单开始处理
         DemoAlert started = service.start("ALM-20260904-002", new StartRequest(null, null), null);
         assertThat(started.statusCode).isEqualTo(AlertStatuses.PROCESSING);
+    }
+
+    @Test
+    @DisplayName("Test 8: BIZ-2 非法风险等级校验拦截返回 422 错误，不再静默升为紧急")
+    void escalateWithInvalidRiskLevelThrows422() {
+        service.confirm("ALM-20260904-002", new ConfirmRequest(null), null);
+        service.assign("ALM-20260904-002", new AssignRequest("王建国", "USR-002", null, "普通", 15, null, null, null), null);
+        service.start("ALM-20260904-002", new StartRequest(null, null), null);
+
+        assertThatThrownBy(() -> service.escalate("ALM-20260904-002", new EscalateRequest("非法等级测试", "特急", null, null), null))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> {
+                    ApiException apiEx = (ApiException) e;
+                    assertThat(apiEx.status().value()).isEqualTo(422);
+                    assertThat(apiEx.getMessage()).contains("非法风险等级: 特急");
+                });
+    }
+
+    @Test
+    @DisplayName("Test 9: BIZ-1 reviewReject 驳回后恢复 PROCESSING 状态与重建 SLA 截止时间")
+    void reviewRejectRestoresSla() {
+        service.confirm("ALM-20260904-002", new ConfirmRequest(null), null);
+        service.assign("ALM-20260904-002", new AssignRequest("王建国", "USR-002", null, "普通", 15, null, null, null), null);
+        service.start("ALM-20260904-002", new StartRequest(null, null), null);
+
+        // 提交处置进入 PENDING_REVIEW
+        service.treatment("ALM-20260904-002",
+                new TreatmentRequest(List.of("初步整改"), "现场围栏加固", null, "需复核", null, null), null);
+        DemoAlert inReview = service.get("ALM-20260904-002");
+        assertThat(inReview.statusCode).isEqualTo(AlertStatuses.PENDING_REVIEW);
+
+        // 复核驳回
+        DemoAlert rejected = service.reviewReject("ALM-20260904-002",
+                new ReviewRejectRequest("现场隔离带仍有间隙，驳回重改", "李娜"), null);
+
+        assertThat(rejected.statusCode).isEqualTo(AlertStatuses.PROCESSING);
+        assertThat(rejected.getStatus()).isEqualTo("处理中");
+        assertThat(rejected.slaLimitMin).isEqualTo(15);
+        assertThat(rejected.slaDeadline).isNotNull();
+        assertThat(rejected.slaRemainingSec).isGreaterThan(0);
+        assertThat(rejected.timeline).anyMatch(e -> AlertTimelineEventTypes.REVIEW_REJECTED.equals(e.eventType())
+                && e.text().contains("现场隔离带仍有间隙，驳回重改"));
     }
 }

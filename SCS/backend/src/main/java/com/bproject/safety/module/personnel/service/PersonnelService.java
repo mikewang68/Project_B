@@ -103,6 +103,7 @@ public class PersonnelService {
 
     public PersonnelList list(String keyword, String team, String area, String state,
                               String bracelet, Boolean onlyAbnormal) {
+        PersonnelRepository.PersonnelStats stats = repository.getStats();
         String kw = keyword == null ? "" : keyword.trim().toLowerCase();
         List<DemoPersonnel> filtered = repository.findAll().stream().filter(p -> {
             boolean kwOk = kw.isEmpty() || (p.name + p.jobNo).toLowerCase().contains(kw);
@@ -118,14 +119,8 @@ public class PersonnelService {
                     || !PersonRiskLevels.NORMAL.equals(p.riskCode);
             return kwOk && teamOk && areaOk && stateOk && bandOk && abnormalOk;
         }).toList();
-        List<DemoPersonnel> all = repository.findAll();
-        long online = all.stream().filter(p -> PersonStatuses.ONLINE.equals(p.statusCode)).count();
-        long abnormal = all.stream().filter(p -> !PersonRiskLevels.NORMAL.equals(p.riskCode)).count();
-        long bandOffline = all.stream().filter(p -> BraceletStatuses.OFFLINE.equals(p.braceletStatusCode)).count();
-        long lowBattery = all.stream()
-                .filter(p -> BraceletStatuses.LOW_BATTERY.equals(p.braceletStatusCode) || p.battery < 20).count();
         return new PersonnelList(
-                new Stats((int) online, (int) abnormal, (int) bandOffline, (int) lowBattery),
+                new Stats(stats.online(), stats.abnormal(), stats.bandOffline(), stats.lowBattery()),
                 filtered);
     }
 

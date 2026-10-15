@@ -42,8 +42,10 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   headers.set('Accept', 'application/json')
   headers.set('X-Trace-Id', requestTraceId)
   if (!headers.has('Authorization')) {
-    const token = (typeof localStorage !== 'undefined' && localStorage.getItem('scs_token')) || 'scs-token-2026'
-    headers.set('Authorization', `Bearer ${token}`)
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('scs_token') : null
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
   }
   if (init.body) headers.set('Content-Type', 'application/json; charset=utf-8')
   if (init.method && init.method !== 'GET' && !headers.has('Idempotency-Key')) headers.set('Idempotency-Key', traceId())

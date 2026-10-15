@@ -47,6 +47,16 @@ public class JdbcPersonnelRepository implements PersonnelRepository {
 
     private static final String SELECT_BY_CODE = BASE_SELECT + " WHERE personnel_code = :personnelCode AND is_deleted = false";
 
+    private static final String SELECT_STATS = """
+            SELECT
+                COUNT(CASE WHEN online_status_code = 'ONLINE' THEN 1 END) AS online_cnt,
+                COUNT(CASE WHEN person_risk_code <> 'NORMAL' THEN 1 END) AS abnormal_cnt,
+                COUNT(CASE WHEN bracelet_status_code = 'OFFLINE' THEN 1 END) AS band_offline_cnt,
+                COUNT(CASE WHEN bracelet_status_code = 'LOW_BATTERY' OR battery_pct < 20 THEN 1 END) AS low_battery_cnt
+            FROM safety.safety_personnel
+            WHERE is_deleted = false
+            """;
+
     private static final String UPDATE_PERSONNEL = """
             UPDATE safety.safety_personnel
             SET job_no = :jobNo,
@@ -116,6 +126,21 @@ public class JdbcPersonnelRepository implements PersonnelRepository {
         } catch (EmptyResultDataAccessException ex) {
             return Optional.empty();
         }
+    }
+
+    @Override
+    public PersonnelStats getStats() {
+        PersonnelStats stats = jdbcTemplate.queryForObject(
+                SELECT_STATS,
+                Collections.emptyMap(),
+                (rs, rowNum) -> new PersonnelStats(
+                        rs.getInt("online_cnt"),
+                        rs.getInt("abnormal_cnt"),
+                        rs.getInt("band_offline_cnt"),
+                        rs.getInt("low_battery_cnt")
+                )
+        );
+        return stats != null ? stats : new PersonnelStats(0, 0, 0, 0);
     }
 
     @Override

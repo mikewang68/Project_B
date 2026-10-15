@@ -77,9 +77,43 @@ class SecurityInterceptorTest {
         MockHttpServletRequest req3 = new MockHttpServletRequest("GET", "/api/v1/alerts");
         req3.addHeader("Authorization", "Bearer bad-token");
         MockHttpServletResponse resp3 = new MockHttpServletResponse();
-        boolean allowed3 = interceptor.preHandle(req3, resp3, new Object());
-        assertThat(allowed3).isFalse();
-        assertThat(resp3.getStatus()).isEqualTo(401);
+        // 3. 非法前缀 Token (scs-token-xyz 应被拦截返回 401，防止前缀绕过)
+        MockHttpServletRequest req4 = new MockHttpServletRequest("GET", "/api/v1/alerts");
+        req4.addHeader("Authorization", "Bearer scs-token-xyz");
+        MockHttpServletResponse resp4 = new MockHttpServletResponse();
+        boolean allowed4 = interceptor.preHandle(req4, resp4, new Object());
+        assertThat(allowed4).isFalse();
+        assertThat(resp4.getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    @DisplayName("SEC-4: 启用鉴权后 /health/live 与 /health/ready 探针正常放行 (返回 200，非 401)")
+    void healthEndpointsWhitelisted() throws Exception {
+        SecurityInterceptor interceptor = new SecurityInterceptor(true, "valid-key", "valid-token", objectMapper);
+
+        MockHttpServletRequest liveReq = new MockHttpServletRequest("GET", "/health/live");
+        MockHttpServletResponse liveResp = new MockHttpServletResponse();
+        assertThat(interceptor.preHandle(liveReq, liveResp, new Object())).isTrue();
+
+        MockHttpServletRequest readyReq = new MockHttpServletRequest("GET", "/health/ready");
+        MockHttpServletResponse readyResp = new MockHttpServletResponse();
+        assertThat(interceptor.preHandle(readyReq, readyResp, new Object())).isTrue();
+    }
+
+    @Test
+    @DisplayName("SEC-3: 鉴权开启时缺少 API Key 或 Bearer Token 启动阶段直接失败")
+    void missingSecretsFailsFastOnStartup() {
+        SecurityInterceptor missingKey = new SecurityInterceptor(true, "", "valid-token", objectMapper);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, missingKey::validateConfiguration);
+
+        SecurityInterceptor missingToken = new SecurityInterceptor(true, "valid-key", "", objectMapper);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, missingToken::validateConfiguration);
+
+        SecurityInterceptor valid = new SecurityInterceptor(true, "valid-key", "valid-token", objectMapper);
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(valid::validateConfiguration);
+
+        SecurityInterceptor disabled = new SecurityInterceptor(false, "", "", objectMapper);
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(disabled::validateConfiguration);
     }
 
     @Test
@@ -98,11 +132,5 @@ class SecurityInterceptorTest {
         req2.addHeader("Authorization", "Bearer scs-token-2026");
         MockHttpServletResponse resp2 = new MockHttpServletResponse();
         assertThat(interceptor.preHandle(req2, resp2, new Object())).isTrue();
-
-        // 3. 动态前缀 Token (scs-token-...)
-        MockHttpServletRequest req3 = new MockHttpServletRequest("GET", "/api/v1/alerts");
-        req3.addHeader("Authorization", "Bearer scs-token-usr001");
-        MockHttpServletResponse resp3 = new MockHttpServletResponse();
-        assertThat(interceptor.preHandle(req3, resp3, new Object())).isTrue();
     }
 }

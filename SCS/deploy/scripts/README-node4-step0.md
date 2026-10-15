@@ -77,6 +77,10 @@ OPENGEMINI_ENABLED=false
 APP_DEMO_SEED_ENABLED=false
 APP_DEMO_SIMULATOR_ENABLED=false
 
+APP_SECURITY_ENABLED=true
+APP_SECURITY_API_KEY=<YOUR_STRONG_API_KEY>
+APP_SECURITY_BEARER_TOKEN=<YOUR_STRONG_BEARER_TOKEN>
+
 CORS_ALLOWED_ORIGINS=http://192.168.101.74:18088,http://127.0.0.1:18088
 APP_LOG_LEVEL=INFO
 EOF
@@ -84,6 +88,7 @@ EOF
 
 - 将 `<YOUR_SAFETY_ADMIN_PASSWORD>` 替换为步骤 3 设定的密码。
 - 将 `<YOUR_KVROCKS_PASSWORD>` 替换为容器现有密码（可通过 `sudo isula inspect bpoc-kvrocks | grep -i 'requirepass'` 获取）。
+- 将 `<YOUR_STRONG_API_KEY>` 和 `<YOUR_STRONG_BEARER_TOKEN>` 替换为部署环境中生成的强随机口令。
 - 真实密码严禁提交 Git 或写入公共文档。
 
 ---

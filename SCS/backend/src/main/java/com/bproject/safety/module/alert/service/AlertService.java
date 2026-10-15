@@ -270,6 +270,11 @@ public class AlertService {
         String reason = req != null && req.reason() != null ? req.reason() : "处置不充分";
         return mutate(id, idemKey, "review-reject", List.of(AlertStatuses.PENDING_REVIEW), alert -> {
             alert.statusCode = AlertStatuses.PROCESSING;
+            int limitMin = alert.slaLimitMin != null && alert.slaLimitMin > 0 ? alert.slaLimitMin : 15;
+            alert.slaLimitMin = limitMin;
+            OffsetDateTime now = OffsetDateTime.now(clock);
+            alert.slaDeadline = now.plusMinutes(limitMin);
+            alert.slaRemainingSec = (long) limitMin * 60;
             addEvent(alert, AlertTimelineEventTypes.REVIEW_REJECTED, "active",
                     "复核驳回：" + reason + "，继续现场处置");
             return alert;
@@ -307,12 +312,15 @@ public class AlertService {
                         AlertStatuses.PENDING_PROCESS, AlertStatuses.PROCESSING, AlertStatuses.PENDING_REVIEW,
                         AlertStatuses.ESCALATED), alert -> {
                     String oldCode = alert.riskCode;
-                    String target = RiskLevels.normalize(req != null ? req.level() : null);
-                    if (target == null) {
+                    String rawLevel = req != null ? req.level() : null;
+                    String target;
+                    if (rawLevel != null && !rawLevel.isBlank()) {
+                        target = RiskLevels.normalize(rawLevel);
+                        if (target == null || !RiskLevels.isValid(target)) {
+                            throw ApiException.unprocessable("非法风险等级: " + rawLevel);
+                        }
+                    } else {
                         target = RiskLevels.URGENT;
-                    }
-                    if (!RiskLevels.isValid(target)) {
-                        throw ApiException.unprocessable("非法风险等级: " + req.level());
                     }
                     if (RiskLevels.URGENT.equals(oldCode) || target.equals(oldCode)) {
                         throw ApiException.conflict("告警已处于最高风险等级或目标等级未升高: " + RiskLevels.label(oldCode));

@@ -71,4 +71,14 @@ class DemoFeatureDisabledIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("DEMO_FEATURE_DISABLED"));
     }
+
+    @Test
+    @DisplayName("SEC-5: 关闭 simulator 后 POST /api/v1/ai-events/ingest 返回 403 DEMO_FEATURE_DISABLED")
+    void ingestRejectedWhenDisabled() throws Exception {
+        mvc.perform(post("/api/v1/ai-events/ingest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"eventType\":\"未戴安全帽\",\"cameraCode\":\"CAM-01\",\"confidence\":0.95,\"judgeText\":\"test\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("DEMO_FEATURE_DISABLED"));
+    }
 }

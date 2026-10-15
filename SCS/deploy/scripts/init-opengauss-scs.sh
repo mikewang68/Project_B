@@ -14,6 +14,7 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
 DDL_FILE="${PROJECT_ROOT}/backend/src/main/resources/db/design/openGauss-schema-final-draft.sql"
+EDGE_NODES_INIT_FILE="${SCRIPT_DIR}/init-edge-nodes.sql"
 
 CONTAINER_NAME="${OPENGAUSS_CONTAINER_NAME:-bpoc-opengauss}"
 KVROCKS_CONTAINER="${KVROCKS_CONTAINER_NAME:-bpoc-kvrocks}"
@@ -261,6 +262,14 @@ run_og_admin_sql "${DB_NAME}" "ALTER DEFAULT PRIVILEGES IN SCHEMA safety GRANT A
 run_og_admin_sql "${DB_NAME}" "ALTER DEFAULT PRIVILEGES IN SCHEMA safety GRANT ALL ON SEQUENCES TO ${APP_USER};"
 run_og_admin_sql "${DB_NAME}" "ALTER USER ${APP_USER} SET search_path TO safety, public;"
 echo "[OK] 权限授权与默认权限配置完成。"
+echo ">>> 正在初始化边缘计算节点基础台账数据: ${EDGE_NODES_INIT_FILE}..."
+if [[ -f "${EDGE_NODES_INIT_FILE}" ]]; then
+    run_og_admin_file "${DB_NAME}" "${EDGE_NODES_INIT_FILE}"
+    echo "[OK] 边缘计算节点基础台账初始化完成。"
+else
+    echo "ERROR: 找不到边缘节点初始化文件: ${EDGE_NODES_INIT_FILE}" >&2
+    exit 1
+fi
 
 # =============================================================================
 # 9. 验证数据库对象数量 (25 Tables, 21 Sequences)

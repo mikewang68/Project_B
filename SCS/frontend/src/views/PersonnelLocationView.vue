@@ -38,7 +38,14 @@ const stats = computed(() => [
   { label: '低电量', value: backendStats.value.lowBattery, tone: 'warning' },
 ])
 
+let inFlight = false
+let pendingReload = false
 async function loadList(): Promise<void> {
+  if (inFlight) {
+    pendingReload = true
+    return
+  }
+  inFlight = true
   try {
     const res = await personnelApi.list({
       keyword: query.value, team: team.value, area: area.value, state: state.value,
@@ -48,6 +55,12 @@ async function loadList(): Promise<void> {
     backendStats.value = res.stats
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '人员数据加载失败')
+  } finally {
+    inFlight = false
+    if (pendingReload) {
+      pendingReload = false
+      void loadList()
+    }
   }
 }
 

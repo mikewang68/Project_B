@@ -4,9 +4,12 @@ import com.bproject.safety.common.error.ApiError;
 import com.bproject.safety.common.error.ErrorCodes;
 import com.bproject.safety.common.web.TraceIdFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +28,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * 支持以下接入凭证：
  * 1. 边缘节点 / 机器对机器：{@code X-API-Key} 请求头；
  * 2. 前端 / 用户接入：{@code Authorization: Bearer <token>} 请求头；
- * 3. 针对公共探针、文档、状态与鉴权端点（/actuator/**, /v3/api-docs/**, /swagger-ui/**, /api/v1/auth/**, /api/v1/state）放行；
+ * 3. 针对公共探针、健康检查、文档、状态与鉴权端点放行；
  * 4. 针对跨域预检（OPTIONS）放行。
  * </p>
  */
@@ -39,14 +42,26 @@ public class SecurityInterceptor implements HandlerInterceptor {
     private final ObjectMapper objectMapper;
 
     public SecurityInterceptor(
-            @Value("${app.security.enabled:false}") boolean enabled,
-            @Value("${app.security.api-key:scs-edge-key-2026}") String expectedApiKey,
-            @Value("${app.security.bearer-token:scs-token-2026}") String expectedBearerToken,
+            @Value("${app.security.enabled:true}") boolean enabled,
+            @Value("${app.security.api-key:}") String expectedApiKey,
+            @Value("${app.security.bearer-token:}") String expectedBearerToken,
             ObjectMapper objectMapper) {
         this.enabled = enabled;
-        this.expectedApiKey = expectedApiKey;
-        this.expectedBearerToken = expectedBearerToken;
+        this.expectedApiKey = expectedApiKey != null ? expectedApiKey.trim() : "";
+        this.expectedBearerToken = expectedBearerToken != null ? expectedBearerToken.trim() : "";
         this.objectMapper = objectMapper;
+    }
+
+    @PostConstruct
+    public void validateConfiguration() {
+        if (enabled) {
+            if (expectedApiKey.isBlank()) {
+                throw new IllegalStateException("Security is enabled (app.security.enabled=true) but app.security.api-key (APP_SECURITY_API_KEY) is not configured. Startup rejected.");
+            }
+            if (expectedBearerToken.isBlank()) {
+                throw new IllegalStateException("Security is enabled (app.security.enabled=true) but app.security.bearer-token (APP_SECURITY_BEARER_TOKEN) is not configured. Startup rejected.");
+            }
+        }
     }
 
     @Override
@@ -66,17 +81,19 @@ public class SecurityInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 3. 边缘节点机器凭证检查 (X-API-Key)
+        // 3. 边缘节点机器凭证检查 (X-API-Key，常量时间等值比较)
         String apiKey = request.getHeader("X-API-Key");
-        if (apiKey != null && !apiKey.isBlank() && apiKey.equals(expectedApiKey)) {
+        if (apiKey != null && !apiKey.isBlank() && !expectedApiKey.isBlank()
+                && MessageDigest.isEqual(apiKey.getBytes(StandardCharsets.UTF_8), expectedApiKey.getBytes(StandardCharsets.UTF_8))) {
             return true;
         }
 
-        // 4. 用户/网关 Bearer Token 凭证检查
+        // 4. 用户/网关 Bearer Token 凭证检查 (常量时间等值比较，禁止前缀绕过)
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7).trim();
-            if (!token.isBlank() && (token.equals(expectedBearerToken) || token.startsWith("scs-token-"))) {
+            if (!token.isBlank() && !expectedBearerToken.isBlank()
+                    && MessageDigest.isEqual(token.getBytes(StandardCharsets.UTF_8), expectedBearerToken.getBytes(StandardCharsets.UTF_8))) {
                 return true;
             }
         }
@@ -89,6 +106,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
 
     private boolean isWhitelisted(String path) {
         return path.startsWith("/actuator")
+                || path.startsWith("/health")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/api/v1/auth")

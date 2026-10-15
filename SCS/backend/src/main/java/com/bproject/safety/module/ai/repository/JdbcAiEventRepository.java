@@ -105,7 +105,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
 
     @Override
     public List<DemoAiEvent> findAll() {
-        String sql = BASE_SELECT_ROOT + " ORDER BY e.occurred_at DESC, e.id DESC";
+        String sql = BASE_SELECT_ROOT + " WHERE e.status_code <> 'CANCELLED' ORDER BY e.occurred_at DESC, e.id DESC";
         Map<UUID, DemoAiEvent> map = new LinkedHashMap<>();
         jdbcTemplate.query(sql, Collections.emptyMap(), rs -> {
             UUID id = (UUID) rs.getObject("id");
@@ -119,7 +119,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
     @Override
     public List<DemoAiEvent> filter(AiEventQuery query) {
         MapSqlParameterSource params = new MapSqlParameterSource();
-        StringBuilder sql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE 1=1 ");
+        StringBuilder sql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE e.status_code <> 'CANCELLED' ");
         buildQueryConditions(query, sql, params);
         sql.append(" ORDER BY e.occurred_at DESC, e.id DESC");
 
@@ -136,7 +136,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
     @Override
     public AiPageResult page(AiEventQuery query) {
         MapSqlParameterSource params = new MapSqlParameterSource();
-        StringBuilder countSql = new StringBuilder("SELECT COUNT(*) FROM safety.ai_event e WHERE 1=1 ");
+        StringBuilder countSql = new StringBuilder("SELECT COUNT(*) FROM safety.ai_event e WHERE e.status_code <> 'CANCELLED' ");
         buildQueryConditions(query, countSql, params);
 
         Long totalObj = jdbcTemplate.queryForObject(countSql.toString(), params, Long.class);
@@ -212,38 +212,13 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
 
     @Override
     public long count() {
-        Long c = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM safety.ai_event", Collections.emptyMap(), Long.class);
+        Long c = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM safety.ai_event WHERE status_code <> 'CANCELLED'", Collections.emptyMap(), Long.class);
         return c != null ? c : 0L;
     }
 
     @Override
     public void clearDemoData() {
-        try {
-            jdbcTemplate.getJdbcOperations().execute("SET session_replication_role = replica");
-            jdbcTemplate.update("DELETE FROM safety.ai_event_timeline", Collections.emptyMap());
-            jdbcTemplate.update("DELETE FROM safety.ai_event", Collections.emptyMap());
-        } catch (Exception ex) {
-            log.warn("Direct physical delete on ai_event prevented by trigger or permissions: {}", ex.getMessage());
-            try {
-                jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.ai_event_timeline DISABLE TRIGGER trg_prevent_delete_ai_event_timeline");
-                jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.ai_event DISABLE TRIGGER trg_prevent_delete_ai_event");
-                jdbcTemplate.update("DELETE FROM safety.ai_event_timeline", Collections.emptyMap());
-                jdbcTemplate.update("DELETE FROM safety.ai_event", Collections.emptyMap());
-            } catch (Exception e2) {
-                log.warn("Could not disable delete triggers on ai_event: {}", e2.getMessage());
-            } finally {
-                try {
-                    jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.ai_event_timeline ENABLE TRIGGER trg_prevent_delete_ai_event_timeline");
-                    jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.ai_event ENABLE TRIGGER trg_prevent_delete_ai_event");
-                } catch (Exception ignored) {
-                }
-            }
-        } finally {
-            try {
-                jdbcTemplate.getJdbcOperations().execute("SET session_replication_role = DEFAULT");
-            } catch (Exception ignored) {
-            }
-        }
+        jdbcTemplate.update("UPDATE safety.ai_event SET status_code = 'CANCELLED', updated_at = now() WHERE status_code <> 'CANCELLED'", Collections.emptyMap());
     }
 
     // ---------- 内部持久化辅助 ----------

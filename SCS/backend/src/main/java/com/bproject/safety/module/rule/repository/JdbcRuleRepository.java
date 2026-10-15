@@ -159,41 +159,7 @@ public class JdbcRuleRepository implements RuleRepository, DemoClearableStore {
 
     @Override
     public void clearDemoData() {
-        try {
-            jdbcTemplate.getJdbcOperations().execute("SET session_replication_role = replica");
-            jdbcTemplate.update("DELETE FROM safety.safety_rule_edge_sync", Collections.emptyMap());
-            jdbcTemplate.update("DELETE FROM safety.safety_rule_version", Collections.emptyMap());
-            jdbcTemplate.update("DELETE FROM safety.safety_rule_area", Collections.emptyMap());
-            jdbcTemplate.update("DELETE FROM safety.safety_rule", Collections.emptyMap());
-        } catch (Exception ex) {
-            log.warn("Direct physical delete on safety_rule prevented by trigger or permissions: {}", ex.getMessage());
-            try {
-                jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.safety_rule_edge_sync DISABLE TRIGGER trg_prevent_delete_safety_rule_edge_sync");
-                jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.safety_rule_version DISABLE TRIGGER trg_prevent_delete_safety_rule_version");
-                jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.safety_rule_area DISABLE TRIGGER trg_prevent_delete_safety_rule_area");
-                jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.safety_rule DISABLE TRIGGER trg_prevent_delete_safety_rule");
-
-                jdbcTemplate.update("DELETE FROM safety.safety_rule_edge_sync", Collections.emptyMap());
-                jdbcTemplate.update("DELETE FROM safety.safety_rule_version", Collections.emptyMap());
-                jdbcTemplate.update("DELETE FROM safety.safety_rule_area", Collections.emptyMap());
-                jdbcTemplate.update("DELETE FROM safety.safety_rule", Collections.emptyMap());
-            } catch (Exception e2) {
-                log.warn("Could not disable delete triggers on safety_rule: {}", e2.getMessage());
-            } finally {
-                try {
-                    jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.safety_rule_edge_sync ENABLE TRIGGER trg_prevent_delete_safety_rule_edge_sync");
-                    jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.safety_rule_version ENABLE TRIGGER trg_prevent_delete_safety_rule_version");
-                    jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.safety_rule_area ENABLE TRIGGER trg_prevent_delete_safety_rule_area");
-                    jdbcTemplate.getJdbcOperations().execute("ALTER TABLE safety.safety_rule ENABLE TRIGGER trg_prevent_delete_safety_rule");
-                } catch (Exception ignored) {
-                }
-            }
-        } finally {
-            try {
-                jdbcTemplate.getJdbcOperations().execute("SET session_replication_role = DEFAULT");
-            } catch (Exception ignored) {
-            }
-        }
+        jdbcTemplate.update("UPDATE safety.safety_rule SET is_deleted = true, updated_at = now() WHERE is_deleted = false", Collections.emptyMap());
     }
 
     // ---------- 内部持久化操作 ----------

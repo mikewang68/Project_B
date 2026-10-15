@@ -279,7 +279,7 @@ public class EdgeOpsService {
 
     /** 模拟断网：cloudConnected=false、status=OFFLINE、心跳冻结，但 autonomy=ACTIVE。 */
     @Transactional
-    public DemoEdgeNode simulateDisconnect(String nodeId) {
+    public synchronized DemoEdgeNode simulateDisconnect(String nodeId) {
         DemoEdgeNode n = loadNode(nodeId);
         if (!n.cloudConnected) {
             throw ApiException.conflict("节点已处于断网状态: " + nodeId);
@@ -429,7 +429,7 @@ public class EdgeOpsService {
 
     /** 时间对账（任务书第十九节，Demo 校时，不实现真实 NTP）。 */
     @Transactional
-    public DemoEdgeNode reconcileTime(String nodeId) {
+    public synchronized DemoEdgeNode reconcileTime(String nodeId) {
         DemoEdgeNode n = loadNode(nodeId);
         Long before = n.clockOffsetMs;
         n.clockOffsetMs = CLOCK_OK_OFFSET_MS;
@@ -450,7 +450,7 @@ public class EdgeOpsService {
 
     /** 规则版本对账（任务书第二十节，redeliver 重新下发 / keep 本次放行）。 */
     @Transactional
-    public DemoEdgeNode reconcileRules(String nodeId, String action) {
+    public synchronized DemoEdgeNode reconcileRules(String nodeId, String action) {
         DemoEdgeNode n = loadNode(nodeId);
         String before = n.activeRuleVersion;
         boolean redeliver = action == null || "redeliver".equalsIgnoreCase(action);
