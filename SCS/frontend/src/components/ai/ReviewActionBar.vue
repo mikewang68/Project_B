@@ -2,7 +2,7 @@
 import { Check, CircleClose, QuestionFilled, Promotion, RefreshRight, Lock } from '@element-plus/icons-vue'
 import type { AiEvent } from '@/types/ai'
 
-const props = defineProps<{ event: AiEvent }>()
+defineProps<{ event: AiEvent }>()
 const emit = defineEmits<{
   confirm: []
   falseReport: []

@@ -15,7 +15,7 @@ import RuleRollbackDialog from '@/components/rules/RuleRollbackDialog.vue'
 import { ruleApi, type RuleRollbackResult } from '@/api/rules'
 import type { MappedRuleConflict } from '@/adapters/rule'
 import { isDomainLiveEvent, sharedLiveSocket } from '@/api/live'
-import type { RuleStatus, SafetyRule } from '@/types/rule'
+import type { SafetyRule } from '@/types/rule'
 
 const route = useRoute()
 const router = useRouter()

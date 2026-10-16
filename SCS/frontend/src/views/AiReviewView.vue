@@ -110,7 +110,6 @@ function reportError(error: unknown, fallback: string): void {
   const message = error instanceof ApiError ? error.message : fallback
   ElMessage.error(message)
   if (error instanceof ApiError && import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
     console.warn(`[ai] ${error.status} ${error.code} traceId=${error.traceId}`)
   }
 }

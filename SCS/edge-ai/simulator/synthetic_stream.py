@@ -43,6 +43,8 @@ class SyntheticStreamGenerator:
         if tmpl_path is not None:
             frame = cv2.imread(str(tmpl_path))
             if frame is not None and frame.size > 0:
+                if frame.shape[1] != self.width or frame.shape[0] != self.height:
+                    frame = cv2.resize(frame, (self.width, self.height))
                 img_h, img_w = frame.shape[:2]
                 return self._generate_from_real_template(frame, scenario, img_w, img_h)
 

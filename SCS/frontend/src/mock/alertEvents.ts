@@ -1,11 +1,4 @@
-import { buildLinkageTemplate, type AlertEvent, type AlertStatus, type LinkageStep, type TimelineNode } from '@/types/alert'
-
-function pad(n: number): string { return String(n).padStart(2, '0') }
-function addSec(time: string, delta: number): string {
-  const [h, m, s] = time.split(':').map(Number) as [number, number, number]
-  const total = (((h * 60 + m) * 60 + s + delta) % 86400 + 86400) % 86400
-  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor(total / 60) % 60)}:${pad(total % 60)}`
-}
+import { buildLinkageTemplate, type AlertEvent, type LinkageStep, type TimelineNode } from '@/types/alert'
 
 function tl(time: string, text: string, state: TimelineNode['state'] = 'done'): TimelineNode {
   return { time, text, state }

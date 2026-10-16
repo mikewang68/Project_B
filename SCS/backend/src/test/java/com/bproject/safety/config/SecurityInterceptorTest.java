@@ -50,6 +50,11 @@ class SecurityInterceptorTest {
         MockHttpServletRequest actReq = new MockHttpServletRequest("GET", "/actuator/health");
         MockHttpServletResponse actResp = new MockHttpServletResponse();
         assertThat(interceptor.preHandle(actReq, actResp, new Object())).isTrue();
+
+        // /api/v1/meta/dictionaries (供上线验证探针 verify-deployment.sh 与前端公共字典加载免密放行)
+        MockHttpServletRequest metaReq = new MockHttpServletRequest("GET", "/api/v1/meta/dictionaries");
+        MockHttpServletResponse metaResp = new MockHttpServletResponse();
+        assertThat(interceptor.preHandle(metaReq, metaResp, new Object())).isTrue();
     }
 
     @Test

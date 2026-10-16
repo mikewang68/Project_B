@@ -20,7 +20,7 @@ const props = defineProps<{
   activeModel?: AiModelInfo | undefined
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   modelSelected: [modelId: string]
 }>()
 

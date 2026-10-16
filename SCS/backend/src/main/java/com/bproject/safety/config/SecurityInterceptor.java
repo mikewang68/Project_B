@@ -110,6 +110,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/api/v1/auth")
+                || path.startsWith("/api/v1/meta")
                 || path.startsWith("/api/v1/state")
                 || path.startsWith("/api/v1/health")
                 || path.equals("/error");

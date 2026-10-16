@@ -73,12 +73,22 @@ class DemoFeatureDisabledIntegrationTest {
     }
 
     @Test
-    @DisplayName("SEC-5: 关闭 simulator 后 POST /api/v1/ai-events/ingest 返回 403 DEMO_FEATURE_DISABLED")
-    void ingestRejectedWhenDisabled() throws Exception {
+    @DisplayName("关闭 simulator：AI 模拟端点 /simulate 返回 403 DEMO_FEATURE_DISABLED")
+    void simulateAiEventRejectedWhenDisabled() throws Exception {
+        mvc.perform(post("/api/v1/ai-events/simulate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"new\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("DEMO_FEATURE_DISABLED"));
+    }
+
+    @Test
+    @DisplayName("生产安全：真实边缘视觉上报 POST /api/v1/ai-events/ingest 不受 simulator 模拟开关阻断")
+    void ingestAllowedWhenSimulatorDisabled() throws Exception {
         mvc.perform(post("/api/v1/ai-events/ingest")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"eventType\":\"未戴安全帽\",\"cameraCode\":\"CAM-01\",\"confidence\":0.95,\"judgeText\":\"test\"}"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("DEMO_FEATURE_DISABLED"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("未戴安全帽"));
     }
 }
