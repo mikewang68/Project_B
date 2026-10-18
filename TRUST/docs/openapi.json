@@ -1854,6 +1854,121 @@
           }
         }
       }
+    },
+    "/api/v1/wallets/{id}/chain-authorization": {
+      "get": {
+        "tags": [
+          "wallet-authorization-controller"
+        ],
+        "operationId": "walletChainAuthorization",
+        "description": "只读查询当前组织当前来源绑定证书。需要真实IAM会话与trust:wallet:read。UNKNOWN和INCONSISTENT不表示授权，不提交链交易。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sourceSystem",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,80}$"
+            }
+          },
+          {
+            "name": "eventType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z_]{1,40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前观察结果，不保证未来交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "walletId",
+                    "sourceSystem",
+                    "fingerprint",
+                    "eventType",
+                    "walletState",
+                    "status",
+                    "checkedAt",
+                    "observations"
+                  ],
+                  "properties": {
+                    "walletId": {
+                      "type": "string"
+                    },
+                    "sourceSystem": {
+                      "type": "string"
+                    },
+                    "fingerprint": {
+                      "type": "string"
+                    },
+                    "eventType": {
+                      "type": "string"
+                    },
+                    "walletState": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "AUTHORIZED",
+                        "UNAUTHORIZED",
+                        "UNKNOWN",
+                        "INCONSISTENT"
+                      ]
+                    },
+                    "checkedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "observations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "organization": {
+                            "type": "string"
+                          },
+                          "available": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "来源或类型无效"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "非IAM身份或缺少钱包读取权限"
+          },
+          "404": {
+            "description": "钱包不在当前组织或来源当前未绑定该钱包"
+          }
+        }
+      }
     }
   },
   "components": {

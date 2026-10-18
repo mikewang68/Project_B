@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "enabled": false,
+  "outputs": [
+    {
+      "name": "evidence",
+      "targetFile": "targets.json",
+      "target": "isolated-example",
+      "credentialFile": "source-token.json"
+    }
+  ]
+}

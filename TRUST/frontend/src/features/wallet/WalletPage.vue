@@ -4,9 +4,10 @@ import type { ApiRecord } from "../../shared/types";
 import { json, post } from "../../shared/http/client";
 import { useFeedback } from "../../shared/composables/useFeedback";
 import { usePageLoad } from "../../shared/composables/usePageLoad";
+import WalletChainAuthorization from "./WalletChainAuthorization.vue";
 import { fmt } from "../../shared/presentation";
 const props = defineProps<{ me: ApiRecord }>();
-const { run, busy } = useFeedback();
+const { run, act, busy } = useFeedback();
 const allowed = (permission: string) =>
   props.me.identityProvider === "IAM" && props.me.roles.includes(permission);
 const canRead = computed(() => allowed("trust:wallet:read"));
@@ -25,8 +26,13 @@ const walletId = ref(""),
   reason = ref("");
 const changeForm = ref<HTMLFormElement | null>(null);
 function startBinding() {
-  action.value = "BIND";
-  changeForm.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+  void act(
+    { action: "READ", menuId: "wallets", summary: "打开来源绑定申请" },
+    () => {
+      action.value = "BIND";
+      changeForm.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+  );
 }
 const names: Record<string, string> = {
   REGISTER: "登记证书版本",
@@ -43,37 +49,53 @@ async function load() {
 }
 usePageLoad(load);
 async function propose() {
-  if (
-    action.value === "DISABLE" &&
-    !window.confirm(
-      "停用后，此钱包不能再签名；已经固定使用它但尚未上链的事件也可能无法补办。请先确认相关上链、核验、导出和补办已完成。仍要提交停用申请吗？",
-    )
-  ) return;
-  await run(async () => {
-    const binding = data.value.bindings.find(
-      (v: ApiRecord) => v.source_system === sourceSystem.value,
-    );
-    await post("/wallets/requests", {
-      action: action.value,
-      reason: reason.value,
-      change: {
-        label: label.value,
-        mspId: mspId.value,
-        keyRef: keyRef.value,
-        walletId: walletId.value,
-        sourceSystem: sourceSystem.value,
-        expectedRevision: binding?.revision || 0,
-      },
-    });
-    reason.value = "";
-    await load();
-  });
+  await act(
+    {
+      action: "CREATE",
+      menuId: "wallets",
+      summary: "请求钱包变更（停用需二次确认）",
+    },
+    async () => {
+      if (
+        action.value === "DISABLE" &&
+        !window.confirm(
+          "停用后，此钱包不能再签名；已经固定使用它但尚未上链的事件也可能无法补办。请先确认相关上链、核验、导出和补办已完成。仍要提交停用申请吗？",
+        )
+      )
+        return;
+      const binding = data.value.bindings.find(
+        (v: ApiRecord) => v.source_system === sourceSystem.value,
+      );
+      await post("/wallets/requests", {
+        action: action.value,
+        reason: reason.value,
+        change: {
+          label: label.value,
+          mspId: mspId.value,
+          keyRef: keyRef.value,
+          walletId: walletId.value,
+          sourceSystem: sourceSystem.value,
+          expectedRevision: binding?.revision || 0,
+        },
+      });
+      reason.value = "";
+      await load();
+    },
+  );
 }
 async function review(id: string, approve: boolean) {
-  await run(async () => {
-    await post(`/wallets/requests/${id}/review`, { approve });
-    await load();
-  });
+  await act(
+    {
+      action: "UPDATE",
+      menuId: "wallets",
+      objectId: id,
+      summary: "复核钱包变更申请",
+    },
+    async () => {
+      await post(`/wallets/requests/${id}/review`, { approve });
+      await load();
+    },
+  );
 }
 </script>
 
@@ -89,7 +111,17 @@ async function review(id: string, approve: boolean) {
     <article class="panel">
       <div class="section-title">
         <h2>签名身份与证书版本</h2>
-        <button :disabled="busy" @click="run(load)">刷新</button>
+        <button
+          :disabled="busy"
+          @click="
+            act(
+              { action: 'READ', menuId: 'wallets', summary: '刷新钱包列表' },
+              load,
+            )
+          "
+        >
+          刷新
+        </button>
       </div>
       <p class="small muted">
         私钥由后台保护。平台停用会禁止新签名，不等同于联盟网络吊销。证书版本登记后仍需完成链上来源授权。
@@ -152,6 +184,7 @@ async function review(id: string, approve: boolean) {
         </div>
       </dl>
     </article>
+    <WalletChainAuthorization :bindings="data.bindings" />
     <article class="panel">
       <h2>最近签名记录</h2>
       <p v-if="!data.signatures.length">暂无签名记录。</p>
@@ -211,20 +244,29 @@ async function review(id: string, approve: boolean) {
             >钱包名称<span class="required-mark" aria-hidden="true">
               *</span
             ></span
-          ><input aria-label="钱包名称" v-model="label" required maxlength="120" /></label
+          ><input
+            aria-label="钱包名称"
+            v-model="label"
+            required
+            maxlength="120" /></label
         ><label
           ><span
             >所属 MSP<span class="required-mark" aria-hidden="true">
               *</span
             ></span
-          ><input aria-label="所属 MSP" v-model="mspId" required maxlength="80" /></label
+          ><input
+            aria-label="所属 MSP"
+            v-model="mspId"
+            required
+            maxlength="80" /></label
         ><label
           ><span
             >运维预置的密钥引用<span class="required-mark" aria-hidden="true">
               *</span
             ></span
           ><input
-            aria-label="运维预置的密钥引用" v-model="keyRef"
+            aria-label="运维预置的密钥引用"
+            v-model="keyRef"
             required
             pattern="[A-Za-z0-9_-]{1,100}" /></label
       ></template>
@@ -243,14 +285,23 @@ async function review(id: string, approve: boolean) {
           >来源系统编码<span class="required-mark" aria-hidden="true">
             *</span
           ></span
-        ><input aria-label="来源系统编码" v-model="sourceSystem" required pattern="[A-Za-z0-9._-]{1,80}"
+        ><input
+          aria-label="来源系统编码"
+          v-model="sourceSystem"
+          required
+          pattern="[A-Za-z0-9._-]{1,80}"
       /></label>
       <label
         ><span
           >变更原因<span class="required-mark" aria-hidden="true">
             *</span
           ></span
-        ><textarea aria-label="变更原因" v-model="reason" required maxlength="500"></textarea></label
+        ><textarea
+          aria-label="变更原因"
+          v-model="reason"
+          required
+          maxlength="500"
+        ></textarea></label
       ><button :disabled="busy">提交复核</button>
     </form>
     <article class="panel">

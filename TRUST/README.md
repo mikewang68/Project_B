@@ -132,3 +132,8 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 ## TRUST＋IAM 身份联调版本
 
 公用 Fabric 身份供给 API、IAM 自动供给及独立环境配置见 [身份集成说明](docs/identity-delivery.md)、[身份 OpenAPI](docs/identity-openapi.json)。托管签名和 WMS 接收端契约见 [托管身份与 WMS 接入](docs/managed-wallet-wms.md)。真实 WMS 业务推送、SYS 集成和正式入口切换需要相应维护方配合，不由本模块自动实施。
+
+## 链授权查询与模拟发送
+
+- [钱包链授权状态](docs/wallet-chain-authorization.md)：只读组织观察、当前绑定与维护交接。
+- [通用模拟发送规范](docs/simulator.md)：持久输入、多输出独立回执、有限发送与重启恢复；默认不连接真实服务。
