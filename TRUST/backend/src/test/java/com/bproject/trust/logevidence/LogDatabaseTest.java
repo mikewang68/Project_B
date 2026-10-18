@@ -584,7 +584,7 @@ class LogDatabaseTest {
                         "TEST_ORG", new LogSettings.Scope("TEST_DOMAIN", "TEST_ZONE", "TRUST")))));
     try {
       ops.enqueue("TEST_ORG", "", "READ", "", "SUCCESS", "REQUEST", "", "GET", "/events", "", "");
-      var delivery = new LogDeliveryWorker(ops);
+      var delivery = new LogDeliveryWorker(db, config);
       delivery.poll();
       var row = db.queryForMap("SELECT * FROM audit_delivery");
       assertEquals("FAILED", row.get("state"));

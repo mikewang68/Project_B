@@ -9,6 +9,7 @@ import java.nio.file.*;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -24,33 +25,35 @@ public class LogDeliveryWorker {
     }
   }
 
-  private final LogOperations ops;
+  private final JdbcTemplate db;
+  private final LogSettings settings;
   private final HttpClient http =
       HttpClient.newBuilder()
           .connectTimeout(Duration.ofSeconds(3))
           .followRedirects(HttpClient.Redirect.NEVER)
           .build();
 
-  public LogDeliveryWorker(LogOperations ops) {
-    this.ops = ops;
+  public LogDeliveryWorker(JdbcTemplate db, LogSettings settings) {
+    this.db = db;
+    this.settings = settings;
   }
 
   @Scheduled(fixedDelayString = "${trust.logs.delivery-interval-ms:5000}")
   public void poll() {
     try {
-      var cfg = ops.settings.read().delivery();
+      var cfg = settings.read().delivery();
       if (!cfg.enabled()) return;
       String token = Files.readString(Path.of(cfg.tokenFile())).trim();
       if (token.length() < 32 || token.length() > 512) return;
       for (var row :
-          ops.db.queryForList(
+          db.queryForList(
               "SELECT * FROM audit_delivery WHERE state='PENDING' AND next_at<=CURRENT_TIMESTAMP"
                   + " AND org_id<>'SIMULATED_LOCAL'"
                   + " ORDER BY created_at LIMIT 20")) {
         String id = (String) row.get("id");
         // Atomic deadline acts as a recoverable lease; duplicate delivery is safe by stable event
         // ID.
-        if (ops.db.update(
+        if (db.update(
                 "UPDATE audit_delivery SET next_at=CURRENT_TIMESTAMP+INTERVAL '60 seconds' WHERE"
                     + " id=? AND state='PENDING' AND next_at<=CURRENT_TIMESTAMP",
                 id)
@@ -91,12 +94,12 @@ public class LogDeliveryWorker {
                     (String) row.get("source_kind"),
                     (String) row.get("summary"));
             json = LogInput.canonical(event);
-            ops.db.update(
+            db.update(
                 "UPDATE audit_delivery SET event_json=? WHERE id=? AND event_json IS NULL",
                 json,
                 id);
             json =
-                ops.db.queryForObject(
+                db.queryForObject(
                     "SELECT event_json FROM audit_delivery WHERE id=?", String.class, id);
           }
           var response =
@@ -121,8 +124,7 @@ public class LogDeliveryWorker {
               || !receipt.path("stored").asBoolean()
               || !LogInput.hash(json).equals(receipt.path("payloadHash").asText()))
             throw new DeliveryFailure("AUDIT_INVALID_RECEIPT", true);
-          ops.db.update(
-              "UPDATE audit_delivery SET state='DELIVERED',last_error=NULL WHERE id=?", id);
+          db.update("UPDATE audit_delivery SET state='DELIVERED',last_error=NULL WHERE id=?", id);
         } catch (Exception e) {
           if (e instanceof InterruptedException) Thread.currentThread().interrupt();
           // Retain durable events indefinitely. Configuration repair recovers without regenerating
@@ -138,7 +140,7 @@ public class LogDeliveryWorker {
                   : e instanceof DeliveryFailure failure
                       ? failure.code
                       : "AUDIT_DELIVERY_UNCONFIRMED";
-          ops.db.update(
+          db.update(
               "UPDATE audit_delivery SET"
                   + " state=?,attempts=?,last_error=?,next_at=CURRENT_TIMESTAMP+INTERVAL '60"
                   + " seconds' WHERE id=?",

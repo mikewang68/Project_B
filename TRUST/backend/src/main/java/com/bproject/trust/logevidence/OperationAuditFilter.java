@@ -41,10 +41,7 @@ public class OperationAuditFilter extends OncePerRequestFilter {
         "GET".equals(req.getMethod()) ? "READ" : path.endsWith("/logout") ? "LOGOUT" : "EXECUTE";
     try {
       if (pageId != null) {
-        UUID.fromString(pageId);
-        var rows = ops.db.queryForList("SELECT * FROM audit_page_action WHERE id=?", pageId);
-        if (rows.isEmpty()) throw LogEvidenceService.missing();
-        LogOperations.pageOwner(rows.get(0), p);
+        ops.verifyPageAction(auth, pageId);
         req.setAttribute("TRUST_VERIFIED_PAGE_ACTION", pageId);
       }
       ops.enqueue(

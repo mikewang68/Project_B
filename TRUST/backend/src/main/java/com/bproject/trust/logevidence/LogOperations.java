@@ -14,9 +14,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class LogOperations {
-  final JdbcTemplate db;
-  final TransactionTemplate tx;
-  final LogSettings settings;
+  private final JdbcTemplate db;
+  private final TransactionTemplate tx;
+  private final LogSettings settings;
 
   @org.springframework.beans.factory.annotation.Autowired
   private com.bproject.trust.identity.IntegrationSettings identitySettings;
@@ -51,6 +51,14 @@ public class LogOperations {
     if (identitySettings != null && !"real".equals(identitySettings.read().iamMode()))
       throw new IngressError(403, "VERIFIED_IDENTITY_REQUIRED", "需要真实 IAM 身份");
     return principal(a);
+  }
+
+  public void verifyPageAction(Authentication a, String id) {
+    var p = verified(a);
+    UUID.fromString(id);
+    var rows = db.queryForList("SELECT * FROM audit_page_action WHERE id=?", id);
+    if (rows.isEmpty()) throw LogEvidenceService.missing();
+    pageOwner(rows.get(0), p);
   }
 
   public Map<String, Object> page(Authentication a, PageAction input) {

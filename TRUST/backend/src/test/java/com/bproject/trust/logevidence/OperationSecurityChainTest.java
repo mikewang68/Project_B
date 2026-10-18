@@ -105,7 +105,6 @@ class OperationSecurityChainTest {
   @BeforeEach
   void setup() {
     reset(iam, operations, db);
-    org.springframework.test.util.ReflectionTestUtils.setField(operations, "db", db);
     when(iam.current("synthetic-session-token"))
         .thenReturn(
             new PlatformIdentity.User(
@@ -159,8 +158,6 @@ class OperationSecurityChainTest {
   void activeStatusSettingsAndDeliveryReadsHaveOwnedCorrelationAndRequestOutcomes()
       throws Exception {
     String pageId = UUID.randomUUID().toString();
-    when(db.queryForList(anyString(), eq(pageId)))
-        .thenReturn(List.of(Map.of("actor", "real-user", "org_id", "TRUST_ORG")));
     for (String path :
         List.of("/api/v1/status", "/api/v1/audit/settings", "/api/v1/audit/delivery")) {
       http.perform(get(path).session(session()).header("X-TRUST-Page-Action-Id", pageId))
@@ -182,8 +179,7 @@ class OperationSecurityChainTest {
       }
     }
     reset(operations);
-    when(db.queryForList(anyString(), eq(pageId)))
-        .thenReturn(List.of(Map.of("actor", "someone-else", "org_id", "TRUST_ORG")));
+    doThrow(LogEvidenceService.missing()).when(operations).verifyPageAction(any(), eq(pageId));
     for (String path :
         List.of("/api/v1/status", "/api/v1/audit/settings", "/api/v1/audit/delivery")) {
       http.perform(get(path).session(session()).header("X-TRUST-Page-Action-Id", pageId))

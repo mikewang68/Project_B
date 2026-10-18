@@ -33,7 +33,7 @@ class LogDeliveryHttpTest {
     server.start();
     var calls = Executors.newSingleThreadExecutor();
     try {
-      var result = calls.submit(() -> new LogDeliveryWorker(null).receive(request(server)));
+      var result = calls.submit(() -> new LogDeliveryWorker(null, null).receive(request(server)));
       assertTrue(begun.await(3, TimeUnit.SECONDS));
       var failure = assertThrows(ExecutionException.class, () -> result.get(7, TimeUnit.SECONDS));
       assertInstanceOf(TimeoutException.class, failure.getCause());
@@ -61,7 +61,7 @@ class LogDeliveryHttpTest {
     server.start();
     try {
       assertThrows(
-          RuntimeException.class, () -> new LogDeliveryWorker(null).receive(request(server)));
+          RuntimeException.class, () -> new LogDeliveryWorker(null, null).receive(request(server)));
     } finally {
       server.stop(0);
     }
