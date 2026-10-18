@@ -58,7 +58,8 @@ class LogDatabaseTest {
               "003-signing-audit.sql",
               "004-identities.sql",
               "005-generic-ingress.sql",
-              "006-audit-log.sql"))
+              "006-audit-log.sql",
+              "007-audit-optional-text.sql"))
         ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/" + file));
     }
     db = new JdbcTemplate(data);
@@ -443,6 +444,43 @@ class LogDatabaseTest {
   }
 
   @Test
+  void loginPersistsAnonymousAndVerifiedEventsWithSqlNullOptionalFields() {
+    var identity = mock(com.bproject.trust.ports.PlatformIdentity.class);
+    when(identity.login(anyString(), anyString())).thenReturn("synthetic-login-token");
+    when(identity.current(anyString()))
+        .thenReturn(
+            new com.bproject.trust.ports.PlatformIdentity.User(
+                "verified-user", "user", List.of("ORG"), Set.of()));
+    var settings = mock(com.bproject.trust.identity.IntegrationSettings.class);
+    when(settings.read())
+        .thenReturn(
+            new com.bproject.trust.identity.IntegrationSettings.Settings(
+                "", "real", false, Map.of("ORG", "TEST_ORG"), List.of()));
+    var controller =
+        new com.bproject.trust.identity.IamLoginController(
+            identity, mock(com.bproject.trust.adapters.iam.SimulatedIamClient.class), settings);
+    org.springframework.test.util.ReflectionTestUtils.setField(controller, "operationLogs", ops);
+    var request = new org.springframework.mock.web.MockHttpServletRequest();
+    assertEquals(
+        Map.of("ok", true),
+        controller.login(
+            new com.bproject.trust.identity.IamLoginController.Login(
+                "user", "synthetic-test", "TEST_ORG"),
+            request,
+            new org.springframework.mock.web.MockHttpServletResponse()));
+    assertEquals("verified-user", request.getSession(false).getAttribute("IAM_USER"));
+    var anonymous = db.queryForMap("SELECT * FROM audit_delivery WHERE outcome='STARTED'");
+    assertNull(anonymous.get("actor"));
+    assertNull(anonymous.get("object_id"));
+    assertNull(anonymous.get("menu_id"));
+    assertNull(anonymous.get("summary"));
+    assertEquals("UNVERIFIED_SECURITY", anonymous.get("org_id"));
+    var verified = db.queryForMap("SELECT * FROM audit_delivery WHERE outcome='SUCCESS'");
+    assertEquals("verified-user", verified.get("actor"));
+    assertEquals("TEST_ORG", verified.get("org_id"));
+  }
+
+  @Test
   void deliveryRejectsFalseAcknowledgementAndExplicitRetryKeepsOriginalEvent() throws Exception {
     Path credential = root.resolve("audit-client-token.txt");
     Files.writeString(credential, "synthetic-outbound-audit-test-credential");
@@ -492,8 +530,7 @@ class LogDatabaseTest {
                     Map.of(
                         "TEST_ORG", new LogSettings.Scope("TEST_DOMAIN", "TEST_ZONE", "TRUST")))));
     try {
-      ops.enqueue(
-          "TEST_ORG", "real-user", "READ", "", "SUCCESS", "REQUEST", "", "GET", "/events", "", "");
+      ops.enqueue("TEST_ORG", "", "READ", "", "SUCCESS", "REQUEST", "", "GET", "/events", "", "");
       var delivery = new LogDeliveryWorker(ops);
       delivery.poll();
       var row = db.queryForMap("SELECT * FROM audit_delivery");
@@ -512,6 +549,11 @@ class LogDatabaseTest {
           db.queryForObject(
               "SELECT state FROM audit_delivery WHERE id=?", String.class, row.get("id")));
       assertEquals(requests.get(0), requests.get(1));
+      var delivered = Json.map(requests.get(0));
+      assertEquals("", delivered.get("userId"));
+      assertEquals("ANONYMOUS", delivered.get("actorTrust"));
+      for (String field : List.of("objectId", "menuId", "summary", "traceId"))
+        assertEquals("", delivered.get(field));
     } finally {
       server.stop(0);
     }

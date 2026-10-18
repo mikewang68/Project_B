@@ -39,6 +39,13 @@ class AuditMigrationDatabaseTest {
       var application = new DriverManagerDataSource(url, role, "");
       application.setSchema("trust_data");
       var db = new JdbcTemplate(application);
+      assertEquals(
+          1,
+          db.update(
+              "INSERT INTO"
+                  + " audit_delivery(id,org_id,actor,action,object_id,outcome,source_kind,menu_id,method,path,summary,trace_id,occurred_at)"
+                  + " VALUES(?,'UNVERIFIED_SECURITY',NULL,'LOGIN',NULL,'STARTED','REQUEST',NULL,'POST','/api/v1/iam/login',NULL,NULL,'2026-01-02T03:04:05Z')",
+              UUID.randomUUID().toString()));
       for (String sql :
           new String[] {
             "UPDATE audit_evidence SET ciphertext='tamper'",

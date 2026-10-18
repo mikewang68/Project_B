@@ -61,7 +61,7 @@ public class LogDeliveryWorker {
             var scope = cfg.orgScopes().get((String) row.get("org_id"));
             if (scope == null || !"TRUST".equals(scope.appCode()))
               throw new IllegalArgumentException();
-            String actor = (String) row.get("actor");
+            String actor = Objects.toString(row.get("actor"), "");
             String kind = (String) row.get("source_kind");
             String assurance =
                 actor.isEmpty()

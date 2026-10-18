@@ -325,17 +325,21 @@ public class LogOperations {
             + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
         UUID.randomUUID().toString(),
         org,
-        actor,
+        optionalText(actor),
         action,
-        Objects.toString(object, ""),
+        optionalText(object),
         outcome,
         kind,
-        Objects.toString(menu, ""),
-        Objects.toString(method, ""),
-        Objects.toString(path, ""),
-        Objects.toString(summary, ""),
-        Objects.toString(trace, ""),
+        optionalText(menu),
+        optionalText(method),
+        optionalText(path),
+        optionalText(summary),
+        optionalText(trace),
         Instant.now().toString());
+  }
+
+  private static String optionalText(String value) {
+    return value == null || value.isEmpty() ? null : value;
   }
 
   public void rejected(

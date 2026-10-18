@@ -6,4 +6,5 @@
   <changeSet id="004-identities" author="b-project"><sqlFile path="004-identities.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
   <changeSet id="005-generic-ingress" author="b-project"><sqlFile path="005-generic-ingress.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
   <changeSet id="006-audit-log" author="b-project"><sqlFile path="006-audit-log.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
+  <changeSet id="007-audit-optional-text" author="b-project"><sqlFile path="007-audit-optional-text.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
 </databaseChangeLog>
