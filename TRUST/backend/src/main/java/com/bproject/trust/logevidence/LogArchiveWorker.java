@@ -25,12 +25,16 @@ public class LogArchiveWorker {
       if (!c.enabled()) return;
       var control = service.db.queryForMap("SELECT * FROM audit_log_settings WHERE id=1");
       boolean paused = Boolean.TRUE.equals(control.get("archive_paused"));
+      boolean chainPaused = Boolean.TRUE.equals(control.get("chain_paused"));
       for (var row :
           service.db.queryForList(
               "SELECT * FROM audit_evidence WHERE chain_event_id IS NULL AND"
                   + " archive_state<>'FAILED' AND next_at<=CURRENT_TIMESTAMP AND (lease_until IS"
-                  + " NULL OR lease_until<CURRENT_TIMESTAMP) ORDER BY created_at LIMIT 10")) {
-        if (paused && !"STORED".equals(row.get("archive_state"))) continue;
+                  + " NULL OR lease_until<CURRENT_TIMESTAMP)"
+                  + " AND (?=FALSE OR archive_state='STORED')"
+                  + " AND (?=FALSE OR archive_state<>'STORED') ORDER BY created_at LIMIT 10",
+              paused,
+              chainPaused)) {
         String key = (String) row.get("event_key"), lease = UUID.randomUUID().toString();
         if (service.db.update(
                 "UPDATE audit_evidence SET lease_token=?,lease_until=CURRENT_TIMESTAMP+INTERVAL '60"

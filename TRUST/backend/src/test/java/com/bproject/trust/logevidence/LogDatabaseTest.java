@@ -392,6 +392,59 @@ class LogDatabaseTest {
   }
 
   @Test
+  void chainPauseStillArchivesNewEventsBeyondTenStoredRows() {
+    db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+    for (int i = 0; i < 11; i++) service.submit(source, input("archive-past-paused-" + i, ""));
+    worker.poll();
+    assertEquals(
+        10,
+        db.queryForObject(
+            "SELECT COUNT(*) FROM audit_evidence WHERE archive_state='STORED'", Integer.class));
+    worker.poll();
+    assertEquals(
+        11,
+        db.queryForObject(
+            "SELECT COUNT(*) FROM audit_evidence WHERE archive_state='STORED'", Integer.class));
+    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events", Integer.class));
+    assertEquals(0, db.queryForObject("SELECT SUM(attempts) FROM audit_evidence", Integer.class));
+  }
+
+  @Test
+  void archivePauseStillProjectsStoredEventBeyondTenPendingRows() {
+    db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+    for (int i = 0; i < 10; i++) service.submit(source, input("pending-archive-" + i, ""));
+    var last = input("already-stored-newest", "");
+    service.submit(source, last);
+    db.update(
+        "UPDATE audit_evidence SET next_at=CURRENT_TIMESTAMP+INTERVAL '1 hour' WHERE event_key<>?",
+        last.eventKey());
+    worker.poll();
+    assertEquals(
+        "STORED",
+        db.queryForObject(
+            "SELECT archive_state FROM audit_evidence WHERE event_key=?",
+            String.class,
+            last.eventKey()));
+    db.update(
+        "UPDATE audit_evidence SET next_at=CURRENT_TIMESTAMP-INTERVAL '1 minute' WHERE"
+            + " event_key<>?",
+        last.eventKey());
+    db.update("UPDATE audit_log_settings SET archive_paused=TRUE,chain_paused=FALSE");
+    worker.poll();
+    assertNotNull(
+        db.queryForObject(
+            "SELECT chain_event_id FROM audit_evidence WHERE event_key=?",
+            String.class,
+            last.eventKey()));
+    assertEquals(
+        10,
+        db.queryForObject(
+            "SELECT COUNT(*) FROM audit_evidence WHERE archive_state='PENDING'", Integer.class));
+    assertEquals(0, db.queryForObject("SELECT SUM(attempts) FROM audit_evidence", Integer.class));
+    assertEquals(1, blocks.size());
+  }
+
+  @Test
   void pageActionsAreOwnerBoundAndPersistWithOutbox() {
     var user = auth("user");
     var manager = auth("manager");
