@@ -47,7 +47,7 @@ const names: Record<string, string> = {
 async function load() {
   if (canRead.value) data.value = await json("/wallets");
 }
-usePageLoad(load);
+usePageLoad(load, 'wallets');
 async function propose() {
   await act(
     {
