@@ -28,10 +28,24 @@ export type PendingResult = {
   summary: string;
 };
 
+// randomUUID requires a secure context, but the approved private GUI entrance
+// can use HTTP. getRandomValues remains available there; never weaken browser
+// security or use Math.random to create audit idempotency keys.
+function newActionId(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 // Only fixed action descriptions and opaque resource IDs are accepted by callers.
 // Never send form values, search terms, credentials, filenames or error bodies.
 export async function recordAction(meta: PageAction): Promise<string> {
-  const requestId = crypto.randomUUID();
+  const requestId = newActionId();
   const receipt = await post("/audit/page-actions", {
     ...meta,
     objectId: meta.objectId || "",
