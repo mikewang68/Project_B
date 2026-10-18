@@ -1,5 +1,6 @@
 """Local fakes only: no real TRUST or credentials."""
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import sqlite3
@@ -12,10 +13,13 @@ import threading
 spec=importlib.util.spec_from_file_location("simulator",Path(__file__).parents[1]/"scripts/trust-simulator.py")
 sim=importlib.util.module_from_spec(spec); spec.loader.exec_module(sim)
 ID="11111111-1111-1111-1111-111111111111"
+RAW=json.dumps({"schemaVersion":1,"sourceEventId":"synthetic-1","eventType":"SIM_EVENT",
+    "businessObjectId":"synthetic-object","occurredAt":"2026-01-01T00:00:00Z","payload":{"value":1}}).encode()
+SHA=hashlib.sha256(RAW).hexdigest()
 
 
 def body(status="ACCEPTED"):
-    return {"sourceEventId":"synthetic-1","id":ID,"status":status,
+    return {"sourceEventId":"synthetic-1","id":ID,"status":status,"originalSha256":SHA,
             "chainState":"COMMITTED" if status=="COMMITTED" else "PENDING",
             "taskState":"DONE" if status=="COMMITTED" else "READY","txId":"synthetic-tx"}
 
@@ -34,8 +38,7 @@ class SimulatorTest(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory(); self.root=Path(self.temp.name)/".local"; self.root.mkdir()
         self.path=self.root/"state.sqlite"
         self.input=self.root/"input.json"
-        self.input.write_text(json.dumps({"schemaVersion":1,"sourceEventId":"synthetic-1","eventType":"SIM_EVENT",
-            "businessObjectId":"synthetic-object","occurredAt":"2026-01-01T00:00:00Z","payload":{"value":1}}))
+        self.input.write_bytes(RAW)
         with sim.locked_state(self.path) as db:
             sim.bind(db,{"a":{"pin":"a"},"b":{"pin":"b"}}); sim.enqueue(db,[self.input])
     def tearDown(self): self.temp.cleanup()
@@ -76,9 +79,30 @@ class SimulatorTest(unittest.TestCase):
             self.assertEqual("REJECTED",self.row(db)["state"])
     def test_missing_committed_fields_and_cross_event_rejected(self):
         invalid=body("COMMITTED"); invalid["txId"]=""
-        with self.assertRaises(sim.Error): sim.receipt("synthetic-1",200,invalid)
-        with self.assertRaises(sim.Error): sim.receipt("other",200,body())
-        with self.assertRaises(sim.Error): sim.receipt("synthetic-1",202,body("COMMITTED"))
+        with self.assertRaises(sim.Error): sim.receipt("synthetic-1",200,invalid,SHA)
+        with self.assertRaises(sim.Error): sim.receipt("other",200,body(),SHA)
+        with self.assertRaises(sim.Error): sim.receipt("synthetic-1",202,body("COMMITTED"),SHA)
+    def test_all_receipt_paths_require_original_digest_and_stable_id(self):
+        for state in ("PENDING", "UNKNOWN", "SUBMIT", "WAITING", "RETRY"):
+            for defect in ("missing", "different", "changed_id"):
+                with self.subTest(state=state,defect=defect),sim.locked_state(self.path) as db:
+                    invalid=body("COMMITTED")
+                    known_id=ID if state in {"WAITING","RETRY"} or defect=="changed_id" else None
+                    if defect=="missing": del invalid["originalSha256"]
+                    elif defect=="different": invalid["originalSha256"]=hashlib.sha256(RAW+b" ").hexdigest()
+                    else: invalid["id"]="22222222-2222-2222-2222-222222222222"
+                    db.execute("UPDATE deliveries SET state=?,receipt_id=?,attempts=0,last_success=NULL,receipt_json=NULL WHERE output='a'",(state,known_id))
+                    db.commit()
+                    fake=Fake((200,invalid))
+                    sim.step(db,self.row(db),fake)
+                    result=self.row(db)
+                    self.assertEqual("REJECTED",result["state"])
+                    self.assertEqual(known_id,result["receipt_id"])
+                    self.assertIsNone(result["last_success"])
+                    self.assertIsNone(result["receipt_json"])
+                    self.assertFalse(sim.step(db,result,fake))
+                    self.assertEqual(1,len(fake.calls))
+        self.assertEqual(2,sim.main(["status","--state",str(self.path)]))
     def test_action_required_is_not_automatically_retried(self):
         fake=Fake((200,body("ACTION_REQUIRED")))
         with sim.locked_state(self.path) as db:

@@ -140,12 +140,16 @@ def enqueue(db, paths):
             db.execute("INSERT OR IGNORE INTO deliveries(number,output,state) SELECT ?,name,'PENDING' FROM outputs", (number,))
 
 
-def receipt(number, status, value):
+def receipt(number, status, value, original_sha256, expected_id=None):
     if status not in (200, 202) or not isinstance(value, dict) or value.get("sourceEventId") != number:
         raise Error("Invalid or mismatched receipt")
     event_id = value.get("id")
     if not isinstance(event_id, str) or not generic.re.fullmatch(r"[a-f0-9-]{36}", event_id):
         raise Error("Receipt identifier missing")
+    if value.get("originalSha256") != original_sha256:
+        raise Error("Receipt does not match persisted original bytes")
+    if expected_id is not None and event_id != expected_id:
+        raise Error("Previously accepted receipt identifier changed")
     state = value.get("status")
     if state == "COMMITTED":
         if status != 200 or value.get("chainState") != "COMMITTED" or value.get("taskState") != "DONE" or not value.get("txId"):
@@ -163,10 +167,12 @@ def step(db, row, client, maximum_attempts=10):
     number, output, state = row["number"], row["output"], row["state"]
     if state in TERMINAL:
         return False
+    original = bytes(db.execute("SELECT raw FROM events WHERE number=?", (number,)).fetchone()[0])
+    original_sha256 = hashlib.sha256(original).hexdigest()
     method, suffix, raw = "GET", "/by-source-event/" + number, None
     if state == "SUBMIT":
         method, suffix = "POST", ""
-        raw = bytes(db.execute("SELECT raw FROM events WHERE number=?", (number,)).fetchone()[0])
+        raw = original
     if state == "RETRY":
         method, suffix, raw = "POST", "/" + row["receipt_id"] + "/retry", b"{}"
     if row["attempts"] >= maximum_attempts:
@@ -184,7 +190,7 @@ def step(db, row, client, maximum_attempts=10):
         elif code in {401, 403, 409, 400, 413, 415}:
             new, error = "REJECTED", "HTTP_" + str(code)
         elif code in (200, 202):
-            new, event_id = receipt(number, code, body)
+            new, event_id = receipt(number, code, body, original_sha256, event_id)
             saved_receipt = json.dumps(generic.receipt_output(code, body), separators=(",", ":"))
         elif code >= 500:
             new, error = "UNKNOWN", "DEPENDENCY_UNAVAILABLE"
