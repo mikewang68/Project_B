@@ -1,0 +1,37 @@
+CREATE TABLE audit_log_settings (
+  id INTEGER PRIMARY KEY CHECK(id=1), archive_paused BOOLEAN NOT NULL DEFAULT FALSE,
+  chain_paused BOOLEAN NOT NULL DEFAULT FALSE, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO audit_log_settings(id) VALUES(1);
+CREATE TABLE audit_evidence (
+  event_key VARCHAR(64) PRIMARY KEY, source_id VARCHAR(70) NOT NULL,
+  event_id VARCHAR(128) NOT NULL, domain_id VARCHAR(128) NOT NULL, zone_id VARCHAR(128) NOT NULL,
+  app_code VARCHAR(64) NOT NULL, payload_hash VARCHAR(64) NOT NULL,
+  key_id VARCHAR(64) NOT NULL, ciphertext TEXT NOT NULL, ciphertext_hash VARCHAR(64) NOT NULL,
+  archive_cid TEXT, archive_state VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  chain_event_id VARCHAR(36) REFERENCES events(id), generic_source_id VARCHAR(70) NOT NULL,
+  occurred_at VARCHAR(40) NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
+  next_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, lease_until TIMESTAMP, lease_token VARCHAR(36),
+  last_error VARCHAR(80), created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX audit_evidence_due ON audit_evidence(next_at);
+CREATE TABLE audit_delivery (
+  id VARCHAR(36) PRIMARY KEY, org_id VARCHAR(80) NOT NULL, actor VARCHAR(160) NOT NULL,
+  action VARCHAR(20) NOT NULL, object_id VARCHAR(192) NOT NULL, outcome VARCHAR(16) NOT NULL,
+  source_kind VARCHAR(16) NOT NULL, menu_id VARCHAR(128) NOT NULL DEFAULT '',
+  method VARCHAR(16) NOT NULL DEFAULT '', path VARCHAR(256) NOT NULL DEFAULT '',
+  summary VARCHAR(512) NOT NULL DEFAULT '', trace_id VARCHAR(128) NOT NULL DEFAULT '',
+  occurred_at VARCHAR(40) NOT NULL, event_json TEXT, state VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  attempts INTEGER NOT NULL DEFAULT 0, next_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_error VARCHAR(80), created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX audit_delivery_due ON audit_delivery(state,next_at);
+CREATE TABLE audit_page_action (
+  id VARCHAR(36) PRIMARY KEY, org_id VARCHAR(80) NOT NULL, actor VARCHAR(160) NOT NULL,
+  request_json TEXT NOT NULL, result_json TEXT, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE audit_evidence_access (
+  id VARCHAR(36) PRIMARY KEY, source_id VARCHAR(70) NOT NULL, event_key VARCHAR(64) NOT NULL,
+  operation VARCHAR(20) NOT NULL, outcome VARCHAR(16) NOT NULL,
+  occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

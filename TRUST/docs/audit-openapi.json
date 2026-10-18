@@ -1,0 +1,863 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TRUST audit evidence and page operation contract",
+    "version": "1.0.0",
+    "description": "Session writes require CSRF. Audit ingress uses dedicated service Bearer credentials and exact domain/zone/app scope. See audit-evidence.md for durability, encryption and recovery boundaries."
+  },
+  "paths": {
+    "/api/v1/integrations/audit/events": {
+      "post": {
+        "summary": "Receive canonical AUDIT v1 event",
+        "security": [
+          {
+            "auditBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogSubmission"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/audit/events/{eventKey}": {
+      "get": {
+        "summary": "Read durable receipt",
+        "security": [
+          {
+            "auditBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "eventKey",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      ]
+    },
+    "/api/v1/integrations/audit/events/{eventKey}/retry": {
+      "post": {
+        "summary": "Explicit retry; polling never retries failed work",
+        "security": [
+          {
+            "auditBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "maxProperties": 0
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "eventKey",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      ]
+    },
+    "/api/v1/integrations/audit/events/{eventKey}/original": {
+      "get": {
+        "summary": "Authorized canonical plaintext recovery; Cache-Control no-store",
+        "security": [
+          {
+            "auditBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        },
+        "parameters": [
+          {
+            "name": "fromArchive",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "description": "false explicitly selects encrypted database backup"
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "name": "eventKey",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      ]
+    },
+    "/api/v1/integrations/audit/events/{eventKey}/verification": {
+      "get": {
+        "summary": "Verify archive and ledger registration without returning plaintext",
+        "security": [
+          {
+            "auditBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "eventKey",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      ]
+    },
+    "/api/v1/audit/page-actions": {
+      "post": {
+        "summary": "Persist CLIENT intent before executing action",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageAction"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/page-actions/{requestId}/result": {
+      "post": {
+        "summary": "Record CLIENT observation, not BUSINESS success",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "SUCCESS",
+                      "FAILED",
+                      "DENIED"
+                    ]
+                  },
+                  "summary": {
+                    "type": "string",
+                    "maxLength": 512
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "requestId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    },
+    "/api/v1/audit/settings": {
+      "get": {
+        "summary": "Read scope-filtered backlog and explicit canManage",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Manager allowlist only; collection cannot be paused",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Controls"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/delivery": {
+      "get": {
+        "summary": "Manager only: pending delivery metadata",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        }
+      }
+    },
+    "/api/v1/audit/delivery/{requestId}/retry": {
+      "post": {
+        "summary": "Manager only: retry FAILED own AUDIT delivery",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing receipt or result"
+          },
+          "202": {
+            "description": "Durably accepted, not yet committed"
+          },
+          "400": {
+            "description": "Invalid contract"
+          },
+          "401": {
+            "description": "Invalid credential"
+          },
+          "403": {
+            "description": "Operation or scope denied"
+          },
+          "404": {
+            "description": "Disabled or not visible"
+          },
+          "409": {
+            "description": "Conflict or not yet committed"
+          },
+          "413": {
+            "description": "Request exceeds 65536 bytes"
+          },
+          "503": {
+            "description": "Unconfirmed; no success claim"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "reason"
+                ],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "name": "requestId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ]
+    }
+  },
+  "components": {
+    "schemas": {
+      "LogEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "eventId",
+          "occurredAt",
+          "appCode",
+          "domainId",
+          "zoneId",
+          "actorTrust",
+          "action",
+          "outcome",
+          "durationMs",
+          "sourceKind"
+        ],
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "appCode": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "domainId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "zoneId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "userId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "menuId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "objectId": {
+            "type": "string",
+            "maxLength": 192
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "traceId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "actorTrust": {
+            "enum": [
+              "AUTHENTICATED",
+              "ANONYMOUS",
+              "SYSTEM"
+            ]
+          },
+          "action": {
+            "enum": [
+              "CREATE",
+              "READ",
+              "UPDATE",
+              "DELETE",
+              "LOGIN",
+              "LOGOUT",
+              "EXPORT",
+              "IMPORT",
+              "UPLOAD",
+              "DOWNLOAD",
+              "BACKUP",
+              "RESTORE",
+              "TRAIN",
+              "EXECUTE",
+              "NAVIGATE"
+            ]
+          },
+          "outcome": {
+            "enum": [
+              "SUCCESS",
+              "FAILED",
+              "DENIED",
+              "STARTED"
+            ]
+          },
+          "sourceKind": {
+            "enum": [
+              "BUSINESS",
+              "REQUEST",
+              "POLL",
+              "JOB",
+              "CLIENT"
+            ]
+          }
+        }
+      },
+      "LogSubmission": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "eventKey",
+          "eventId",
+          "payloadHash",
+          "event"
+        ],
+        "properties": {
+          "eventKey": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "eventId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "payloadHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "event": {
+            "$ref": "#/components/schemas/LogEvent"
+          }
+        }
+      },
+      "LogReceipt": {
+        "type": "object",
+        "required": [
+          "eventKey",
+          "payloadHash",
+          "state",
+          "transactionId",
+          "archiveState",
+          "chainState"
+        ],
+        "properties": {
+          "eventKey": {
+            "type": "string"
+          },
+          "payloadHash": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "ACCEPTED",
+              "PENDING",
+              "COMMITTED",
+              "FAILED"
+            ]
+          },
+          "transactionId": {
+            "type": "string"
+          },
+          "archiveState": {
+            "enum": [
+              "PENDING",
+              "STORED",
+              "FAILED"
+            ]
+          },
+          "chainState": {
+            "type": "string"
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PageAction": {
+        "type": "object",
+        "required": [
+          "requestId",
+          "action",
+          "path"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string"
+          },
+          "menuId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "objectId": {
+            "type": "string",
+            "maxLength": 192
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 512
+          }
+        }
+      },
+      "Controls": {
+        "type": "object",
+        "required": [
+          "archivePaused",
+          "chainPaused",
+          "reason"
+        ],
+        "properties": {
+          "archivePaused": {
+            "type": "boolean"
+          },
+          "chainPaused": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "auditBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "JSESSIONID"
+      }
+    }
+  }
+}

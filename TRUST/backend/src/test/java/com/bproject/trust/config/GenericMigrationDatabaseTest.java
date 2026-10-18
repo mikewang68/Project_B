@@ -61,7 +61,7 @@ class GenericMigrationDatabaseTest {
                 "UPDATE generic_event_data SET"
                     + " original_cid=NULL,last_error_code=NULL WHERE 1=0"));
     assertEquals(
-        5,
+        6,
         new JdbcTemplate(dataSource(true))
             .queryForObject("SELECT COUNT(*) FROM databasechangelog", Integer.class));
   }

@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
@@ -50,13 +51,17 @@ public class Security {
       HttpSecurity http,
       @Qualifier("iamClient") com.bproject.trust.ports.PlatformIdentity iamClient,
       com.bproject.trust.adapters.iam.SimulatedIamClient simulatedIam,
-      IntegrationSettings settings)
+      IntegrationSettings settings,
+      com.bproject.trust.logevidence.LogOperations logOperations)
       throws Exception {
     com.bproject.trust.ports.PlatformIdentity iam =
         settings.read().simulated() ? simulatedIam : iamClient;
     http.addFilterBefore(
-        new PlatformIdentityFilter(iam, settings),
+        new PlatformIdentityFilter(iam, settings, logOperations),
         org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+    http.addFilterAfter(
+        new com.bproject.trust.logevidence.OperationAuditFilter(logOperations),
+        PlatformIdentityFilter.class);
     http.authorizeHttpRequests(
             a ->
                 a.requestMatchers(
@@ -98,11 +103,85 @@ public class Security {
                           s.getWriter().write("{\"message\":\"账号或密码错误\"}");
                         }))
         .logout(
-            l -> l.logoutUrl("/api/v1/logout").logoutSuccessHandler((q, s, a) -> s.setStatus(204)))
+            l ->
+                l.logoutUrl("/api/v1/logout")
+                    .addLogoutHandler(
+                        (q, s, a) -> {
+                          var session = q.getSession(false);
+                          if (session != null
+                              && session.getAttribute("IAM_USER") instanceof String user
+                              && session.getAttribute("IAM_ORG") instanceof String org) {
+                            String trace = java.util.UUID.randomUUID().toString();
+                            // These values were installed by the successful IAM login, never by
+                            // browser identity headers.
+                            // Clearing a local session remains possible when IAM is unavailable or
+                            // the token is revoked.
+                            try {
+                              logOperations.enqueue(
+                                  org,
+                                  user,
+                                  "LOGOUT",
+                                  "",
+                                  "STARTED",
+                                  "REQUEST",
+                                  "",
+                                  "POST",
+                                  "/api/v1/logout",
+                                  "Previously verified server session; no online revalidation",
+                                  trace);
+                            } catch (Exception unavailable) {
+                              q.setAttribute("TRUST_LOGOUT_RECOVERY", true);
+                              LoggerFactory.getLogger(Security.class)
+                                  .warn(
+                                      "AUDIT_LOGOUT_RECOVERY: local audit unavailable; clearing"
+                                          + " local session");
+                            }
+                            q.setAttribute(
+                                "TRUST_LOGOUT_PRINCIPAL", new PlatformPrincipal(user, user, org));
+                            q.setAttribute("TRUST_LOGOUT_TRACE", trace);
+                          }
+                        })
+                    .logoutSuccessHandler(
+                        (q, s, a) -> {
+                          if (!Boolean.TRUE.equals(q.getAttribute("TRUST_LOGOUT_RECOVERY"))
+                              && q.getAttribute("TRUST_LOGOUT_PRINCIPAL")
+                                  instanceof PlatformPrincipal p)
+                            try {
+                              logOperations.enqueue(
+                                  p.orgId(),
+                                  p.userId(),
+                                  "LOGOUT",
+                                  "",
+                                  "SUCCESS",
+                                  "REQUEST",
+                                  "",
+                                  "POST",
+                                  "/api/v1/logout",
+                                  "Local session cleared",
+                                  (String) q.getAttribute("TRUST_LOGOUT_TRACE"));
+                            } catch (Exception unavailable) {
+                              org.slf4j.LoggerFactory.getLogger(Security.class)
+                                  .warn("AUDIT_LOGOUT_OUTCOME_UNCONFIRMED: local session cleared");
+                            }
+                          s.setStatus(204);
+                        }))
         .exceptionHandling(
             e ->
                 e.authenticationEntryPoint((q, s, x) -> s.sendError(401))
-                    .accessDeniedHandler((q, s, x) -> s.sendError(403)));
+                    .accessDeniedHandler(
+                        (q, s, x) -> {
+                          try {
+                            logOperations.rejected(
+                                org.springframework.security.core.context.SecurityContextHolder
+                                    .getContext()
+                                    .getAuthentication(),
+                                q.getMethod(),
+                                q.getRequestURI());
+                            s.sendError(403);
+                          } catch (Exception unavailable) {
+                            s.sendError(503, "操作留痕暂不可用");
+                          }
+                        }));
     return http.build();
   }
 

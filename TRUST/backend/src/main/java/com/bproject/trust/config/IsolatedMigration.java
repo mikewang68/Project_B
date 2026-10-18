@@ -58,6 +58,21 @@ public final class IsolatedMigration {
             "GRANT UPDATE(original_cid,last_error_code) ON"
                 + " trust_data.generic_event_data TO "
                 + app);
+        grants.execute("REVOKE UPDATE,DELETE ON trust_data.audit_evidence FROM " + app);
+        grants.execute(
+            "GRANT"
+                + " UPDATE(archive_cid,archive_state,chain_event_id,attempts,next_at,lease_until,lease_token,last_error)"
+                + " ON trust_data.audit_evidence TO "
+                + app);
+        grants.execute(
+            "REVOKE UPDATE,DELETE ON trust_data.audit_delivery,trust_data.audit_page_action FROM "
+                + app);
+        grants.execute(
+            "GRANT UPDATE(event_json,state,attempts,next_at,last_error) ON"
+                + " trust_data.audit_delivery TO "
+                + app);
+        grants.execute("GRANT UPDATE(result_json) ON trust_data.audit_page_action TO " + app);
+        grants.execute("REVOKE UPDATE,DELETE ON trust_data.audit_evidence_access FROM " + app);
       }
     }
   }

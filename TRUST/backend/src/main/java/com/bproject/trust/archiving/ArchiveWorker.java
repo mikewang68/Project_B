@@ -39,6 +39,9 @@ public class ArchiveWorker {
   final ExecutorService executor = Executors.newFixedThreadPool(4);
   final ConcurrentHashMap<String, String> active = new ConcurrentHashMap<>();
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bproject.trust.logevidence.LogChainGate logChainGate;
+
   public ArchiveWorker(
       JdbcTemplate db,
       EventService events,
@@ -141,8 +144,19 @@ public class ArchiveWorker {
 
   void process(String id, String token) throws Exception {
     var row = db.queryForMap("SELECT * FROM events WHERE id=?", id);
-    if (!proceed(row, id, token)) return;
+    if (!proceed(row, id, token, true)) return;
     String org = (String) row.get("org_id");
+    if (logChainGate != null && !logChainGate.allows(id)) {
+      // Pausing prevents new submissions, not reconciliation of an uncertain prior transaction.
+      var confirmed = fabric.find(org, id);
+      if (confirmed != null && row.get("manifest_cid") != null && row.get("wallet_id") != null) {
+        AttestationRecord.assertMatches(AttestationRecord.record(row), confirmed);
+        complete(id, token, confirmed);
+      } else {
+        defer(id, token);
+      }
+      return;
+    }
     String canonical = (String) row.get("canonical_json");
     if (!Json.sha(canonical.getBytes(StandardCharsets.UTF_8)).equals(row.get("event_sha256")))
       throw new ApiError(409, "事件原文摘要不一致");
@@ -250,7 +264,10 @@ public class ArchiveWorker {
               });
     }
     AttestationRecord.assertMatches(expected, result);
-    final var confirmed = result;
+    complete(id, token, result);
+  }
+
+  private void complete(String id, String token, Map<String, Object> confirmed) {
     tx.executeWithoutResult(
         s -> {
           int n =
@@ -278,6 +295,10 @@ public class ArchiveWorker {
   }
 
   private boolean proceed(Map<String, Object> row, String id, String token) {
+    return proceed(row, id, token, false);
+  }
+
+  private boolean proceed(Map<String, Object> row, String id, String token, boolean reconcile) {
     if (db.queryForObject(
             "SELECT COUNT(*) FROM tasks WHERE event_id=? AND lease_token=? AND"
                 + " state='RUNNING' AND lease_until>CURRENT_TIMESTAMP",
@@ -285,7 +306,13 @@ public class ArchiveWorker {
             id,
             token)
         == 0) return false;
-    if (ingress.permits(row)) return true;
+    if (ingress.permits(row) && (reconcile || logChainGate == null || logChainGate.allows(id)))
+      return true;
+    defer(id, token);
+    return false;
+  }
+
+  private void defer(String id, String token) {
     db.update(
         "UPDATE tasks SET"
             + " state='READY',attempts=GREATEST(attempts-1,0),lease_token=NULL,lease_until=NULL,updated_at=CURRENT_TIMESTAMP"
@@ -293,7 +320,6 @@ public class ArchiveWorker {
             + " lease_until>CURRENT_TIMESTAMP",
         id,
         token);
-    return false;
   }
 
   void failed(String id, String token, Exception error) {
