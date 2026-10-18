@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "instanceId": "verification-example",
+  "target": {
+    "enabled": false,
+    "purpose": "dedicated-generic-verification",
+    "instance": {
+      "root": "/path/to/isolated/TRUST",
+      "databaseUrl": "jdbc:opengauss://127.0.0.1:25432/trust_iam_verify_test",
+      "appRole": "trust_iam_verify_app",
+      "migrationRole": "trust_iam_verify_migrate",
+      "channel": "trust-iam-verify",
+      "port": 28982,
+      "queryKeyRef": "query-example"
+    },
+    "ipfsUrl": "http://127.0.0.1:29501",
+    "fabricEndpoint": "127.0.0.1:29551",
+    "serverName": "peer.example.invalid",
+    "contract": "evidence",
+    "queryMsp": "ExampleMSP",
+    "queryFingerprint": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "orgId": "EXAMPLE_ORG",
+  "sourceSystem": "EXAMPLE_SOURCE",
+  "sourceId": "example-source",
+  "eventId": "00000000-0000-0000-0000-000000000001"
+}

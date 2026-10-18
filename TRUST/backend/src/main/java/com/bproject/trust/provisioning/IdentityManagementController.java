@@ -24,7 +24,10 @@ public class IdentityManagementController {
   public List<Map<String, Object>> list(Authentication actor) {
     return db.queryForList(
         "SELECT i.id,i.issuer,i.tenant,i.user_id,i.org_id,CASE WHEN i.status='READY' AND"
-            + " (c.not_after IS NULL OR c.not_after<=CURRENT_TIMESTAMP) THEN 'EXPIRED' ELSE"
+            + " (c.not_after IS NULL OR c.not_after<=CURRENT_TIMESTAMP) THEN 'EXPIRED' WHEN"
+            + " i.status='READY' AND (i.desired_state<>'ACTIVE' OR c.state<>'ISSUED' OR"
+            + " c.network_state<>'VERIFIED' OR EXISTS(SELECT 1 FROM fabric_certificate pending"
+            + " WHERE pending.identity_id=i.id AND pending.crl_state='REVOKING')) THEN 'RETRY' ELSE"
             + " i.status END AS"
             + " status,i.desired_state,i.revision,i.certificate_version,i.last_error,c.msp_id,c.enrollment_id,c.fingerprint,c.not_after,c.network_state,c.crl_state"
             + " FROM fabric_identity i LEFT JOIN fabric_certificate c ON c.identity_id=i.id AND"

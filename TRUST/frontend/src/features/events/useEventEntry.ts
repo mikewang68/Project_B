@@ -53,6 +53,14 @@ export function useEventEntry(
   async function submitEvent() {
     await run(async () => {
       const f = form.value;
+      if (
+        split(f.relatedEventText).some(
+          (ref) => !/^[A-Za-z0-9._-]{1,80}:[A-Za-z0-9._-]{1,120}$/.test(ref),
+        )
+      )
+        throw new Error(
+          "关联事件格式不正确。请填写实际来源系统和事件号，例如 MANUAL:R-IN；使用英文冒号，多条用逗号分隔，不要填写“最新到货号”等说明文字。",
+        );
       const body = {
         sourceSystem: f.sourceSystem,
         sourceEventId: f.sourceEventId,

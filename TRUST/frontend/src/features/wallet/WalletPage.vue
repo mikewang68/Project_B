@@ -23,6 +23,11 @@ const action = ref("REGISTER"),
 const walletId = ref(""),
   sourceSystem = ref("WMS"),
   reason = ref("");
+const changeForm = ref<HTMLFormElement | null>(null);
+function startBinding() {
+  action.value = "BIND";
+  changeForm.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 const names: Record<string, string> = {
   REGISTER: "登记证书版本",
   BIND: "绑定来源系统",
@@ -38,6 +43,12 @@ async function load() {
 }
 usePageLoad(load);
 async function propose() {
+  if (
+    action.value === "DISABLE" &&
+    !window.confirm(
+      "停用后，此钱包不能再签名；已经固定使用它但尚未上链的事件也可能无法补办。请先确认相关上链、核验、导出和补办已完成。仍要提交停用申请吗？",
+    )
+  ) return;
   await run(async () => {
     const binding = data.value.bindings.find(
       (v: ApiRecord) => v.source_system === sourceSystem.value,
@@ -119,7 +130,15 @@ async function review(id: string, approve: boolean) {
       </div>
     </article>
     <article class="panel">
-      <h2>来源系统绑定</h2>
+      <div class="section-title">
+        <h2>来源系统绑定</h2>
+        <button v-if="allowed('trust:wallet:manage')" @click="startBinding">
+          申请来源绑定
+        </button>
+      </div>
+      <p class="small muted">
+        此处显示应用内的绑定结果。绑定批准后，还须由维护者确认该来源、事件类型和证书的链上授权；钱包可用或网络正常都不代表已经具备上链权限。
+      </p>
       <p v-if="!data.bindings.length">尚未配置来源绑定；业务事件将保留待办。</p>
       <dl class="facts">
         <div v-for="b in data.bindings" :key="b.source_system">
@@ -169,13 +188,18 @@ async function review(id: string, approve: boolean) {
       </div>
     </article>
     <form
+      ref="changeForm"
       v-if="allowed('trust:wallet:manage')"
       class="panel wallet-form"
       @submit.prevent="propose"
     >
       <h2>提交变更申请</h2>
+      <p class="small muted">
+        <span class="required-mark" aria-hidden="true">*</span>
+        为必填项。登记证书后还需申请来源绑定，并由不同用户复核。
+      </p>
       <label
-        >操作<select v-model="action">
+        >操作<select aria-label="操作" v-model="action">
           <option value="REGISTER">登记证书版本</option>
           <option value="BIND">绑定 / 更换来源身份</option>
           <option value="DISABLE">停用钱包</option>
@@ -183,16 +207,31 @@ async function review(id: string, approve: boolean) {
       >
       <template v-if="action === 'REGISTER'"
         ><label
-          >钱包名称<input v-model="label" required maxlength="120" /></label
-        ><label>所属 MSP<input v-model="mspId" required maxlength="80" /></label
+          ><span
+            >钱包名称<span class="required-mark" aria-hidden="true">
+              *</span
+            ></span
+          ><input aria-label="钱包名称" v-model="label" required maxlength="120" /></label
         ><label
-          >运维预置的密钥引用<input
-            v-model="keyRef"
+          ><span
+            >所属 MSP<span class="required-mark" aria-hidden="true">
+              *</span
+            ></span
+          ><input aria-label="所属 MSP" v-model="mspId" required maxlength="80" /></label
+        ><label
+          ><span
+            >运维预置的密钥引用<span class="required-mark" aria-hidden="true">
+              *</span
+            ></span
+          ><input
+            aria-label="运维预置的密钥引用" v-model="keyRef"
             required
             pattern="[A-Za-z0-9_-]{1,100}" /></label
       ></template>
       <label v-else
-        >钱包<select v-model="walletId" required>
+        ><span
+          >钱包<span class="required-mark" aria-hidden="true"> *</span></span
+        ><select aria-label="钱包" v-model="walletId" required>
           <option value="">请选择</option>
           <option v-for="w in data.wallets" :key="w.id" :value="w.id">
             {{ w.label }} · {{ names[w.state] }}
@@ -200,17 +239,18 @@ async function review(id: string, approve: boolean) {
         </select></label
       >
       <label v-if="action === 'BIND'"
-        >来源系统编码<input
-          v-model="sourceSystem"
-          required
-          pattern="[A-Za-z0-9._-]{1,80}"
+        ><span
+          >来源系统编码<span class="required-mark" aria-hidden="true">
+            *</span
+          ></span
+        ><input aria-label="来源系统编码" v-model="sourceSystem" required pattern="[A-Za-z0-9._-]{1,80}"
       /></label>
       <label
-        >变更原因<textarea
-          v-model="reason"
-          required
-          maxlength="500"
-        ></textarea></label
+        ><span
+          >变更原因<span class="required-mark" aria-hidden="true">
+            *</span
+          ></span
+        ><textarea aria-label="变更原因" v-model="reason" required maxlength="500"></textarea></label
       ><button :disabled="busy">提交复核</button>
     </form>
     <article class="panel">

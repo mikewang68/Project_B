@@ -23,12 +23,12 @@ public class TaskService {
   public List<Map<String, Object>> list(String org) {
     return db.queryForList(
         "SELECT t.*,e.source_event_id,e.batch_id,e.file_state,e.chain_state FROM tasks t JOIN"
-            + " events e ON e.id=t.event_id WHERE e.org_id=? ORDER BY t.updated_at DESC LIMIT 200",
+            + " events e ON e.id=t.event_id WHERE e.record_kind='LEGACY_V1' AND e.org_id=? ORDER BY t.updated_at DESC LIMIT 200",
         org);
   }
 
   public Map<String, Object> retry(String id, String org, String actor) {
-    events.get(id, org);
+    events.legacyGet(id, org);
     int n =
         db.update(
             "UPDATE tasks SET"

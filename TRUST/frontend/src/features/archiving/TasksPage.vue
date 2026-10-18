@@ -4,7 +4,7 @@ import { ref } from "vue";
 import type { ApiRecord } from "../../shared/types";
 import { useFeedback } from "../../shared/composables/useFeedback";
 import { usePolling } from "../../shared/composables/usePolling";
-import { label } from "../../shared/presentation";
+import { label, recoveryHint } from "../../shared/presentation";
 import { listTasks, retryTask } from "./api";
 defineProps<{ canWrite: boolean }>();
 const emit = defineEmits<{ open: [id: string] }>();
@@ -53,7 +53,13 @@ usePolling(load, () => !busy.value);
               }}</span>
             </td>
             <td>{{ t.attempts }}</td>
-            <td class="reason">{{ t.last_error || "—" }}</td>
+            <td class="reason">
+              <p v-if="recoveryHint(t.last_error)">{{ recoveryHint(t.last_error) }}</p>
+              <details v-if="recoveryHint(t.last_error)">
+                <summary>查看原始错误</summary>{{ t.last_error }}
+              </details>
+              <template v-else>{{ t.last_error || "—" }}</template>
+            </td>
             <td>
               <button
                 v-if="canWrite && t.state !== 'DONE'"

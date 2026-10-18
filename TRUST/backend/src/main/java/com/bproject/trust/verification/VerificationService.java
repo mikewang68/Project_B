@@ -58,7 +58,13 @@ public class VerificationService {
   }
 
   public Map<String, Object> verify(String id, String org, String actor) {
-    var row = events.detail(id, org);
+    // Browser/IAM authorization only supplies an organization, not a source scope.
+    events.legacyGet(id, org);
+    return verifyRecord(events.detailForVerification(id, org), org, actor);
+  }
+
+  private Map<String, Object> verifyRecord(Map<String, Object> row, String org, String actor) {
+    String id = (String) row.get("id");
     var checks = new ArrayList<Map<String, Object>>();
     checks.add(
         Map.of(
@@ -190,8 +196,10 @@ public class VerificationService {
   }
 
   public Path export(String id, String org, String actor) throws Exception {
-    var row = events.detail(id, org);
-    var checked = verify(id, org, actor);
+    // Source-owned originals are not accessible through organization-only sessions.
+    events.legacyGet(id, org);
+    var row = events.detailForVerification(id, org);
+    var checked = verifyRecord(row, org, actor);
     if (!Boolean.TRUE.equals(checked.get("ok")))
       throw new ApiError(409, "核验未通过，不能导出完整证据包，请先检查核验结果");
     long required =

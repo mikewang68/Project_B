@@ -69,6 +69,7 @@ usePageLoad(load);
     </dl>
     <p class="small muted">
       组件独立启停。依赖故障时，已接收的事件保留待处理状态。
+      Fabric 显示正常仅表示查询连接可用；写链还需要有效钱包、来源绑定及链上授权。
     </p>
   </article>
   <AuditLog v-if="canAdmin" :audit="audit" />

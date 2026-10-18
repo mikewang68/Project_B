@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "enabled": false,
+  "sources": [
+    {
+      "id": "maintenance-example",
+      "tokenSha256": "REPLACE_WITH_SHA256_OF_NEW_PRIVATE_SOURCE_TOKEN",
+      "orgId": "EXAMPLE-ORG",
+      "sourceSystem": "maintenance-example",
+      "enabled": false,
+      "operations": ["read", "submit"],
+      "allowedEventTypes": ["MAINTENANCE_CONFIRMED"]
+    }
+  ]
+}

@@ -30,7 +30,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 
-@org.springframework.context.annotation.Import(com.bproject.trust.support.NoBackgroundScheduling.class)
+@org.springframework.context.annotation.Import(
+    com.bproject.trust.support.NoBackgroundScheduling.class)
 @SpringBootTest(properties = {"trust.isolation-enabled=false", "spring.liquibase.enabled=false"})
 @AutoConfigureMockMvc
 @EnabledIfEnvironmentVariable(named = "TRUST_DB_INTEGRATION", matches = "1")
@@ -50,9 +51,8 @@ class WalletDatabaseIntegrationTest {
     Files.createDirectories(root);
     p.add("trust.root", () -> root.toString());
     String url = System.getenv("TRUST_TEST_DB_URL");
-    if (url == null || !url.matches("jdbc:opengauss://[^/]+/trust_iam_dev_test"))
-      throw new IllegalStateException(
-          "TRUST_TEST_DB_URL must explicitly select trust_iam_dev_test");
+    com.bproject.trust.support.TestDatabase.require(url);
+    p.add("spring.datasource.driver-class-name", com.bproject.trust.support.TestDatabase::driver);
     p.add("spring.datasource.url", () -> url);
     p.add("trust.archiving.enabled", () -> "false");
   }
@@ -78,8 +78,8 @@ class WalletDatabaseIntegrationTest {
   @AfterEach
   void stopPendingFixtureTasks() {
     db.update(
-        "UPDATE tasks SET state='FAILED',lease_token=NULL,lease_until=NULL WHERE event_id IN(SELECT"
-            + " id FROM events WHERE org_id=?)",
+        "UPDATE tasks SET state='FAILED',lease_token=NULL,lease_until=NULL WHERE event_id"
+            + " IN(SELECT id FROM events WHERE org_id=?)",
         org);
   }
 
@@ -341,7 +341,7 @@ class WalletDatabaseIntegrationTest {
     assertEquals(
         0,
         db.queryForObject(
-            "SELECT COUNT(*) FROM audit_log WHERE object_id=? AND action='SIGN_PREPARED'",
+            "SELECT COUNT(*) FROM audit_log WHERE object_id=? AND" + " action='SIGN_PREPARED'",
             Integer.class,
             event));
   }
@@ -372,21 +372,22 @@ class WalletDatabaseIntegrationTest {
       assertEquals(
           1,
           db.queryForObject(
-              "SELECT COUNT(*) FROM wallet_requests WHERE id IN (?,?) AND state='APPROVED'",
+              "SELECT COUNT(*) FROM wallet_requests WHERE id IN (?,?) AND" + " state='APPROVED'",
               Integer.class,
               a,
               b));
       assertEquals(
           1,
           db.queryForObject(
-              "SELECT COUNT(*) FROM wallet_requests WHERE id IN (?,?) AND state='PENDING'",
+              "SELECT COUNT(*) FROM wallet_requests WHERE id IN (?,?) AND" + " state='PENDING'",
               Integer.class,
               a,
               b));
       assertEquals(
           1,
           db.queryForObject(
-              "SELECT COUNT(*) FROM audit_log WHERE object_id IN (?,?) AND action='WALLET_REVIEW'",
+              "SELECT COUNT(*) FROM audit_log WHERE object_id IN (?,?) AND"
+                  + " action='WALLET_REVIEW'",
               Integer.class,
               a,
               b));

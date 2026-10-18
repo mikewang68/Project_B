@@ -17,6 +17,8 @@ Project_B 的平台公共能力，版本 **0.1.0，开发联调版**。支持统
 
 ## 工程与组件
 
+通用 JSON 机器接入采用独立来源凭据，默认关闭；不要求批次、不提供通用页面或附件上传。请求原文及清单归档、幂等、更正、回执和显式重试见 [通用 JSON 存证接入](docs/generic-evidence.md)。启用接口不会自动授予钱包或链上权限。
+
 `TRUST/` 是普通子目录，使用 Project_B 的 Git 历史；开发、打包与同步均从本模块发起。源代码按 `backend`、`frontend`、`contracts`、`deploy`、`scripts`、`tests`、`samples`、`docs` 组织，内部规则见 [目录与依赖约定](docs/project-structure.md)。
 
 应用通过官方客户端接入 openGauss、IPFS 和 Fabric。各组件使用独立配置；真实节点、端口映射和部署状态保存在私有配置及本地运维记录中。模板中的回环地址和端口用于说明配置约束，不代表当前服务器状态。

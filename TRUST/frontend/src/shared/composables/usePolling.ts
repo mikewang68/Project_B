@@ -6,6 +6,7 @@ export function usePolling(
   interval = 5000,
 ) {
   let active = true;
+  let refreshing = false;
   let timer: ReturnType<typeof setInterval>;
   onActivated(() => {
     active = true;
@@ -15,10 +16,15 @@ export function usePolling(
   });
   onMounted(() => {
     timer = setInterval(async () => {
-      if (!active || document.hidden || !enabled()) return;
+      if (!active || refreshing || document.hidden || !enabled()) return;
+      refreshing = true;
       try {
         await refresh();
-      } catch {}
+      } catch {
+        // Foreground refresh reports failures; background polling stays quiet.
+      } finally {
+        refreshing = false;
+      }
     }, interval);
   });
   onUnmounted(() => clearInterval(timer));

@@ -60,11 +60,17 @@ TRUST 给每个证书版本分配独立 enrollmentId；注册秘密先持久化�
 
 配置更新提交后，以 `deploy/crl-verification.example.json` 配置所有目标Peer（至少两个不同端点），固定官方peer/configtxlator二进制SHA。在获准独立实例执行 `com.bproject.trust.provisioning.CrlVerification <identityId> <private-plan.json>`。该命令只从Peer读取实际配置块，校验正确channel/MSP、签名CRL包含目标serial且未过期；同一端点的有效control身份必须调用成功，被撤销且未过期的版本必须被明确认证/权限拒绝。超时、网络错误和含糊拒绝均不能算成功。已过期版本仍检查CRL配置，保留历史证据。
 
-成功以revision CAS提交REVOKED和追加审计，原始块及receipt在runtime/crl-evidence；失败追加失败审计并保持待核验。运维环境中的CORE_PEER_MSPCONFIGPATH指向操作员专用身份，不复制给Web服务。Fabric3.1.5的FAILED_PRECONDITION仅在精确匹配目标channel/MSP的proposal身份验证拒绝时接受，不能将通用超时或背书失败计入。
+成功在主体锁下核对证书版本快照后更新相应旧版本并追加审计；只有当前主体仍待撤销且全部版本完成时才置REVOKED。原始块及receipt在runtime/crl-evidence；失败追加失败审计并保持待核验。运维环境中的CORE_PEER_MSPCONFIGPATH指向操作员专用身份，不复制给Web服务。Fabric3.1.5的FAILED_PRECONDITION仅在精确匹配目标channel/MSP的proposal身份验证拒绝时接受，不能将通用超时或背书失败计入。
 
-## 回退
+## 测试应用及吊销恢复
 
 测试应用使用 [IAM](../../IAM/deploy/test-activation.conf.example) / [TRUST](../deploy/test-activation.conf.example) 的持久启动门禁；两个服务必须同时 `disable --now`，部署不创建启动标记。`retry` 对保存的 `action=REVOKE` 或 `desiredState=DELETED` 任务，除 `retry` 权限外还必须持有 `revoke`；鉴权失败不更新调度时间、请求回执或审计。
+
+删除主体仍待完成的吊销可以由具备 `retry` 和 `revoke` 的调用方重试；这不会恢复用户、改变revision或重启已经完成的CRL阶段。吊销worker先在事务内固定证书版本并持久标记 `crl_state=REVOKING`，随后在事务外调用CA。恢复到ACTIVE的新修订仍可受理；存在未决吊销时保持待处理，接管任务先确认这些旧版本CA_REVOKED，再签发新enrollment版本，不能重用正在吊销的证书。已经发出的CA动作可能在租约丢失后完成，须幂等核对，不能把超时当作未吊销。此内部协调不等待全网CRL传播才签发新版本；通道撤销是否实际生效仍需独立CRL核验。查询READY另核对当前证书ISSUED及网络VERIFIED，状态不一致按RETRY呈现。
+
+CA适配器在重发吊销前查询既有结果，并在吊销调用失败或超时后再查询；仅当登记号的非空完整证书清单中每张证书的DER摘要均出现在同登记号已吊销清单时才确认，不能凭任意一张已吊销证书跳过整版撤销。需核实操作员在目标CA上具有完整清单可见性；没有正面确认就保留未决状态。CRL操作员工具按 `CA_REVOKED + crl_state=PENDING` 选择证书版本，恢复后的READY主体仍可核验旧版本。成功只更新被核验的旧证书及审计，不将当前ACTIVE主体或新证书改成REVOKED；只有主体处于CRL_PENDING、非ACTIVE且所有证书均核验完成时才将整个主体标为REVOKED。网络配置更新和全部目标Peer上的实际拒绝仍由获准操作员执行，应用不代替该步骤。
+
+## 回退
 
 只停新实例，isolated-app.sh核对PID、cwd和JAR归属再发TERM。`identity-release.py rollback` 只恢复该模块上一次安装的JAR；不删除数据库、CA、密钥、审计、历史证书或IPFS内容。需要数据库回退时，用本次新库的已核验备份恢复到另一个新恢复库，再重建显式允许名单；禁止直接down migration或覆盖旧库。通道/CA一旦签发或提交记录不做删除式回退；隔离停用并保留证据，CRL不能倒退以重新启用已吊销证书。
 

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "local-example": {
+      "enabled": false,
+      "purpose": "dedicated-generic-test",
+      "origin": "http://127.0.0.1:28982",
+      "instanceId": "generic-example"
+    }
+  }
+}

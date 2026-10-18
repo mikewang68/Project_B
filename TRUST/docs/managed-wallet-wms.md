@@ -49,4 +49,4 @@ WMS 维护方需要在自身业务库存事务中固化不可变快照和可靠�
 
 IAM 维护方需要提供现有服务入口、组织映射和实名测试人员，完成权限目录与人员授权；WMS 维护方需要确认业务字段、发生时间、单位与关联规则，并提供真实操作生成快照的证据。真实 IAM/WMS 未接通时，验收只能声明模拟身份和模拟业务驱动真实 TRUST 后端、数据库、IPFS/Fabric 的结果。
 
-测试须分别记录离线单测、真实专用库事务、真实 IPFS/Fabric、页面桩和真实后端页面。数据库只使用显式专用 `trust_wallet_dev_test`，禁止复用 `trust`、既有 `trust_test` 或恢复库。报告、原始证据和脱敏摘要全部放本地 `.local/test-results`，不提交 Git。
+测试须分别记录离线单测、真实专用库事务、真实 IPFS/Fabric、页面桩和真实后端页面。数据库只使用显式专用 `trust_iam_dev_test`，运行角色与迁移角色分离，禁止复用 `trust`、既有 `trust_test` 或恢复库。本机 PostgreSQL 兼容测试与生产 openGauss 分开记录。报告、原始证据和脱敏摘要全部放本地 `.local/test-results`，不提交 Git。

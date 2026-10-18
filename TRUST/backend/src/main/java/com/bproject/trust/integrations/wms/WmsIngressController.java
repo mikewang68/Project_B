@@ -74,7 +74,7 @@ public class WmsIngressController {
   @GetMapping("/{id}")
   public Map<String, Object> status(HttpServletRequest request, @PathVariable String id) {
     var s = service(request);
-    var e = events.get(id, s.orgId());
+    var e = events.legacyGet(id, s.orgId());
     if (!s.sourceSystem().equals(e.get("source_system"))
         || !("source:" + s.id()).equals(e.get("submitted_by"))) throw new ApiError(404, "来源记录不存在");
     return Map.of(
