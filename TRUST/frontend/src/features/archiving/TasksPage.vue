@@ -9,16 +9,19 @@ import { listTasks, retryTask } from "./api";
 defineProps<{ canWrite: boolean }>();
 const emit = defineEmits<{ open: [id: string] }>();
 const tasks = ref<ApiRecord[]>([]);
-const { busy, notice, run } = useFeedback();
+const { busy, notice, act } = useFeedback();
 async function load() {
   tasks.value = await listTasks();
 }
 async function retry(id: string) {
-  await run(async () => {
-    await retryTask(id);
-    notice.value = "补办任务已安排。";
-    await load();
-  });
+  await act(
+    { action: "EXECUTE", menuId: "tasks", objectId: id, summary: "申请补办" },
+    async () => {
+      await retryTask(id);
+      notice.value = "补办任务已安排。";
+      await load();
+    },
+  );
 }
 usePageLoad(load);
 usePolling(load, () => !busy.value);
@@ -28,7 +31,17 @@ usePolling(load, () => !busy.value);
   <article class="panel">
     <div class="section-title">
       <h2>存证处理任务</h2>
-      <button @click="run(load)" :disabled="busy">刷新</button>
+      <button
+        @click="
+          act(
+            { action: 'READ', menuId: 'tasks', summary: '刷新补办任务' },
+            load,
+          )
+        "
+        :disabled="busy"
+      >
+        刷新
+      </button>
     </div>
     <div class="table-wrap">
       <table>
@@ -54,9 +67,12 @@ usePolling(load, () => !busy.value);
             </td>
             <td>{{ t.attempts }}</td>
             <td class="reason">
-              <p v-if="recoveryHint(t.last_error)">{{ recoveryHint(t.last_error) }}</p>
+              <p v-if="recoveryHint(t.last_error)">
+                {{ recoveryHint(t.last_error) }}
+              </p>
               <details v-if="recoveryHint(t.last_error)">
-                <summary>查看原始错误</summary>{{ t.last_error }}
+                <summary>查看原始错误</summary>
+                {{ t.last_error }}
               </details>
               <template v-else>{{ t.last_error || "—" }}</template>
             </td>

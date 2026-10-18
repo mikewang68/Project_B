@@ -10,6 +10,7 @@ const out=process.env.TRUST_TEST_RESULTS||path.join(__dirname,'../.local/test-re
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const event={id:'00000000-0000-0000-0000-000000000001',source_system:'MANUAL',source_event_id:'GUI-OUT',event_type:'DISPATCH',batch_id:'GUI-BATCH',object_id:'GUI-OBJ',file_state:'STORED',chain_state:'FAILED',version:1,evidence:[],versions:[],missingReferences:[],canonical_json:JSON.stringify({event:{quantity:60,unit:'吨',details:{}}})};
  await page.route('**/api/v1/**',async route=>{
+  if (await require('./audit-fixtures.cjs')(route)) return;
   const p=new URL(route.request().url()).pathname.replace('/api/v1','');let status=200,body={};
   if(p==='/identity-mode')body={simulated:false,iamRequired:true,localLoginEnabled:false};
   else if(p==='/csrf')body={token:'fixture-token'};

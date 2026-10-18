@@ -8,7 +8,7 @@ import { useAppearance } from "./appearance";
 
 defineProps<{ me: ApiRecord; tab: string }>();
 const emit = defineEmits<{ navigate: [id: string]; logout: [] }>();
-const { busy, error, notice } = useFeedback();
+const { busy, error, notice, pendingResults, retryResults } = useFeedback();
 const { preference } = useAppearance();
 const appearanceOpen = ref(false);
 </script>
@@ -79,13 +79,30 @@ const appearanceOpen = ref(false);
             <h1>{{ nav.find((n) => n[0] === tab)?.[1] }}</h1>
             <p>{{ descriptions[tab] }}</p>
           </div>
-          <span class="environment">{{ me.simulated ? "隔离测试 · 模拟 IAM 身份" : me.identityProvider === 'LOCAL' ? "开发测试 · 本地身份" : "开发联调 · v0.1" }}</span>
+          <span class="environment">{{
+            me.simulated
+              ? "隔离测试 · 模拟 IAM 身份"
+              : me.identityProvider === "LOCAL"
+                ? "开发测试 · 本地身份"
+                : "开发联调 · v0.1"
+          }}</span>
         </div>
-        <p v-if="me.simulated" class="alert" role="status">隔离测试 · 当前使用模拟 IAM 身份，权限和组织范围由隔离测试身份服务校验。</p>
+        <p v-if="me.simulated" class="alert" role="status">
+          隔离测试 · 当前使用模拟 IAM
+          身份，权限和组织范围由隔离测试身份服务校验。
+        </p>
         <p v-if="error" class="alert error" role="alert">{{ error }}</p>
         <p v-if="notice" class="alert success" role="status">{{ notice }}</p>
         <div v-if="busy" class="progress" role="status">正在处理…</div>
 
+        <p v-if="pendingResults.length" class="alert warning" role="status">
+          有
+          {{
+            pendingResults.length
+          }}
+          条客户端结果尚未留痕。操作可能已执行，请勿重复提交。
+          <button :disabled="busy" @click="retryResults">仅补报结果</button>
+        </p>
         <slot />
       </section>
       <footer>

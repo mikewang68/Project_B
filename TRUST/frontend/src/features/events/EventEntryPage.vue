@@ -15,6 +15,7 @@ const {
   submitEvent,
   importFile,
   reset,
+  act,
 } = useEventEntry(
   toRef(props, "previous"),
   (id) => emit("saved", id),
@@ -30,7 +31,16 @@ const {
     <form class="panel" @submit.prevent="submitEvent">
       <div class="section-title">
         <h2>{{ correction ? "追加更正" : "录入业务事件" }}</h2>
-        <button v-if="correction" type="button" @click="reset()">
+        <button
+          v-if="correction"
+          type="button"
+          @click="
+            act(
+              { action: 'UPDATE', menuId: 'create', summary: '取消更正' },
+              reset,
+            )
+          "
+        >
           取消更正
         </button>
       </div>
@@ -44,7 +54,8 @@ const {
               *</span
             ></span
           ><input
-            aria-label="来源系统" v-model="form.sourceSystem"
+            aria-label="来源系统"
+            v-model="form.sourceSystem"
             maxlength="80"
             required
             pattern="[A-Za-z0-9._-]+" /></label
@@ -54,7 +65,8 @@ const {
               *</span
             ></span
           ><input
-            aria-label="来源事件号" v-model="form.sourceEventId"
+            aria-label="来源事件号"
+            v-model="form.sourceEventId"
             maxlength="120"
             required
             pattern="[A-Za-z0-9._-]+"
@@ -71,7 +83,8 @@ const {
               *</span
             ></span
           ><input
-            aria-label="业务发生时间" v-model="form.occurredAt"
+            aria-label="业务发生时间"
+            v-model="form.occurredAt"
             type="datetime-local"
             required /></label
         ><label
@@ -79,14 +92,19 @@ const {
             >批次号<span class="required-mark" aria-hidden="true">
               *</span
             ></span
-          ><input aria-label="批次号" v-model="form.batchId" required maxlength="120" /></label
+          ><input
+            aria-label="批次号"
+            v-model="form.batchId"
+            required
+            maxlength="120" /></label
         ><label
           ><span
             >业务对象编号<span class="required-mark" aria-hidden="true">
               *</span
             ></span
           ><input
-            aria-label="业务对象编号" v-model="form.businessObjectId"
+            aria-label="业务对象编号"
+            v-model="form.businessObjectId"
             required
             maxlength="120" /></label
         ><label
@@ -127,7 +145,19 @@ const {
       /></label>
       <div v-for="(ev, i) in uploaded" :key="ev.id" class="file-row">
         <span>{{ ev.filename }}</span
-        ><button type="button" @click="uploaded.splice(i, 1)">移除引用</button>
+        ><button
+          type="button"
+          @click="
+            act(
+              { action: 'UPDATE', menuId: 'create', summary: '移除证据引用' },
+              () => {
+                uploaded.splice(i, 1);
+              },
+            )
+          "
+        >
+          移除引用
+        </button>
       </div>
       <button class="primary" :disabled="busy">提交事件</button>
     </form>

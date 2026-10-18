@@ -10,7 +10,7 @@ export function useEventDetail(id: Ref<string>) {
   const detailEvent = computed(() =>
     selected.value ? JSON.parse(selected.value.canonical_json).event : null,
   );
-  const { busy, run } = useFeedback();
+  const { busy, run, act } = useFeedback();
   async function load() {
     const requested = id.value;
     const record = await getEvent(requested);
@@ -37,9 +37,17 @@ export function useEventDetail(id: Ref<string>) {
   );
   usePolling(load, () => !busy.value);
   async function verify() {
-    await run(async () => {
-      check.value = await verifyEvent(id.value);
-    });
+    await act(
+      {
+        action: "READ",
+        menuId: "events",
+        objectId: id.value,
+        summary: "核验证据",
+      },
+      async () => {
+        check.value = await verifyEvent(id.value);
+      },
+    );
   }
-  return { selected, check, detailEvent, busy, run, verify };
+  return { selected, check, detailEvent, busy, act, verify };
 }

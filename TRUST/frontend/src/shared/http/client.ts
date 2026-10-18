@@ -1,4 +1,5 @@
 import { request } from "./request";
+import { pageActionId } from "./actionContext";
 let token = "";
 async function csrf() {
   const data = await request("/api/v1/csrf", {}, async (r) => {
@@ -15,6 +16,9 @@ async function consume<T>(
   const method = options.method || "GET";
   if (method !== "GET" && !token) await csrf();
   const headers = new Headers(options.headers);
+  const actionId = pageActionId();
+  if (actionId && !path.startsWith("/audit/page-actions"))
+    headers.set("X-TRUST-Page-Action-Id", actionId);
   if (method !== "GET") headers.set("X-CSRF-TOKEN", token);
   return request(
     "/api/v1" + path,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import type { ApiRecord } from "./shared/types";
 import { provideFeedback } from "./shared/composables/useFeedback";
 import { useSession } from "./features/auth/useSession";
@@ -13,35 +13,76 @@ import TasksPage from "./features/archiving/TasksPage.vue";
 import OperationsPage from "./features/operations/OperationsPage.vue";
 import IdentityPage from "./features/identities/IdentityPage.vue";
 import WalletPage from "./features/wallet/WalletPage.vue";
-const { run } = provideFeedback();
+const { run, act, busy, error, clearResults } = provideFeedback();
+const entered = ref(false);
+const entryPending = ref(false);
 const { me, canWrite, canAdmin, signIn, signOut, quickSignIn, iamSignIn } =
   useSession();
 const tab = ref("events"),
   selectedId = ref(""),
   correction = ref<ApiRecord | null>(null);
-function navigate(id: string) {
-  tab.value = id;
-  selectedId.value = "";
+async function navigate(id: string) {
+  await act({ action: "NAVIGATE", menuId: id, summary: "切换功能页面" }, () => {
+    tab.value = id;
+    selectedId.value = "";
+  });
 }
-function openEvent(id: string) {
-  selectedId.value = id;
+async function openEvent(id: string) {
+  await act(
+    { action: "READ", menuId: "events", objectId: id, summary: "打开事件详情" },
+    () => {
+      selectedId.value = id;
+    },
+  );
 }
-function correct(record: ApiRecord) {
-  correction.value = record;
-  navigate("create");
+async function correct(record: ApiRecord) {
+  await act(
+    {
+      action: "UPDATE",
+      menuId: "create",
+      objectId: record.id,
+      summary: "开始追加更正",
+    },
+    () => {
+      correction.value = record;
+      tab.value = "create";
+      selectedId.value = "";
+    },
+  );
 }
+async function enter() {
+  await act(
+    { action: "NAVIGATE", menuId: "events", summary: "进入工作台" },
+    () => {
+      entered.value = true;
+    },
+  );
+}
+watch(me, (user) => {
+  entered.value = false;
+  clearResults();
+  entryPending.value = Boolean(user);
+});
+watch([entryPending, busy], () => {
+  if (!entryPending.value || busy.value) return;
+  entryPending.value = false;
+  void enter();
+});
 function saved(id: string) {
   correction.value = null;
   tab.value = "events";
   selectedId.value = id;
 }
 async function logout() {
-  await run(async () => {
-    await signOut();
-    tab.value = "events";
-    selectedId.value = "";
-    correction.value = null;
-  });
+  await act(
+    { action: "LOGOUT", menuId: tab.value, summary: "退出工作台" },
+    async () => {
+      await signOut();
+      tab.value = "events";
+      selectedId.value = "";
+      correction.value = null;
+    },
+  );
 }
 </script>
 
@@ -52,6 +93,11 @@ async function logout() {
     :quick-sign-in="quickSignIn"
     :iam-sign-in="iamSignIn"
   />
+  <section v-else-if="!entered" class="panel">
+    <p role="alert">{{ error || "正在保存页面进入记录…" }}</p>
+    <button :disabled="busy" @click="enter">重试进入工作台</button>
+    <button :disabled="busy" @click="run(signOut)">退出登录（恢复入口）</button>
+  </section>
   <WorkspaceShell
     v-else
     :me="me"
@@ -63,7 +109,7 @@ async function logout() {
       v-if="selectedId"
       :id="selectedId"
       :can-write="canWrite"
-      @close="selectedId = ''"
+      @close="navigate('events')"
       @open="openEvent"
       @correct="correct"
     />

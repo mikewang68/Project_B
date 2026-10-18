@@ -9,7 +9,7 @@ export function useEventLedger() {
     total = ref(0),
     page = ref(0),
     query = ref("");
-  const { busy, run } = useFeedback();
+  const { busy, run, act } = useFeedback();
   async function loadEvents() {
     const result = await listEvents(query.value, page.value);
     rows.value = result.items;
@@ -17,5 +17,5 @@ export function useEventLedger() {
   }
   usePageLoad(loadEvents);
   usePolling(loadEvents, () => !busy.value);
-  return { rows, total, page, query, loadEvents, busy, run };
+  return { rows, total, page, query, loadEvents, busy, run, act };
 }

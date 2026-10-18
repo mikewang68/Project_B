@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
+import { usePageLoad } from "../../shared/composables/usePageLoad";
+import { pageActionId } from "../../shared/http/actionContext";
+import { useFeedback } from "../../shared/composables/useFeedback";
 import { request } from "../../shared/http/request";
 import {
   identityLabel,
@@ -8,6 +11,7 @@ import {
   identityExpiry,
   identityError,
 } from "./identity-display";
+const { act, busy } = useFeedback();
 const rows = ref<Record<string, unknown>[]>([]),
   error = ref(""),
   loading = ref(false);
@@ -17,7 +21,14 @@ async function refresh() {
   try {
     rows.value = await request(
       "/api/v1/identity-management",
-      { headers: { Accept: "application/json" } },
+      {
+        headers: {
+          Accept: "application/json",
+          ...(pageActionId()
+            ? { "X-TRUST-Page-Action-Id": pageActionId() }
+            : {}),
+        },
+      },
       async (response) => {
         if (!response.ok)
           throw new Error(
@@ -32,11 +43,12 @@ async function refresh() {
     );
   } catch (e) {
     error.value = e instanceof Error ? e.message : "身份查询失败";
+    throw e;
   } finally {
     loading.value = false;
   }
 }
-onMounted(refresh);
+usePageLoad(refresh);
 </script>
 <template>
   <section class="identity-panel">
@@ -48,7 +60,15 @@ onMounted(refresh);
           用户管理发起。
         </p>
       </div>
-      <button :disabled="loading" @click="refresh">
+      <button
+        :disabled="loading || busy"
+        @click="
+          act(
+            { action: 'READ', menuId: 'identities', summary: '刷新身份状态' },
+            refresh,
+          )
+        "
+      >
         {{ loading ? "正在刷新…" : "刷新状态" }}
       </button>
     </header>

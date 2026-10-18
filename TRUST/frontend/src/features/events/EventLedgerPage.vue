@@ -4,7 +4,7 @@ import { typeLabels } from "./presentation";
 import { fmt, label } from "../../shared/presentation";
 defineProps<{ canWrite: boolean }>();
 const emit = defineEmits<{ open: [id: string]; create: [] }>();
-const { rows, total, page, query, loadEvents, busy, run } = useEventLedger();
+const { rows, total, page, query, loadEvents, busy, act } = useEventLedger();
 </script>
 
 <template>
@@ -19,8 +19,13 @@ const { rows, total, page, query, loadEvents, busy, run } = useEventLedger();
     <form
       class="toolbar"
       @submit.prevent="
-        page = 0;
-        run(loadEvents);
+        act(
+          { action: 'READ', menuId: 'events', summary: '查询事件' },
+          async () => {
+            page = 0;
+            await loadEvents();
+          },
+        )
       "
     >
       <input
@@ -86,16 +91,26 @@ const { rows, total, page, query, loadEvents, busy, run } = useEventLedger();
       ><button
         :disabled="page === 0 || busy"
         @click="
-          page--;
-          run(loadEvents);
+          act(
+            { action: 'READ', menuId: 'events', summary: '事件上一页' },
+            async () => {
+              page--;
+              await loadEvents();
+            },
+          )
         "
       >
         上一页</button
       ><button
         :disabled="(page + 1) * 20 >= total || busy"
         @click="
-          page++;
-          run(loadEvents);
+          act(
+            { action: 'READ', menuId: 'events', summary: '事件下一页' },
+            async () => {
+              page++;
+              await loadEvents();
+            },
+          )
         "
       >
         下一页

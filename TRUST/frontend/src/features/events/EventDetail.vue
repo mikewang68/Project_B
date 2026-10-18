@@ -13,7 +13,7 @@ const emit = defineEmits<{
   open: [id: string];
   correct: [record: ApiRecord];
 }>();
-const { selected, check, detailEvent, busy, run, verify } = useEventDetail(
+const { selected, check, detailEvent, busy, act, verify } = useEventDetail(
   toRef(props, "id"),
 );
 </script>
@@ -26,7 +26,15 @@ const { selected, check, detailEvent, busy, run, verify } = useEventDetail(
         <button @click="verify" :disabled="busy">核验证据</button
         ><button
           @click="
-            run(() => exportEvent(selected!.id, selected!.source_event_id))
+            act(
+              {
+                action: 'EXPORT',
+                menuId: 'events',
+                objectId: selected!.id,
+                summary: '导出证据包',
+              },
+              () => exportEvent(selected!.id, selected!.source_event_id),
+            )
           "
           :disabled="busy || selected.chain_state !== 'COMMITTED'"
         >
@@ -127,7 +135,8 @@ const { selected, check, detailEvent, busy, run, verify } = useEventDetail(
       <div v-if="selected.last_error" class="alert error">
         <p>{{ recoveryHint(selected.last_error) || selected.last_error }}</p>
         <details v-if="recoveryHint(selected.last_error)">
-          <summary>查看原始错误</summary>{{ selected.last_error }}
+          <summary>查看原始错误</summary>
+          {{ selected.last_error }}
         </details>
       </div>
       <p v-if="selected.missingReferences?.length" class="alert warning">

@@ -8,6 +8,7 @@ const out=process.env.TRUST_TEST_RESULTS||path.join(__dirname,'../.local/test-re
  const page=await browser.newPage();let logged=false,proposals=[];const errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/api/v1/**',async route=>{
+  if (await require('./audit-fixtures.cjs')(route)) return;
   const req=route.request(),p=new URL(req.url()).pathname.replace('/api/v1','');let status=200,body={};
   if(p==='/identity-mode')body={simulated:false,iamRequired:true,localLoginEnabled:false};
   else if(p==='/csrf')body={headerName:'X-CSRF-TOKEN',token:'fixture'};
