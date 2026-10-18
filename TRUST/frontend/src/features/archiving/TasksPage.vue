@@ -3,7 +3,6 @@ import { usePageLoad } from "../../shared/composables/usePageLoad";
 import { ref } from "vue";
 import type { ApiRecord } from "../../shared/types";
 import { useFeedback } from "../../shared/composables/useFeedback";
-import { usePolling } from "../../shared/composables/usePolling";
 import { label, recoveryHint } from "../../shared/presentation";
 import { listTasks, retryTask } from "./api";
 defineProps<{ canWrite: boolean }>();
@@ -23,11 +22,13 @@ async function retry(id: string) {
     },
   );
 }
-usePageLoad(load);
-usePolling(load, () => !busy.value);
+usePageLoad(load, "tasks");
 </script>
 
 <template>
+  <p class="small muted" role="status">
+    状态不会自动更新。请点击“刷新”查看最新补办结果。
+  </p>
   <article class="panel">
     <div class="section-title">
       <h2>存证处理任务</h2>

@@ -48,7 +48,7 @@ async function refresh() {
     loading.value = false;
   }
 }
-usePageLoad(refresh);
+usePageLoad(refresh, "identities");
 </script>
 <template>
   <section class="identity-panel">

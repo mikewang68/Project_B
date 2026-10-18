@@ -13,9 +13,8 @@ const emit = defineEmits<{
   open: [id: string];
   correct: [record: ApiRecord];
 }>();
-const { selected, check, detailEvent, busy, act, verify } = useEventDetail(
-  toRef(props, "id"),
-);
+const { selected, check, detailEvent, busy, act, verify, refresh } =
+  useEventDetail(toRef(props, "id"));
 </script>
 
 <template>
@@ -23,6 +22,7 @@ const { selected, check, detailEvent, busy, act, verify } = useEventDetail(
     ><div class="detail-bar">
       <button @click="emit('close')">← 返回列表</button>
       <div>
+        <button @click="refresh" :disabled="busy">刷新状态</button>
         <button @click="verify" :disabled="busy">核验证据</button
         ><button
           @click="
@@ -44,6 +44,9 @@ const { selected, check, detailEvent, busy, act, verify } = useEventDetail(
         </button>
       </div>
     </div>
+    <p class="small muted" role="status">
+      状态不会自动更新。请点击“刷新状态”查看最新归档和上链结果。
+    </p>
     <p v-if="selected.chain_state !== 'COMMITTED'" class="alert warning">
       此事件尚未完成上链，暂不能导出完整证据包。请到“补办任务”查看原因；修复原因并完成上链后再核验、导出。
     </p>

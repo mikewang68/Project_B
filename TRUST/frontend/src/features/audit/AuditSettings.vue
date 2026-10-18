@@ -35,7 +35,7 @@ async function load() {
     throw error;
   }
 }
-usePageLoad(load);
+usePageLoad(load, "status");
 async function save() {
   if (!settings.value?.canManage) return;
   await act(
@@ -135,7 +135,7 @@ async function save() {
           >修改原因<input
             v-model="reason"
             required
-            maxlength="500"
+            maxlength="300"
             :disabled="busy"
             aria-label="日志设置修改原因"
         /></label>

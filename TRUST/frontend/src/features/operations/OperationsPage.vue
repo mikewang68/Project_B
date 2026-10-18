@@ -16,7 +16,7 @@ async function load() {
   status.value = await getStatus();
   if (props.canAdmin) audit.value = await listAudit();
 }
-usePageLoad(load);
+usePageLoad(load, "status");
 </script>
 
 <template>

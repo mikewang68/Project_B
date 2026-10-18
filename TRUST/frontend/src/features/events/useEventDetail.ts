@@ -1,7 +1,7 @@
 import { ref, computed, watch, type Ref } from "vue";
 import type { ApiRecord } from "../../shared/types";
 import { useFeedback } from "../../shared/composables/useFeedback";
-import { usePolling } from "../../shared/composables/usePolling";
+import { pageReadId, withPageAction } from "../../shared/http/actionContext";
 import { getEvent } from "./api";
 import { verifyEvent } from "../verification/api";
 export function useEventDetail(id: Ref<string>) {
@@ -31,11 +31,25 @@ export function useEventDetail(id: Ref<string>) {
     () => {
       if (busy.value || pendingId !== id.value) return;
       pendingId = "";
-      void run(load);
+      const actionId = pageReadId(`event:${id.value}`);
+      void run(() => withPageAction(actionId, load));
     },
     { immediate: true, flush: "post" },
   );
-  usePolling(load, () => !busy.value);
+  async function refresh() {
+    await act(
+      {
+        action: "READ",
+        menuId: "events",
+        objectId: id.value,
+        summary: "刷新事件状态",
+      },
+      async () => {
+        await load();
+        check.value = null;
+      },
+    );
+  }
   async function verify() {
     await act(
       {
@@ -49,5 +63,5 @@ export function useEventDetail(id: Ref<string>) {
       },
     );
   }
-  return { selected, check, detailEvent, busy, act, verify };
+  return { selected, check, detailEvent, busy, act, verify, refresh };
 }

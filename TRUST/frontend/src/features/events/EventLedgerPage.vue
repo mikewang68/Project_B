@@ -15,6 +15,9 @@ const { rows, total, page, query, loadEvents, busy, act } = useEventLedger();
     <div><span>证据保存</span><strong class="word">独立 IPFS</strong></div>
     <div><span>可信登记</span><strong class="word">Fabric</strong></div>
   </div>
+  <p class="small muted" role="status">
+    状态不会自动更新。请点击“查询”查看最新事件和处理结果。
+  </p>
   <article class="panel">
     <form
       class="toolbar"
