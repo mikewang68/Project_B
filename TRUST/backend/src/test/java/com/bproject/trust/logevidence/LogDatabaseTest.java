@@ -281,6 +281,21 @@ class LogDatabaseTest {
       assertEquals(
           "COMMITTED",
           db.queryForObject("SELECT chain_state FROM events WHERE id=?", String.class, id));
+      // A paused ledger outage must not spend the submission failure budget or require manual
+      // retry.
+      when(ledger.find(anyString(), eq(id))).thenThrow(new java.io.IOException("offline"));
+      db.update("UPDATE events SET chain_state='CONFIRMING' WHERE id=?", id);
+      db.update("UPDATE tasks SET attempts=9 WHERE event_id=?", id);
+      lease(id, token);
+      assertDoesNotThrow(
+          () ->
+              org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                  archive, "process", id, token));
+      assertEquals(
+          "READY", db.queryForObject("SELECT state FROM tasks WHERE event_id=?", String.class, id));
+      assertEquals(
+          9, db.queryForObject("SELECT attempts FROM tasks WHERE event_id=?", Integer.class, id));
+      verify(ledger, times(1)).submit(anyMap(), any());
     } finally {
       org.springframework.test.util.ReflectionTestUtils.invokeMethod(archive, "close");
     }
@@ -292,6 +307,87 @@ class LogDatabaseTest {
             + " seconds',attempts=attempts+1 WHERE event_id=?",
         token,
         id);
+  }
+
+  @Test
+  void fourPausedOldestProjectionsYieldSlotsToANewerNonLogEvent() throws Exception {
+    for (int i = 0; i < 4; i++) service.submit(source, input("paused-oldest-" + i, ""));
+    worker.poll();
+    var paused = db.queryForList("SELECT chain_event_id FROM audit_evidence", String.class);
+    assertEquals(4, paused.size());
+    db.update("UPDATE tasks SET next_at=CURRENT_TIMESTAMP-INTERVAL '1 minute'");
+    var simulator =
+        new EvidenceIngressSettings.Source(
+            "sim-test",
+            "2".repeat(64),
+            "TEST_ORG",
+            "SIM_TEST",
+            true,
+            Set.of("submit", "read"),
+            Set.of("SIM_EVENT"));
+    var sources = new ArrayList<>(ingress.processingSources());
+    sources.add(simulator);
+    when(ingress.processingSources()).thenReturn(sources);
+    var request =
+        Json.write(
+            Map.of(
+                "schemaVersion",
+                1,
+                "sourceEventId",
+                "ordinary-after-paused",
+                "eventType",
+                "SIM_EVENT",
+                "businessObjectId",
+                "ordinary",
+                "occurredAt",
+                "2026-01-02T03:04:05Z",
+                "payload",
+                Map.of("value", 1)));
+    generic.submit(
+        simulator,
+        GenericEventInput.parse(request.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    String ordinary =
+        db.queryForObject("SELECT id FROM events WHERE source_system='SIM_TEST'", String.class);
+    var ledger = mock(com.bproject.trust.ports.LedgerGateway.class);
+    when(ingress.permits(anyMap())).thenReturn(true);
+    var archive =
+        new com.bproject.trust.archiving.ArchiveWorker(
+            db,
+            mock(com.bproject.trust.events.EventService.class),
+            mock(com.bproject.trust.evidence.EvidenceService.class),
+            storage,
+            ledger,
+            tx,
+            mock(com.bproject.trust.wallet.WalletService.class),
+            ingress,
+            new GenericEvidenceArchive(db, storage));
+    var gate = new LogChainGate(db);
+    org.springframework.test.util.ReflectionTestUtils.setField(gate, "settings", config);
+    org.springframework.test.util.ReflectionTestUtils.setField(archive, "logChainGate", gate);
+    try {
+      db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+      List<String> first =
+          org.springframework.test.util.ReflectionTestUtils.invokeMethod(archive, "due", 4);
+      assertEquals(new HashSet<>(paused), new HashSet<>(first));
+      for (String id : first) {
+        String token = UUID.randomUUID().toString();
+        lease(id, token);
+        org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+            archive, "process", id, token);
+      }
+      List<String> next =
+          org.springframework.test.util.ReflectionTestUtils.invokeMethod(archive, "due", 4);
+      assertEquals(List.of(ordinary), next);
+      assertEquals(
+          4,
+          db.queryForObject(
+              "SELECT COUNT(*) FROM tasks WHERE next_at>CURRENT_TIMESTAMP"
+                  + " AND state='READY' AND attempts=0",
+              Integer.class));
+      verifyNoInteractions(ledger);
+    } finally {
+      org.springframework.test.util.ReflectionTestUtils.invokeMethod(archive, "close");
+    }
   }
 
   @Test

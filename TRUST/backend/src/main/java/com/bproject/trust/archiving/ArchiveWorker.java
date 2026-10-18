@@ -148,7 +148,25 @@ public class ArchiveWorker {
     String org = (String) row.get("org_id");
     if (logChainGate != null && !logChainGate.allows(id)) {
       // Pausing prevents new submissions, not reconciliation of an uncertain prior transaction.
-      var confirmed = fabric.find(org, id);
+      boolean possiblySubmitted =
+          row.get("tx_id") != null
+              || db.queryForObject(
+                      "SELECT COUNT(*) FROM signing_attempts WHERE event_id=?", Long.class, id)
+                  > 0;
+      if (!possiblySubmitted) {
+        defer(id, token);
+        return;
+      }
+      Map<String, Object> confirmed;
+      try {
+        confirmed = fabric.find(org, id);
+      } catch (Exception temporarilyUnavailable) {
+        if (temporarilyUnavailable instanceof InterruptedException)
+          Thread.currentThread().interrupt();
+        // A paused reconciliation is not a submission attempt. Keep its original failure budget.
+        defer(id, token);
+        return;
+      }
       if (confirmed != null && row.get("manifest_cid") != null && row.get("wallet_id") != null) {
         AttestationRecord.assertMatches(AttestationRecord.record(row), confirmed);
         complete(id, token, confirmed);
@@ -314,8 +332,8 @@ public class ArchiveWorker {
 
   private void defer(String id, String token) {
     db.update(
-        "UPDATE tasks SET"
-            + " state='READY',attempts=GREATEST(attempts-1,0),lease_token=NULL,lease_until=NULL,updated_at=CURRENT_TIMESTAMP"
+        "UPDATE tasks SET state='READY',next_at=CURRENT_TIMESTAMP+INTERVAL '5 seconds',"
+            + " attempts=GREATEST(attempts-1,0),lease_token=NULL,lease_until=NULL,updated_at=CURRENT_TIMESTAMP"
             + " WHERE event_id=? AND lease_token=? AND state='RUNNING' AND"
             + " lease_until>CURRENT_TIMESTAMP",
         id,
