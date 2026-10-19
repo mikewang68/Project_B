@@ -15,7 +15,7 @@
 | 容器与单据 | LPN 是物流容器标识，operationCode 是作业号。 | 保留原语义；钢材捆号、真实交接单号需独立业务依据，不能直接等同。 |
 | 证据 | 收货质量类型存在，但这些事件输出未提供可归档的质检附件引用。 | 需要确定质检文件与交接附件的来源、权限和事件关联；质量类型不能替代质检凭证。 |
 
-以上依据见 [收货输出模型](../../WMS/WMS/src/main/java/com/mt/wms/stockin/StockinModels.java)、[收货查询与写入](../../WMS/WMS/src/main/java/com/mt/wms/stockin/StockinRepository.java)、[收货表](../../WMS/WMS/database/migrations/V009__stockin_orders.sql)、[发运输出模型](../../WMS/WMS/src/main/java/com/mt/wms/stockout/StockoutModels.java)、[发运查询与写入](../../WMS/WMS/src/main/java/com/mt/wms/stockout/StockoutRepository.java)、[发运事务](../../WMS/WMS/src/main/java/com/mt/wms/stockout/StockoutService.java) 和 [发运表](../../WMS/WMS/database/migrations/V010__stockout_orders.sql)。
+以下为此前核对的外部 WMS 源码路径，不随 TRUST 包交付，也不代表其当前版本已适配；接收方须向 WMS 负责人索取对应提交。依据路径：收货输出模型 `WMS/WMS/src/main/java/com/mt/wms/stockin/StockinModels.java`、收货查询与写入 `WMS/WMS/src/main/java/com/mt/wms/stockin/StockinRepository.java`、收货表 `WMS/WMS/database/migrations/V009__stockin_orders.sql`、发运输出模型 `WMS/WMS/src/main/java/com/mt/wms/stockout/StockoutModels.java`、发运查询与写入 `WMS/WMS/src/main/java/com/mt/wms/stockout/StockoutRepository.java`、发运事务 `WMS/WMS/src/main/java/com/mt/wms/stockout/StockoutService.java` 和 发运表 `WMS/WMS/database/migrations/V010__stockout_orders.sql`。
 
 ## 建议实施顺序
 

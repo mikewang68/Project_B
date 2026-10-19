@@ -21,12 +21,12 @@ public class EventRelations {
     if ("DISPATCH".equals(input.eventType())) {
       for (String ref : input.relatedEventRefs())
         for (var row : db.queryForList(
-            "SELECT canonical_json FROM events WHERE org_id=? AND source_system||':'||source_event_id=?",
+            "SELECT canonical_json FROM events WHERE record_kind='LEGACY_V1' AND org_id=? AND source_system||':'||source_event_id=?",
             org, ref)) validateReceipt(snapshot(row), input);
     } else if ("WAREHOUSE_IN".equals(input.eventType())) {
       for (var row : db.queryForList(
           "SELECT e.canonical_json FROM events e JOIN event_links l ON l.event_id=e.id "
-              + "WHERE e.org_id=? AND l.kind='EVENT' AND l.target=? AND e.event_type='DISPATCH'",
+              + "WHERE e.record_kind='LEGACY_V1' AND e.org_id=? AND l.kind='EVENT' AND l.target=? AND e.event_type='DISPATCH'",
           org, input.sourceSystem() + ":" + input.sourceEventId()))
         validateReceipt(input, snapshot(row));
     }
@@ -58,7 +58,7 @@ public class EventRelations {
             String.class,
             row.get("id")))
       if (db.queryForObject(
-              "SELECT COUNT(*) FROM events WHERE org_id=? AND"
+              "SELECT COUNT(*) FROM events WHERE record_kind='LEGACY_V1' AND org_id=? AND"
                   + " source_system||':'||source_event_id=?",
               Long.class,
               org,

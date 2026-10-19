@@ -58,7 +58,14 @@ public class EventController {
   @PostMapping("/events/{id}/corrections")
   @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
   public ResponseEntity<?> correct(
-      Authentication a, @PathVariable String id, @Valid @RequestBody EventInput input) {
+      Authentication a, @PathVariable String id, @RequestBody com.fasterxml.jackson.databind.JsonNode body) {
+    events.correctionTarget(id, identity.org(a));
+    var input = com.bproject.trust.shared.json.Json.MAPPER.convertValue(body, EventInput.class);
+    if (input == null || !validator.validate(input).isEmpty())
+      throw new com.bproject.trust.shared.web.ApiError(400,"字段格式不正确");
     return ResponseEntity.accepted().body(events.submit(input, identity.org(a), a.getName(), id));
   }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  private jakarta.validation.Validator validator;
 }

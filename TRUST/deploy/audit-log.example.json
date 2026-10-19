@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "enabled": false,
+  "activeKeyId": "archive-v1",
+  "keyRingFile": "/opt/trust-private/archive-keyring.json",
+  "managerUserIds": [],
+  "sources": [
+    {
+      "id": "audit-example",
+      "tokenSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "genericSourceId": "audit-projection-example",
+      "operations": ["read", "submit", "retry", "restore"],
+      "scopes": [{"domainId": "EXAMPLE_DOMAIN", "zoneId": "EXAMPLE_ZONE", "appCode": "EXAMPLE_APP"}]
+    }
+  ],
+  "delivery": {
+    "enabled": false,
+    "url": "https://audit.example.invalid/api/logs/v1/events",
+    "tokenFile": "/opt/trust-private/audit-service-token.txt",
+    "orgScopes": {}
+  }
+}

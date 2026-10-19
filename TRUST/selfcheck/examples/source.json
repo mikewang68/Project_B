@@ -1,0 +1,7 @@
+{
+  "sourceId": "selfcheck",
+  "orgId": "synthetic-org",
+  "sourceSystem": "synthetic-system",
+  "operations": ["read", "submit", "retry"],
+  "allowedEventTypes": ["MAINTENANCE"]
+}

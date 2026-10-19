@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "sourceEventId": "maintenance-demo-001",
+  "eventType": "MAINTENANCE",
+  "businessObjectId": "synthetic-device-001",
+  "occurredAt": "2026-01-01T00:00:00Z",
+  "payload": {
+    "action": "inspection",
+    "result": "synthetic-ok",
+    "attachmentUrl": "https://example.invalid/reference-only"
+  }
+}

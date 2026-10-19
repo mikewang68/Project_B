@@ -12,12 +12,15 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 public class ErrorHandler {
   @ExceptionHandler(ApiError.class)
   ResponseEntity<?> api(ApiError e) {
+    if (e instanceof com.bproject.trust.ingress.IngressError ingress)
+      return ResponseEntity.status(e.status).body(ingress.body());
     return ResponseEntity.status(e.status).body(Map.of("message", e.getMessage()));
   }
 
   @ExceptionHandler({
     IllegalArgumentException.class,
     MethodArgumentNotValidException.class,
+    org.springframework.web.bind.MissingServletRequestParameterException.class,
     org.springframework.http.converter.HttpMessageNotReadableException.class
   })
   ResponseEntity<?> bad(Exception e) {

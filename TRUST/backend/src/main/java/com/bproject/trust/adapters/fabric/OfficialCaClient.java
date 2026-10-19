@@ -70,7 +70,8 @@ public class OfficialCaClient implements IdentityAuthority {
           attrs.entrySet().stream()
               .map(e -> e.getKey() + "=" + e.getValue() + ":ecert")
               .collect(java.util.stream.Collectors.joining(","));
-      // Same unique registration name and same persisted secret on every attempt. Never modify
+      // Same unique registration name and same persisted secret on every attempt. Never
+      // modify
       // identities.
       run(
           org,
@@ -91,7 +92,8 @@ public class OfficialCaClient implements IdentityAuthority {
           true);
       Path candidates = job.resolve("certificates");
       secureDirectory(candidates);
-      // This also resolves CA issuance success followed by response loss/process death/DB rollback.
+      // This also resolves CA issuance success followed by response loss/process death/DB
+      // rollback.
       run(
           org,
           Path.of(org.registrarHome()),
@@ -120,7 +122,8 @@ public class OfficialCaClient implements IdentityAuthority {
                   null,
                   null)
               .toASCIIString();
-      // maxenrollments=1 prevents a second valid certificate, even if a previous request is still
+      // maxenrollments=1 prevents a second valid certificate, even if a previous request is
+      // still
       // in flight.
       // Retain all BCCSP keys until the signed certificate has been recovered and encrypted.
       run(
@@ -294,55 +297,113 @@ public class OfficialCaClient implements IdentityAuthority {
         var lock = channel.tryLock()) {
       if (lock == null) throw new IllegalStateException("CA_JOB_BUSY");
       // Per-version enrollment IDs ensure all certificates for a revoked version are covered.
-      run(
-          org,
-          Path.of(org.registrarHome()),
-          Map.of(),
-          List.of(
-              "revoke", "--revoke.name", enrollmentId, "--revoke.reason", "cessationofoperation"),
-          true);
-      // A failed/ambiguous revoke is not completion. The administrator later provides a verified
-      // CRL receipt.
-      Path receipt = Files.createTempDirectory(job, "revocation-");
-      secureDirectory(receipt);
-      try {
-        run(
-            org,
-            Path.of(org.registrarHome()),
-            Map.of(),
-            List.of(
-                "certificate",
-                "list",
-                "--id",
-                enrollmentId,
-                "--revocation",
-                "::now",
-                "--store",
-                receipt.toString()),
-            false);
-        boolean matched = false;
-        try (var files = Files.list(receipt)) {
-          for (var file : files.filter(Files::isRegularFile).toList()) {
-            var cert =
-                Identities.readX509Certificate(new java.io.StringReader(Files.readString(file)));
-            if (subjectValues(cert.getSubjectX500Principal().getName(), "CN")
-                .equals(Set.of(enrollmentId)))
-              matched = true;
-          }
+      confirmRevocation(
+          () -> revokedAtCa(org, enrollmentId, job),
+          () ->
+              run(
+                  org,
+                  Path.of(org.registrarHome()),
+                  Map.of(),
+                  List.of(
+                      "revoke",
+                      "--revoke.name",
+                      enrollmentId,
+                      "--revoke.reason",
+                      "cessationofoperation"),
+                  true));
+      Files.writeString(
+          job.resolve("revoked"),
+          java.time.Instant.now().toString(),
+          StandardOpenOption.CREATE,
+          StandardOpenOption.TRUNCATE_EXISTING);
+      cleanupPlaintext(job);
+    }
+  }
+
+  @FunctionalInterface
+  interface RevocationQuery {
+    boolean revoked() throws Exception;
+  }
+
+  @FunctionalInterface
+  interface RevocationAction {
+    void revoke() throws Exception;
+  }
+
+  /**
+   * Query before replay and after ambiguous CA responses; success always needs positive evidence.
+   */
+  static void confirmRevocation(RevocationQuery query, RevocationAction action) throws Exception {
+    if (query.revoked()) return;
+    Exception failure = null;
+    try {
+      action.revoke();
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw interrupted;
+    } catch (Exception error) {
+      failure = error;
+    }
+    try {
+      if (query.revoked()) return;
+    } catch (Exception queryFailure) {
+      if (failure != null) queryFailure.addSuppressed(failure);
+      throw queryFailure;
+    }
+    if (failure != null) throw failure;
+    throw new IllegalStateException("CA_REVOCATION_UNCONFIRMED");
+  }
+
+  private boolean revokedAtCa(Organization org, String enrollmentId, Path job) throws Exception {
+    // A single revoked certificate is not evidence that every certificate for this version
+    // was revoked. Existing CA identities may predate our maxenrollments=1 registration.
+    var revoked = listedCertificates(org, enrollmentId, job, true);
+    var all = listedCertificates(org, enrollmentId, job, false);
+    return allCertificatesRevoked(enrollmentId, all, revoked);
+  }
+
+  static boolean allCertificatesRevoked(
+      String enrollmentId, List<X509Certificate> all, List<X509Certificate> revoked)
+      throws Exception {
+    if (all.isEmpty()) return false;
+    var revokedFingerprints = new HashSet<String>();
+    for (var certificate : revoked) {
+      if (!subjectValues(certificate.getSubjectX500Principal().getName(), "CN")
+          .equals(Set.of(enrollmentId))) return false;
+      revokedFingerprints.add(Json.sha(certificate.getEncoded()));
+    }
+    for (var certificate : all) {
+      if (!subjectValues(certificate.getSubjectX500Principal().getName(), "CN")
+              .equals(Set.of(enrollmentId))
+          || !revokedFingerprints.contains(Json.sha(certificate.getEncoded()))) return false;
+    }
+    return true;
+  }
+
+  private List<X509Certificate> listedCertificates(
+      Organization org, String enrollmentId, Path job, boolean revokedOnly) throws Exception {
+    Path receipt = Files.createTempDirectory(job, "revocation-");
+    secureDirectory(receipt);
+    try {
+      var operation = new ArrayList<>(List.of("certificate", "list", "--id", enrollmentId));
+      if (revokedOnly) operation.addAll(List.of("--revocation", "::now"));
+      operation.addAll(List.of("--store", receipt.toString()));
+      run(org, Path.of(org.registrarHome()), Map.of(), operation, false);
+      var certificates = new ArrayList<X509Certificate>();
+      try (var files = Files.list(receipt)) {
+        for (var file : files.filter(Files::isRegularFile).toList()) {
+          if (Files.size(file) > 131072)
+            throw new IllegalStateException("Invalid CA certificate size");
+          certificates.add(
+              Identities.readX509Certificate(new java.io.StringReader(Files.readString(file))));
         }
-        if (!matched) throw new IllegalStateException("CA_REVOCATION_UNCONFIRMED");
-        Files.writeString(
-            job.resolve("revoked"),
-            java.time.Instant.now().toString(),
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING);
-        cleanupPlaintext(job);
-      } finally {
-        try (var files = Files.list(receipt)) {
-          for (var file : files.toList()) Files.delete(file);
-        }
-        Files.delete(receipt);
       }
+      return certificates;
+    } finally {
+      try (var files = Files.list(receipt)) {
+        for (var file : files.toList()) Files.delete(file);
+      }
+      Files.delete(receipt);
     }
   }
 

@@ -6,16 +6,17 @@ import { useFeedback } from "../../shared/composables/useFeedback";
 import { fmt, label } from "../../shared/presentation";
 import { getStatus } from "./api";
 import { listAudit } from "../audit/api";
+import AuditSettings from "../audit/AuditSettings.vue";
 import AuditLog from "../audit/AuditLog.vue";
-const props = defineProps<{ canAdmin: boolean }>();
+const props = defineProps<{ canAdmin: boolean; verifiedIdentity: boolean }>();
 const status = ref<ApiRecord | null>(null),
   audit = ref<ApiRecord[]>([]);
-const { busy, run } = useFeedback();
+const { busy, act } = useFeedback();
 async function load() {
   status.value = await getStatus();
   if (props.canAdmin) audit.value = await listAudit();
 }
-usePageLoad(load);
+usePageLoad(load, "status");
 </script>
 
 <template>
@@ -41,7 +42,17 @@ usePageLoad(load);
   <article class="panel" v-if="status">
     <div class="section-title">
       <h2>运行概况</h2>
-      <button @click="run(load)" :disabled="busy">重新检查</button>
+      <button
+        @click="
+          act(
+            { action: 'READ', menuId: 'status', summary: '重新检查运行状态' },
+            load,
+          )
+        "
+        :disabled="busy"
+      >
+        重新检查
+      </button>
     </div>
     <dl class="facts">
       <div>
@@ -68,8 +79,13 @@ usePageLoad(load);
       </div>
     </dl>
     <p class="small muted">
-      组件独立启停。依赖故障时，已接收的事件保留待处理状态。
+      组件独立启停。依赖故障时，已接收的事件保留待处理状态。 Fabric
+      显示正常仅表示查询连接可用；写链还需要有效钱包、来源绑定及链上授权。
     </p>
   </article>
+  <AuditSettings v-if="verifiedIdentity" />
+  <p v-else class="small muted">
+    当前为隔离演示：操作仅保存在本地，不对外投递。
+  </p>
   <AuditLog v-if="canAdmin" :audit="audit" />
 </template>

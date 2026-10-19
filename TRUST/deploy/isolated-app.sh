@@ -37,10 +37,11 @@ build)
   cd "$ROOT/frontend"
   pnpm --ignore-workspace install --frozen-lockfile --offline
   pnpm --ignore-workspace run build
+  rm -rf -- "$ROOT/backend/src/main/resources/static"
   mkdir -p "$ROOT/backend/src/main/resources/static"
   cp -a dist/. "$ROOT/backend/src/main/resources/static/"
   cd "$ROOT/backend"
-  mvn -B -ntp -Dmaven.repo.local="${TRUST_MAVEN_CACHE:?}" verify dependency:build-classpath -Dmdep.outputFile=target/classpath.txt
+  mvn -B -ntp -Dmaven.repo.local="${TRUST_MAVEN_CACHE:?}" clean verify dependency:build-classpath -Dmdep.outputFile=target/classpath.txt
   cp target/trust-platform-0.1.0.jar "$jar"
   sha256sum "$jar"
   ;;

@@ -22,6 +22,13 @@
     <dependency><groupId>org.apache.commons</groupId><artifactId>commons-csv</artifactId><version>1.14.1</version></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
     <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>test</scope></dependency>
   </dependencies>
-  <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
+  <build><plugins><plugin>
+    <groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId>
+    <configuration><mainClass>com.bproject.trust.TrustApplication</mainClass></configuration>
+    <executions><execution><id>selfcheck</id><goals><goal>repackage</goal></goals>
+      <configuration><classifier>selfcheck</classifier><mainClass>com.bproject.trust.selfcheck.SelfCheck</mainClass></configuration>
+    </execution></executions>
+  </plugin></plugins></build>
 </project>

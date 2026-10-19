@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useFeedback } from "../../shared/composables/useFeedback";
+import { request } from "../../shared/http/request";
 
 interface QuickAccount {
   username: string;
@@ -21,7 +22,9 @@ const props = defineProps<{
 const username = ref(""),
   password = ref("");
 const quickAccounts = ref<QuickAccount[]>([]);
-const simulated = ref(false), iamRequired = ref(false), identityReady = ref(false);
+const simulated = ref(false),
+  iamRequired = ref(false),
+  identityReady = ref(false);
 const localLoginEnabled = ref(false);
 const identityError = ref("");
 const mode = ref("LOCAL"),
@@ -37,14 +40,23 @@ const accountNames: Record<string, string> = {
 
 onMounted(async () => {
   try {
-    const metadata = await fetch("/api/v1/identity-mode", { cache: "no-store" });
-    if (!metadata.ok) throw new Error("身份模式不可用，请稍后重试");
-    const identityMode = await metadata.json();
-    if (typeof identityMode.simulated !== "boolean" || typeof identityMode.iamRequired !== "boolean")
+    const identityMode = await request(
+      "/api/v1/identity-mode",
+      { cache: "no-store" },
+      async (metadata) => {
+        if (!metadata.ok) throw new Error("身份模式不可用，请稍后重试");
+        return metadata.json();
+      },
+    );
+    if (
+      typeof identityMode.simulated !== "boolean" ||
+      typeof identityMode.iamRequired !== "boolean"
+    )
       throw new Error("身份模式不可用，请稍后重试");
     simulated.value = identityMode.simulated;
     iamRequired.value = identityMode.iamRequired;
-    localLoginEnabled.value = identityMode.localLoginEnabled === true || !iamRequired.value;
+    localLoginEnabled.value =
+      identityMode.localLoginEnabled === true || !iamRequired.value;
     if (iamRequired.value) mode.value = "IAM";
     identityReady.value = true;
   } catch {
@@ -101,18 +113,39 @@ async function quickSignIn(account: QuickAccount) {
       </div>
     </div>
     <form class="login-card" @submit.prevent="signIn">
-      <span class="eyebrow dark">{{ simulated ? "隔离测试环境" : "开发联调环境" }}</span>
-      <p v-if="simulated" class="alert" role="status">{{ mode === 'IAM' ? '隔离测试 · 模拟 IAM 身份，仅用于 TRUST 联调验收' : '隔离测试 · 本地开发身份，不具备钱包管理权限' }}</p>
-      <p v-if="identityError" class="alert error" role="alert">{{ identityError }}</p>
+      <span class="eyebrow dark">{{
+        simulated ? "隔离测试环境" : "开发联调环境"
+      }}</span>
+      <p v-if="simulated" class="alert" role="status">
+        {{
+          mode === "IAM"
+            ? "隔离测试 · 模拟 IAM 身份，仅用于 TRUST 联调验收"
+            : "隔离测试 · 本地开发身份，不具备钱包管理权限"
+        }}
+      </p>
+      <p v-if="identityError" class="alert error" role="alert">
+        {{ identityError }}
+      </p>
       <h2>登录工作台</h2>
+      <p class="small muted">
+        <span class="required-mark" aria-hidden="true">*</span> 为必填项
+      </p>
       <label
         >身份来源<select v-model="mode">
-          <option value="IAM">{{ simulated ? "模拟 IAM 测试账号" : "平台 IAM 账号" }}</option>
-          <option v-if="localLoginEnabled" value="LOCAL">开发测试账号（本地）</option>
+          <option value="IAM">
+            {{ simulated ? "模拟 IAM 测试账号" : "平台 IAM 账号" }}
+          </option>
+          <option v-if="localLoginEnabled" value="LOCAL">
+            开发测试账号（本地）
+          </option>
         </select></label
       >
       <label v-if="mode === 'IAM'"
-        >授权业务范围<input v-model="orgId" required maxlength="80"
+        ><span
+          >授权业务范围<span class="required-mark" aria-hidden="true">
+            *</span
+          ></span
+        ><input aria-label="授权业务范围" v-model="orgId" required maxlength="80"
       /></label>
       <p class="small muted">
         钱包管理需使用 IAM 账号及对应权限。开发快捷登录不具备钱包管理权。
@@ -147,14 +180,18 @@ async function quickSignIn(account: QuickAccount) {
         <div class="login-divider"><span>或使用账号密码</span></div>
       </section>
       <label
-        >账号<input
-          v-model="username"
+        ><span
+          >账号<span class="required-mark" aria-hidden="true"> *</span></span
+        ><input
+          aria-label="账号" v-model="username"
           autocomplete="username"
           required
           placeholder="请输入账号" /></label
       ><label
-        >密码<input
-          v-model="password"
+        ><span
+          >密码<span class="required-mark" aria-hidden="true"> *</span></span
+        ><input
+          aria-label="密码" v-model="password"
           type="password"
           autocomplete="current-password"
           required

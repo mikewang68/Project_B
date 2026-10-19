@@ -35,7 +35,7 @@ build复用指定Maven缓存及pnpm离线缓存，执行类型检查、前端构
 
 ## 复验与恢复
 
-`TRUST_DB_INTEGRATION=1` 启用专用库事务测试；TRUST_TEST_DB_URL显式选择trust_wallet_dev_test，运行角色仍为trust_dev_app，SPRING_LIQUIBASE_ENABLED=false。`TRUST_REAL_COMPONENTS=1` 另外启用真实Fabric/IPFS丢回执测试，前提是本节点有有效测试钱包材料，且专用通道已授权该证书。
+`TRUST_DB_INTEGRATION=1` 启用专用库事务测试；TRUST_TEST_DB_URL显式选择回环25432上的trust_iam_dev_test，运行角色使用允许名单内的trust_iam_*_app，SPRING_LIQUIBASE_ENABLED=false；不使用迁移角色运行应用。通用接入数据库测试、仅test范围的PostgreSQL兼容开关与进程恢复夹具见 [通用JSON存证](generic-evidence.md)。`TRUST_REAL_COMPONENTS=1` 另外启用真实Fabric/IPFS丢回执测试，前提是本节点有有效测试钱包材料，且专用通道已授权该证书。
 
 `tests/managed-wallet-real.py` 分setup、events、lifecycle、finish阶段保存输入/结果；setup产生策略供专用通道管理员执行，不会自动赋予网络管理员权限。重复setup需要新的独立环境，不能覆盖已有钱包材料或绑定。`tests/restart-recovery-real.py`仅暂时改变本实例IPFS目标为未使用的回环端口，随后恢复原配置并重启本实例；不会停止共享IPFS或Fabric。`tests/browser-wallet-real.cjs`使用真实后端，页面桩测试另行计数。
 

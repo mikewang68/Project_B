@@ -78,6 +78,10 @@ p {
 .small {
   font-size: 12px;
 }
+.required-mark {
+  color: #c84434;
+  font-weight: 700;
+}
 .primary {
   background: #21634f;
   color: white;
