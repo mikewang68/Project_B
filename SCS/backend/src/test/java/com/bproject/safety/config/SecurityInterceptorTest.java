@@ -138,4 +138,120 @@ class SecurityInterceptorTest {
         MockHttpServletResponse resp2 = new MockHttpServletResponse();
         assertThat(interceptor.preHandle(req2, resp2, new Object())).isTrue();
     }
+
+    @Test
+    @DisplayName("S3只读角色硬否决：PLATFORM_AUDITOR_READONLY 访问读接口放行(200)，写接口直接 403 阻断并返回脱敏 traceId")
+    void readOnlyRoleAllowedOnReadBlockedOnWrite() throws Exception {
+        SecurityInterceptor interceptor = new SecurityInterceptor(true, "scs-edge-key-2026", "scs-token-2026", objectMapper);
+
+        // 构造包含 PLATFORM_AUDITOR_READONLY 角色的 JWT
+        String readOnlyJwt = createTestJwt("auditor_01", new String[]{"PLATFORM_AUDITOR_READONLY"}, "safety", System.currentTimeMillis() / 1000 + 3600);
+
+        // 1. 读操作：GET /api/v1/overview/summary -> 放行
+        MockHttpServletRequest readReq = new MockHttpServletRequest("GET", "/api/v1/overview/summary");
+        readReq.addHeader("Authorization", "Bearer " + readOnlyJwt);
+        MockHttpServletResponse readResp = new MockHttpServletResponse();
+        boolean readAllowed = interceptor.preHandle(readReq, readResp, new Object());
+        assertThat(readAllowed).isTrue();
+        assertThat(readReq.getAttribute(SecurityInterceptor.ATTR_USER_SUB)).isEqualTo("auditor_01");
+
+        // 2. 写操作：POST /api/v1/alerts/ALT-001/handle -> 403 FORBIDDEN 硬拦截
+        MockHttpServletRequest writeReq1 = new MockHttpServletRequest("POST", "/api/v1/alerts/ALT-001/handle");
+        writeReq1.addHeader("Authorization", "Bearer " + readOnlyJwt);
+        writeReq1.addHeader("X-Trace-Id", "9f8a3c21-test-42e1-8888-91b40e32f012");
+        MockHttpServletResponse writeResp1 = new MockHttpServletResponse();
+        boolean writeAllowed1 = interceptor.preHandle(writeReq1, writeResp1, new Object());
+
+        assertThat(writeAllowed1).isFalse();
+        assertThat(writeResp1.getStatus()).isEqualTo(403);
+        assertThat(writeResp1.getHeader("X-Trace-Id")).isEqualTo("9f8a3c21-test-42e1-8888-91b40e32f012");
+        assertThat(writeResp1.getContentAsString()).contains("FORBIDDEN_READONLY_ROLE");
+        assertThat(writeResp1.getContentAsString()).contains("PLATFORM_AUDITOR_READONLY");
+        assertThat(writeResp1.getContentAsString()).contains("9f8a3c21-test-42e1-8888-91b40e32f012");
+
+        // 3. 写操作：PUT /api/v1/fences/FNC-001 -> 403 FORBIDDEN 硬拦截（测试专用只读 Token）
+        MockHttpServletRequest writeReq2 = new MockHttpServletRequest("PUT", "/api/v1/fences/FNC-001");
+        writeReq2.addHeader("Authorization", "Bearer scs-token-2026-readonly");
+        MockHttpServletResponse writeResp2 = new MockHttpServletResponse();
+        boolean writeAllowed2 = interceptor.preHandle(writeReq2, writeResp2, new Object());
+        assertThat(writeAllowed2).isFalse();
+        assertThat(writeResp2.getStatus()).isEqualTo(403);
+        assertThat(writeResp2.getContentAsString()).contains("FORBIDDEN_READONLY_ROLE");
+
+        // 4. 写操作：DELETE /api/v1/rules/1 -> 403 FORBIDDEN 硬拦截
+        MockHttpServletRequest writeReq3 = new MockHttpServletRequest("DELETE", "/api/v1/rules/1");
+        writeReq3.addHeader("Authorization", "Bearer scs-readonly-token");
+        MockHttpServletResponse writeResp3 = new MockHttpServletResponse();
+        boolean writeAllowed3 = interceptor.preHandle(writeReq3, writeResp3, new Object());
+        assertThat(writeAllowed3).isFalse();
+        assertThat(writeResp3.getStatus()).isEqualTo(403);
+    }
+
+    @Test
+    @DisplayName("S3跨Scope隔离拦截：Token受众为其他系统(如 wms)时，返回 403 FORBIDDEN_SCOPE_MISMATCH")
+    void crossScopeRejected() throws Exception {
+        SecurityInterceptor interceptor = new SecurityInterceptor(true, "scs-edge-key-2026", "scs-token-2026", objectMapper);
+
+        String wmsJwt = createTestJwt("wms_user", new String[]{"OPERATOR"}, "wms", System.currentTimeMillis() / 1000 + 3600);
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/alerts");
+        req.addHeader("Authorization", "Bearer " + wmsJwt);
+        req.addHeader("X-Trace-Id", "trace-cross-scope-001");
+        MockHttpServletResponse resp = new MockHttpServletResponse();
+
+        boolean allowed = interceptor.preHandle(req, resp, new Object());
+        assertThat(allowed).isFalse();
+        assertThat(resp.getStatus()).isEqualTo(403);
+        assertThat(resp.getContentAsString()).contains("FORBIDDEN_SCOPE_MISMATCH");
+    }
+
+    @Test
+    @DisplayName("S3过期Token拦截：exp在过去的Token返回 401 UNAUTHORIZED")
+    void expiredTokenRejected() throws Exception {
+        SecurityInterceptor interceptor = new SecurityInterceptor(true, "scs-edge-key-2026", "scs-token-2026", objectMapper);
+
+        String expiredJwt = createTestJwt("user_exp", new String[]{"OPERATOR"}, "safety", System.currentTimeMillis() / 1000 - 3600);
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/alerts");
+        req.addHeader("Authorization", "Bearer " + expiredJwt);
+        MockHttpServletResponse resp = new MockHttpServletResponse();
+
+        boolean allowed = interceptor.preHandle(req, resp, new Object());
+        assertThat(allowed).isFalse();
+        assertThat(resp.getStatus()).isEqualTo(401);
+        assertThat(resp.getContentAsString()).contains("过期");
+    }
+
+    @Test
+    @DisplayName("S3管理员写操作放行：拥有 ADMIN 角色的凭证允许执行写操作")
+    void adminAllowedOnWrite() throws Exception {
+        SecurityInterceptor interceptor = new SecurityInterceptor(true, "scs-edge-key-2026", "scs-token-2026", objectMapper);
+
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/fences");
+        req.addHeader("Authorization", "Bearer scs-token-2026");
+        MockHttpServletResponse resp = new MockHttpServletResponse();
+
+        boolean allowed = interceptor.preHandle(req, resp, new Object());
+        assertThat(allowed).isTrue();
+    }
+
+    private String createTestJwt(String sub, String[] roles, String scope, long expSeconds) {
+        String header = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString("{\"alg\":\"none\",\"typ\":\"JWT\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        StringBuilder rolesJson = new StringBuilder("[");
+        for (int i = 0; i < roles.length; i++) {
+            if (i > 0) rolesJson.append(",");
+            rolesJson.append("\"").append(roles[i]).append("\"");
+        }
+        rolesJson.append("]");
+
+        String payloadJson = String.format("{\"sub\":\"%s\",\"roles\":%s,\"scope\":\"%s\",\"aud\":\"%s\",\"exp\":%d}",
+                sub, rolesJson, scope, scope, expSeconds);
+
+        String payload = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(payloadJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        return header + "." + payload + ".test_signature";
+    }
 }
