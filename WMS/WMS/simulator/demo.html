@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WMS 多物料模拟终端</title>
+<style>
+:root{font:15px/1.55 "Microsoft YaHei",system-ui,sans-serif;color:#21364b;background:#eef3f8}*{box-sizing:border-box}body{margin:0}header{background:#20374d;color:white;padding:24px max(24px,calc((100vw - 1280px)/2))}header h1{font-size:25px;margin:0 0 5px}header p{color:#c6d7e6;margin:0}main{max-width:1328px;margin:auto;padding:24px}.banner{background:#fff4d6;border-left:4px solid #d89216;padding:12px 16px;margin-bottom:20px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.metric,.panel{background:white;border:1px solid #dce5ee;border-radius:12px;padding:20px}.metric span{display:block;color:#697c8f}.metric strong{font-size:30px;color:#246cb5}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}h2{font-size:18px;margin:0 0 16px}label{display:block;margin:12px 0 5px}select,input{width:100%;padding:10px;border:1px solid #becddb;border-radius:6px;background:white;font:inherit}button{padding:9px 14px;border:1px solid #b8cbdd;background:white;color:#254b71;border-radius:6px;cursor:pointer;font:inherit;margin:5px 5px 0 0}button.primary{background:#2779ca;border-color:#2779ca;color:white}button:disabled{opacity:.55;cursor:wait}.hint{font-size:13px;color:#65788a}#message{min-height:26px;margin:10px 0;color:#176e48}#message.error{color:#ac2936}.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.controls label{display:flex;gap:6px;align-items:center;margin:0}.controls input{width:auto}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;border-bottom:1px solid #e2eaf1;padding:10px 8px;white-space:nowrap}th{color:#58718a;background:#f5f8fc}section.panel{margin-bottom:20px}#mode{display:inline-block;background:#36566f;padding:2px 10px;border-radius:20px;font-size:13px}.weight-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}[hidden]{display:none!important}footer{color:#64788c;font-size:12px;margin:20px 0}@media(max-width:800px){.metrics{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}main{padding:14px}header{padding:20px}}
+</style>
+<header><h1>WMS · 多物料模拟终端 <span id="mode">连接中</span></h1><p>选择物料 / 入库单 → 扫码计数或批次称重 → 确认收货 → 持久化记录</p></header>
+<main>
+<div class="banner" id="safety">本地演练：数据保存于此程序的 SQLite，不是正式 WMS 或 openGauss。扫描、称重本身不增加库存。</div>
+<section class="panel"><h2>当前物料与入库任务</h2><label for="task">选择物料 / 入库单</label><select id="task"></select><p id="order"></p><p class="hint">不同任务独立保存数量和队列，不混加“捆、袋、件、吨”。切换任务会关闭自动采集和自动确认；已排队记录仍在后台处理。</p></section>
+<div class="metrics"><div class="metric"><span id="planned-label">计划收货</span><strong id="planned">—</strong></div><div class="metric"><span>有效标签</span><strong id="scanned">—</strong></div><div class="metric"><span id="staged-label">等待确认</span><strong id="staged">—</strong></div><div class="metric"><span id="qty-label">本地演练已收</span><strong id="received">—</strong></div></div>
+<div id="message" role="status" aria-live="polite"></div>
+<div class="grid">
+<section class="panel"><h2>1 · 标签采集 / 称重</h2><label for="device">模拟设备</label><select id="device"></select><label for="tag" id="tag-label">物料标签</label><select id="tag"></select><button class="primary" id="scan">模拟读取标签</button><button id="unknown">模拟未知标签</button><button id="read-failed">模拟无法读取</button><p class="hint" id="scan-hint"></p>
+<div id="weigh-panel" hidden><div class="weight-row"><div><label for="gross" id="gross-label">毛重</label><input id="gross" type="number" step="0.001" min="0" inputmode="decimal"></div><div><label for="tare" id="tare-label">皮重</label><input id="tare" type="number" step="0.001" min="0" inputmode="decimal"></div></div><p>净重：<strong id="net">—</strong> <span id="weight-unit"></span></p><button class="primary" id="weigh">保存本批次称重</button><p class="hint">先扫描本批次标签，再称重。净重 = 毛重 − 皮重，最多三位小数。已称重数据不能直接覆盖；批次标签不作为“一标签一吨”的序列号上传。</p></div></section>
+<section class="panel"><h2>2 · 确认与后台发送</h2><p>确认会固定当前物料、数量和请求编号。后台重试不会更换编号，也不会把其他物料混入本次收货。</p><button class="primary" id="confirm">确认当前采集并排队收货</button><button id="flush">立即发送 / 核对一次</button><hr style="border:0;border-top:1px solid #e2eaf1;margin:20px 0"><div class="controls"><label><input type="checkbox" id="auto">定时采集（扫码 / 预设称重）</label><label><input type="checkbox" id="auto-confirm">同时自动确认收货</label><label><input type="checkbox" id="offline">模拟接收端断网</label></div><button id="tick">手动执行一轮设备采集</button><p class="hint">自动采集只针对当前选中任务；称重采用配置中的模拟毛重和皮重，缺少预设时等待人工录入。计划完成后不再产生新数据。发送后结果不确定进入 REVIEW，只核对，不盲目重发。</p></section>
+</div>
+<section class="panel" id="measurements-panel" hidden><h2>当前物料称重记录</h2><div class="table-wrap"><table><thead><tr><th>批次标签</th><th>设备</th><th>毛重</th><th>皮重</th><th>净重</th><th>单位</th></tr></thead><tbody id="measurements"></tbody></table></div></section>
+<section class="panel"><h2>各物料演练库存</h2><p class="hint">只显示各独立任务的本地演练收货，不等于服务器库存，也不跨单位合计。</p><div class="table-wrap"><table><thead><tr><th>物料</th><th>入库任务</th><th>计量方式</th><th>已收数量</th><th>单位</th></tr></thead><tbody id="inventory"></tbody></table></div></section>
+<section class="panel"><h2>当前任务收货队列</h2><div class="table-wrap"><table><thead><tr><th>固定请求编号</th><th>状态</th><th>尝试次数</th><th>说明</th><th>更新时间</th></tr></thead><tbody id="jobs"></tbody></table></div></section>
+<section class="panel"><h2>当前物料本地收货记录</h2><p class="hint" id="receipt-note">真实持久化的独立演练记录，刷新或重启后保留；不冒充服务器业务数据。</p><div class="table-wrap"><table><thead><tr><th>物料</th><th>收货流水</th><th>数量</th><th>单位</th><th>时间</th></tr></thead><tbody id="receipts"></tbody></table></div></section>
+<section class="panel"><h2>当前任务最近事件</h2><div class="table-wrap"><table><thead><tr><th>设备</th><th>标签</th><th>结果</th><th>时间</th></tr></thead><tbody id="events"></tbody></table></div></section>
+<footer>支持多物料入库模拟，不包含出库、盘点审批、移库或完整标签补标。没有实物 RFID 读写器或地磅接入。面板只监听本机。</footer>
+</main>
+<script>
+const csrf='__CSRF__';let working=false,refreshPromise=null,state=null,renderedTask=null;
+const el=id=>document.getElementById(id);
+const names={SCANNED:'有效扫描',WEIGHED:'已保存称重',DUPLICATE:'重复读取，已忽略',UNKNOWN_TAG:'未知标签',READ_FAILED:'未读到标签',PENDING:'待发送',IN_FLIGHT:'发送 / 核对中',RETRY:'断网 / 暂不可用，等待重试',DELIVERED:'已确认接收',REVIEW:'结果不确定，只核对不重发',REJECTED:'已拒绝，检查配置',FAILED:'重试次数已耗尽'};
+const num=x=>Number(x).toLocaleString('zh-CN',{maximumFractionDigits:3});
+function table(id,rows){const body=el(id);body.replaceChildren();for(const values of rows){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value??'—';tr.append(td)}body.append(tr)}}
+function options(id,items){const select=el(id);select.replaceChildren();for(const [value,label]of items){const o=document.createElement('option');o.value=value;o.textContent=label;select.append(o)}}
+function updateNet(){const g=Number(el('gross').value),t=Number(el('tare').value);el('net').textContent=el('gross').value!==''&&el('tare').value!==''&&Number.isFinite(g)&&Number.isFinite(t)&&g>t&&t>=0?num(g-t):'—'}
+function fillWeight(){const tag=el('tag').value,preset=state?.measurements?.find(m=>m.epc===tag)||state?.order.weighings?.[tag];el('gross').value=preset?.gross??'';el('tare').value=preset?.tare??'0';updateNet()}
+function render(s){
+ state=s;const o=s.order,weighted=o.measurement_mode==='weight',unit=o.unit,tasks=s.tasks||[{id:o.external_order_code,order:o,inventory:s.demo_inventory}],active=s.active_task||o.external_order_code;
+ el('mode').textContent=s.mode==='demo'?'本地 SQLite 演练':s.target_environment==='authorized_lab'?'实验室 WMS 真实写入':'获准测试 API';
+ if(renderedTask!==active){options('task',tasks.map(t=>[t.id,`${t.order.good_name||t.order.good_code} · ${t.order.unit} · ${t.id}`]));options('device',s.devices.map(d=>[d.id,d.name||d.id]));options('tag',o.tags.map(x=>[x,x]));renderedTask=active;fillWeight()}el('task').value=active;
+ const waiting=s.scans.filter(x=>!x.job_id),waitingEpcs=new Set(waiting.map(x=>x.epc)),measurements=s.measurements||[];
+ const unweighed=waiting.filter(x=>!measurements.some(m=>m.epc===x.epc)).length;
+ const stagedWeight=measurements.filter(m=>waitingEpcs.has(m.epc)).reduce((a,m)=>a+Number(m.net),0);
+ const presets=Object.values(o.weighings||{});const fullPlan=weighted&&presets.length===o.tags.length;
+ el('planned').textContent=weighted?(fullPlan?num(presets.reduce((a,w)=>a+Number(w.gross)-Number(w.tare),0))+' '+unit:o.tags.length+' 批次'):o.tags.length+' '+unit;
+ el('planned-label').textContent=weighted&&fullPlan?'预设参考净重':'计划收货';el('scanned').textContent=s.scans.length+' 个';
+ el('staged-label').textContent=weighted?`待确认净重（未称重 ${unweighed} 批）`:'待确认数量';el('staged').textContent=weighted?num(stagedWeight)+' '+unit:waiting.length+' '+unit;
+ el('received').textContent=s.mode==='demo'?num(s.demo_inventory)+' '+unit:(s.job_counts.DELIVERED||0)+' 批';
+ el('qty-label').textContent=s.mode==='demo'?'当前物料本地已收':'已确认发送批数';
+ el('safety').textContent=s.mode==='demo'?'本地 SQLite 演练，不是正式 WMS/openGauss。扫描和称重本身不增加库存，确认收货后才落库。':s.target_environment==='authorized_lab'?'已授权的实验室真实 WMS：确认将写入服务器业务数据库，绝非本地演练。只允许已批准的 SIM- 有限入库任务。':'真实测试 API 模式：确认将写入获准测试实例。此面板不是正式库存看板。';
+ el('receipt-note').textContent=s.mode==='demo'?'真实持久化的独立演练记录，刷新或重启后保留；不冒充服务器业务数据。':'真实测试收货请在对应 WMS 入库管理查看；本表仅用于本地演练。';
+ el('order').textContent=`${o.good_name||o.good_code} · ${o.good_code} · ${o.batch_code||'WMS订单批次'} · 库位 ${o.location_code} · ${weighted?'称重净重':'一标签一'+unit}`;
+ el('tag-label').textContent=weighted?'车辆 / 批次标签（不按标签个数计算重量）':`物料标签（一标签一${unit}）`;
+ el('scan-hint').textContent=weighted?'读取标签只识别批次；保存毛重和皮重后才能确认入库。':'重复读取不会重复计数；本任务每个标签对应一个'+unit+'，托盘含多件等换算尚未实现。';
+ el('weigh-panel').hidden=!weighted;el('measurements-panel').hidden=!weighted;el('gross-label').textContent='毛重（'+unit+'）';el('tare-label').textContent='皮重（'+unit+'）';el('weight-unit').textContent=unit;
+ el('auto').checked=s.auto;el('auto-confirm').checked=s.auto_confirm;el('offline').checked=!s.online;
+ table('measurements',measurements.map(m=>[m.epc,m.device,num(m.gross),num(m.tare),num(m.net),unit]));
+ table('inventory',tasks.map(t=>[t.order.good_name||t.order.good_code,t.id,t.order.measurement_mode==='weight'?'称重':'扫码计数',s.mode==='demo'?num(t.inventory):'查看 WMS',t.order.unit]));
+ table('jobs',s.jobs.map(j=>[j.id,names[j.status]||j.status,j.attempts,j.error||'',j.updated]));
+ table('receipts',s.demo_receipts.map(r=>[o.good_name||o.good_code,r.operation,num(r.quantity),unit,r.created]));
+ table('events',s.events.map(e=>[e.device,e.epc||'无读取结果',names[e.status]||e.status,e.created]));
+}
+async function refresh(){if(refreshPromise)return refreshPromise;refreshPromise=(async()=>{const r=await fetch('/api/state',{cache:'no-store'});if(!r.ok)throw Error('面板暂不可达');render(await r.json())})();try{await refreshPromise}finally{refreshPromise=null}}
+async function post(path,body={}){
+ if(working||!state)return;working=true;document.querySelectorAll('button,input,select').forEach(x=>x.disabled=true);
+ try{const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-Simulator-CSRF':csrf},body:JSON.stringify({...body,task_id:state.active_task})});const data=await r.json();if(!r.ok)throw Error(data.error||'操作失败');el('message').className='';el('message').textContent=path==='/api/task'?'已切换任务；请按需重新开启自动采集。':data.status?(names[data.status]||data.status):data.job_id?'收货已排队，后台将处理':'操作已完成';if(refreshPromise)await refreshPromise;await refresh()}
+ catch(e){el('message').className='error';el('message').textContent=e.message;await refresh().catch(()=>{})}
+ finally{working=false;document.querySelectorAll('button,input,select').forEach(x=>x.disabled=false)}
+}
+el('task').onchange=()=>post('/api/task',{selected:el('task').value});el('tag').onchange=fillWeight;el('gross').oninput=updateNet;el('tare').oninput=updateNet;
+el('scan').onclick=()=>post('/api/scan',{device:el('device').value,epc:el('tag').value,event_id:crypto.randomUUID()});
+el('weigh').onclick=()=>post('/api/weigh',{device:el('device').value,epc:el('tag').value,gross:el('gross').value,tare:el('tare').value,event_id:crypto.randomUUID()});
+el('unknown').onclick=()=>post('/api/scan',{device:el('device').value,epc:'UNKNOWN-DEMO-TAG'});el('read-failed').onclick=()=>post('/api/scan',{device:el('device').value,epc:''});el('confirm').onclick=()=>post('/api/confirm');el('flush').onclick=()=>post('/api/flush');el('tick').onclick=()=>post('/api/tick');
+for(const id of['auto','auto-confirm','offline'])el(id).onchange=()=>post('/api/settings',{auto:el('auto').checked,auto_confirm:el('auto-confirm').checked,online:!el('offline').checked});
+refresh().catch(e=>{el('message').textContent=e.message});setInterval(()=>{if(!working)refresh().catch(()=>{el('message').className='error';el('message').textContent='本地服务已断开；重新启动后数据仍保留。'})},1500);
+</script>
+</html>

@@ -1,0 +1,83 @@
+{
+  "mode": "demo",
+  "state_dir": "runtime",
+  "interval_seconds": 10,
+  "retry_limit": 8,
+  "devices": [
+    {"id": "SIM-PDA-01", "name": "模拟收货手持机 1"},
+    {"id": "SIM-PDA-02", "name": "模拟收货手持机 2"},
+    {"id": "SIM-PDA-03", "name": "模拟收货手持机 3"}
+  ],
+  "order": {
+    "id": 1,
+    "external_order_code": "SIM-INBOUND-001",
+    "line_id": 1,
+    "good_code": "SIM-STEEL-001",
+    "good_name": "演示螺纹钢",
+    "unit": "捆",
+    "location_code": "SIM-A-01",
+    "batch_code": "SIM-BATCH-001",
+    "tags": [
+      "SIM-STEEL-B001", "SIM-STEEL-B002", "SIM-STEEL-B003",
+      "SIM-STEEL-B004", "SIM-STEEL-B005", "SIM-STEEL-B006",
+      "SIM-STEEL-B007", "SIM-STEEL-B008", "SIM-STEEL-B009",
+      "SIM-STEEL-B010"
+    ]
+  },
+  "additional_orders": [
+    {
+      "id": 2, "external_order_code": "SIM-INBOUND-FLYASH-BAG", "line_id": 2,
+      "good_code": "SIM-FLYASH-BAG", "good_name": "袋装粉煤灰", "unit": "袋",
+      "measurement_mode": "count", "location_code": "SIM-B-01", "batch_code": "SIM-ASH-BAG-001",
+      "tags": ["SIM-ASH-BAG-001", "SIM-ASH-BAG-002", "SIM-ASH-BAG-003", "SIM-ASH-BAG-004", "SIM-ASH-BAG-005", "SIM-ASH-BAG-006"]
+    },
+    {
+      "id": 3, "external_order_code": "SIM-INBOUND-CEMENT", "line_id": 3,
+      "good_code": "SIM-CEMENT-001", "good_name": "袋装水泥", "unit": "袋",
+      "measurement_mode": "count", "location_code": "SIM-B-02", "batch_code": "SIM-CEMENT-BATCH-001",
+      "tags": ["SIM-CEMENT-BAG-001", "SIM-CEMENT-BAG-002", "SIM-CEMENT-BAG-003", "SIM-CEMENT-BAG-004", "SIM-CEMENT-BAG-005", "SIM-CEMENT-BAG-006"]
+    },
+    {
+      "id": 4, "external_order_code": "SIM-INBOUND-PARTS", "line_id": 4,
+      "good_code": "SIM-PARTS-001", "good_name": "机械配件", "unit": "件",
+      "measurement_mode": "count", "location_code": "SIM-C-01", "batch_code": "SIM-PARTS-BATCH-001",
+      "tags": ["SIM-PART-001", "SIM-PART-002", "SIM-PART-003", "SIM-PART-004", "SIM-PART-005", "SIM-PART-006"]
+    },
+    {
+      "id": 5, "external_order_code": "SIM-INBOUND-FLYASH-BULK", "line_id": 5,
+      "good_code": "SIM-FLYASH-BULK", "good_name": "散装粉煤灰", "unit": "吨",
+      "measurement_mode": "weight", "location_code": "SIM-SILO-01", "batch_code": "SIM-ASH-BULK-001",
+      "tags": ["SIM-ASH-LOAD-001", "SIM-ASH-LOAD-002", "SIM-ASH-LOAD-003"],
+      "weighings": {
+        "SIM-ASH-LOAD-001": {"gross": "32.500", "tare": "12.500"},
+        "SIM-ASH-LOAD-002": {"gross": "31.800", "tare": "12.300"},
+        "SIM-ASH-LOAD-003": {"gross": "33.200", "tare": "12.800"}
+      }
+    },
+    {
+      "id": 6, "external_order_code": "SIM-INBOUND-GRAVEL", "line_id": 6,
+      "good_code": "SIM-GRAVEL-001", "good_name": "散装砂石", "unit": "吨",
+      "measurement_mode": "weight", "location_code": "SIM-YARD-01", "batch_code": "SIM-GRAVEL-BATCH-001",
+      "tags": ["SIM-GRAVEL-LOAD-001", "SIM-GRAVEL-LOAD-002", "SIM-GRAVEL-LOAD-003"],
+      "weighings": {
+        "SIM-GRAVEL-LOAD-001": {"gross": "35.250", "tare": "13.100"},
+        "SIM-GRAVEL-LOAD-002": {"gross": "34.600", "tare": "12.850"},
+        "SIM-GRAVEL-LOAD-003": {"gross": "36.125", "tare": "13.000"}
+      }
+    }
+  ],
+  "target": {
+    "environment": "unconfigured",
+    "base_url": "",
+    "approved_base_url": "",
+    "write_enabled": false,
+    "allow_loopback_http": false,
+    "ca_file": "",
+    "timeout_seconds": 10,
+    "company_code": "",
+    "warehouse_code": "",
+    "owner_code": "",
+    "username_env": "WMS_SIM_USERNAME",
+    "password_env": "WMS_SIM_PASSWORD"
+  }
+}

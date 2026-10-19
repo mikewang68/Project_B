@@ -1,0 +1,7 @@
+runtime/
+*.local.json
+__pycache__/
+*.py[cod]
+.private/
+*.env
+*.dump
