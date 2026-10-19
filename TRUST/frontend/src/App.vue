@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { readPage, writePage } from "./app/pageLocation";
 import type { ApiRecord } from "./shared/types";
 import { provideFeedback } from "./shared/composables/useFeedback";
 import { useSession } from "./features/auth/useSession";
@@ -17,15 +18,20 @@ import WalletPage from "./features/wallet/WalletPage.vue";
 const { run, act, busy, error, clearResults } = provideFeedback();
 const entered = ref(false);
 const entryPending = ref(false);
+const initialPage = readPage();
+const locationWarning = ref(initialPage.warning);
+if (initialPage.warning) writePage("events");
 const { me, canWrite, canAdmin, signIn, signOut, quickSignIn, iamSignIn } =
   useSession();
-const tab = ref("events"),
+const tab = ref(initialPage.page),
   selectedId = ref(""),
   correction = ref<ApiRecord | null>(null);
 async function navigate(id: string) {
   await act({ action: "NAVIGATE", menuId: id, summary: "切换功能页面" }, () => {
     preparePageRead(id);
     tab.value = id;
+    writePage(id);
+    locationWarning.value = "";
     selectedId.value = "";
   });
 }
@@ -50,15 +56,16 @@ async function correct(record: ApiRecord) {
       preparePageRead("create");
       correction.value = record;
       tab.value = "create";
+      writePage("create");
       selectedId.value = "";
     },
   );
 }
 async function enter() {
   await act(
-    { action: "NAVIGATE", menuId: "events", summary: "进入工作台" },
+    { action: "NAVIGATE", menuId: tab.value, summary: "进入工作台" },
     () => {
-      preparePageRead("events");
+      preparePageRead(tab.value);
       entered.value = true;
     },
   );
@@ -78,18 +85,17 @@ function saved(id: string) {
   preparePageRead(`event:${id}`);
   correction.value = null;
   tab.value = "events";
+  writePage("events");
   selectedId.value = id;
 }
 async function logout() {
-  await act(
-    { action: "LOGOUT", menuId: tab.value, summary: "退出工作台" },
-    async () => {
-      await signOut();
-      tab.value = "events";
-      selectedId.value = "";
-      correction.value = null;
-    },
-  );
+  // The server records logout from its existing session and always clears it even when
+  // audit/IAM is unavailable. A client audit receipt must not gate this recovery action.
+  await run(async () => {
+    await signOut();
+    selectedId.value = "";
+    correction.value = null;
+  });
 }
 </script>
 
@@ -112,6 +118,9 @@ async function logout() {
     @navigate="navigate"
     @logout="logout"
   >
+    <p v-if="locationWarning" class="alert" role="status">
+      {{ locationWarning }}
+    </p>
     <EventDetail
       v-if="selectedId"
       :id="selectedId"
@@ -145,6 +154,7 @@ async function logout() {
       <OperationsPage
         v-else-if="!selectedId && tab === 'status'"
         :can-admin="canAdmin"
+        :verified-identity="me.identityProvider === 'IAM' && !me.simulated"
       />
     </KeepAlive>
   </WorkspaceShell>

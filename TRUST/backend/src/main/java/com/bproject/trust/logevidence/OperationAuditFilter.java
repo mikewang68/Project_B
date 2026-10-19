@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.util.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.ContentCachingResponseWrapper;
 
 /** Persist request intent before controller execution; HTTP outcome is not a ledger outcome. */
 public class OperationAuditFilter extends OncePerRequestFilter {
@@ -26,7 +25,8 @@ public class OperationAuditFilter extends OncePerRequestFilter {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     String path = req.getRequestURI();
     String pageId = req.getHeader("X-TRUST-Page-Action-Id");
-    if (!(auth != null && auth.getPrincipal() instanceof PlatformPrincipal)
+    if (auth == null || !auth.isAuthenticated()
+        || auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken
         || !path.startsWith("/api/v1/")
         || path.startsWith("/api/v1/integrations/")
         || path.startsWith("/api/v1/audit/page-actions")
@@ -35,11 +35,12 @@ public class OperationAuditFilter extends OncePerRequestFilter {
       chain.doFilter(req, res);
       return;
     }
-    PlatformPrincipal p = (PlatformPrincipal) auth.getPrincipal();
+    PlatformPrincipal p;
     String trace = pageId == null ? UUID.randomUUID().toString() : pageId;
     String action =
         "GET".equals(req.getMethod()) ? "READ" : path.endsWith("/logout") ? "LOGOUT" : "EXECUTE";
     try {
+      p = ops.pagePrincipal(auth);
       if (pageId != null) {
         ops.verifyPageAction(auth, pageId);
         req.setAttribute("TRUST_VERIFIED_PAGE_ACTION", pageId);
@@ -66,13 +67,32 @@ public class OperationAuditFilter extends OncePerRequestFilter {
       error(res, e);
       return;
     }
-    var wrapped = new ContentCachingResponseWrapper(res);
     try {
-      chain.doFilter(req, wrapped);
+      chain.doFilter(req, res);
+    } catch (Exception failure) {
+      try {
+        ops.enqueue(p.orgId(), p.userId(), action, "", "FAILED", "REQUEST", "",
+            req.getMethod(), path, "Request execution or transfer failed; outcome may be partial", trace);
+      } catch (Exception unavailable) {
+        org.slf4j.LoggerFactory.getLogger(getClass()).warn("AUDIT_REQUEST_OUTCOME_UNCONFIRMED");
+      }
+      if (res.isCommitted()) {
+        if (failure instanceof IOException io) throw io;
+        if (failure instanceof ServletException se) throw se;
+        throw new ServletException(failure);
+      }
+      res.resetBuffer();
+      error(res, failure);
+      return;
+    }
+    // No asynchronous controllers currently use this filter. Never label a pending async
+    // transfer successful; its durable STARTED record remains explicitly unconfirmed.
+    if (req.isAsyncStarted()) return;
+    try {
       String outcome =
-          wrapped.getStatus() == 401 || wrapped.getStatus() == 403
+          res.getStatus() == 401 || res.getStatus() == 403
               ? "DENIED"
-              : wrapped.getStatus() >= 400 ? "FAILED" : "SUCCESS";
+              : res.getStatus() >= 400 ? "FAILED" : "SUCCESS";
       ops.enqueue(
           p.orgId(),
           p.userId(),
@@ -85,15 +105,15 @@ public class OperationAuditFilter extends OncePerRequestFilter {
           path,
           "HTTP outcome only",
           trace);
-      wrapped.copyBodyToResponse();
     } catch (Exception e) {
       // STARTED remains durable if outcome persistence fails: never manufacture a successful
       // result.
       if (!res.isCommitted()) {
         res.resetBuffer();
         error(res, e);
-      } else if (e instanceof ServletException se) throw se;
-      else throw new ServletException(e);
+      } else {
+        org.slf4j.LoggerFactory.getLogger(getClass()).warn("AUDIT_REQUEST_OUTCOME_UNCONFIRMED");
+      }
     }
   }
 

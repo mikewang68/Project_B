@@ -86,7 +86,7 @@ class SimulatedIamBackendIntegrationTest {
   @BeforeEach
   void resetSimulation() throws Exception {
     try (var connection = db.getDataSource().getConnection()) {
-      assertTrue(connection.getMetaData().getURL().endsWith("/trust_iam_dev_test"));
+      com.bproject.trust.support.TestDatabase.require(connection.getMetaData().getURL());
     }
     iam.setAvailable(true);
     iam.updatePermissions(

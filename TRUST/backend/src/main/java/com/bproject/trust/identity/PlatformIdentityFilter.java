@@ -42,7 +42,7 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
     String path = request.getServletPath();
     if (path.isEmpty()) path = request.getRequestURI().substring(request.getContextPath().length());
     // Login-page metadata remains available even during an IAM outage.
-    if (path.equals("/api/v1/identity-mode")) {
+    if (path.equals("/api/v1/identity-mode") || path.equals("/api/v1/csrf")) {
       chain.doFilter(request, response);
       return;
     }

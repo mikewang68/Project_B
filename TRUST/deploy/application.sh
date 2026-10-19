@@ -30,6 +30,7 @@ case "${1:-status}" in
   cd "$ROOT/frontend"
   pnpm install --frozen-lockfile
   pnpm run build
+  rm -rf -- "$ROOT/backend/src/main/resources/static"
   mkdir -p "$ROOT/backend/src/main/resources/static"
   cp -a "$ROOT/frontend/dist/." "$ROOT/backend/src/main/resources/static/"
   cd "$ROOT/backend"

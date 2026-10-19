@@ -69,6 +69,9 @@ class OperationAuditProxyTest {
     }
 
     @Bean
+    CurrentIdentity currentIdentity(JdbcTemplate db) { return new CurrentIdentity(db); }
+
+    @Bean
     LogSettings logSettings() {
       return mock(LogSettings.class);
     }
@@ -229,6 +232,8 @@ class OperationAuditProxyTest {
         .update(startsWith("UPDATE audit_delivery"), any(Object[].class));
     when(db.queryForObject(startsWith("SELECT event_json"), eq(String.class), anyString()))
         .thenAnswer(call -> canonical.get());
+    when(db.queryForObject(startsWith("SELECT COUNT(*) FROM audit_delivery"), eq(Long.class), anyString(), anyString()))
+        .thenReturn(1L);
     Path token = root.resolve("synthetic-token.txt");
     Files.writeString(token, "synthetic-local-audit-delivery-credential");
     var server =

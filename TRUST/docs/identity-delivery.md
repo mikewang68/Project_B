@@ -64,7 +64,7 @@ TRUST 给每个证书版本分配独立 enrollmentId；注册秘密先持久化�
 
 ## 测试应用及吊销恢复
 
-测试应用使用 [IAM](../../IAM/deploy/test-activation.conf.example) / [TRUST](../deploy/test-activation.conf.example) 的持久启动门禁；两个服务必须同时 `disable --now`，部署不创建启动标记。`retry` 对保存的 `action=REVOKE` 或 `desiredState=DELETED` 任务，除 `retry` 权限外还必须持有 `revoke`；鉴权失败不更新调度时间、请求回执或审计。
+测试应用使用 IAM（外部依赖，由 IAM 方提供 `IAM/deploy/test-activation.conf.example`，不包含在 TRUST 包） / [TRUST](../deploy/test-activation.conf.example) 的持久启动门禁；两个服务必须同时 `disable --now`，部署不创建启动标记。`retry` 对保存的 `action=REVOKE` 或 `desiredState=DELETED` 任务，除 `retry` 权限外还必须持有 `revoke`；鉴权失败不更新调度时间、请求回执或审计。
 
 删除主体仍待完成的吊销可以由具备 `retry` 和 `revoke` 的调用方重试；这不会恢复用户、改变revision或重启已经完成的CRL阶段。吊销worker先在事务内固定证书版本并持久标记 `crl_state=REVOKING`，随后在事务外调用CA。恢复到ACTIVE的新修订仍可受理；存在未决吊销时保持待处理，接管任务先确认这些旧版本CA_REVOKED，再签发新enrollment版本，不能重用正在吊销的证书。已经发出的CA动作可能在租约丢失后完成，须幂等核对，不能把超时当作未吊销。此内部协调不等待全网CRL传播才签发新版本；通道撤销是否实际生效仍需独立CRL核验。查询READY另核对当前证书ISSUED及网络VERIFIED，状态不一致按RETRY呈现。
 

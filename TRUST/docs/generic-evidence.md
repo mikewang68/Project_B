@@ -1,5 +1,7 @@
 # 通用 JSON 存证接入
 
+AUDIT 日志映射及待确认边界见 [OPERATION_LOG 接入方案](operation-log-generic.md)。
+
 本入口供源系统提交完整 JSON 业务快照，默认关闭。TRUST 持久受理后，归档首次请求原文字节及清单到 IPFS，再通过已批准钱包把摘要和 CID 登记到 Fabric。202 只表示数据库已受理，不表示完成上链，也不证明源系统所述业务事实真实。
 
 首版只提供机器 API，无通用页面、附件上传或公开下载。payload 中的 URL、CID、操作员编号均为普通字段；TRUST 不下载链接，不验证其内容或把源系统操作员声明解释为人类密码学签名。来源、组织和提交主体只能由服务端配置确定。
@@ -103,7 +105,7 @@ python scripts/generic-evidence.py retry --target-file .local/targets.json --tar
 
 按隔离实例运维流程使用迁移角色执行 Liquibase。005 迁移为已有记录设置 LEGACY_V1、保留已有来源命名、建立分类约束与原文表。运行账号不执行DDL；不要手工删除迁移记录或仅取消batch NOT NULL来替代迁移。停用新入口可暂停消费，不能回滚删除已受理原文。
 
-`mvn test`运行离线测试。真实SQL条件测试需显式设置 TRUST_GENERIC_DB_TEST=1、专用本机 TRUST_TEST_DB_URL、受限 TRUST_DB_USER/PASSWORD 及迁移测试凭据。测试目标严格限定 `127.0.0.1:25432/trust_iam_dev_test`。GenericMigrationDatabaseTest 用迁移角色执行实际迁移及授权、用应用角色复验限制；GenericDatabaseIntegrationTest 用受限角色验证事务、并发和归档恢复。迁移升级测试仅创建并清理自己的随机schema。
+`mvn test`运行离线测试。真实SQL条件测试需显式设置 TRUST_GENERIC_DB_TEST=1、专用本机 TRUST_TEST_DB_URL、受限 TRUST_DB_USER/PASSWORD 及迁移测试凭据。测试默认目标为 `127.0.0.1:25432/trust_iam_dev_test`；需要新建条件测试库时，可显式设置 `TRUST_TEST_DB_NAME=trust_iam_test_<suffix>`，仅测试 helper 接受此受限命名，端口与回环检查仍生效，不改变生产隔离允许名单。GenericMigrationDatabaseTest 用迁移角色执行实际迁移及授权、用应用角色复验限制；GenericDatabaseIntegrationTest 用受限角色验证事务、并发和归档恢复。迁移升级测试仅创建并清理自己的随机schema。
 
 仅本机 PostgreSQL 兼容测试可额外设置 TRUST_TEST_POSTGRESQL=1 并使用 jdbc:postgresql URL；PostgreSQL 驱动仅为test依赖，不改变生产 openGauss 驱动及隔离允许名单。TRUST_DB_INTEGRATION 与 TRUST_IDENTITY_DB_TEST 可分别启用旧链路和身份条件回归。不得把 PostgreSQL、CA/Fabric替身或未运行条件测试写成真实组件通过。
 

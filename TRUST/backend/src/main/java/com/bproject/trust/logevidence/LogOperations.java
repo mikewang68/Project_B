@@ -21,6 +21,9 @@ public class LogOperations {
   @org.springframework.beans.factory.annotation.Autowired
   private com.bproject.trust.identity.IntegrationSettings identitySettings;
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bproject.trust.identity.CurrentIdentity currentIdentity;
+
   public LogOperations(JdbcTemplate db, TransactionTemplate tx, LogSettings settings) {
     this.db = db;
     this.tx = tx;
@@ -53,8 +56,26 @@ public class LogOperations {
     return principal(a);
   }
 
+  /** Page ownership is local authentication, not an external IAM assurance claim. */
+  public PlatformPrincipal pagePrincipal(Authentication a) {
+    if (identitySettings == null || "real".equals(identitySettings.read().iamMode()))
+      return verified(a);
+    if (a == null || !a.isAuthenticated()
+        || a instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)
+      throw new IngressError(403, "AUTHENTICATION_REQUIRED", "需要已登录身份");
+    if (a.getPrincipal() instanceof PlatformPrincipal p)
+      return new PlatformPrincipal("simulated:" + p.userId(), p.username(), p.orgId());
+    if (!identitySettings.localLoginEnabled(identitySettings.read()) || currentIdentity == null)
+      throw new IngressError(403, "LOCAL_IDENTITY_DISABLED", "本地身份未启用");
+    try {
+      return new PlatformPrincipal("local:" + a.getName(), a.getName(), currentIdentity.org(a));
+    } catch (org.springframework.dao.EmptyResultDataAccessException missing) {
+      throw new IngressError(403, "LOCAL_IDENTITY_DISABLED", "本地身份不存在或已停用");
+    }
+  }
+
   public void verifyPageAction(Authentication a, String id) {
-    var p = verified(a);
+    var p = pagePrincipal(a);
     UUID.fromString(id);
     var rows = db.queryForList("SELECT * FROM audit_page_action WHERE id=?", id);
     if (rows.isEmpty()) throw LogEvidenceService.missing();
@@ -62,7 +83,7 @@ public class LogOperations {
   }
 
   public Map<String, Object> page(Authentication a, PageAction input) {
-    var p = verified(a);
+    var p = pagePrincipal(a);
     UUID.fromString(input.requestId());
     validatePage(input);
     String body = Json.write(input);
@@ -77,11 +98,12 @@ public class LogOperations {
               return recorded(input.requestId());
             }
             db.update(
-                "INSERT INTO audit_page_action(id,org_id,actor,request_json) VALUES(?,?,?,?)",
+                "INSERT INTO audit_page_action(id,org_id,actor,request_json,identity_mode) VALUES(?,?,?,?,?)",
                 input.requestId(),
                 p.orgId(),
                 p.userId(),
-                body);
+                body,
+                pageMode(p));
             enqueue(
                 p.orgId(),
                 p.userId(),
@@ -105,7 +127,7 @@ public class LogOperations {
   }
 
   public Map<String, Object> result(Authentication a, String id, PageResult input) {
-    var p = verified(a);
+    var p = pagePrincipal(a);
     UUID.fromString(id);
     if (!Set.of("SUCCESS", "FAILED", "DENIED").contains(input.outcome()))
       throw new IllegalArgumentException();
@@ -170,8 +192,14 @@ public class LogOperations {
     return new IngressError(409, "ACTION_CONFLICT", "操作编号已对应其他记录");
   }
 
-  static void pageOwner(Map<String, Object> row, PlatformPrincipal p) {
-    if (!p.orgId().equals(row.get("org_id")) || !p.userId().equals(row.get("actor")))
+  private String pageMode(PlatformPrincipal p) {
+    if (identitySettings == null || "real".equals(identitySettings.read().iamMode())) return "real";
+    return p.userId().startsWith("local:") ? "local" : "simulated";
+  }
+
+  void pageOwner(Map<String, Object> row, PlatformPrincipal p) {
+    if (!pageMode(p).equals(Objects.toString(row.get("identity_mode"), "real"))
+        || !p.orgId().equals(row.get("org_id")) || !p.userId().equals(row.get("actor")))
       throw LogEvidenceService.missing();
   }
 

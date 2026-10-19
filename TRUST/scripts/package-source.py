@@ -5,7 +5,7 @@ import pathlib
 import tarfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-TOP_LEVEL = {'backend', 'frontend', 'contracts', 'deploy', 'scripts', 'tests', 'samples', 'docs',
+TOP_LEVEL = {'backend', 'frontend', 'contracts', 'deploy', 'scripts', 'tests', 'samples', 'examples', 'selfcheck', 'docs',
              'AGENTS.md', 'README.md', '.gitignore', '.gitattributes'}
 EXCLUDED = {'.git', '.local', 'runtime', 'tools', 'artifacts', 'node_modules', 'target', 'dist', '__pycache__'}
 

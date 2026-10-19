@@ -5,10 +5,14 @@ public final class TestDatabase {
   private TestDatabase() {}
 
   public static String require(String url) {
+    String name = System.getenv("TRUST_TEST_DB_NAME");
+    if (name == null) name = "trust_iam_dev_test";
+    if (!name.equals("trust_iam_dev_test") && !name.matches("trust_iam_test_[a-z0-9_]{1,24}"))
+      throw new IllegalStateException("Explicit disposable TRUST test database required");
     String expected =
         "jdbc:"
             + (postgresql() ? "postgresql" : "opengauss")
-            + "://127.0.0.1:25432/trust_iam_dev_test";
+            + "://127.0.0.1:25432/" + name;
     if (!expected.equals(url))
       throw new IllegalStateException("Dedicated local test database required");
     return url;

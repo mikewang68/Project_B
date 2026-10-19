@@ -13,9 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import com.bproject.trust.shared.BoundedWork;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -36,7 +34,7 @@ public class ArchiveWorker {
   final com.bproject.trust.wallet.WalletService wallets;
   final com.bproject.trust.ingress.EvidenceIngressSettings ingress;
   final com.bproject.trust.ingress.GenericEvidenceArchive generic;
-  final ExecutorService executor = Executors.newFixedThreadPool(4);
+  final BoundedWork executor = new BoundedWork("trust-archive", 4);
   final ConcurrentHashMap<String, String> active = new ConcurrentHashMap<>();
 
   @org.springframework.beans.factory.annotation.Autowired
@@ -64,12 +62,14 @@ public class ArchiveWorker {
   }
 
   @Scheduled(fixedDelay = 1000)
-  public void poll() {
+  public synchronized void poll() {
+    if (executor.closing()) return;
     try {
       int slots = 4 - active.size();
       if (slots <= 0) return;
       var due = due(slots);
       for (String id : due) {
+        if (active.containsKey(id)) continue;
         String token = UUID.randomUUID().toString();
         int changed =
             db.update(
@@ -83,7 +83,7 @@ public class ArchiveWorker {
                 id);
         if (changed == 1) {
           active.put(id, token);
-          executor.submit(
+          boolean accepted = executor.execute(
               () -> {
                 try {
                   process(id, token);
@@ -93,6 +93,10 @@ public class ArchiveWorker {
                   active.remove(id, token);
                 }
               });
+          if (!accepted) {
+            active.remove(id, token);
+            defer(id, token);
+          }
         }
       }
     } catch (Exception e) {
@@ -128,14 +132,14 @@ public class ArchiveWorker {
         arguments.toArray());
   }
 
-  @Scheduled(fixedDelay = 15000)
+  @Scheduled(fixedDelay = 15000, scheduler = "leaseScheduler")
   public void renew() {
     for (var e : active.entrySet())
       try {
         db.update(
             "UPDATE tasks SET lease_until=CURRENT_TIMESTAMP+INTERVAL '60 seconds' WHERE"
                 + " event_id=? AND lease_token=? AND state='RUNNING' AND"
-                + " lease_until>CURRENT_TIMESTAMP",
+                + " lease_until>clock_timestamp()",
             e.getKey(),
             e.getValue());
       } catch (Exception ignored) {
@@ -190,6 +194,7 @@ public class ArchiveWorker {
             "SELECT evidence_id FROM event_evidence WHERE event_id=? ORDER BY" + " evidence_id",
             String.class,
             id)) {
+      if (!proceed(row, id, token)) return;
       var ev = evidence.archive(eid, org);
       archived.add(
           Map.of(
@@ -228,7 +233,7 @@ public class ArchiveWorker {
                   + " manifest_json=?,manifest_cid=?,manifest_sha256=?,file_state='STORED'"
                   + " WHERE id=? AND EXISTS(SELECT 1 FROM tasks WHERE event_id=? AND"
                   + " lease_token=? AND state='RUNNING' AND"
-                  + " lease_until>CURRENT_TIMESTAMP)",
+                  + " lease_until>clock_timestamp())",
               manifest,
               cid,
               manifestSha,
@@ -272,7 +277,7 @@ public class ArchiveWorker {
                                   + " FROM tasks WHERE event_id=? AND"
                                   + " lease_token=? AND"
                                   + " state='RUNNING' AND"
-                                  + " lease_until>CURRENT_TIMESTAMP)",
+                                  + " lease_until>clock_timestamp())",
                               tid,
                               id,
                               id,
@@ -286,6 +291,7 @@ public class ArchiveWorker {
   }
 
   private void complete(String id, String token, Map<String, Object> confirmed) {
+    if (executor.closing()) return;
     tx.executeWithoutResult(
         s -> {
           int n =
@@ -293,7 +299,7 @@ public class ArchiveWorker {
                   "UPDATE tasks SET"
                       + " state='DONE',lease_token=NULL,lease_until=NULL,last_error=NULL,updated_at=CURRENT_TIMESTAMP"
                       + " WHERE event_id=? AND lease_token=? AND state='RUNNING' AND"
-                      + " lease_until>CURRENT_TIMESTAMP",
+                      + " lease_until>clock_timestamp()",
                   id,
                   token);
           if (n == 1) {
@@ -317,9 +323,10 @@ public class ArchiveWorker {
   }
 
   private boolean proceed(Map<String, Object> row, String id, String token, boolean reconcile) {
+    if (executor.closing()) return false;
     if (db.queryForObject(
             "SELECT COUNT(*) FROM tasks WHERE event_id=? AND lease_token=? AND"
-                + " state='RUNNING' AND lease_until>CURRENT_TIMESTAMP",
+                + " state='RUNNING' AND lease_until>clock_timestamp()",
             Long.class,
             id,
             token)
@@ -335,7 +342,7 @@ public class ArchiveWorker {
         "UPDATE tasks SET state='READY',next_at=CURRENT_TIMESTAMP+INTERVAL '5 seconds',"
             + " attempts=GREATEST(attempts-1,0),lease_token=NULL,lease_until=NULL,updated_at=CURRENT_TIMESTAMP"
             + " WHERE event_id=? AND lease_token=? AND state='RUNNING' AND"
-            + " lease_until>CURRENT_TIMESTAMP",
+            + " lease_until>clock_timestamp()",
         id,
         token);
   }
@@ -361,7 +368,7 @@ public class ArchiveWorker {
                     "UPDATE tasks SET state=?,next_at=CURRENT_TIMESTAMP+?*INTERVAL '1"
                         + " second',lease_token=NULL,lease_until=NULL,last_error=?,updated_at=CURRENT_TIMESTAMP"
                         + " WHERE event_id=? AND lease_token=? AND state='RUNNING' AND"
-                        + " lease_until>CURRENT_TIMESTAMP",
+                        + " lease_until>clock_timestamp()",
                     manual ? "FAILED" : "READY",
                     delay,
                     reason,
@@ -392,11 +399,6 @@ public class ArchiveWorker {
 
   @PreDestroy
   void close() {
-    executor.shutdown();
-    try {
-      executor.awaitTermination(25, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+    executor.close();
   }
 }

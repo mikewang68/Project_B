@@ -68,7 +68,7 @@ public final class IsolatedMigration {
             "REVOKE UPDATE,DELETE ON trust_data.audit_delivery,trust_data.audit_page_action FROM "
                 + app);
         grants.execute(
-            "GRANT UPDATE(event_json,state,attempts,next_at,last_error) ON"
+            "GRANT UPDATE(event_json,state,attempts,next_at,last_error,lease_token,lease_until) ON"
                 + " trust_data.audit_delivery TO "
                 + app);
         grants.execute("GRANT UPDATE(result_json) ON trust_data.audit_page_action TO " + app);

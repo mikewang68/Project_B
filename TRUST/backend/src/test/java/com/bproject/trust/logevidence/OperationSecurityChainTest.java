@@ -60,6 +60,9 @@ class OperationSecurityChainTest {
     }
 
     @Bean
+    CurrentIdentity currentIdentity(JdbcTemplate db) { return new CurrentIdentity(db); }
+
+    @Bean
     LogOperations operations() {
       return mock(LogOperations.class);
     }
@@ -81,6 +84,10 @@ class OperationSecurityChainTest {
 
   @RestController
   static class Reads {
+    @GetMapping("/api/v1/csrf")
+    Object csrf(org.springframework.security.web.csrf.CsrfToken token) {
+      return Map.of("token", token.getToken());
+    }
     @GetMapping({
       "/api/v1/events",
       "/api/v1/status",
@@ -105,6 +112,8 @@ class OperationSecurityChainTest {
   @BeforeEach
   void setup() {
     reset(iam, operations, db);
+    when(operations.pagePrincipal(any())).thenReturn(
+        new com.bproject.trust.identity.PlatformPrincipal("real-user", "user", "TRUST_ORG"));
     when(iam.current("synthetic-session-token"))
         .thenReturn(
             new PlatformIdentity.User(
@@ -235,6 +244,23 @@ class OperationSecurityChainTest {
             eq("/api/v1/logout"),
             anyString(),
             anyString());
+  }
+
+  @Test
+  void freshCsrfAndLogoutWorkWhenBothIamAndAuditAreOffline() throws Exception {
+    when(iam.current(anyString())).thenThrow(new IllegalStateException("offline"));
+    doThrow(new org.springframework.dao.DataAccessResourceFailureException("offline"))
+        .when(operations).enqueue(anyString(), anyString(), anyString(), anyString(), anyString(),
+            anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+    var session = session();
+    var response = http.perform(get("/api/v1/csrf").session(session))
+        .andExpect(status().isOk()).andReturn().getResponse();
+    String token = com.bproject.trust.shared.json.Json.MAPPER.readTree(response.getContentAsString()).path("token").asText();
+    assertFalse(token.isEmpty());
+    http.perform(post("/api/v1/logout").session(session).header("X-CSRF-TOKEN", token))
+        .andExpect(status().isNoContent());
+    assertTrue(session.isInvalid());
+    verifyNoInteractions(iam);
   }
 
   @Test

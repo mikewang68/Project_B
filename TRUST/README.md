@@ -29,7 +29,7 @@ Project_B 的平台公共能力，版本 **0.1.0，开发联调版**。支持统
 - Fabric Gateway 1.12.1、gRPC 1.83.1、Protobuf 4.36.0；保持该组已验证版本一致。
 - Node 24.18.0、pnpm 10.34.5、Vue 3.5.42、TypeScript 5.9.3；前端版本由锁文件固定。
 - Go 1.26.4；合约依赖由 go.mod/go.sum 固定。
-- 开发电脑使用 Python 3.10+、OpenSSH 和 PowerShell 7；服务器部署脚本兼容 Python 3.9+。生成模拟图片需要安装 `scripts/requirements.txt` 中的依赖。
+- 开发电脑使用 Python 3.11+、OpenSSH 和 PowerShell 7；服务器常规运行脚本兼容 Python 3.9+，`identity-release.py` 和 `extract-opengauss.py` 使用 `hashlib.file_digest`，要求 Python 3.11+。生成模拟图片需要安装 `scripts/requirements.txt` 中的依赖。
 - 浏览器检查使用 Chrome 无界面模式和前端安装的 Playwright，不操作日常浏览器会话。
 
 ## 环境配置
@@ -107,6 +107,10 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 
 ## 测试与运行资料
 
+- [通用操作日志映射](docs/operation-log-generic.md)：OPERATION_LOG 主方案、三种摘要向量和待调用方确认的边界。
+- [六页直达与权限](docs/page-entries.md)：稳定 navTab 入口；Portal SSO 仍需可信票据契约。
+- [隔离恢复验证](docs/isolated-recovery.md)：显式资源清单、新库恢复及离线 IPFS 验证；不启停共享依赖。
+
 - `tests/test_deployment.py`：配置验证和源码打包隔离，不连接服务器。
 - `tests/component-real.py`：真实 IPFS 与合约；随后可用其输出执行 `tests/recovery-components.py`。
 - `deploy/test-database.sh`：独立 trust_test 数据库的集成测试，外部服务使用故障注入。
@@ -119,6 +123,8 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 验收报告、工作汇报、详细结果、截图和证据包仅保存在本地 `.local/test-results`，不提交 Git，脱敏摘要也不例外。不得把模拟接口截图当作真实业务存证结果。
 
 单文件上限 20 MiB，导入上限 200 行 / 1 MiB，IPFS 开发预算 10 GiB；不自动删除固定保存的证据。任务并行度 4，采用持久任务、租约和退避策略。
+
+租约心跳使用独立调度器。存证网络执行上限 4，日志归档、日志投递、身份处理各使用单任务有界执行器，无等待工作队列；积压保留数据库。租约丢失或关闭后不再启动下一步外部动作。导出响应直接流式转发，预先记录 STARTED；响应发送后结果留痕失败只标为未确认，不改写已发送内容或声称回滚。
 
 `scripts/backup.ps1` 编排应用暂存、IPFS 与数据库备份，`-DryRun` 只校验配置；单组件恢复工具位于 deploy。恢复前暂停写入并核对任务与账本检查点；凭据、备份和原始运行数据不存入 Git。备份不等同于在线多副本或全联盟灾难恢复能力。
 

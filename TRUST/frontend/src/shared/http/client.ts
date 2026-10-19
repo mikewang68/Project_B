@@ -71,8 +71,11 @@ export function post(path: string, body?: unknown) {
 }
 
 export async function resetCsrf() {
-  token = "";
+  clearCsrf();
   await csrf();
+}
+export function clearCsrf() {
+  token = "";
 }
 export async function download(path: string, filename: string, method = "GET") {
   const blob = await consume(path, { method }, (r) => r.blob());

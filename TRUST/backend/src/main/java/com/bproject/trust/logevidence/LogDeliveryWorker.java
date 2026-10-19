@@ -15,6 +15,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class LogDeliveryWorker {
+  private final com.bproject.trust.shared.BoundedWork executor =
+      new com.bproject.trust.shared.BoundedWork("trust-log-delivery", 1);
+  private final ConcurrentHashMap<String, String> active = new ConcurrentHashMap<>();
   private static final class DeliveryFailure extends RuntimeException {
     final String code;
     final boolean terminal;
@@ -39,7 +42,30 @@ public class LogDeliveryWorker {
   }
 
   @Scheduled(fixedDelayString = "${trust.logs.delivery-interval-ms:5000}")
+  public void dispatch() { executor.batch(this::poll); }
+
+  @jakarta.annotation.PreDestroy
+  void close() { executor.close(); }
+
+  @Scheduled(fixedDelay = 15000, scheduler = "leaseScheduler")
+  public void renew() {
+    active.forEach((id, lease) -> {
+      try {
+        db.update("UPDATE audit_delivery SET lease_until=CURRENT_TIMESTAMP+INTERVAL '60 seconds'"
+            + " WHERE id=? AND lease_token=? AND state='PENDING' AND lease_until>clock_timestamp()",
+            id, lease);
+      } catch (Exception unavailable) { /* Stale workers cannot confirm delivery. */ }
+    });
+  }
+
+  private boolean owned(String id, String lease) {
+    if (executor.closing()) return false;
+    return db.queryForObject("SELECT COUNT(*) FROM audit_delivery WHERE id=? AND lease_token=?"
+        + " AND state='PENDING' AND lease_until>clock_timestamp()", Long.class, id, lease) == 1;
+  }
+
   public void poll() {
+    if (executor.closing()) return;
     try {
       var cfg = settings.read().delivery();
       if (!cfg.enabled()) return;
@@ -48,16 +74,22 @@ public class LogDeliveryWorker {
       for (var row :
           db.queryForList(
               "SELECT * FROM audit_delivery WHERE state='PENDING' AND next_at<=CURRENT_TIMESTAMP"
+                  + " AND (lease_until IS NULL OR lease_until<CURRENT_TIMESTAMP)"
                   + " AND org_id<>'SIMULATED_LOCAL'"
                   + " ORDER BY created_at LIMIT 20")) {
         String id = (String) row.get("id");
+        if (executor.closing()) return;
+        String lease = UUID.randomUUID().toString();
         // Atomic deadline acts as a recoverable lease; duplicate delivery is safe by stable event
         // ID.
         if (db.update(
-                "UPDATE audit_delivery SET next_at=CURRENT_TIMESTAMP+INTERVAL '60 seconds' WHERE"
-                    + " id=? AND state='PENDING' AND next_at<=CURRENT_TIMESTAMP",
+                "UPDATE audit_delivery SET lease_token=?,lease_until=CURRENT_TIMESTAMP+INTERVAL '60 seconds' WHERE"
+                    + " id=? AND state='PENDING' AND next_at<=CURRENT_TIMESTAMP"
+                    + " AND (lease_until IS NULL OR lease_until<CURRENT_TIMESTAMP)",
+                lease,
                 id)
             != 1) continue;
+        active.put(id, lease);
         try {
           String json = (String) row.get("event_json");
           if (json == null) {
@@ -95,13 +127,16 @@ public class LogDeliveryWorker {
                     (String) row.get("summary"));
             json = LogInput.canonical(event);
             db.update(
-                "UPDATE audit_delivery SET event_json=? WHERE id=? AND event_json IS NULL",
+                "UPDATE audit_delivery SET event_json=? WHERE id=? AND event_json IS NULL"
+                    + " AND lease_token=? AND lease_until>clock_timestamp()",
                 json,
-                id);
+                id,
+                lease);
             json =
                 db.queryForObject(
                     "SELECT event_json FROM audit_delivery WHERE id=?", String.class, id);
           }
+          if (!owned(id, lease)) continue;
           var response =
               receive(
                   HttpRequest.newBuilder(URI.create(cfg.url()))
@@ -111,6 +146,7 @@ public class LogDeliveryWorker {
                       .POST(HttpRequest.BodyPublishers.ofString(json))
                       .build());
           byte[] body = response.body();
+          if (!owned(id, lease)) continue;
           if (response.statusCode() < 200 || response.statusCode() >= 300)
             throw new DeliveryFailure(
                 "AUDIT_HTTP_" + response.statusCode(),
@@ -124,7 +160,8 @@ public class LogDeliveryWorker {
               || !receipt.path("stored").asBoolean()
               || !LogInput.hash(json).equals(receipt.path("payloadHash").asText()))
             throw new DeliveryFailure("AUDIT_INVALID_RECEIPT", true);
-          db.update("UPDATE audit_delivery SET state='DELIVERED',last_error=NULL WHERE id=?", id);
+          db.update("UPDATE audit_delivery SET state='DELIVERED',last_error=NULL,lease_token=NULL,lease_until=NULL"
+              + " WHERE id=? AND lease_token=? AND lease_until>clock_timestamp()", id, lease);
         } catch (Exception e) {
           if (e instanceof InterruptedException) Thread.currentThread().interrupt();
           // Retain durable events indefinitely. Configuration repair recovers without regenerating
@@ -143,11 +180,15 @@ public class LogDeliveryWorker {
           db.update(
               "UPDATE audit_delivery SET"
                   + " state=?,attempts=?,last_error=?,next_at=CURRENT_TIMESTAMP+INTERVAL '60"
-                  + " seconds' WHERE id=?",
+                  + " seconds',lease_token=NULL,lease_until=NULL WHERE id=? AND lease_token=?"
+                  + " AND lease_until>clock_timestamp()",
               terminal ? "FAILED" : "PENDING",
               attempts,
               code,
-              id);
+              id,
+              lease);
+        } finally {
+          active.remove(id, lease);
         }
       }
     } catch (Exception ignored) {

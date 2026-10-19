@@ -11,6 +11,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 /** Leased durable work with revision fencing. CA/Gateway never run inside SQL transactions. */
 @Component
 public class IdentityWorker {
+  private final com.bproject.trust.shared.BoundedWork executor =
+      new com.bproject.trust.shared.BoundedWork("trust-identity", 1);
+  private record Claim(String token, long revision) {}
+  private final java.util.concurrent.ConcurrentHashMap<String, Claim> active =
+      new java.util.concurrent.ConcurrentHashMap<>();
   private final JdbcTemplate db;
   private final TransactionTemplate tx;
   private final IdentityProviderSettings settings;
@@ -34,8 +39,24 @@ public class IdentityWorker {
   }
 
   @Scheduled(fixedDelayString = "${trust.identity.poll-ms:2000}")
+  public void dispatch() { executor.batch(this::recover); }
+
+  @jakarta.annotation.PreDestroy
+  void close() { executor.close(); }
+
+  @Scheduled(fixedDelay = 15000, scheduler = "leaseScheduler")
+  public void renew() {
+    active.forEach((id, claim) -> {
+      try {
+        db.update("UPDATE fabric_identity SET lease_until=CURRENT_TIMESTAMP+INTERVAL '120 seconds'"
+            + " WHERE id=? AND revision=? AND lease_token=? AND lease_until>clock_timestamp()",
+            id, claim.revision(), claim.token());
+      } catch (Exception unavailable) { /* Revision/lease fencing still rejects stale work. */ }
+    });
+  }
+
   public void recover() {
-    if (!settings.configured()) return;
+    if (executor.closing() || !settings.configured()) return;
     for (var row : due()) process((String) row.get("id"));
   }
 
@@ -50,6 +71,7 @@ public class IdentityWorker {
   }
 
   public void process(String id) {
+    if (executor.closing()) return;
     if (org.springframework.transaction.support.TransactionSynchronizationManager
         .isActualTransactionActive()) throw new IllegalStateException("Remote work in transaction");
     String lease = UUID.randomUUID().toString();
@@ -69,6 +91,8 @@ public class IdentityWorker {
             });
     if (identity == null) return;
     long revision = ((Number) identity.get("revision")).longValue();
+    Claim claim = new Claim(lease, revision);
+    active.put(id, claim);
     try {
       var cfg = settings.read();
       if (FabricIdentityService.requiresRevocation(
@@ -243,11 +267,12 @@ public class IdentityWorker {
               + " ELSE 'RETRY'"
               + " END,last_error='IDENTITY_COMPONENT_UNAVAILABLE',attempts=attempts+1,next_attempt=CURRENT_TIMESTAMP"
               + " + INTERVAL '30 seconds' WHERE id=? AND revision=? AND lease_token=? AND"
-              + " lease_until>CURRENT_TIMESTAMP",
+              + " lease_until>clock_timestamp()",
           id,
           revision,
           lease);
     } finally {
+      active.remove(id, claim);
       db.update(
           "UPDATE fabric_identity SET lease_token=NULL,lease_until=NULL WHERE id=? AND"
               + " lease_token=?",
@@ -257,10 +282,11 @@ public class IdentityWorker {
   }
 
   private boolean current(String id, long revision, String lease) {
+    if (executor.closing()) return false;
     return db.queryForObject(
             "SELECT COUNT(*) FROM fabric_identity WHERE id=? AND revision=? AND"
                 + " lease_token=? AND desired_state='ACTIVE' AND"
-                + " lease_until>CURRENT_TIMESTAMP",
+                + " lease_until>clock_timestamp()",
             Integer.class,
             id,
             revision,
@@ -406,9 +432,10 @@ public class IdentityWorker {
       Map<String, Object> identity, List<Map<String, Object>> certificates) {}
 
   private boolean revocationCurrent(String id, long revision, String lease) {
+    if (executor.closing()) return false;
     return db.queryForObject(
             "SELECT COUNT(*) FROM fabric_identity WHERE id=? AND revision=? AND"
-                + " lease_token=? AND lease_until>CURRENT_TIMESTAMP",
+                + " lease_token=? AND lease_until>clock_timestamp()",
             Integer.class,
             id,
             revision,

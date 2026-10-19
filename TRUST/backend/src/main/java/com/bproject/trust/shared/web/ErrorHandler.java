@@ -20,6 +20,7 @@ public class ErrorHandler {
   @ExceptionHandler({
     IllegalArgumentException.class,
     MethodArgumentNotValidException.class,
+    org.springframework.web.bind.MissingServletRequestParameterException.class,
     org.springframework.http.converter.HttpMessageNotReadableException.class
   })
   ResponseEntity<?> bad(Exception e) {

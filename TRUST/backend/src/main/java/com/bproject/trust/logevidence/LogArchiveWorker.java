@@ -5,6 +5,8 @@ import com.bproject.trust.shared.json.Json;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
+import com.bproject.trust.shared.BoundedWork;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +14,8 @@ import org.springframework.stereotype.Component;
 public class LogArchiveWorker {
   private final LogSettings settings;
   private final LogEvidenceService service;
+  private final BoundedWork executor = new BoundedWork("trust-log-archive", 1);
+  private final ConcurrentHashMap<String, String> active = new ConcurrentHashMap<>();
 
   public LogArchiveWorker(LogSettings settings, LogEvidenceService service) {
     this.settings = settings;
@@ -19,7 +23,25 @@ public class LogArchiveWorker {
   }
 
   @Scheduled(fixedDelayString = "${trust.logs.interval-ms:5000}")
+  public void dispatch() {
+    executor.batch(this::poll);
+  }
+
+  @jakarta.annotation.PreDestroy
+  void close() { executor.close(); }
+
+  @Scheduled(fixedDelay = 15000, scheduler = "leaseScheduler")
+  public void renew() {
+    active.forEach((key, lease) -> {
+      try {
+        service.db.update("UPDATE audit_evidence SET lease_until=CURRENT_TIMESTAMP+INTERVAL '60 seconds'"
+            + " WHERE event_key=? AND lease_token=? AND lease_until>clock_timestamp()", key, lease);
+      } catch (Exception unavailable) { /* Expired claims cannot advance. */ }
+    });
+  }
+
   public void poll() {
+    if (executor.closing()) return;
     try {
       var c = settings.read();
       if (!c.enabled()) return;
@@ -36,6 +58,7 @@ public class LogArchiveWorker {
               paused,
               chainPaused)) {
         String key = (String) row.get("event_key"), lease = UUID.randomUUID().toString();
+        if (executor.closing()) return;
         if (service.db.update(
                 "UPDATE audit_evidence SET lease_token=?,lease_until=CURRENT_TIMESTAMP+INTERVAL '60"
                     + " seconds' WHERE event_key=? AND (lease_until IS NULL OR"
@@ -43,6 +66,7 @@ public class LogArchiveWorker {
                 lease,
                 key)
             != 1) continue;
+        active.put(key, lease);
         try {
           process(row, lease, c);
         } catch (Exception e) {
@@ -52,12 +76,14 @@ public class LogArchiveWorker {
               "UPDATE audit_evidence SET attempts=?,archive_state=CASE WHEN ? >= 10 THEN 'FAILED'"
                   + " ELSE archive_state END,last_error=?,next_at=CURRENT_TIMESTAMP+INTERVAL '30"
                   + " seconds',lease_token=NULL,lease_until=NULL WHERE event_key=? AND"
-                  + " lease_token=?",
+                  + " lease_token=? AND lease_until>clock_timestamp()",
               attempts,
               attempts,
               code,
               key,
               lease);
+        } finally {
+          active.remove(key, lease);
         }
       }
     } catch (Exception ignored) {
@@ -67,6 +93,7 @@ public class LogArchiveWorker {
 
   void process(Map<String, Object> row, String lease, LogSettings.Config config) throws Exception {
     String key = (String) row.get("event_key");
+    if (!owned(key, lease)) return;
     var source =
         config.sources().stream()
             .filter(s -> s.id().equals(row.get("source_id")))
@@ -84,10 +111,12 @@ public class LogArchiveWorker {
         release(key, lease);
         return;
       }
+      if (!owned(key, lease)) return;
       String cid = service.storage.add(encrypted.getBytes(StandardCharsets.UTF_8));
+      if (!owned(key, lease)) return;
       if (service.db.update(
               "UPDATE audit_evidence SET archive_cid=?,archive_state='STORED',last_error=NULL WHERE"
-                  + " event_key=? AND lease_token=? AND lease_until>CURRENT_TIMESTAMP",
+                  + " event_key=? AND lease_token=? AND lease_until>clock_timestamp()",
               cid,
               key,
               lease)
@@ -105,7 +134,7 @@ public class LogArchiveWorker {
           var locked =
               service.db.queryForMap(
                   "SELECT * FROM audit_evidence WHERE event_key=? FOR UPDATE", key);
-          if (!lease.equals(locked.get("lease_token"))) return;
+          if (!lease.equals(locked.get("lease_token")) || !owned(key, lease)) return;
           var projection = service.projectionSource(row);
           projection.type("AUDIT_LOG");
           Map<String, Object> payload =
@@ -145,14 +174,21 @@ public class LogArchiveWorker {
           var result =
               service.generic.submit(
                   projection, GenericEventInput.parse(request.getBytes(StandardCharsets.UTF_8)));
-          service.db.update(
+          int completed = service.db.update(
               "UPDATE audit_evidence SET"
                   + " chain_event_id=?,lease_token=NULL,lease_until=NULL,last_error=NULL WHERE"
-                  + " event_key=? AND lease_token=?",
+                  + " event_key=? AND lease_token=? AND lease_until>clock_timestamp()",
               result.receipt().get("id"),
               key,
               lease);
+          if (completed != 1) throw new IllegalStateException("Archive lease lost before projection confirmation");
         });
+  }
+
+  private boolean owned(String key, String lease) {
+    if (executor.closing()) return false;
+    return service.db.queryForObject("SELECT COUNT(*) FROM audit_evidence WHERE event_key=?"
+        + " AND lease_token=? AND lease_until>clock_timestamp()", Long.class, key, lease) == 1;
   }
 
   private void release(String key, String lease) {

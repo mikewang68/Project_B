@@ -51,6 +51,8 @@ class GenericMigrationDatabaseTest {
           "DELETE FROM generic_event_data",
           "UPDATE event_source_routes SET source_id='takeover'",
           "DELETE FROM event_source_routes",
+          "UPDATE audit_page_action SET identity_mode='real'",
+          "UPDATE audit_delivery SET actor='takeover'",
           "SELECT * FROM databasechangelog"
         })
       assertThrows(org.springframework.dao.DataAccessException.class, () -> db.execute(sql), sql);
@@ -60,8 +62,10 @@ class GenericMigrationDatabaseTest {
             db.execute(
                 "UPDATE generic_event_data SET"
                     + " original_cid=NULL,last_error_code=NULL WHERE 1=0"));
+    assertDoesNotThrow(() -> db.execute(
+        "UPDATE audit_delivery SET lease_token=NULL,lease_until=NULL WHERE 1=0"));
     assertEquals(
-        7,
+        8,
         new JdbcTemplate(dataSource(true))
             .queryForObject("SELECT COUNT(*) FROM databasechangelog", Integer.class));
   }

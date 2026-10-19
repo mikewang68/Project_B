@@ -62,7 +62,7 @@ class WalletDatabaseIntegrationTest {
   @BeforeEach
   void setup() throws Exception {
     try (var connection = db.getDataSource().getConnection()) {
-      assertTrue(connection.getMetaData().getURL().endsWith("/trust_iam_dev_test"));
+      com.bproject.trust.support.TestDatabase.require(connection.getMetaData().getURL());
     }
     org = "WALLET-" + UUID.randomUUID().toString().substring(0, 8);
     ref = "key-" + UUID.randomUUID();

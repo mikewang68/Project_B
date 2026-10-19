@@ -59,7 +59,8 @@ class LogDatabaseTest {
               "004-identities.sql",
               "005-generic-ingress.sql",
               "006-audit-log.sql",
-              "007-audit-optional-text.sql"))
+              "007-audit-optional-text.sql",
+              "008-audit-ownership.sql"))
         ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/" + file));
     }
     db = new JdbcTemplate(data);
@@ -118,11 +119,64 @@ class LogDatabaseTest {
 
   @AfterEach
   void cleanup() {
+    if (worker != null) worker.close();
     if (admin != null && schema != null) admin.execute("DROP SCHEMA " + schema + " CASCADE");
   }
 
   LogInput input(String id, String summary) {
     return LogInput.parse(LogContractTest.request(LogContractTest.event(id, summary)));
+  }
+
+  @Test
+  void slowArchiveRenewsButLostLeaseCannotConfirmOrProject() throws Exception {
+    var event = input("lease-loss", "synthetic");
+    service.submit(source, event);
+    var entered = new java.util.concurrent.CountDownLatch(1);
+    var release = new java.util.concurrent.CountDownLatch(1);
+    doAnswer(c -> {
+      entered.countDown();
+      assertTrue(release.await(10, java.util.concurrent.TimeUnit.SECONDS));
+      return "bafsynthetic";
+    }).when(storage).add(any());
+    worker.dispatch();
+    try {
+      assertTrue(entered.await(10, java.util.concurrent.TimeUnit.SECONDS));
+      db.update("UPDATE audit_evidence SET lease_until=CURRENT_TIMESTAMP+INTERVAL '2 seconds'");
+      worker.renew();
+      assertTrue(db.queryForObject("SELECT lease_until>CURRENT_TIMESTAMP+INTERVAL '50 seconds' FROM audit_evidence", Boolean.class));
+      worker.dispatch();
+      verify(storage, times(1)).add(any());
+      db.update("UPDATE audit_evidence SET lease_token='replacement-owner'");
+    } finally { release.countDown(); worker.close(); }
+    assertNull(db.queryForObject("SELECT archive_cid FROM audit_evidence", String.class));
+    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events", Integer.class));
+    assertEquals("replacement-owner", db.queryForObject("SELECT lease_token FROM audit_evidence", String.class));
+  }
+
+  @Test
+  void expiredLeaseRollsBackProjectionEvenInsideAnOlderTransaction() {
+    var event = input("projection-expiry", "synthetic");
+    service.submit(source, event);
+    db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+    worker.poll();
+    db.update("UPDATE audit_log_settings SET chain_paused=FALSE");
+    db.update("UPDATE audit_evidence SET lease_token='test-owner',lease_until=clock_timestamp()+INTERVAL '60 seconds'");
+    var delayed = spy(generic);
+    doAnswer(call -> {
+      Object result = call.callRealMethod();
+      // Expire after the real insert, but after the transaction's fixed CURRENT_TIMESTAMP.
+      db.update("UPDATE audit_evidence SET lease_until=clock_timestamp()");
+      db.execute("SELECT pg_sleep(0.02)");
+      return result;
+    }).when(delayed).submit(any(), any());
+    var delayedService = new LogEvidenceService(db, tx, new LogCipher(config), delayed, ingress, storage);
+    var delayedWorker = new LogArchiveWorker(config, delayedService);
+    try {
+      assertThrows(IllegalStateException.class, () -> delayedWorker.process(
+          db.queryForMap("SELECT * FROM audit_evidence"), "test-owner", config.read()));
+      assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events", Integer.class));
+      assertNull(db.queryForObject("SELECT chain_event_id FROM audit_evidence", String.class));
+    } finally { delayedWorker.close(); }
   }
 
   @Test

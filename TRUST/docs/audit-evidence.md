@@ -1,5 +1,7 @@
 # 操作日志存证与 TRUST 自身日志
 
+本页为保留的日志专用接口。通用入口主方案见 [OPERATION_LOG 接入方案](operation-log-generic.md)，两者凭据、摘要和归档语义不得混用。
+
 机器可读契约见 [audit-openapi.json](audit-openapi.json)。
 
 本接口接收 AUDIT v1 `LogEvent`；与 WMS、通用 JSON、身份 API 的服务凭据和路由隔离。浏览器不能调用本接口或持有服务凭据。应用代码仅实现 TRUST 侧；AUDIT 手工补办调用、其他模块的页面采集和事务发件箱由相应负责人适配。
