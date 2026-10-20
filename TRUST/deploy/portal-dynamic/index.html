@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN" data-audience="internal">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#24364a">
+  <title>B项目 · 统一应用导航门户</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%2324364a'/%3E%3Ctext x='32' y='45' text-anchor='middle' font-size='42' font-family='Georgia' fill='white'%3EB%3C/text%3E%3C/svg%3E">
+  <script>
+    (() => {
+      const themes = ['tech-blue', 'forest-green', 'purple-elegant', 'dark-pro'];
+      try {
+        const cookie = document.cookie.split('; ').find(item => item.startsWith('b-project-appearance='));
+        const raw = cookie ? decodeURIComponent(cookie.slice('b-project-appearance='.length)) : localStorage.getItem('b-project-appearance');
+        const saved = JSON.parse(raw || '{}');
+        document.documentElement.dataset.theme = themes.includes(saved.theme) ? saved.theme : 'tech-blue';
+      } catch {
+        document.documentElement.dataset.theme = 'tech-blue';
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/portal-assets/portal.css">
+  <script src="/portal-assets/portal.js" defer></script>
+</head>
+<body>
+  <div class="portal-frame" id="portal-frame" data-layout="side">
+    <!-- 移动端侧栏遮罩层 -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
+
+    <aside class="portal-sidebar" id="portal-sidebar" aria-label="侧边栏主导航">
+      <a class="brand sidebar-brand" href="/" aria-label="B项目应用导航首页">
+        <span class="brand-mark">B</span>
+        <span class="brand-copy">B项目<span class="brand-sub internal-only">统一应用导航门户</span></span>
+      </a>
+
+      <div class="sidebar-nav-container">
+        <div class="sidebar-nav-header">
+          <span class="nav-heading" id="system-nav-heading">系统导航</span>
+        </div>
+        <nav class="system-nav" id="system-nav" aria-labelledby="system-nav-heading" role="navigation">
+          <div class="nav-loading" id="sidebar-loading">正在读取系统授权...</div>
+        </nav>
+      </div>
+
+      <div class="sidebar-environment internal-only"><i></i><span>内部受控访问</span></div>
+    </aside>
+
+    <div class="portal-main">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="切换侧边栏" aria-controls="portal-sidebar" aria-expanded="false">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+
+          <a class="brand topbar-brand" href="/" aria-label="B项目应用导航首页">
+            <span class="brand-mark">B</span>
+            <span class="brand-copy">B项目<span class="brand-sub internal-only">统一应用导航门户</span></span>
+          </a>
+          <strong class="topbar-title">统一应用导航</strong>
+
+          <div class="topbar-user-area">
+            <div class="user-context-pill" id="user-context-pill" aria-label="当前登录用户信息">
+              <span class="user-avatar" aria-hidden="true">👤</span>
+              <span class="user-name" id="user-display-name">正在加载...</span>
+              <span class="badge badge-access-mode" id="user-access-mode">MODE</span>
+              <span class="badge badge-readonly" id="user-readonly-badge" hidden>只读审计</span>
+            </div>
+            <button class="btn-logout" id="btn-logout" type="button" title="清除当前会话">退出登录</button>
+          </div>
+
+          <div class="topbar-actions">
+            <span class="environment internal-only"><i></i>内部访问</span>
+            <button class="appearance-trigger" type="button" data-appearance-open aria-haspopup="dialog" aria-controls="appearance-panel">外观设置</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-shell">
+        <!-- 顶部面包屑与标题区 (纯净正式视图) -->
+        <section class="view-header" aria-labelledby="page-title">
+          <div class="breadcrumb" id="view-breadcrumb">
+            <span class="crumb-root">系统导航</span>
+            <span class="crumb-separator" aria-hidden="true">/</span>
+            <span class="crumb-system" id="crumb-system-name">—</span>
+            <span class="crumb-separator" aria-hidden="true">/</span>
+            <span class="crumb-page" id="crumb-page-name">—</span>
+          </div>
+          <div class="view-title-row">
+            <h1 id="page-title">统一应用导航</h1>
+          </div>
+        </section>
+
+        <!-- 动态视图核心区域 -->
+        <div class="dynamic-view-area" id="dynamic-view-area">
+
+          <!-- 1. 功能叶子节点展示卡片 (已选中菜单时显示) -->
+          <article class="page-leaf-card" id="page-leaf-card" hidden>
+            <div class="card-hero">
+              <div class="hero-main">
+                <span class="system-code-pill" id="card-system-code">IAM</span>
+                <h2 id="card-page-name">用户管理</h2>
+              </div>
+              <div class="hero-status">
+                <span class="dest-badge" id="card-dest-badge">目标服务尚未接通</span>
+              </div>
+            </div>
+
+            <!-- 只读告警提示条 (克制适度展示) -->
+            <div class="readonly-alert-box" id="card-readonly-alert" hidden role="alert">
+              <span class="alert-icon" aria-hidden="true">⚠️</span>
+              <div class="readonly-alert-content">
+                <strong>只读审计模式生效中</strong>
+                <p>当前登录账号处于只读受限模式（前端界面限制修改展示，最终权限由业务后端严格鉴权拦截）。</p>
+              </div>
+            </div>
+
+            <!-- 目标页面导航视图区域 -->
+            <div class="destination-viewport" id="destination-viewport">
+              <div class="dest-info-panel">
+                <div class="dest-meta-row">
+                  <span class="dest-label">服务入口路径</span>
+                  <code class="dest-path-code" id="card-entry-path">/iam/system/users</code>
+                </div>
+                <div class="dest-desc-block">
+                  <p class="dest-desc-text" id="card-dest-desc">目标子应用服务尚未接通。当前已核验同源网关相对路径安全性，待目标服务上线并接入网关后可无缝集成。</p>
+                </div>
+                <div class="dest-actions-row">
+                  <a class="btn-navigate" id="btn-navigate-entry" href="#" target="_self" rel="noopener">
+                    <span class="nav-icon" aria-hidden="true">↗</span> 尝试打开服务页面
+                  </a>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- 2. 合法空系统树状态 (systems: []) -->
+          <section class="state-card empty-state-card" id="empty-state-card" hidden>
+            <div class="state-icon" aria-hidden="true">📭</div>
+            <h2>当前暂无可访问功能</h2>
+            <p>当前登录账户在目标环境下未分配可用功能权限。若需访问请联系系统管理员分配相应业务角色。</p>
+          </section>
+
+          <!-- 3. 错误状态展示 (400, 401, 403, 500) -->
+          <section class="state-card error-state-card" id="error-state-card" hidden role="alert">
+            <div class="state-icon" id="error-state-icon" aria-hidden="true">🔒</div>
+            <h2 id="error-state-title">未登录或会话已过期</h2>
+            <p id="error-state-desc">请通过统一身份认证中心完成登录后再访问此页面。</p>
+            <div class="error-code-badge" id="error-state-code">ERROR_CODE: 40101</div>
+
+            <!-- 受控同源登录表单 (隔离联调安全入口，短期凭据仅存内存，拒绝硬编码与本地存储) -->
+            <form class="portal-login-form" id="portal-login-form" hidden autocomplete="off">
+              <div class="login-field">
+                <label for="login-username">登录账号</label>
+                <input type="text" id="login-username" name="username" class="login-input" placeholder="输入账号: admin / auditor / scoped_user" required />
+              </div>
+              <div class="login-field">
+                <label for="login-password">认证密码</label>
+                <input type="password" id="login-password" name="password" class="login-input" placeholder="输入口令" required />
+              </div>
+              <div class="login-actions">
+                <button type="submit" class="btn-primary" id="btn-submit-login">安全登录</button>
+              </div>
+              <div class="login-msg" id="login-msg" hidden role="alert"></div>
+            </form>
+
+            <div class="error-actions" id="error-actions">
+              <button type="button" class="btn-primary" id="btn-error-retry">刷新重试</button>
+            </div>
+          </section>
+
+        </div>
+
+        <aside class="access-note internal-only">
+          <span class="info-icon" aria-hidden="true">i</span>
+          <div>
+            <strong>统一安全边界说明</strong>
+            <p>门户仅提供受控授权导航与同源路由适配。所有业务操作以各子系统后端鉴权为最终准入标准。</p>
+          </div>
+        </aside>
+      </main>
+
+      <footer class="page-shell footer">
+        <span>B项目 · 统一身份与功能门户</span>
+        <span class="internal-only">统一应用导航</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 外观设置模态框 (保留原功能与主题系统) -->
+  <div class="appearance-overlay" id="appearance-overlay" hidden>
+    <aside class="appearance-panel" id="appearance-panel" role="dialog" aria-modal="true" aria-labelledby="appearance-title" tabindex="-1">
+      <div class="appearance-heading">
+        <h2 id="appearance-title">外观设置</h2>
+        <button class="appearance-close" type="button" aria-label="关闭外观设置">×</button>
+      </div>
+      <section class="appearance-section" aria-labelledby="theme-title">
+        <h3 id="theme-title">皮肤主题（4 套）</h3>
+        <div class="theme-options" id="theme-options"></div>
+      </section>
+      <section class="appearance-section" aria-labelledby="layout-title">
+        <h3 id="layout-title">布局方式（3 种）</h3>
+        <div class="layout-options" id="layout-options"></div>
+      </section>
+      <button class="appearance-reset" type="button">恢复默认（科技蓝 · 左侧菜单）</button>
+    </aside>
+  </div>
+</body>
+</html>
