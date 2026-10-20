@@ -49,6 +49,8 @@ public interface UserMapper {
              OR lower(coalesce(dept,'')) LIKE lower(#{kw})
              OR lower(coalesce(group_name,'')) LIKE lower(#{kw}))
       </if>
+      <if test="scopeZone != null and scopeZone != ''"> AND zone_code = #{scopeZone} </if>
+      <if test="scopeCompany != null and scopeCompany != ''"> AND company_code = #{scopeCompany} </if>
       ORDER BY created_at ASC
       </script>
       """)
@@ -56,7 +58,9 @@ public interface UserMapper {
       @Param("cols") String cols,
       @Param("status") String status,
       @Param("keyword") String keyword,
-      @Param("kw") String kw);
+      @Param("kw") String kw,
+      @Param("scopeZone") String scopeZone,
+      @Param("scopeCompany") String scopeCompany);
 
   @Select("SELECT " + COLUMNS + " FROM iam_user WHERE deleted = 0 ORDER BY created_at ASC")
   List<User> selectAll();

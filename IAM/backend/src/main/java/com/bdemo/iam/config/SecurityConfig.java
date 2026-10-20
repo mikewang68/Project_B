@@ -5,6 +5,7 @@ import com.bdemo.iam.security.JwtAuthFilter;
 import com.bdemo.iam.security.JwtService;
 import com.bdemo.iam.security.LoginUserLoader;
 import com.bdemo.iam.security.PermInterceptor;
+import com.bdemo.iam.security.ReadonlyHardVetoInterceptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
@@ -25,13 +26,18 @@ public class SecurityConfig implements WebMvcConfigurer {
   private final JwtService jwtService;
   private final LoginUserLoader loginUserLoader;
   private final PermInterceptor permInterceptor;
+  private final ReadonlyHardVetoInterceptor readonlyHardVetoInterceptor;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   public SecurityConfig(
-      JwtService jwtService, LoginUserLoader loginUserLoader, PermInterceptor permInterceptor) {
+      JwtService jwtService,
+      LoginUserLoader loginUserLoader,
+      PermInterceptor permInterceptor,
+      ReadonlyHardVetoInterceptor readonlyHardVetoInterceptor) {
     this.jwtService = jwtService;
     this.loginUserLoader = loginUserLoader;
     this.permInterceptor = permInterceptor;
+    this.readonlyHardVetoInterceptor = readonlyHardVetoInterceptor;
   }
 
   @Bean
@@ -55,10 +61,10 @@ public class SecurityConfig implements WebMvcConfigurer {
             eh ->
                 eh.authenticationEntryPoint(
                         (request, response, ex) ->
-                            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "未登录或登录已过期"))
+                            writeError(request, response, HttpServletResponse.SC_UNAUTHORIZED, "未登录或登录已过期"))
                     .accessDeniedHandler(
                         (request, response, ex) ->
-                            writeError(response, HttpServletResponse.SC_FORBIDDEN, "没有访问权限")))
+                            writeError(request, response, HttpServletResponse.SC_FORBIDDEN, "没有访问权限")))
         .addFilterBefore(
             new JwtAuthFilter(jwtService, loginUserLoader),
             UsernamePasswordAuthenticationFilter.class);
@@ -67,14 +73,24 @@ public class SecurityConfig implements WebMvcConfigurer {
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
+    registry.addInterceptor(readonlyHardVetoInterceptor).addPathPatterns("/**");
     registry.addInterceptor(permInterceptor).addPathPatterns("/**");
   }
 
-  private void writeError(HttpServletResponse response, int status, String message)
+  private void writeError(jakarta.servlet.http.HttpServletRequest request, HttpServletResponse response, int status, String message)
       throws java.io.IOException {
     response.setStatus(status);
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-    response.getWriter().write(objectMapper.writeValueAsString(R.fail(status, message)));
+    int businessCode = status;
+    String uri = request != null ? request.getRequestURI() : "";
+    if (uri != null && uri.contains("/navigation/")) {
+      if (status == HttpServletResponse.SC_UNAUTHORIZED) {
+        businessCode = 40101;
+      } else if (status == HttpServletResponse.SC_FORBIDDEN) {
+        businessCode = 40301;
+      }
+    }
+    response.getWriter().write(objectMapper.writeValueAsString(R.fail(businessCode, message)));
   }
 }
