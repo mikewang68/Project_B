@@ -114,15 +114,21 @@ DECLARE
     v_curr_key   VARCHAR(128);
     v_depth      INTEGER := 0;
 BEGIN
-    IF NEW.parent_stable_menu_key IS NOT NULL THEN
+    -- An empty parent key means "root". openGauss/PG store '' rather than NULL
+    -- for the root rows, so both cases must be treated as no-parent.
+    IF NEW.parent_stable_menu_key IS NOT NULL AND NEW.parent_stable_menu_key <> '' THEN
+        -- Explicit existence check first: under some openGauss compatibility
+        -- settings a zero-row SELECT ... INTO raises instead of leaving the
+        -- target NULL, which would mask the intended error message.
+        IF NOT EXISTS (SELECT 1 FROM iam.iam_navigation_menu
+                        WHERE stable_menu_key = NEW.parent_stable_menu_key) THEN
+            RAISE EXCEPTION 'Parent menu % does not exist', NEW.parent_stable_menu_key;
+        END IF;
+
         SELECT navigation_app_code, normalized_level
           INTO v_parent_app, v_parent_lvl
           FROM iam.iam_navigation_menu
          WHERE stable_menu_key = NEW.parent_stable_menu_key;
-
-        IF v_parent_app IS NULL THEN
-            RAISE EXCEPTION 'Parent menu % does not exist', NEW.parent_stable_menu_key;
-        END IF;
 
         IF v_parent_app <> NEW.navigation_app_code THEN
             RAISE EXCEPTION 'Cross-system parent reference forbidden: child % (%) -> parent % (%)',
@@ -147,6 +153,14 @@ BEGIN
               INTO v_curr_key
               FROM iam.iam_navigation_menu
              WHERE stable_menu_key = v_curr_key;
+
+            IF NOT FOUND THEN
+                v_curr_key := NULL;
+            END IF;
+            -- '' marks a root; stop the ancestor walk instead of looking it up.
+            IF v_curr_key = '' THEN
+                v_curr_key := NULL;
+            END IF;
         END LOOP;
     END IF;
     RETURN NEW;
