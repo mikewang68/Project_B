@@ -13,6 +13,10 @@ public class LoginUser {
     private String username;
     private String displayName;
     private boolean superAdmin;
+    private boolean readOnly = false;
+    private String accessMode = "SCOPED_USER";
+    private Set<String> roles = new HashSet<>();
+    private Set<String> scopedApps = new HashSet<>();
     private Set<String> permissions = new HashSet<>();
 
     public LoginUser() {
@@ -29,6 +33,61 @@ public class LoginUser {
 
     public boolean hasPermission(String code) {
         return superAdmin || permissions.contains(code);
+    }
+
+    public boolean isReadOnly() {
+        return readOnly;
+    }
+
+    public void setReadOnly(boolean readOnly) {
+        this.readOnly = readOnly;
+    }
+
+    public String getAccessMode() {
+        return accessMode;
+    }
+
+    public void setAccessMode(String accessMode) {
+        this.accessMode = accessMode;
+    }
+
+    public Set<String> getRoles() {
+        return Collections.unmodifiableSet(roles);
+    }
+
+    public void setRoles(Set<String> roles) {
+        this.roles = roles == null ? new HashSet<>() : roles;
+    }
+
+    public Set<String> getScopedApps() {
+        return Collections.unmodifiableSet(scopedApps);
+    }
+
+    public void setScopedApps(Set<String> scopedApps) {
+        this.scopedApps = scopedApps == null ? new HashSet<>() : scopedApps;
+    }
+
+    /**
+     * 可信数据域：由登录会话从 iam_user 读取，不接受客户端 Header 传入。
+     * 用于用户列表等行级查询的强制过滤；任一为空表示无域授权，必须 fail-closed。
+     */
+    private String scopeZone;
+    private String scopeCompany;
+
+    public String getScopeZone() {
+        return scopeZone;
+    }
+
+    public void setScopeZone(String scopeZone) {
+        this.scopeZone = scopeZone;
+    }
+
+    public String getScopeCompany() {
+        return scopeCompany;
+    }
+
+    public void setScopeCompany(String scopeCompany) {
+        this.scopeCompany = scopeCompany;
     }
 
     public String getUserId() {
