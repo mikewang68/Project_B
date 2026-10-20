@@ -178,7 +178,7 @@ class IamApiTest {
                     "iam",
                     2)));
 
-    when(userMapper.selectList(anyString(), any(), any(), any())).thenReturn(List.of());
+    when(userMapper.selectList(anyString(), any(), any(), any(), any(), any())).thenReturn(List.of());
 
     adminToken = login("admin", "Admin@123");
     viewerToken = login("viewer", "Viewer@123");
@@ -372,7 +372,7 @@ class IamApiTest {
     // 即使 Mapper 带出了 password，User.password 的 @JsonIgnore 也必须保证响应不含该字段
     User secret = user("user-admin", "admin", "系统管理员");
     secret.setPassword("$2a$10$should-not-be-serialized");
-    when(userMapper.selectList(anyString(), any(), any(), any())).thenReturn(List.of(secret));
+    when(userMapper.selectList(anyString(), any(), any(), any(), any(), any())).thenReturn(List.of(secret));
     mockMvc
         .perform(get("/users").header("Authorization", "Bearer " + adminToken))
         .andExpect(status().isOk())

@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserService implements LoginUserLoader {
 
+  private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(UserService.class);
+
   private final UserMapper userMapper;
   private final RoleMapper roleMapper;
   private final OrgService orgService;
@@ -48,8 +50,26 @@ public class UserService implements LoginUserLoader {
 
   public List<User> list(String keyword, String status, String roleId) {
     String kw = keyword == null || keyword.isBlank() ? null : "%" + keyword.trim() + "%";
+    LoginUser current = com.bdemo.iam.security.JwtAuthFilter.currentUser();
+    String scopeZone = null;
+    String scopeCompany = null;
+    if (current != null && !current.isSuperAdmin()) {
+      // 非全权管理员：只允许看到本人可信域内的用户；域缺失则 fail-closed 返回空集合
+      scopeZone = current.getScopeZone();
+      scopeCompany = current.getScopeCompany();
+      if ((scopeZone == null || scopeZone.isBlank())
+          && (scopeCompany == null || scopeCompany.isBlank())) {
+        return new java.util.ArrayList<>();
+      }
+    }
     List<User> users =
-        userMapper.selectList(UserMapper.COLUMNS, status, kw == null ? null : keyword.trim(), kw);
+        userMapper.selectList(
+            UserMapper.COLUMNS,
+            status,
+            kw == null ? null : keyword.trim(),
+            kw,
+            scopeZone,
+            scopeCompany);
     for (User u : users) {
       hydrate(u);
     }
@@ -64,8 +84,27 @@ public class UserService implements LoginUserLoader {
     if (u == null) {
       throw BizException.notFound("用户不存在");
     }
+    LoginUser current = com.bdemo.iam.security.JwtAuthFilter.currentUser();
+    if (current != null && !current.isSuperAdmin() && !inCurrentScope(current, u)) {
+      // 与列表保持一致的 fail-closed：不能通过猜 ID 读取域外用户
+      throw BizException.notFound("用户不存在");
+    }
     hydrate(u);
     return u;
+  }
+
+  /** 判断目标用户是否落在当前登录主体的可信数据域内。 */
+  private boolean inCurrentScope(LoginUser current, User target) {
+    String zone = current.getScopeZone();
+    String company = current.getScopeCompany();
+    boolean hasZone = zone != null && !zone.isBlank();
+    boolean hasCompany = company != null && !company.isBlank();
+    if (!hasZone && !hasCompany) {
+      return false;
+    }
+    boolean zoneOk = !hasZone || zone.equals(target.getZoneCode());
+    boolean companyOk = !hasCompany || company.equals(target.getCompanyCode());
+    return zoneOk && companyOk;
   }
 
   private void hydrate(User u) {
@@ -276,18 +315,64 @@ public class UserService implements LoginUserLoader {
       return null;
     }
     List<String> roleIds = userMapper.selectRoleIds(userId);
-    boolean superAdmin = false;
+    boolean hasSuperAdmin = false;
+    boolean hasReadonlyAuditor = false;
+    Set<String> activeRoleCodes = new HashSet<>();
+    Set<String> scopedApps = new HashSet<>();
+
     for (String rid : roleIds) {
       Role role = roleMapper.selectById(rid);
-      if (role != null
-          && "active".equals(role.getStatus())
-          && "super_admin".equals(role.getCode())) {
-        superAdmin = true;
-        break;
+      if (role != null && "active".equals(role.getStatus())) {
+        String code = role.getCode();
+        activeRoleCodes.add(code);
+        if ("super_admin".equalsIgnoreCase(code) || "PLATFORM_ADMIN_FULL".equalsIgnoreCase(code)) {
+          hasSuperAdmin = true;
+        }
+        if ("PLATFORM_AUDITOR_READONLY".equalsIgnoreCase(code)
+            || "auditor_readonly".equalsIgnoreCase(code)
+            || "readonly_auditor".equalsIgnoreCase(code)
+            || "platform_auditor_readonly".equalsIgnoreCase(code)
+            || "auditor".equalsIgnoreCase(code)) {
+          hasReadonlyAuditor = true;
+        }
+        if ("wms_manager".equalsIgnoreCase(code) || "WMS_MANAGER".equalsIgnoreCase(code)) {
+          scopedApps.add("WMS");
+        }
       }
     }
+
+    boolean readOnly = false;
+    String accessMode = "SCOPED_USER";
+    boolean effectiveSuperAdmin = false;
+
+    if (hasReadonlyAuditor) {
+      readOnly = true;
+      accessMode = "READONLY_AUDITOR";
+      effectiveSuperAdmin = false; // 只读硬否决剥离 superAdmin 写绕过能力
+      if (hasSuperAdmin) {
+        log.warn("Security Alert: User {} ({}) assigned both FULL_ADMIN and READONLY_AUDITOR. Readonly Hard Veto prevails.",
+            u.getUsername(), userId);
+      }
+    } else if (hasSuperAdmin) {
+      readOnly = false;
+      accessMode = "FULL_ADMIN";
+      effectiveSuperAdmin = true;
+    } else {
+      readOnly = false;
+      accessMode = "SCOPED_USER";
+      effectiveSuperAdmin = false;
+    }
+
     Set<String> perms = permissionService.codesByRoleIds(roleIds);
-    return new LoginUser(u.getId(), u.getUsername(), u.getName(), superAdmin, perms);
+    LoginUser loginUser = new LoginUser(u.getId(), u.getUsername(), u.getName(), effectiveSuperAdmin, perms);
+    loginUser.setReadOnly(readOnly);
+    loginUser.setAccessMode(accessMode);
+    loginUser.setRoles(activeRoleCodes);
+    loginUser.setScopedApps(scopedApps);
+    // 可信数据域：直接取库内归属，供行级查询下推过滤；客户端 Header 不参与
+    loginUser.setScopeZone(u.getZoneCode());
+    loginUser.setScopeCompany(u.getCompanyCode());
+    return loginUser;
   }
 
   /** 登录成功后组装用户拥有的完整角色对象（前端需要角色名展示）；停用角色不返回，其权限本就不生效。 */
