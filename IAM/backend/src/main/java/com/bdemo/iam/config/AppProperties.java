@@ -10,8 +10,13 @@ public class AppProperties {
   private final Jwt jwt = new Jwt();
   private final Cors cors = new Cors();
   private final Ai ai = new Ai();
+  private final Sso sso = new Sso();
 
   public Ai getAi() { return ai; }
+
+  public Sso getSso() {
+    return sso;
+  }
 
   public Jwt getJwt() {
     return jwt;
@@ -55,7 +60,57 @@ public class AppProperties {
       this.allowedOrigins = allowedOrigins;
     }
   }
+  public static class Sso {
     /**
+     * SSO V1 票据签名密钥（HS256）。独立于 app.jwt.secret；由环境变量 SSO_TICKET_SECRET 注入。
+     * 未配置或长度不足 32 时，票据服务 fail-closed（不签发、不校验）。
+     */
+    private String ticketSecret = "";
+
+    /** 票据签发者标识，目标系统必须校验一致。 */
+    private String issuer = "project-b-iam";
+
+    /** 票据有效期（秒），上限 60。 */
+    private int ticketTtlSeconds = 45;
+
+    /** 允许通过 BFF 换票的目标系统。 */
+    private List<String> allowedAudience =
+        new ArrayList<>(List.of("iam", "sys", "wms", "psms", "scs", "ehms", "emcs", "trust"));
+
+    public String getTicketSecret() {
+      return ticketSecret;
+    }
+
+    public void setTicketSecret(String ticketSecret) {
+      this.ticketSecret = ticketSecret;
+    }
+
+    public String getIssuer() {
+      return issuer;
+    }
+
+    public void setIssuer(String issuer) {
+      this.issuer = issuer;
+    }
+
+    public int getTicketTtlSeconds() {
+      return ticketTtlSeconds;
+    }
+
+    public void setTicketTtlSeconds(int ticketTtlSeconds) {
+      this.ticketTtlSeconds = ticketTtlSeconds;
+    }
+
+    public List<String> getAllowedAudience() {
+      return allowedAudience;
+    }
+
+    public void setAllowedAudience(List<String> allowedAudience) {
+      this.allowedAudience = allowedAudience;
+    }
+  }
+
+  /**
      * AI 能力开关。当前仅支持 disabled（规则驱动），未来可无侵入增加 deepseek。
      * 不配置任何 AI key 也能正常启动。
      */

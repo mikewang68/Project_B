@@ -55,6 +55,10 @@ public class SecurityConfig implements WebMvcConfigurer {
                     .permitAll()
                     .requestMatchers("/auth/login", "/health", "/error", "/actuator/health")
                     .permitAll()
+                    // SSO 服务间校验端点：鉴权由票据签名 + 一次性消费完成，
+                    // 不依赖 IAM 登录态（调用方是目标业务系统的后端）。
+                    .requestMatchers("/auth/sso/verify-and-consume")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .exceptionHandling(
