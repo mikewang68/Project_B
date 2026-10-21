@@ -1,100 +1,79 @@
 package com.bdemo.iam.sso;
 
-import com.bdemo.iam.navigation.service.NavigationProjectionService;
 import com.bdemo.iam.sso.mapper.SsoSubjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
- * 换票前的可用性检查与范围解析。
+ * 换票前的可用性检查与范围解析（V1.1）。
  *
- * <p>契约 D2/R2：{@code sub} 在目标系统必须存在显式映射；未命中即拒绝，不得 fallback。
+ * <p>V1.1 的关键修正（对应 G2_1_CONTRACT_RECONCILIATION.md）：
  *
- * <p>V1 的映射来源优先级：
- *
- * <ol>
- *   <li>{@code iam.sso_subject_binding} 显式登记（最严格）；
- *   <li>回退到「该用户在 IAM 导航树中是否被授权访问该 app」——这是既有且可信的授权来源。
- * </ol>
- *
- * <p>范围（company/org/domain/zone）一律来自服务端主体，不读请求参数。
+ * <ul>
+ *   <li><b>删除导航回退</b>：V1 在缺少显式绑定时会回退到「该用户能否在 IAM 导航树中看到该系统」。
+ *       这只能说明入口是否可见，不能作为业务系统主体映射与授权的依据。V1.1 起，
+ *       无显式映射即 403，不设任何回退。
+ *   <li><b>范围只来自映射表</b>：company/org/domain/zone 一律取 {@code iam.sso_subject_binding}
+ *       的登记值，不再用登录主体字段兜底（避免"字符串透传即隔离"）。
+ * </ul>
  */
 @Service
 public class SsoSubjectGuard {
 
   private final SsoSubjectMapper bindings;
-  private final NavigationProjectionService navigation;
 
-  public SsoSubjectGuard(SsoSubjectMapper bindings, NavigationProjectionService navigation) {
+  public SsoSubjectGuard(SsoSubjectMapper bindings) {
     this.bindings = bindings;
-    this.navigation = navigation;
   }
 
   /**
-   * 确认该主体可换取目标系统的票据。
+   * 确认该主体在目标系统存在**启用的显式映射**。
    *
-   * @throws SsoTicketService.SsoTicketException 未授权时
+   * @throws SsoTicketService.SsoTicketException 无映射或映射停用时（403）
    */
   public void requireBound(String userId, String username, String audience) {
     String aud = audience.trim().toLowerCase();
-
     Map<String, Object> binding = bindings.find(userId, aud);
-    if (binding != null) {
-      Object enabled = binding.get("enabled");
-      boolean on = enabled == null || "1".equals(String.valueOf(enabled)) || Boolean.TRUE.equals(enabled);
-      if (!on) {
-        throw new SsoTicketService.SsoTicketException(
-            "该主体在目标系统的映射已停用: " + aud);
-      }
-      return;
+    if (binding == null) {
+      throw new SsoTicketService.SsoTicketException(
+          "该主体在目标系统无显式映射（V1.1 不设回退）: " + aud);
     }
-
-    // 无显式映射时，回退到 IAM 导航授权（最小可用、fail-closed）
-    if (!navigationAllows(userId, username, aud)) {
-      throw new SsoTicketService.SsoTicketException("该主体未被授权访问目标系统: " + aud);
+    if (!isEnabled(binding)) {
+      throw new SsoTicketService.SsoTicketException("该主体在目标系统的映射已停用: " + aud);
+    }
+    Object local = binding.get("local_subject");
+    if (local == null || String.valueOf(local).isBlank()) {
+      throw new SsoTicketService.SsoTicketException("映射存在但本地主体为空: " + aud);
     }
   }
 
-  /** 解析范围。优先显式映射，其次主体自带范围。 */
-  public Map<String, String> scopeFor(
-      String userId, String username, String audience, String fallbackCompany, String fallbackZone) {
+  /** 解析范围：全部取自映射表，缺失即为空字符串（由目标系统按"空=无范围"处理）。 */
+  public Map<String, String> scopeFor(String userId, String audience) {
     Map<String, String> scope = new HashMap<>();
     Map<String, Object> binding = bindings.find(userId, audience.trim().toLowerCase());
-    if (binding != null) {
-      scope.put("company", str(binding.get("company_code"), fallbackCompany));
-      scope.put("org", str(binding.get("org_code"), ""));
-      scope.put("domain", str(binding.get("domain_code"), ""));
-      scope.put("zone", str(binding.get("zone_code"), fallbackZone));
-    } else {
-      scope.put("company", fallbackCompany == null ? "" : fallbackCompany);
-      scope.put("org", "");
-      scope.put("domain", "");
-      scope.put("zone", fallbackZone == null ? "" : fallbackZone);
-    }
+    scope.put("company", binding == null ? "" : str(binding.get("company_code")));
+    scope.put("org", binding == null ? "" : str(binding.get("org_code")));
+    scope.put("domain", binding == null ? "" : str(binding.get("domain_code")));
+    scope.put("zone", binding == null ? "" : str(binding.get("zone_code")));
+    scope.put("local", binding == null ? "" : str(binding.get("local_subject")));
     return scope;
   }
 
-  private boolean navigationAllows(String userId, String username, String aud) {
-    try {
-      // 复用既有且已验收的授权来源：该主体实际能看到的 app 集合。
-      // projectNavigationTree 内部依赖 JwtAuthFilter.currentUser()，
-      // 因此只能在持有登录态的请求线程中调用（换票端点满足此条件）。
-      var tree = navigation.projectNavigationTree(null, false);
-      if (tree == null || tree.getSystems() == null) {
-        return false;
-      }
-      return tree.getSystems().stream()
-          .anyMatch(s -> s.getAppCode() != null && s.getAppCode().equalsIgnoreCase(aud));
-    } catch (Exception e) {
-      // 任何异常一律保守拒绝，不 fallback 到放行
-      return false;
-    }
+  /** 该主体在目标系统的本地受限主体名（用于审计与目标端二次校验）。 */
+  public String localSubject(String userId, String audience) {
+    Map<String, Object> binding = bindings.find(userId, audience.trim().toLowerCase());
+    return binding == null ? "" : str(binding.get("local_subject"));
   }
 
-  private static String str(Object value, String fallback) {
-    if (value == null) return fallback == null ? "" : fallback;
-    String s = String.valueOf(value);
-    return s.isBlank() ? (fallback == null ? "" : fallback) : s;
+  private static boolean isEnabled(Map<String, Object> binding) {
+    Object enabled = binding.get("enabled");
+    if (enabled == null) return true;
+    String s = String.valueOf(enabled);
+    return "1".equals(s) || "true".equalsIgnoreCase(s);
+  }
+
+  private static String str(Object value) {
+    return value == null ? "" : String.valueOf(value).trim();
   }
 }

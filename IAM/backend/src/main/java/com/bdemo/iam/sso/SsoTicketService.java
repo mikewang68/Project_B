@@ -169,6 +169,15 @@ public class SsoTicketService {
     if (tickets.existsActive(claims.getId(), claims.getSubject(), aud) != 1) {
       throw new SsoTicketException("票据未登记或已撤销/过期");
     }
+
+    // V1.1：票据绑定的 IAM 会话必须仍然活跃。会话一旦登出/撤销，
+    // 尚未消费的票据立即失效，避免"登出后仍能换取身份"。
+    String sid = claims.get("sid", String.class);
+    if (sid != null && !sid.isBlank()) {
+      if (sessions.active(sid, claims.getSubject()) != 1) {
+        throw new SsoTicketException("票据绑定的 IAM 会话已失效");
+      }
+    }
     return claims;
   }
 

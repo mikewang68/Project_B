@@ -77,6 +77,12 @@ public class AppProperties {
     private List<String> allowedAudience =
         new ArrayList<>(List.of("iam", "sys", "wms", "psms", "scs", "ehms", "emcs", "trust"));
 
+    /**
+     * 目标后端的服务身份凭据（V1.1）：逗号分隔的 {@code audience=token}。
+     * 未配置时集中式消费端点整体拒绝。凭据不得入 Git、不得打印。
+     */
+    private String serviceTokens = "";
+
     public String getTicketSecret() {
       return ticketSecret;
     }
@@ -103,6 +109,14 @@ public class AppProperties {
 
     public List<String> getAllowedAudience() {
       return allowedAudience;
+    }
+
+    public String getServiceTokens() {
+      return serviceTokens;
+    }
+
+    public void setServiceTokens(String serviceTokens) {
+      this.serviceTokens = serviceTokens;
     }
 
     public void setAllowedAudience(List<String> allowedAudience) {
