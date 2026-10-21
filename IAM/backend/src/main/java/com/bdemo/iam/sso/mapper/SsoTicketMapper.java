@@ -1,6 +1,7 @@
 package com.bdemo.iam.sso.mapper;
 
 import java.time.Instant;
+import java.util.List;
 import org.apache.ibatis.annotations.*;
 
 @Mapper
@@ -43,7 +44,18 @@ public interface SsoTicketMapper {
   @Update(
       "UPDATE iam.sso_ticket SET revoked_at=CURRENT_TIMESTAMP"
           + " WHERE session_id=#{sessionId} AND revoked_at IS NULL AND consumed_at IS NULL")
-  void revokeBySession(@Param("sessionId") String sessionId);
+  int revokeBySession(@Param("sessionId") String sessionId);
+
+  /**
+   * 该会话签发过票的受众（去重）。
+   *
+   * <p>用于注销时确定"要通知哪些业务系统"。只统计**已消费**的票据：
+   * 未消费的票撤销即可，尚未建立业务会话，无需通知。
+   */
+  @Select(
+      "SELECT DISTINCT audience FROM iam.sso_ticket"
+          + " WHERE session_id=#{sessionId} AND consumed_at IS NOT NULL")
+  List<String> findAudiencesBySession(@Param("sessionId") String sessionId);
 
   @Update(
       "UPDATE iam.sso_ticket SET revoked_at=CURRENT_TIMESTAMP"

@@ -119,6 +119,45 @@ public class AppProperties {
       this.serviceTokens = serviceTokens;
     }
 
+    /**
+     * 各业务系统的注销通知地址，格式 {@code aud=url;aud=url}。
+     *
+     * <p>不假设所有系统共用同一路径——WMS/SCS/EHMS 的接口可能不同名，
+     * 因此按受众逐个登记。未登记的受众在注销时会被记为"投递失败"并可重试，
+     * 而不是静默跳过。
+     */
+    private String logoutEndpoints = "";
+
+    /** 注销通知的 HTTP 超时（毫秒）。 */
+    private long logoutTimeoutMs = 3000;
+
+    /** 后台重试间隔（秒）；0 表示只在前台投递一次。 */
+    private long logoutRetrySeconds = 60;
+
+    public String getLogoutEndpoints() {
+      return logoutEndpoints;
+    }
+
+    public void setLogoutEndpoints(String logoutEndpoints) {
+      this.logoutEndpoints = logoutEndpoints;
+    }
+
+    public long getLogoutTimeoutMs() {
+      return logoutTimeoutMs;
+    }
+
+    public void setLogoutTimeoutMs(long logoutTimeoutMs) {
+      this.logoutTimeoutMs = logoutTimeoutMs;
+    }
+
+    public long getLogoutRetrySeconds() {
+      return logoutRetrySeconds;
+    }
+
+    public void setLogoutRetrySeconds(long logoutRetrySeconds) {
+      this.logoutRetrySeconds = logoutRetrySeconds;
+    }
+
     public void setAllowedAudience(List<String> allowedAudience) {
       this.allowedAudience = allowedAudience;
     }

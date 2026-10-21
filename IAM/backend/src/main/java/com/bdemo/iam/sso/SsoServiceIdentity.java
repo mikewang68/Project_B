@@ -66,4 +66,20 @@ public class SsoServiceIdentity {
   public java.util.Set<String> audiences() {
     return byAudience.keySet();
   }
+
+  /**
+   * 取某受众的服务凭据，供 IAM 主动向该受众**发起**注销通知时使用。
+   *
+   * <p>返回值是凭据明文，只允许在服务端出站请求中立即使用，
+   * <b>不得</b>写入日志、响应体或任何对外输出。
+   *
+   * @return 未登记该受众时返回 null
+   */
+  public String tokenFor(String audience) {
+    if (audience == null) {
+      return null;
+    }
+    byte[] bytes = byAudience.get(audience.trim().toLowerCase());
+    return bytes == null ? null : new String(bytes, StandardCharsets.UTF_8);
+  }
 }
