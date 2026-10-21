@@ -46,6 +46,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 if (userId == null) {
                     userId = claims.getSubject();
                 }
+                // 会话 id（JWT 的 jti）供 SSO 票据注销联动使用。
+                // 只写入请求属性，不进入日志、不回传前端。
+                if (claims.getId() != null) {
+                    request.setAttribute("iam.sessionId", claims.getId());
+                }
                 LoginUser loginUser = loader.load(userId);
                 if (loginUser != null) {
                     var authentication = new UsernamePasswordAuthenticationToken(

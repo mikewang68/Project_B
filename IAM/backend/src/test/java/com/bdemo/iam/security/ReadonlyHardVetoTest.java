@@ -44,6 +44,9 @@ import org.springframework.test.web.servlet.MvcResult;
       "iam.isolation-enabled=false",
       "iam.identity.idempotency-secret=offline-idempotency-test-0123456789abcdef",
       "app.jwt.secret=offline-test-only-0123456789abcdef0123456789abcdef",
+      // SsoTicketService 对缺失/过短密钥 fail-closed（构造即抛）。
+      // 离线测试必须显式提供测试密钥，而不是放宽生产侧的安全约束。
+      "app.sso.ticket-secret=offline-sso-ticket-secret-0123456789abcdef",
       "spring.datasource.url=jdbc:postgresql://127.0.0.1/unused",
       "spring.datasource.username=unused",
       "spring.datasource.password=unused"
