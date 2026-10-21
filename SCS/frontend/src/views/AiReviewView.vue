@@ -8,6 +8,7 @@ import AIEventDrawer from '@/components/ai/AIEventDrawer.vue'
 import ReviewDialog from '@/components/ai/ReviewDialog.vue'
 import AssignmentDialog from '@/components/ai/AssignmentDialog.vue'
 import MockAIEventButton from '@/components/ai/MockAIEventButton.vue'
+import AiSubNav from '@/components/ai/AiSubNav.vue'
 import { aiEventApi, confidenceParam, timeBucketParam } from '@/api/aiEvents'
 import { ApiError } from '@/api/http'
 import { useLiveStore } from '@/stores/live'
@@ -109,7 +110,6 @@ function reportError(error: unknown, fallback: string): void {
   const message = error instanceof ApiError ? error.message : fallback
   ElMessage.error(message)
   if (error instanceof ApiError && import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
     console.warn(`[ai] ${error.status} ${error.code} traceId=${error.traceId}`)
   }
 }
@@ -315,6 +315,8 @@ const listCountText = computed(() => (loading.value ? '加载中…' : `共 <b>$
 
 <template>
   <section class="page-content ai-review-page">
+    <AiSubNav :pending-review-count="metrics.pending" />
+
     <header class="module-intro header-actions-only">
       <MockAIEventButton
         :edge-online="edgeOnline"

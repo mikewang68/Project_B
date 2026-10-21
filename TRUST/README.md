@@ -17,6 +17,8 @@ Project_B 的平台公共能力，版本 **0.1.0，开发联调版**。支持统
 
 ## 工程与组件
 
+通用 JSON 机器接入采用独立来源凭据，默认关闭；不要求批次、不提供通用页面或附件上传。请求原文及清单归档、幂等、更正、回执和显式重试见 [通用 JSON 存证接入](docs/generic-evidence.md)。启用接口不会自动授予钱包或链上权限。
+
 `TRUST/` 是普通子目录，使用 Project_B 的 Git 历史；开发、打包与同步均从本模块发起。源代码按 `backend`、`frontend`、`contracts`、`deploy`、`scripts`、`tests`、`samples`、`docs` 组织，内部规则见 [目录与依赖约定](docs/project-structure.md)。
 
 应用通过官方客户端接入 openGauss、IPFS 和 Fabric。各组件使用独立配置；真实节点、端口映射和部署状态保存在私有配置及本地运维记录中。模板中的回环地址和端口用于说明配置约束，不代表当前服务器状态。
@@ -27,7 +29,7 @@ Project_B 的平台公共能力，版本 **0.1.0，开发联调版**。支持统
 - Fabric Gateway 1.12.1、gRPC 1.83.1、Protobuf 4.36.0；保持该组已验证版本一致。
 - Node 24.18.0、pnpm 10.34.5、Vue 3.5.42、TypeScript 5.9.3；前端版本由锁文件固定。
 - Go 1.26.4；合约依赖由 go.mod/go.sum 固定。
-- 开发电脑使用 Python 3.10+、OpenSSH 和 PowerShell 7；服务器部署脚本兼容 Python 3.9+。生成模拟图片需要安装 `scripts/requirements.txt` 中的依赖。
+- 开发电脑使用 Python 3.11+、OpenSSH 和 PowerShell 7；服务器常规运行脚本兼容 Python 3.9+，`identity-release.py` 和 `extract-opengauss.py` 使用 `hashlib.file_digest`，要求 Python 3.11+。生成模拟图片需要安装 `scripts/requirements.txt` 中的依赖。
 - 浏览器检查使用 Chrome 无界面模式和前端安装的 Playwright，不操作日常浏览器会话。
 
 ## 环境配置
@@ -105,6 +107,10 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 
 ## 测试与运行资料
 
+- [通用操作日志映射](docs/operation-log-generic.md)：OPERATION_LOG 主方案、三种摘要向量和待调用方确认的边界。
+- [六页直达与权限](docs/page-entries.md)：稳定 navTab 入口；Portal SSO 仍需可信票据契约。
+- [隔离恢复验证](docs/isolated-recovery.md)：显式资源清单、新库恢复及离线 IPFS 验证；不启停共享依赖。
+
 - `tests/test_deployment.py`：配置验证和源码打包隔离，不连接服务器。
 - `tests/component-real.py`：真实 IPFS 与合约；随后可用其输出执行 `tests/recovery-components.py`。
 - `deploy/test-database.sh`：独立 trust_test 数据库的集成测试，外部服务使用故障注入。
@@ -118,6 +124,8 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 
 单文件上限 20 MiB，导入上限 200 行 / 1 MiB，IPFS 开发预算 10 GiB；不自动删除固定保存的证据。任务并行度 4，采用持久任务、租约和退避策略。
 
+租约心跳使用独立调度器。存证网络执行上限 4，日志归档、日志投递、身份处理各使用单任务有界执行器，无等待工作队列；积压保留数据库。租约丢失或关闭后不再启动下一步外部动作。导出响应直接流式转发，预先记录 STARTED；响应发送后结果留痕失败只标为未确认，不改写已发送内容或声称回滚。
+
 `scripts/backup.ps1` 编排应用暂存、IPFS 与数据库备份，`-DryRun` 只校验配置；单组件恢复工具位于 deploy。恢复前暂停写入并核对任务与账本检查点；凭据、备份和原始运行数据不存入 Git。备份不等同于在线多副本或全联盟灾难恢复能力。
 
 ## 参考
@@ -130,3 +138,8 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 ## TRUST＋IAM 身份联调版本
 
 公用 Fabric 身份供给 API、IAM 自动供给及独立环境配置见 [身份集成说明](docs/identity-delivery.md)、[身份 OpenAPI](docs/identity-openapi.json)。托管签名和 WMS 接收端契约见 [托管身份与 WMS 接入](docs/managed-wallet-wms.md)。真实 WMS 业务推送、SYS 集成和正式入口切换需要相应维护方配合，不由本模块自动实施。
+
+## 链授权查询与模拟发送
+
+- [钱包链授权状态](docs/wallet-chain-authorization.md)：只读组织观察、当前绑定与维护交接。
+- [通用模拟发送规范](docs/simulator.md)：持久输入、多输出独立回执、有限发送与重启恢复；默认不连接真实服务。

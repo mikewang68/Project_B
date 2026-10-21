@@ -12,6 +12,7 @@ const result={mode:preview?'UI fixtures; no backend acceptance':'Real applicatio
  const input={sourceSystem:'S2-WMS',sourceEventId:'STEEL-001',eventType:'ARRIVAL',businessObjectId:'STEEL-ORDER-001',batchId:'STEEL-2026-001',occurredAt:'2026-09-10T02:00:00Z',quantity:100,unit:'吨',location:'模拟货场',supplier:'模拟供应商',receiver:'模拟接收单位',bundleIds:['BUNDLE-001'],relatedBatchIds:[],relatedEventRefs:[],details:{note:'UI test fixture'}};
  const row={id:'00000000-0000-0000-0000-000000000001',org_id:'B-PROJECT',source_system:input.sourceSystem,source_event_id:input.sourceEventId,event_type:input.eventType,batch_id:input.batchId,object_id:input.businessObjectId,occurred_at:input.occurredAt,received_at:input.occurredAt,version:1,submitted_by:'ui-test',file_state:'STORED',chain_state:'COMMITTED',event_sha256:'1'.repeat(64),manifest_cid:'bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',tx_id:'2'.repeat(64),canonical_json:JSON.stringify({event:input}),evidence:[],versions:[],missingReferences:[],links:[]};
  if(preview)await page.route('**/api/v1/**',async route=>{
+  if (await require('./audit-fixtures.cjs')(route)) return;
   const url=new URL(route.request().url()),p=url.pathname.replace('/api/v1','');let body={},code=200;
   if(p==='/csrf')body={token:'fixture-csrf'};
   else if(p==='/login'){signedIn=true;body={ok:true}}

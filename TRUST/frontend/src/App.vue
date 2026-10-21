@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
+import { readPage, writePage } from "./app/pageLocation";
 import type { ApiRecord } from "./shared/types";
 import { provideFeedback } from "./shared/composables/useFeedback";
 import { useSession } from "./features/auth/useSession";
+import { preparePageRead, clearPageReads } from "./shared/http/actionContext";
 import LoginPage from "./features/auth/LoginPage.vue";
 import WorkspaceShell from "./app/WorkspaceShell.vue";
 import EventLedgerPage from "./features/events/EventLedgerPage.vue";
@@ -13,32 +15,84 @@ import TasksPage from "./features/archiving/TasksPage.vue";
 import OperationsPage from "./features/operations/OperationsPage.vue";
 import IdentityPage from "./features/identities/IdentityPage.vue";
 import WalletPage from "./features/wallet/WalletPage.vue";
-const { run } = provideFeedback();
+const { run, act, busy, error, clearResults } = provideFeedback();
+const entered = ref(false);
+const entryPending = ref(false);
+const initialPage = readPage();
+const locationWarning = ref(initialPage.warning);
+if (initialPage.warning) writePage("events");
 const { me, canWrite, canAdmin, signIn, signOut, quickSignIn, iamSignIn } =
   useSession();
-const tab = ref("events"),
+const tab = ref(initialPage.page),
   selectedId = ref(""),
   correction = ref<ApiRecord | null>(null);
-function navigate(id: string) {
-  tab.value = id;
-  selectedId.value = "";
+async function navigate(id: string) {
+  await act({ action: "NAVIGATE", menuId: id, summary: "切换功能页面" }, () => {
+    preparePageRead(id);
+    tab.value = id;
+    writePage(id);
+    locationWarning.value = "";
+    selectedId.value = "";
+  });
 }
-function openEvent(id: string) {
-  selectedId.value = id;
+async function openEvent(id: string) {
+  await act(
+    { action: "READ", menuId: "events", objectId: id, summary: "打开事件详情" },
+    () => {
+      preparePageRead(`event:${id}`);
+      selectedId.value = id;
+    },
+  );
 }
-function correct(record: ApiRecord) {
-  correction.value = record;
-  navigate("create");
+async function correct(record: ApiRecord) {
+  await act(
+    {
+      action: "UPDATE",
+      menuId: "create",
+      objectId: record.id,
+      summary: "开始追加更正",
+    },
+    () => {
+      preparePageRead("create");
+      correction.value = record;
+      tab.value = "create";
+      writePage("create");
+      selectedId.value = "";
+    },
+  );
 }
+async function enter() {
+  await act(
+    { action: "NAVIGATE", menuId: tab.value, summary: "进入工作台" },
+    () => {
+      preparePageRead(tab.value);
+      entered.value = true;
+    },
+  );
+}
+watch(me, (user) => {
+  entered.value = false;
+  clearResults();
+  clearPageReads();
+  entryPending.value = Boolean(user);
+});
+watch([entryPending, busy], () => {
+  if (!entryPending.value || busy.value) return;
+  entryPending.value = false;
+  void enter();
+});
 function saved(id: string) {
+  preparePageRead(`event:${id}`);
   correction.value = null;
   tab.value = "events";
+  writePage("events");
   selectedId.value = id;
 }
 async function logout() {
+  // The server records logout from its existing session and always clears it even when
+  // audit/IAM is unavailable. A client audit receipt must not gate this recovery action.
   await run(async () => {
     await signOut();
-    tab.value = "events";
     selectedId.value = "";
     correction.value = null;
   });
@@ -52,6 +106,11 @@ async function logout() {
     :quick-sign-in="quickSignIn"
     :iam-sign-in="iamSignIn"
   />
+  <section v-else-if="!entered" class="panel">
+    <p role="alert">{{ error || "正在保存页面进入记录…" }}</p>
+    <button :disabled="busy" @click="enter">重试进入工作台</button>
+    <button :disabled="busy" @click="run(signOut)">退出登录（恢复入口）</button>
+  </section>
   <WorkspaceShell
     v-else
     :me="me"
@@ -59,11 +118,14 @@ async function logout() {
     @navigate="navigate"
     @logout="logout"
   >
+    <p v-if="locationWarning" class="alert" role="status">
+      {{ locationWarning }}
+    </p>
     <EventDetail
       v-if="selectedId"
       :id="selectedId"
       :can-write="canWrite"
-      @close="selectedId = ''"
+      @close="navigate('events')"
       @open="openEvent"
       @correct="correct"
     />
@@ -92,6 +154,7 @@ async function logout() {
       <OperationsPage
         v-else-if="!selectedId && tab === 'status'"
         :can-admin="canAdmin"
+        :verified-identity="me.identityProvider === 'IAM' && !me.simulated"
       />
     </KeepAlive>
   </WorkspaceShell>

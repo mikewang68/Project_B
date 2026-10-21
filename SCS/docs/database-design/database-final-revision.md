@@ -136,13 +136,16 @@
       edge_node_code, status_code, edge_occurred_at ASC, event_id ASC
   );
   ```
+- **活跃实体部分唯一索引（Partial Unique Indexes，软删除编号重用）**：
+  为 `sys_team`, `safety_area`, `sys_user`, `safety_personnel`, `device_camera`, `collision_device`, `edge_node`, `safety_fence`, `safety_rule` 建立 `WHERE is_deleted = false` 的部分唯一索引，彻底解决传统整表 UNIQUE 约束在逻辑删除后无法复用历史业务编号的缺陷。
 
-### 2. 外键分层策略
-- **Strong FK（库级强外键）**：仅用于聚合根与其内部专属子表（同生命周期级联）：
-  - `safety_alert` → `timeline`, `evidence`, `treatment`, `linkage` (+ `step`)
-  - `ai_event` → `timeline`
-  - `safety_fence` → `version`, `edge_sync`
-  - `safety_rule` → `area`, `version`, `edge_sync`
+### 2. 外键防级联与防物理删除治理策略
+- **外键全面采用 RESTRICT（杜绝隐式级联清空）**：
+  聚合根与专属子表（`safety_alert` 与 `timeline/evidence/treatment/linkage`、`safety_fence` 与 `version/sync`、`safety_rule` 与 `area/version/sync`）外键一律配置为 `ON DELETE RESTRICT`，**严禁使用 `ON DELETE CASCADE`**，从关系约束底层切断物理级联销毁路径。
+- **库级硬拦截防删触发器（BEFORE DELETE Guard Triggers）**：
+  定义数据库存储过程 `safety.fn_prevent_physical_delete()`，在全部 24 张核心业务表与 1 张辅助表上绑定 `BEFORE DELETE` 触发器，一旦收到物理 `DELETE` 命令立即抛出异常 `Physical DELETE is strictly prohibited...` 并强制回滚事务。
+- **统一有效数据查询视图（Unified Active Views）**：
+  定义 `safety.v_*` 视图体系（`v_sys_team` ~ `v_safety_alert` 等 11 张视图），在数据库侧统一注入 `WHERE is_deleted = false` 与 `WHERE status_code <> 'CANCELLED'` 过滤规则，保证查询接口与报表消费自动屏蔽无效与作废数据。
 - **Soft FK（软引用无物理外键）**：跨聚合关系仅存 `_code` 或 `_id` 业务标识，禁止加库级强约束（如 `collision_device` 与 `safety_alert`，`sys_user` 与各事件）。
 
 ---
@@ -160,13 +163,13 @@
 8. Java 8+ `OffsetDateTime` / `Instant` 与 openGauss 驱动映射。
 9. `JSONB` 多态证据载荷的存储与检索性能。
 10. `JSONB` 路径索引与 `GIN` 索引支持度。
-11. 部分索引（`Partial Index`，`WHERE status_code <> 'CLOSED'`）在查询执行计划中的生效判定。
+11. 部分索引（`Partial Index`，`WHERE status_code <> 'CLOSED'` 及 `WHERE is_deleted = false`）在查询执行计划中的生效判定。
 12. 复合索引执行计划覆盖分析。
 13. `INSERT ... ON CONFLICT (...) DO UPDATE` 语法兼容性。
 14. `MERGE INTO` 语法实机支持对比。
 15. 业务发号器 `SELECT ... FOR UPDATE` 排他行锁高并发测试。
 16. CHECK 约束在非法枚举值插入时的拦截行为。
-17. 库级强外键级联删除（`ON DELETE CASCADE`）在聚合根删除时的性能影响。
+17. 库级防物理删除触发器（`fn_prevent_physical_delete()`）与外键 `ON DELETE RESTRICT` 拦截有效性实测。
 18. `UNIQUE` 业务唯一键冲突时抛出的 SQLState 及异常转译规范。
 19. 本地数据库事务 commit / rollback 一致性。
 20. Spring Boot 3.5.5 HikariCP 与 `org.opengauss.Driver` 官方驱动连接池稳定性。

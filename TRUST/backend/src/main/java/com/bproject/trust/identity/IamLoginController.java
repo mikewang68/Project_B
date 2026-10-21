@@ -19,6 +19,9 @@ public class IamLoginController {
   private final PlatformIdentity iam;
   private final IntegrationSettings settings;
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bproject.trust.logevidence.LogOperations operationLogs;
+
   public IamLoginController(
       @Qualifier("iamClient") PlatformIdentity iamClient,
       com.bproject.trust.adapters.iam.SimulatedIamClient simulatedIam,
@@ -35,11 +38,71 @@ public class IamLoginController {
   @PostMapping("/login")
   public Map<String, Boolean> login(
       @Valid @RequestBody Login body, HttpServletRequest request, HttpServletResponse response) {
-    String token = iam.login(body.username(), body.password());
-    var user = iam.current(token);
+    String trace = java.util.UUID.randomUUID().toString();
+    if (operationLogs != null)
+      operationLogs.enqueue(
+          "UNVERIFIED_SECURITY",
+          "",
+          "LOGIN",
+          "",
+          "STARTED",
+          "REQUEST",
+          "",
+          "POST",
+          "/api/v1/iam/login",
+          "",
+          trace);
+    String token;
+    com.bproject.trust.ports.PlatformIdentity.User user;
+    try {
+      token = iam.login(body.username(), body.password());
+      user = iam.current(token);
+    } catch (RuntimeException failure) {
+      if (operationLogs != null)
+        operationLogs.enqueue(
+            "UNVERIFIED_SECURITY",
+            "",
+            "LOGIN",
+            "",
+            "DENIED",
+            "REQUEST",
+            "",
+            "POST",
+            "/api/v1/iam/login",
+            "",
+            trace);
+      throw failure;
+    }
     if (!user.orgCodes().stream()
-        .anyMatch(code -> body.orgId().equals(settings.read().orgMap().get(code))))
+        .anyMatch(code -> body.orgId().equals(settings.read().orgMap().get(code)))) {
+      if (operationLogs != null)
+        operationLogs.enqueue(
+            "UNVERIFIED_SECURITY",
+            "",
+            "LOGIN",
+            "",
+            "DENIED",
+            "REQUEST",
+            "",
+            "POST",
+            "/api/v1/iam/login",
+            "Scope denied",
+            trace);
       throw new ApiError(403, "当前用户没有该业务范围的授权映射");
+    }
+    if (operationLogs != null)
+      operationLogs.enqueue(
+          body.orgId(),
+          user.id(),
+          "LOGIN",
+          "",
+          "SUCCESS",
+          "REQUEST",
+          "",
+          "POST",
+          "/api/v1/iam/login",
+          "IAM identity verified",
+          trace);
     var old = request.getSession(false);
     if (old != null) old.invalidate();
     SecurityContextHolder.clearContext();

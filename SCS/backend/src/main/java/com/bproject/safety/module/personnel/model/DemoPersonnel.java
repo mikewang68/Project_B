@@ -40,6 +40,8 @@ public class DemoPersonnel {
     public int alertsToday;
     public String lastUpdated;
     public OffsetDateTime updatedAt;
+    /** 逻辑删除标记（true 为已删除，查询统一过滤）。 */
+    public boolean isDeleted = false;
     /** 关联的未关闭告警编号摘要（不复制完整 Alert）。 */
     public List<String> activeAlertIds;
 
@@ -111,6 +113,7 @@ public class DemoPersonnel {
         p.alertsToday = alertsToday;
         p.lastUpdated = lastUpdated;
         p.updatedAt = updatedAt;
+        p.isDeleted = isDeleted;
         p.activeAlertIds = activeAlertIds == null ? null : new java.util.ArrayList<>(activeAlertIds);
         p.baseBattery = baseBattery;
         p.baseBraceletStatusCode = baseBraceletStatusCode;

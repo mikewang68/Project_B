@@ -35,6 +35,8 @@ public final class LiveEventTypes {
     public static final String SYSTEM_NOTICE = "system.notice";
     /** 人员位置 / 状态变化 */
     public static final String PERSON_MOVED = "person.moved";
+    /** 人员定位配置变更（刷新频率 / 缓冲区配置） */
+    public static final String PERSON_CONFIG_CHANGED = "person.config.changed";
     /** 围栏变更（编辑 / 发布 / 版本异常 / 重新下发 / 停用） */
     public static final String FENCE_CHANGED = "fence.changed";
     /** 防碰撞设备状态通用变化 */

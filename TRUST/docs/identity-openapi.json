@@ -21,7 +21,7 @@
       "post": {
         "operationId": "provisionIdentity",
         "summary": "提交稳定业务主体的期望状态",
-        "description": "IAM在本地事务提交后调用；revision由唯一调用方递增。返回证书不含私钥、key_ref或注册秘密。相同revision必须相同内容。READY需真实Gateway核验；合约权限不自动授予。所有触发证书吊销的命令均要求revoke权限，包括SYNC且desiredState=DELETED；disable仅允许平台停用。",
+        "description": "IAM在本地事务提交后调用；revision由唯一调用方递增。返回证书不含私钥、key_ref或注册秘密。相同revision必须相同内容。READY需真实Gateway核验；合约权限不自动授予。所有触发证书吊销的命令均要求revoke权限，包括SYNC且desiredState=DELETED；disable仅允许平台停用。 已受理的新ACTIVE修订若有旧证书撤销未决，保持待处理，确认旧目标后才使用新版本。CA撤销与所有Peer的CRL验证分开记录。",
         "parameters": [
           {
             "name": "Idempotency-Key",
@@ -428,7 +428,7 @@
       "post": {
         "operationId": "retryIdentity",
         "summary": "retry身份",
-        "description": "普通恢复需要retry；保存的action=REVOKE或desiredState=DELETED还需要revoke。403不改变任务、证书、请求回执及审计。",
+        "description": "普通恢复需要retry；保存的action=REVOKE或desiredState=DELETED还需要revoke。403不改变任务、证书、请求回执及审计。 已删除主体只允许对待办状态执行retry，待吊销重试仍需独立revoke权限；其他生命周期操作保持拒绝。",
         "parameters": [
           {
             "name": "id",
@@ -960,7 +960,8 @@
               }
             }
           }
-        }
+        },
+        "description": " 已删除主体只允许对待办状态执行retry，待吊销重试仍需独立revoke权限；其他生命周期操作保持拒绝。"
       }
     },
     "/api/v1/iam/users/{id}/identity/rotate": {

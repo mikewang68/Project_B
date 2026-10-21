@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Repository;
  * 修改 find 返回的对象但不调用 save 不会影响仓储内部状态（activeAlertIds 请求级投影同理）。</p>
  */
 @Repository
+@Profile("!server")
 public class InMemoryPersonnelRepository implements PersonnelRepository, DemoResettableStore {
 
     private final ConcurrentHashMap<String, DemoPersonnel> store = new ConcurrentHashMap<>();
@@ -81,14 +83,16 @@ public class InMemoryPersonnelRepository implements PersonnelRepository, DemoRes
 
     @Override
     public List<DemoPersonnel> findAll() {
-        return store.values().stream().map(DemoPersonnel::copy)
+        return store.values().stream()
+                .filter(p -> !p.isDeleted)
+                .map(DemoPersonnel::copy)
                 .sorted(Comparator.comparing(p -> p.id)).toList();
     }
 
     @Override
     public Optional<DemoPersonnel> findById(String id) {
         DemoPersonnel p = store.get(id);
-        return p == null ? Optional.empty() : Optional.of(p.copy());
+        return (p == null || p.isDeleted) ? Optional.empty() : Optional.of(p.copy());
     }
 
     @Override

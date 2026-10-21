@@ -21,6 +21,7 @@ export interface TrendPoint {
   date: string
   total: number
   high: number
+  demoBaseline?: boolean
 }
 
 /** 风险类型计数 */

@@ -30,17 +30,17 @@ class UserAdminRepository {
     }
 
     List<String> roles(long userId) {
-        return jdbc.sql("SELECT r.code FROM auth_role r JOIN auth_user_role ur ON ur.role_id=r.id WHERE ur.user_id=:id ORDER BY r.sort_order")
+        return jdbc.sql("SELECT r.code FROM auth_role r JOIN auth_user_role ur ON ur.role_id=r.id WHERE ur.user_id=:id AND ur.revoked_at IS NULL ORDER BY r.sort_order")
                 .param("id", userId).query(String.class).list();
     }
 
     List<String> warehouses(long userId) {
-        return jdbc.sql("SELECT w.code FROM wms_warehouse w JOIN auth_user_warehouse uw ON uw.warehouse_id=w.id WHERE uw.user_id=:id ORDER BY w.code")
+        return jdbc.sql("SELECT w.code FROM wms_warehouse w JOIN auth_user_warehouse uw ON uw.warehouse_id=w.id WHERE uw.user_id=:id AND uw.revoked_at IS NULL AND w.status<>'DELETED' ORDER BY w.code")
                 .param("id", userId).query(String.class).list();
     }
 
     List<String> owners(long userId) {
-        return jdbc.sql("SELECT o.code FROM wms_owner o JOIN auth_user_owner uo ON uo.owner_id=o.id WHERE uo.user_id=:id ORDER BY o.code")
+        return jdbc.sql("SELECT o.code FROM wms_owner o JOIN auth_user_owner uo ON uo.owner_id=o.id WHERE uo.user_id=:id AND uo.revoked_at IS NULL AND o.status<>'DELETED' ORDER BY o.code")
                 .param("id", userId).query(String.class).list();
     }
 
@@ -70,28 +70,35 @@ class UserAdminRepository {
     }
 
     void replaceAssignments(long companyId, long userId, UserAdminModels.SaveUserRequest request) {
-        jdbc.sql("DELETE FROM auth_user_role WHERE user_id=:id").param("id", userId).update();
+        jdbc.sql("UPDATE auth_user_role SET revoked_at=CURRENT_TIMESTAMP WHERE user_id=:id AND revoked_at IS NULL").param("id", userId).update();
         for (String code : request.roleCodes()) {
-            int count = jdbc.sql("INSERT INTO auth_user_role(user_id,role_id) SELECT :id,id FROM auth_role WHERE code=:code")
-                    .param("id", userId).param("code", code).update();
-            if (count != 1) throw new IllegalArgumentException("角色不存在：" + code);
+            long role=jdbc.sql("SELECT id FROM auth_role WHERE code=:code").param("code",code).query(Long.class).optional().orElseThrow(()->new IllegalArgumentException("角色不存在："+code));
+            activateAssignment("auth_user_role","role_id",userId,role);
         }
-        jdbc.sql("DELETE FROM auth_user_warehouse WHERE user_id=:id").param("id", userId).update();
+        jdbc.sql("UPDATE auth_user_warehouse SET revoked_at=CURRENT_TIMESTAMP WHERE user_id=:id AND revoked_at IS NULL").param("id", userId).update();
         for (String code : request.warehouseCodes()) {
-            int count = jdbc.sql("INSERT INTO auth_user_warehouse(user_id,warehouse_id) SELECT :id,id FROM wms_warehouse WHERE company_id=:companyId AND code=:code AND status='ENABLED'")
-                    .param("id", userId).param("companyId", companyId).param("code", code).update();
-            if (count != 1) throw new IllegalArgumentException("仓库不存在或不可用：" + code);
+            long warehouse=jdbc.sql("SELECT id FROM wms_warehouse WHERE company_id=:c AND code=:code AND status='ENABLED'").param("c",companyId).param("code",code).query(Long.class).optional().orElseThrow(()->new IllegalArgumentException("仓库不存在或不可用："+code));
+            activateAssignment("auth_user_warehouse","warehouse_id",userId,warehouse);
         }
-        jdbc.sql("DELETE FROM auth_user_owner WHERE user_id=:id").param("id", userId).update();
+        jdbc.sql("UPDATE auth_user_owner SET revoked_at=CURRENT_TIMESTAMP WHERE user_id=:id AND revoked_at IS NULL").param("id", userId).update();
         for (String code : request.ownerCodes()) {
-            int count = jdbc.sql("INSERT INTO auth_user_owner(user_id,owner_id) SELECT :id,id FROM wms_owner WHERE company_id=:companyId AND code=:code AND status='ENABLED'")
-                    .param("id", userId).param("companyId", companyId).param("code", code).update();
-            if (count != 1) throw new IllegalArgumentException("货主不存在或不可用：" + code);
+            long owner=jdbc.sql("SELECT id FROM wms_owner WHERE company_id=:c AND code=:code AND status='ENABLED'").param("c",companyId).param("code",code).query(Long.class).optional().orElseThrow(()->new IllegalArgumentException("货主不存在或不可用："+code));
+            activateAssignment("auth_user_owner","owner_id",userId,owner);
         }
     }
 
+    // The enclosing create/update transaction already locks the auth_user row, serializing assignment edits.
+    private void activateAssignment(String table,String column,long user,long target) {
+        int changed=jdbc.sql("UPDATE "+table+" SET revoked_at=NULL WHERE user_id=:u AND "+column+"=:target").param("u",user).param("target",target).update();
+        if(changed==0) jdbc.sql("INSERT INTO "+table+"(user_id,"+column+") VALUES(:u,:target)").param("u",user).param("target",target).update();
+    }
+
+    int logicalDelete(long companyId,long userId,long actor) {
+        return jdbc.sql("UPDATE auth_user SET status='DELETED',login_enabled=FALSE,deleted_at=CURRENT_TIMESTAMP,deleted_by=:actor,updated_at=CURRENT_TIMESTAMP WHERE company_id=:c AND id=:id AND status<>'DELETED'")
+            .param("c",companyId).param("id",userId).param("actor",actor).update();
+    }
     void updatePassword(long companyId, long userId, String hash) {
-        int count = jdbc.sql("UPDATE auth_user SET password_hash=:hash,password_change_required=TRUE,updated_at=CURRENT_TIMESTAMP WHERE company_id=:companyId AND id=:id")
+        int count = jdbc.sql("UPDATE auth_user SET password_hash=:hash,password_change_required=TRUE,updated_at=CURRENT_TIMESTAMP WHERE company_id=:companyId AND id=:id AND status<>'DELETED'")
                 .param("hash", hash).param("companyId", companyId).param("id", userId).update();
         if (count != 1) throw new IllegalArgumentException("用户不存在");
     }

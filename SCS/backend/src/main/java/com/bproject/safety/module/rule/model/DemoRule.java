@@ -1,6 +1,7 @@
 package com.bproject.safety.module.rule.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,6 +41,9 @@ public class DemoRule {
     public List<EdgeNode> edgeNodes = new ArrayList<>();
     /** 回滚来源版本（仅由回滚生成的新版本携带，Demo 审计用）。 */
     public String sourceVersion;
+    public OffsetDateTime createdTime;
+    /** 逻辑删除标记（true 为已删除，查询统一过滤）。 */
+    public boolean isDeleted = false;
     /** 版本 → 参数快照（Backend Demo 回滚还原用；前端不消费该字段）。 */
     public java.util.Map<String, List<Param>> versionSnapshots;
 
@@ -79,6 +83,8 @@ public class DemoRule {
         r.versions = versions == null ? new ArrayList<>() : new ArrayList<>(versions);
         r.edgeNodes = edgeNodes == null ? new ArrayList<>() : new ArrayList<>(edgeNodes);
         r.sourceVersion = sourceVersion;
+        r.createdTime = createdTime;
+        r.isDeleted = isDeleted;
         r.versionSnapshots = versionSnapshots == null ? null
                 : new java.util.LinkedHashMap<>(versionSnapshots);
         return r;

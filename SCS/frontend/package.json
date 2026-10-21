@@ -13,6 +13,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "vue-tsc -b",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {

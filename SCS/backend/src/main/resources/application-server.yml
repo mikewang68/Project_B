@@ -18,6 +18,10 @@ spring:
       database: ${KVROCKS_DATABASE:0}
 
 app:
+  security:
+    enabled: ${APP_SECURITY_ENABLED:true}
+    api-key: ${APP_SECURITY_API_KEY}
+    bearer-token: ${APP_SECURITY_BEARER_TOKEN}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
   rocketmq:

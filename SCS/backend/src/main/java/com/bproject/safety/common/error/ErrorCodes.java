@@ -8,6 +8,8 @@ public final class ErrorCodes {
     public static final String BAD_REQUEST = "BAD_REQUEST";
     public static final String UNAUTHORIZED = "UNAUTHORIZED";
     public static final String FORBIDDEN = "FORBIDDEN";
+    public static final String FORBIDDEN_READONLY_ROLE = "FORBIDDEN_READONLY_ROLE";
+    public static final String FORBIDDEN_SCOPE_MISMATCH = "FORBIDDEN_SCOPE_MISMATCH";
     public static final String NOT_FOUND = "NOT_FOUND";
     public static final String STATE_CONFLICT = "STATE_CONFLICT";
     public static final String UNPROCESSABLE_ENTITY = "UNPROCESSABLE_ENTITY";

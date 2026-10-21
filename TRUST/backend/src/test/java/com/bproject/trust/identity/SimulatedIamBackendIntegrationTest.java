@@ -28,7 +28,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** Real Spring security/controller/service/DB integration; only IPFS and Fabric are mocked. */
-@org.springframework.context.annotation.Import(com.bproject.trust.support.NoBackgroundScheduling.class)
+@org.springframework.context.annotation.Import(
+    com.bproject.trust.support.NoBackgroundScheduling.class)
 @SpringBootTest(
     properties = {
       "trust.isolation-enabled=false",
@@ -51,9 +52,9 @@ class SimulatedIamBackendIntegrationTest {
   @DynamicPropertySource
   static void properties(DynamicPropertyRegistry properties) throws Exception {
     String url = System.getenv("TRUST_TEST_DB_URL");
-    if (url == null || !url.matches("jdbc:opengauss://127\\.0\\.0\\.1:25432/trust_iam_dev_test"))
-      throw new IllegalStateException(
-          "Identity integration tests require the dedicated trust_iam_dev_test database");
+    com.bproject.trust.support.TestDatabase.require(url);
+    properties.add(
+        "spring.datasource.driver-class-name", com.bproject.trust.support.TestDatabase::driver);
     Path root = Path.of(System.getenv("TRUST_ROOT"), "runtime/identity-integration");
     Files.createDirectories(root.resolve("runtime/secrets"));
     Files.writeString(
@@ -85,7 +86,7 @@ class SimulatedIamBackendIntegrationTest {
   @BeforeEach
   void resetSimulation() throws Exception {
     try (var connection = db.getDataSource().getConnection()) {
-      assertTrue(connection.getMetaData().getURL().endsWith("/trust_iam_dev_test"));
+      com.bproject.trust.support.TestDatabase.require(connection.getMetaData().getURL());
     }
     iam.setAvailable(true);
     iam.updatePermissions(
@@ -162,15 +163,43 @@ class SimulatedIamBackendIntegrationTest {
   @org.springframework.transaction.annotation.Transactional
   void explicitLocalLoginSupportsLegacyAccountsWithoutInheritingIamSessionOrWalletRights()
       throws Exception {
-    // Reserve only an unused legacy slot inside this test transaction; rollback removes our row.
+    // Reserve only an unused legacy slot inside this test transaction; rollback removes our
+    // row.
     // Never update a pre-existing account to make its password fit the fixture.
-    String legacy = List.of("admin", "editor", "viewer", "external-viewer").stream()
-        .filter(name -> db.queryForObject("SELECT COUNT(*) FROM trust_users WHERE username=?", Long.class, name) == 0)
-        .findFirst().orElseThrow(() -> new IllegalStateException("No unused legacy fixture slot; existing accounts are protected"));
-    db.update("INSERT INTO trust_users(username,password_hash,role,org_id) VALUES(?,?,'ADMIN','B-PROJECT')",
-        legacy, new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("fixture-local-admin"));
-    Files.writeString(Path.of(System.getenv("TRUST_ROOT"), "runtime/identity-integration/runtime/secrets/users.json"),
-        Json.write(List.of(Map.of("username", legacy, "password", "fixture-local-admin", "role", "ADMIN", "orgId", "B-PROJECT"))));
+    String legacy =
+        List.of("admin", "editor", "viewer", "external-viewer").stream()
+            .filter(
+                name ->
+                    db.queryForObject(
+                            "SELECT COUNT(*) FROM trust_users WHERE" + " username=?",
+                            Long.class,
+                            name)
+                        == 0)
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "No unused legacy fixture slot; existing accounts" + " are protected"));
+    db.update(
+        "INSERT INTO trust_users(username,password_hash,role,org_id)"
+            + " VALUES(?,?,'ADMIN','B-PROJECT')",
+        legacy,
+        new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+            .encode("fixture-local-admin"));
+    Files.writeString(
+        Path.of(
+            System.getenv("TRUST_ROOT"), "runtime/identity-integration/runtime/secrets/users.json"),
+        Json.write(
+            List.of(
+                Map.of(
+                    "username",
+                    legacy,
+                    "password",
+                    "fixture-local-admin",
+                    "role",
+                    "ADMIN",
+                    "orgId",
+                    "B-PROJECT"))));
     mvc.perform(get("/api/v1/identity-mode"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.localLoginEnabled").value(true));

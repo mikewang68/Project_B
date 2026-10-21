@@ -75,14 +75,16 @@ public class InMemoryCollisionRepository implements CollisionRepository, DemoRes
 
     @Override
     public List<DemoCollisionDevice> findAll() {
-        return store.values().stream().map(DemoCollisionDevice::copy)
+        return store.values().stream()
+                .filter(d -> !d.isDeleted)
+                .map(DemoCollisionDevice::copy)
                 .sorted(Comparator.comparing(d -> d.id)).toList();
     }
 
     @Override
     public Optional<DemoCollisionDevice> findById(String id) {
         DemoCollisionDevice d = store.get(id);
-        return d == null ? Optional.empty() : Optional.of(d.copy());
+        return (d == null || d.isDeleted) ? Optional.empty() : Optional.of(d.copy());
     }
 
     @Override

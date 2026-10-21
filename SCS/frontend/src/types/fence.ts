@@ -25,6 +25,8 @@ export interface FenceRecord {
   edgeSynced: number
   edgeTotal: number
   polygon: FencePoint[]
+  bufferDistance?: number | undefined
+  bufferPolygon?: FencePoint[] | undefined
   nodes: EdgeNodeStatus[]
 }
 
@@ -35,4 +37,5 @@ export interface FenceDraft {
   teams: string
   startsAt: string
   endsAt: string
+  bufferDistance?: number | undefined
 }

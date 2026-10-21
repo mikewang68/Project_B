@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { ElButton, ElIcon, ElInput, ElLoading, ElOption, ElSegmented, ElSelect, ElSwitch, ElTable, ElTableColumn, ElTag } from 'element-plus'
+import { ElButton, ElDialog, ElDrawer, ElIcon, ElInput, ElInputNumber, ElLoading, ElOption, ElPagination, ElSegmented, ElSelect, ElSlider, ElSwitch, ElTable, ElTableColumn, ElTag } from 'element-plus'
 import 'element-plus/dist/index.css'
 import '@/styles/tokens.scss'
 import '@/styles/main.scss'
@@ -19,6 +19,6 @@ import router from './router'
 
 const app = createApp(App)
 app.use(createPinia()).use(router)
-for (const component of [ElButton, ElIcon, ElInput, ElOption, ElSegmented, ElSelect, ElSwitch, ElTable, ElTableColumn, ElTag]) app.component(component.name!, component)
+for (const component of [ElButton, ElDialog, ElDrawer, ElIcon, ElInput, ElInputNumber, ElOption, ElPagination, ElSegmented, ElSelect, ElSlider, ElSwitch, ElTable, ElTableColumn, ElTag]) app.component(component.name!, component)
 app.directive('loading', ElLoading.directive)
 app.mount('#app')

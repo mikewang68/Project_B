@@ -13,3 +13,8 @@ export async function saveMasterData(resource:MasterResource,id:number|null,body
   const csrf=await apiFetch<{headerName:string;token:string}>('/api/v1/auth/csrf')
   return apiFetch(id?`/api/v1/master-data/${resource}/${id}`:`/api/v1/master-data/${resource}`,{method:id?'PUT':'POST',data:body,headers:{[csrf.headerName]:csrf.token}})
 }
+
+export async function deleteMasterData(resource:MasterResource,id:number):Promise<void>{
+  const csrf=await apiFetch<{headerName:string;token:string}>('/api/v1/auth/csrf')
+  return apiFetch(`/api/v1/master-data/${resource}/${id}`,{method:'DELETE',headers:{[csrf.headerName]:csrf.token}})
+}

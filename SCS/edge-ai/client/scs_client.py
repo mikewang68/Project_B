@@ -5,17 +5,24 @@ Dispatches detected violations to SCS Central Gateway with idempotency protectio
 import logging
 import uuid
 import datetime
+import hashlib
 import requests
 from typing import Dict, Any, Optional
 
 from config import SCS_INGEST_ENDPOINT
 
+import os
+
 logger = logging.getLogger("edge_ai.client")
 
 class ScsClient:
-    def __init__(self, ingest_url: str = SCS_INGEST_ENDPOINT, timeout: float = 5.0):
+    def __init__(self, ingest_url: str = SCS_INGEST_ENDPOINT, timeout: float = 5.0, api_key: Optional[str] = None):
         self.ingest_url = ingest_url
         self.timeout = timeout
+        resolved_key = api_key or os.getenv("SCS_API_KEY") or os.getenv("APP_SECURITY_API_KEY")
+        if not resolved_key:
+            raise ValueError("SCS API key must be provided via constructor or SCS_API_KEY / APP_SECURITY_API_KEY environment variable")
+        self.api_key = resolved_key
         logger.info(f"ScsClient configured with endpoint: {self.ingest_url}")
 
     def report_event(
@@ -42,9 +49,10 @@ class ScsClient:
         Sends violation event to SCS Ingest API (POST /api/v1/ai-events/ingest).
         """
         if not idempotency_key:
-            now_str = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-            short_id = uuid.uuid4().hex[:6].upper()
-            idempotency_key = f"EDGE-{camera_code}-{now_str}-{short_id}"
+            bucket = int(datetime.datetime.now().timestamp() // 10)
+            sig_raw = f"{camera_code}:{event_type}:{rule_code}:{bucket}"
+            sig_hash = hashlib.md5(sig_raw.encode("utf-8")).hexdigest()[:8].upper()
+            idempotency_key = f"EDGE-{camera_code}-{sig_hash}-{bucket}"
 
         payload = {
             "eventType": event_type,
@@ -70,6 +78,8 @@ class ScsClient:
             "Content-Type": "application/json",
             "Idempotency-Key": idempotency_key
         }
+        if self.api_key:
+            headers["X-API-Key"] = self.api_key
 
         logger.info(f"Reporting AI event '{event_type}' to SCS [Key: {idempotency_key}]...")
 

@@ -51,12 +51,14 @@ export const useLiveStore = defineStore('live', () => {
 
   /** 订阅告警实时事件，返回取消订阅函数 */
   function onAlertEvent(listener: AlertEventListener): () => void {
+    start()
     alertListeners.add(listener)
     return () => alertListeners.delete(listener)
   }
 
   /** 订阅“重连成功”事件（用于 REST 全量 refresh） */
   function onReconnected(listener: ReconnectedListener): () => void {
+    start()
     reconnectedListeners.add(listener)
     return () => reconnectedListeners.delete(listener)
   }

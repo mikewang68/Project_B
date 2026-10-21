@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { listRoles, listUsers, saveUser, type RoleOption, type SaveUserRequest, type UserView } from '@/api/users'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { deleteUser, listRoles, listUsers, saveUser, type RoleOption, type SaveUserRequest, type UserView } from '@/api/users'
 import { ApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 
@@ -42,12 +42,16 @@ async function submit(): Promise<void> {
   finally { saving.value = false }
 }
 
+async function remove(row:UserView):Promise<void>{
+  try{await ElMessageBox.confirm(`删除账号 ${row.username} 后将禁止登录，历史业务记录保留。确认删除？`,'逻辑删除',{type:'warning'})}catch{return}
+  try{await deleteUser(row.id);ElMessage.success('账号已逻辑删除');await load()}catch(e){ElMessage.error(e instanceof ApiError?e.message:'删除失败')}
+}
 onMounted(load)
 </script>
 
 <template>
   <div class="page-stack">
-    <header class="page-heading"><div><p class="eyebrow">SYSTEM</p><h1>用户管理</h1><p>维护公司内账号、角色以及可访问的仓库和货主。</p></div><el-button type="primary" @click="openCreate">新建用户</el-button></header>
+    <header class="page-heading"><div><p class="eyebrow">SYSTEM</p><h1>用户管理</h1><p>维护公司内账号、角色以及可访问的仓库和货主。</p></div><el-button v-if="auth.hasPermission('system:user:write')" type="primary" @click="openCreate">新建用户</el-button></header>
     <section class="panel table-panel">
       <el-table v-loading="loading" :data="users" stripe>
         <el-table-column prop="username" label="账号" min-width="120" />
@@ -56,7 +60,7 @@ onMounted(load)
         <el-table-column label="角色" min-width="160"><template #default="scope"><el-tag v-for="role in scope.row.roles" :key="role" class="role-tag">{{ role }}</el-tag></template></el-table-column>
         <el-table-column label="状态" width="110"><template #default="scope"><el-tag :type="scope.row.status === 'ENABLED' && scope.row.loginEnabled ? 'success' : 'info'">{{ scope.row.status === 'ENABLED' && scope.row.loginEnabled ? '启用' : '停用' }}</el-tag></template></el-table-column>
         <el-table-column label="数据范围" min-width="180"><template #default="scope">{{ scope.row.warehouses.join('、') }} / {{ scope.row.owners.join('、') }}</template></el-table-column>
-        <el-table-column label="操作" width="100" fixed="right"><template #default="scope"><el-button link type="primary" @click="openEdit(scope.row)">编辑</el-button></template></el-table-column>
+        <el-table-column v-if="auth.hasPermission('system:user:write')" label="操作" width="150" fixed="right"><template #default="scope"><el-button link type="primary" @click="openEdit(scope.row)">编辑</el-button><el-button link type="danger" :disabled="scope.row.id===auth.user?.id" @click="remove(scope.row)">删除</el-button></template></el-table-column>
       </el-table>
     </section>
 

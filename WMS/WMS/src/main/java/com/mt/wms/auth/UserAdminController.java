@@ -44,6 +44,13 @@ class UserAdminController {
         return ApiResponse.ok(service.update(principal(auth), userId, body), requestId(request));
     }
 
+    @DeleteMapping("/users/{userId}")
+    @PreAuthorize("hasAuthority('system:user:write')")
+    ApiResponse<Void> delete(@PathVariable long userId,Authentication auth,HttpServletRequest request) {
+        service.delete(principal(auth),userId);
+        return ApiResponse.ok(null,requestId(request));
+    }
+
     private WmsPrincipal principal(Authentication auth) { return (WmsPrincipal) auth.getPrincipal(); }
     private String requestId(HttpServletRequest request) { return request.getAttribute(RequestIdFilter.ATTRIBUTE).toString(); }
 }

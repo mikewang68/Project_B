@@ -2,7 +2,7 @@
 import { Check, Promotion, Switch, VideoPlay, Promotion as Linkage, DocumentChecked, Lock, Top } from '@element-plus/icons-vue'
 import type { AlertEvent } from '@/types/alert'
 
-const props = defineProps<{ alert: AlertEvent; actionPending?: boolean }>()
+defineProps<{ alert: AlertEvent; actionPending?: boolean }>()
 const emit = defineEmits<{
   confirm: []
   assign: []

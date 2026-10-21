@@ -15,4 +15,17 @@ public interface PersonnelRepository {
     Optional<DemoPersonnel> findById(String id);
 
     DemoPersonnel save(DemoPersonnel person);
+
+    record PersonnelStats(int online, int abnormal, int bandOffline, int lowBattery) {
+    }
+
+    default PersonnelStats getStats() {
+        List<DemoPersonnel> all = findAll();
+        long online = all.stream().filter(p -> com.bproject.safety.module.personnel.model.PersonStatuses.ONLINE.equals(p.statusCode)).count();
+        long abnormal = all.stream().filter(p -> !com.bproject.safety.module.personnel.model.PersonRiskLevels.NORMAL.equals(p.riskCode)).count();
+        long bandOffline = all.stream().filter(p -> com.bproject.safety.module.personnel.model.BraceletStatuses.OFFLINE.equals(p.braceletStatusCode)).count();
+        long lowBattery = all.stream()
+                .filter(p -> com.bproject.safety.module.personnel.model.BraceletStatuses.LOW_BATTERY.equals(p.braceletStatusCode) || p.battery < 20).count();
+        return new PersonnelStats((int) online, (int) abnormal, (int) bandOffline, (int) lowBattery);
+    }
 }

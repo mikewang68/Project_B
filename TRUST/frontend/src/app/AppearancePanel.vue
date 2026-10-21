@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useFeedback } from "../shared/composables/useFeedback";
 import { useAppearance } from "./appearance";
 
+const { act, busy } = useFeedback();
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 const panel = ref<HTMLElement | null>(null);
@@ -63,7 +65,17 @@ onBeforeUnmount(() => {
               class="theme-option"
               :class="{ active: preference.theme === theme.id }"
               :aria-pressed="preference.theme === theme.id"
-              @click="setTheme(theme.id)"
+              :disabled="busy"
+              @click="
+                act(
+                  {
+                    action: 'UPDATE',
+                    menuId: 'appearance',
+                    summary: '修改外观主题',
+                  },
+                  () => setTheme(theme.id),
+                )
+              "
             >
               <span class="theme-swatch" aria-hidden="true">
                 <i :style="{ background: theme.colors[0] }"></i>
@@ -93,7 +105,17 @@ onBeforeUnmount(() => {
               class="layout-option"
               :class="{ active: preference.layout === layout.id }"
               :aria-pressed="preference.layout === layout.id"
-              @click="setLayout(layout.id)"
+              :disabled="busy"
+              @click="
+                act(
+                  {
+                    action: 'UPDATE',
+                    menuId: 'appearance',
+                    summary: '修改页面布局',
+                  },
+                  () => setLayout(layout.id),
+                )
+              "
             >
               <span
                 class="layout-thumb"
@@ -109,7 +131,21 @@ onBeforeUnmount(() => {
           </div>
         </section>
 
-        <button class="appearance-reset" type="button" @click="reset">
+        <button
+          class="appearance-reset"
+          type="button"
+          :disabled="busy"
+          @click="
+            act(
+              {
+                action: 'UPDATE',
+                menuId: 'appearance',
+                summary: '恢复默认外观',
+              },
+              reset,
+            )
+          "
+        >
           恢复默认（科技蓝 · 左侧菜单）
         </button>
       </aside>

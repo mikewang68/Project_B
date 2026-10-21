@@ -20,10 +20,19 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class PlatformIdentityFilter extends OncePerRequestFilter {
   private final PlatformIdentity iam;
   private final IntegrationSettings settings;
+  private com.bproject.trust.logevidence.LogOperations operationLogs;
 
   public PlatformIdentityFilter(PlatformIdentity iam, IntegrationSettings settings) {
     this.iam = iam;
     this.settings = settings;
+  }
+
+  public PlatformIdentityFilter(
+      PlatformIdentity iam,
+      IntegrationSettings settings,
+      com.bproject.trust.logevidence.LogOperations logs) {
+    this(iam, settings);
+    this.operationLogs = logs;
   }
 
   @Override
@@ -33,7 +42,7 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
     String path = request.getServletPath();
     if (path.isEmpty()) path = request.getRequestURI().substring(request.getContextPath().length());
     // Login-page metadata remains available even during an IAM outage.
-    if (path.equals("/api/v1/identity-mode")) {
+    if (path.equals("/api/v1/identity-mode") || path.equals("/api/v1/csrf")) {
       chain.doFilter(request, response);
       return;
     }
@@ -104,6 +113,18 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
         }
       }
     } catch (ApiError e) {
+      if (operationLogs != null
+          && !path.startsWith("/api/v1/integrations/")
+          && !path.startsWith("/api/v1/audit/page-actions")) {
+        try {
+          operationLogs.rejected(
+              SecurityContextHolder.getContext().getAuthentication(), request.getMethod(), path);
+        } catch (Exception failure) {
+          SecurityContextHolder.clearContext();
+          response.sendError(503, "操作留痕暂不可用");
+          return;
+        }
+      }
       SecurityContextHolder.clearContext();
       response.setStatus(e.status);
       response.setContentType("application/json;charset=UTF-8");
@@ -119,6 +140,10 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
 
   public static String requiredPermission(String path, String method) {
     if (!path.startsWith("/api/v1/")) return null;
+    // Page collection is self-scoped; settings writes use a separate stable IAM ID allowlist.
+    if (path.startsWith("/api/v1/audit/page-actions")
+        || path.startsWith("/api/v1/audit/delivery")
+        || path.equals("/api/v1/audit/settings")) return null;
     if (path.startsWith("/api/v1/identity-management")) return "trust:identity:read";
     if (path.startsWith("/api/v1/wallets")) return "trust:wallet:read";
     if (path.endsWith("/export")) return "trust:evidence:export";

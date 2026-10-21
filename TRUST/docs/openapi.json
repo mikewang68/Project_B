@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "TRUST 接收、托管钱包与核验接口",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "TRUST 接收端契约。来源发送不代表真实 WMS 已接通；模拟 IAM 仅在明确隔离配置启用。POST 会话接口需 CSRF，来源接口使用受限 Bearer 凭据。"
   },
   "servers": [
@@ -198,7 +198,8 @@
               }
             }
           }
-        }
+        },
+        "description": " 仅LEGACY_V1；即使同组织会话也不能读取GENERIC_V1，返回404。通用首版不提供原文下载/导出。"
       }
     },
     "/api/v1/events/{id}/retry": {
@@ -260,7 +261,8 @@
               }
             }
           }
-        }
+        },
+        "description": " 仅LEGACY_V1；即使同组织会话也不能读取GENERIC_V1，返回404。通用首版不提供原文下载/导出。"
       }
     },
     "/api/v1/events/{id}/corrections": {
@@ -1328,6 +1330,645 @@
           }
         ]
       }
+    },
+    "/api/v1/integrations/evidence/events": {
+      "post": {
+        "tags": [
+          "generic-evidence"
+        ],
+        "operationId": "submitGenericEvidence",
+        "description": "持久受理events、首次原文、tasks和审计；202不是上链成功。同号规范内容相同200重放，首次字节不替换；submit重放不恢复FAILED。",
+        "security": [
+          {
+            "genericSourceBearer": []
+          }
+        ],
+        "x-source-operation": "submit",
+        "responses": {
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "INVALID_SOURCE_CREDENTIAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SOURCE_OPERATION_DENIED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "INGRESS_DISABLED或RECEIPT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "INGRESS_CONFIGURATION_UNAVAILABLE或PERSISTENCE_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "同号相同内容，replayed=true",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericEvidenceReceipt"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "持久受理，replayed=false",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericEvidenceReceipt"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "本条回执的相对URL"
+              }
+            }
+          },
+          "409": {
+            "description": "IDEMPOTENCY_CONFLICT、SOURCE_NAMESPACE_CONFLICT或CORRECTION_CONFLICT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "REQUEST_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE；仅未压缩UTF-8 JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenericEvidenceInput"
+              },
+              "example": {
+                "schemaVersion": 1,
+                "sourceEventId": "synthetic-maintenance-001",
+                "eventType": "MAINTENANCE_CONFIRMED",
+                "businessObjectId": "synthetic-equipment-01",
+                "occurredAt": "2026-01-01T02:00:00Z",
+                "payload": {
+                  "simulation": true,
+                  "operatorRef": "synthetic-operator",
+                  "result": "completed",
+                  "referenceUrl": "https://example.invalid/source-record/001"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/evidence/events/{id}": {
+      "get": {
+        "tags": [
+          "generic-evidence"
+        ],
+        "operationId": "getGenericEvidence",
+        "description": "仅返回本组织、本来源命名、本稳定来源主体的通用回执；越界或不存在均404。",
+        "security": [
+          {
+            "genericSourceBearer": []
+          }
+        ],
+        "x-source-operation": "read",
+        "responses": {
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "INVALID_SOURCE_CREDENTIAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SOURCE_OPERATION_DENIED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "INGRESS_DISABLED或RECEIPT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "INGRESS_CONFIGURATION_UNAVAILABLE或PERSISTENCE_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "当前持久回执",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericEvidenceReceipt"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/evidence/events/by-source-event/{number}": {
+      "get": {
+        "tags": [
+          "generic-evidence"
+        ],
+        "operationId": "findGenericEvidenceBySourceEvent",
+        "description": "仅返回本组织、本来源命名、本稳定来源主体的通用回执；越界或不存在均404。",
+        "security": [
+          {
+            "genericSourceBearer": []
+          }
+        ],
+        "x-source-operation": "read",
+        "responses": {
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "INVALID_SOURCE_CREDENTIAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SOURCE_OPERATION_DENIED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "INGRESS_DISABLED或RECEIPT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "INGRESS_CONFIGURATION_UNAVAILABLE或PERSISTENCE_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "当前持久回执",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericEvidenceReceipt"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(?!\\.{1,2}$)[A-Za-z0-9._-]{1,120}$"
+            },
+            "description": "原来源事件号；不允许 . 或 .. 两个完整点路径段。"
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/evidence/events/capabilities": {
+      "get": {
+        "tags": [
+          "generic-evidence"
+        ],
+        "operationId": "genericEvidenceCapabilities",
+        "description": "只返回非敏感实例隔离能力，用于接入工具核对目标。",
+        "security": [
+          {
+            "genericSourceBearer": []
+          }
+        ],
+        "x-source-operation": "read",
+        "responses": {
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "INVALID_SOURCE_CREDENTIAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SOURCE_OPERATION_DENIED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "INGRESS_DISABLED或RECEIPT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "INGRESS_CONFIGURATION_UNAVAILABLE或PERSISTENCE_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "实例能力",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressCapabilities"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/evidence/events/{id}/retry": {
+      "post": {
+        "tags": [
+          "generic-evidence"
+        ],
+        "operationId": "retryGenericEvidence",
+        "description": "独立retry权限且eventType仍获许可。READY/DONE不变200 queued=false；RUNNING409；FAILED原任务转READY202 queued=true并审计。保留原文、CID、签名及未决交易；先查链再提交。 请求体最多64字节，兼容空body和仅JSON空白；也接受单个空JSON对象（允许对象内外空格、制表符及换行）。数组、非空对象、其他JSON值、尾随内容及超限输入返回400 INVALID_REQUEST。",
+        "security": [
+          {
+            "genericSourceBearer": []
+          }
+        ],
+        "x-source-operation": "retry",
+        "responses": {
+          "400": {
+            "description": "INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "INVALID_SOURCE_CREDENTIAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SOURCE_OPERATION_DENIED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "INGRESS_DISABLED或RECEIPT_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "INGRESS_CONFIGURATION_UNAVAILABLE或PERSISTENCE_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "无需重排，queued=false",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericEvidenceReceipt"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "失败任务已重新排队，queued=true",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericEvidenceReceipt"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "TASK_RUNNING或INTEGRITY_MISMATCH",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericIngressError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "description": "最多64字节；空body或仅JSON空白兼容，JSON内容必须为单个空对象。",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "maxProperties": 0,
+                "additionalProperties": false
+              },
+              "example": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallets/{id}/chain-authorization": {
+      "get": {
+        "tags": [
+          "wallet-authorization-controller"
+        ],
+        "operationId": "walletChainAuthorization",
+        "description": "只读查询当前组织当前来源绑定证书。需要真实IAM会话与trust:wallet:read。UNKNOWN和INCONSISTENT不表示授权，不提交链交易。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sourceSystem",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,80}$"
+            }
+          },
+          {
+            "name": "eventType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z_]{1,40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前观察结果，不保证未来交易成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "walletId",
+                    "sourceSystem",
+                    "fingerprint",
+                    "eventType",
+                    "walletState",
+                    "status",
+                    "checkedAt",
+                    "observations"
+                  ],
+                  "properties": {
+                    "walletId": {
+                      "type": "string"
+                    },
+                    "sourceSystem": {
+                      "type": "string"
+                    },
+                    "fingerprint": {
+                      "type": "string"
+                    },
+                    "eventType": {
+                      "type": "string"
+                    },
+                    "walletState": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "AUTHORIZED",
+                        "UNAUTHORIZED",
+                        "UNKNOWN",
+                        "INCONSISTENT"
+                      ]
+                    },
+                    "checkedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "observations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "organization": {
+                            "type": "string"
+                          },
+                          "available": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "来源或类型无效"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "非IAM身份或缺少钱包读取权限"
+          },
+          "404": {
+            "description": "钱包不在当前组织或来源当前未绑定该钱包"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1663,6 +2304,237 @@
             "description": "每个managed来源均按此明确白名单授权。当前TRUST导出WAREHOUSE_IN与DISPATCH；SetSigner去重排序。历史策略省略/null时只兼容这两类，不代表任意类型。显式空数组拒绝。"
           }
         }
+      },
+      "GenericEvidenceInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "sourceEventId",
+          "eventType",
+          "businessObjectId",
+          "occurredAt",
+          "payload"
+        ],
+        "description": "首次HTTP UTF-8原文和canonical分别≤262144字节；重复key、BOM、U+0000、未知字段、尾随内容拒绝。payload URL只是普通字段，不下载附件。",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "const": 1
+          },
+          "sourceEventId": {
+            "type": "string",
+            "pattern": "^(?!\\.{1,2}$)[A-Za-z0-9._-]{1,120}$",
+            "description": "来源事件号；禁止完整点路径段 . 和 ..，其他合法点号保留，可按号查回。"
+          },
+          "eventType": {
+            "type": "string",
+            "pattern": "^[A-Z_]{1,40}$",
+            "description": "须在来源allowedEventTypes中；禁止WAREHOUSE_IN、DISPATCH。"
+          },
+          "businessObjectId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "非空；最多120个UTF-16代码单元。不充当批次。"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "必须带时区；最多微秒精度，UTC规范化。"
+          },
+          "payload": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": true,
+            "description": "深度≤16、节点≤2000、key≤120、单字符串≤16384个UTF-16代码单元；数字有效位≤38且规范后绝对scale≤18。"
+          },
+          "supersedesId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "同来源最新通用版本；更正保持eventType/businessObjectId，使用新的sourceEventId。"
+          }
+        }
+      },
+      "GenericEvidenceReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "sourceSystem",
+          "sourceEventId",
+          "rootId",
+          "status",
+          "taskState",
+          "fileState",
+          "chainState",
+          "eventSha256",
+          "originalSha256",
+          "supersedesId",
+          "originalCid",
+          "manifestCid",
+          "manifestSha256",
+          "txId",
+          "errorCode",
+          "version",
+          "blockNumber",
+          "outcomeUnknown",
+          "nextRetryAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sourceSystem": {
+            "type": "string"
+          },
+          "sourceEventId": {
+            "type": "string"
+          },
+          "rootId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "PROCESSING",
+              "RETRY_WAIT",
+              "CONFIRMING",
+              "ACTION_REQUIRED",
+              "COMMITTED"
+            ]
+          },
+          "taskState": {
+            "type": "string",
+            "enum": [
+              "READY",
+              "RUNNING",
+              "FAILED",
+              "DONE"
+            ]
+          },
+          "fileState": {
+            "type": "string"
+          },
+          "chainState": {
+            "type": "string"
+          },
+          "eventSha256": {
+            "type": "string"
+          },
+          "originalSha256": {
+            "type": "string"
+          },
+          "supersedesId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "originalCid": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "manifestCid": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "manifestSha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "txId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "blockNumber": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "outcomeUnknown": {
+            "type": "boolean"
+          },
+          "nextRetryAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean",
+            "description": "仅submit返回"
+          },
+          "queued": {
+            "type": "boolean",
+            "description": "仅retry返回"
+          }
+        },
+        "description": "来源范围白名单回执，不含payload。ACTION_REQUIRED可同时outcomeUnknown=true，不代表链上无记录；缺少blockNumber时返回null。"
+      },
+      "GenericIngressError": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "GenericIngressCapabilities": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "instanceId",
+          "isolationEnabled",
+          "ingressSchemaVersions"
+        ],
+        "properties": {
+          "instanceId": {
+            "type": "string"
+          },
+          "isolationEnabled": {
+            "type": "boolean"
+          },
+          "ingressSchemaVersions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "const": 1
+            }
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -1675,6 +2547,11 @@
         "type": "http",
         "scheme": "bearer",
         "description": "来源服务专用凭据，非 IAM 用户令牌"
+      },
+      "genericSourceBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "独立通用来源token；不复用WMS、身份供给或IAM会话。默认关闭。"
       }
     }
   },

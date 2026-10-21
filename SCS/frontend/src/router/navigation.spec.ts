@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import router from './index'
 
-// Sidebar 九个业务菜单 → 路由（与 AppSidebar.vue 的 menuItems 一一对应）
+// Sidebar 十个业务菜单 → 路由（与 AppSidebar.vue 的 menuItems 一一对应）
 const BUSINESS_ROUTES: Record<string, string> = {
   '/overview': 'overview',
   '/people': 'people',
   '/fences': 'fences',
   '/devices': 'devices',
   '/ai': 'ai-review',
+  '/ai/models': 'ai-models',
   '/alarms': 'alert-center',
   '/analytics': 'analytics',
   '/rules': 'rules',
@@ -15,7 +16,7 @@ const BUSINESS_ROUTES: Record<string, string> = {
 }
 
 describe('router 路由表', () => {
-  it('九个业务路径都能解析到唯一命名路由', () => {
+  it('十个业务路径都能解析到唯一命名路由', () => {
     for (const [path, name] of Object.entries(BUSINESS_ROUTES)) {
       const resolved = router.resolve(path)
       expect(resolved.name).toBe(name)

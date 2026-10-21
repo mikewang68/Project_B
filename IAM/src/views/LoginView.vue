@@ -19,6 +19,28 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
+type DemoAccount = { label: string; username: string; password: string; desc: string }
+function configuredAccounts(): DemoAccount[] {
+  try {
+    const value: unknown = JSON.parse(import.meta.env.VITE_LOGIN_ACCOUNTS || '[]')
+    if (!Array.isArray(value)) return []
+    return value.filter((item) => item && typeof item.label === 'string' && typeof item.username === 'string')
+      .map((item) => ({
+        label: item.label, username: item.username,
+        password: typeof item.password === 'string' ? item.password : '',
+        desc: typeof item.description === 'string' ? item.description : '',
+      }))
+  } catch {
+    return []
+  }
+}
+const demoAccounts = configuredAccounts()
+
+function fillAccount(acc: { username: string; password: string }) {
+  form.username = acc.username
+  form.password = acc.password
+}
+
 async function handleLogin() {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
@@ -75,7 +97,7 @@ async function handleLogin() {
         </div>
         <div class="feature-item">
           <span class="feature-dot feature-dot-reserved"></span>
-          <span>创建用户时自动供给 Fabric 身份，状态可查询</span>
+          <span>区块链身份 ID 预留（后续操作上链溯源）</span>
         </div>
       </div>
       <div class="brand-footer">
@@ -103,7 +125,21 @@ async function handleLogin() {
           </el-form-item>
         </el-form>
 
-
+        <div class="demo-section">
+          <div class="demo-title">演示账号（点击快速填充）</div>
+          <div class="demo-grid">
+            <div
+              v-for="acc in demoAccounts"
+              :key="acc.username"
+              class="demo-account"
+              @click="fillAccount(acc)"
+            >
+              <div class="demo-acc-name">{{ acc.label }}</div>
+              <div class="demo-acc-user">{{ acc.username }}</div>
+              <div class="demo-acc-desc">{{ acc.desc }}</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

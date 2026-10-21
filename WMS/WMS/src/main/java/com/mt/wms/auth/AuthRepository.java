@@ -41,7 +41,7 @@ public class AuthRepository {
         return jdbc.sql("""
                         SELECT r.code FROM auth_role r
                         JOIN auth_user_role ur ON ur.role_id = r.id
-                        WHERE ur.user_id = :userId
+                        WHERE ur.user_id = :userId AND ur.revoked_at IS NULL
                         ORDER BY r.sort_order, r.code
                         """)
                 .param("userId", userId)
@@ -54,7 +54,7 @@ public class AuthRepository {
                         SELECT DISTINCT p.code FROM auth_permission p
                         JOIN auth_role_permission rp ON rp.permission_id = p.id
                         JOIN auth_user_role ur ON ur.role_id = rp.role_id
-                        WHERE ur.user_id = :userId
+                        WHERE ur.user_id = :userId AND ur.revoked_at IS NULL
                         ORDER BY p.code
                         """)
                 .param("userId", userId)
@@ -86,7 +86,7 @@ public class AuthRepository {
                 : """
                   SELECT w.id, w.code, w.name FROM wms_warehouse w
                    JOIN auth_user_warehouse uw ON uw.warehouse_id = w.id
-                   WHERE uw.user_id = :userId AND w.company_id = :companyId AND w.status = 'ENABLED'
+                   WHERE uw.user_id = :userId AND uw.revoked_at IS NULL AND w.company_id = :companyId AND w.status = 'ENABLED'
                    ORDER BY w.code
                   """;
         JdbcClient.StatementSpec statement = jdbc.sql(sql).param("companyId", companyId);
@@ -106,7 +106,7 @@ public class AuthRepository {
                 : """
                   SELECT o.id, o.code, o.name FROM wms_owner o
                    JOIN auth_user_owner uo ON uo.owner_id = o.id
-                   WHERE uo.user_id = :userId AND o.company_id = :companyId AND o.status = 'ENABLED'
+                   WHERE uo.user_id = :userId AND uo.revoked_at IS NULL AND o.company_id = :companyId AND o.status = 'ENABLED'
                    ORDER BY o.code
                   """;
         JdbcClient.StatementSpec statement = jdbc.sql(sql).param("companyId", companyId);
@@ -114,6 +114,17 @@ public class AuthRepository {
             statement = statement.param("userId", userId);
         }
         return statement.query(AuthModels.TenantOption.class).list();
+    }
+
+    public Optional<WmsPrincipal> refreshPrincipal(WmsPrincipal principal) {
+        return jdbc.sql("""
+            SELECT u.id AS user_id,c.id AS company_id,c.code AS company_code,c.name AS company_name,
+                   u.username,u.display_name,u.password_hash,u.password_change_required
+              FROM auth_user u JOIN auth_company c ON c.id=u.company_id
+             WHERE u.id=:u AND u.company_id=:c AND u.status='ENABLED' AND u.login_enabled=TRUE AND c.status='ENABLED'
+            """).param("u",principal.userId()).param("c",principal.companyId()).query(LoginAccount.class).optional()
+            .map(u->new WmsPrincipal(u.userId(),u.companyId(),u.companyCode(),u.companyName(),u.username(),u.displayName(),
+                List.copyOf(findRoles(u.userId())),findPermissions(u.userId()),u.passwordChangeRequired()));
     }
 
     void markLoginSuccess(long userId) {

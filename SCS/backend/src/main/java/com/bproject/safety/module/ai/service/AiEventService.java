@@ -312,7 +312,12 @@ public class AiEventService {
         String type = body.eventType() != null && !body.eventType().isBlank()
                 ? body.eventType().trim() : "AI 视觉异常";
 
-        String eventId = idempotency.process(idemKey, () -> gate.buffer(() -> {
+        String effectiveIdemKey = (idemKey != null && !idemKey.isBlank())
+                ? idemKey
+                : "EDGE-AI:" + (body.cameraCode() != null ? body.cameraCode().trim() : "CAM-01")
+                  + ":" + type + ":" + (System.currentTimeMillis() / 10000);
+
+        String eventId = idempotency.process(effectiveIdemKey, () -> gate.buffer(() -> {
             DemoAiEvent event = new DemoAiEvent();
             event.id = nextAiId();
             event.type = type;

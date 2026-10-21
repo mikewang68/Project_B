@@ -15,6 +15,7 @@ fs.mkdirSync(out, { recursive: true });
   const wallets = [{ id: 'w1', label: '模拟仓储签名身份', msp_id: 'Org1MSP', key_ref: 'wms-v1', fingerprint: 'a'.repeat(64), not_after: '2027-09-23T00:00:00Z', state: 'ACTIVE' }];
   const requests = [];
   await page.route('**/api/v1/**', async route => {
+  if (await require('./audit-fixtures.cjs')(route)) return;
     const p = new URL(route.request().url()).pathname.replace('/api/v1', '');
     let status = 200, body = {};
     if (p === '/identity-mode') body = { simulated: true, iamRequired: true };

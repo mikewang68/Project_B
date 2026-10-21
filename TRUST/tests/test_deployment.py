@@ -82,6 +82,7 @@ class DeploymentTest(unittest.TestCase):
             root = parent / 'TRUST'
             root.mkdir()
             for name in ['README.md', 'backend/pom.xml', 'frontend/src/App.vue', 'deploy/start.sh',
+                         'examples/generic-maintenance.json', 'selfcheck/examples/request.json',
                          '.local/deployment.json', 'runtime/secrets/users.json', 'tools/cache',
                          'artifacts/app.jar', 'frontend/node_modules/dependency/index.js',
                          'backend/target/app.jar', 'backend/src/main/resources/static/index.html',
@@ -94,7 +95,8 @@ class DeploymentTest(unittest.TestCase):
             packaging.package(output, root)
             with tarfile.open(output) as archive:
                 names = set(archive.getnames())
-                self.assertEqual(names, {'README.md', 'backend/pom.xml', 'frontend/src/App.vue', 'deploy/start.sh'})
+                self.assertEqual(names, {'README.md', 'backend/pom.xml', 'frontend/src/App.vue', 'deploy/start.sh',
+                                         'examples/generic-maintenance.json', 'selfcheck/examples/request.json'})
                 self.assertTrue(archive.getmember('deploy/start.sh').mode & 0o100)
                 self.assertTrue(all(not member.uname and not member.gname for member in archive))
 

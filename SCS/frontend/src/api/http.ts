@@ -41,8 +41,14 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   headers.set('X-Trace-Id', requestTraceId)
+  if (!headers.has('Authorization')) {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('scs_token') : null
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+  }
   if (init.body) headers.set('Content-Type', 'application/json; charset=utf-8')
-  if (init.method && init.method !== 'GET') headers.set('Idempotency-Key', traceId())
+  if (init.method && init.method !== 'GET' && !headers.has('Idempotency-Key')) headers.set('Idempotency-Key', traceId())
 
   try {
     const response = await fetch(`${API_BASE}${path}`, { ...init, headers, signal: controller.signal })

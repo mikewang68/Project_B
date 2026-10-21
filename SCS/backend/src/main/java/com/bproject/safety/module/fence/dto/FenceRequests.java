@@ -11,11 +11,21 @@ public final class FenceRequests {
 
     public record CreateFenceRequest(String name, String kind, String riskLevel, String teams,
                                      String startsAt, String endsAt, List<FencePoint> polygon,
-                                     Boolean submitReview) {
+                                     Double bufferDistance, Boolean submitReview) {
+        public CreateFenceRequest(String name, String kind, String riskLevel, String teams,
+                                  String startsAt, String endsAt, List<FencePoint> polygon,
+                                  Boolean submitReview) {
+            this(name, kind, riskLevel, teams, startsAt, endsAt, polygon, 5.0, submitReview);
+        }
     }
 
     public record UpdateFenceRequest(String name, String kind, String teams, String riskLevel,
-                                     String startsAt, String endsAt, List<FencePoint> polygon) {
+                                     String startsAt, String endsAt, List<FencePoint> polygon,
+                                     Double bufferDistance) {
+        public UpdateFenceRequest(String name, String kind, String teams, String riskLevel,
+                                  String startsAt, String endsAt, List<FencePoint> polygon) {
+            this(name, kind, teams, riskLevel, startsAt, endsAt, polygon, 5.0);
+        }
     }
 
     public record PublishRequest(List<String> nodeIds) {

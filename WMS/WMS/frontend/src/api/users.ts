@@ -18,3 +18,8 @@ export async function saveUser(id: number | null, body: SaveUserRequest): Promis
     method: id ? 'PUT' : 'POST', data: body, headers: { [csrf.headerName]: csrf.token },
   })
 }
+
+export async function deleteUser(id:number):Promise<void>{
+  const csrf=await apiFetch<{headerName:string;token:string}>('/api/v1/auth/csrf')
+  return apiFetch(`/api/v1/system/users/${id}`,{method:'DELETE',headers:{[csrf.headerName]:csrf.token}})
+}

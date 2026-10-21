@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -41,6 +42,11 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiResponse<Void>> illegalArgument(IllegalArgumentException exception, HttpServletRequest request) {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error("COMMON_BAD_REQUEST", exception.getMessage(), requestId(request)));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ApiResponse<Void>> invalidReference(DataIntegrityViolationException exception,HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(ApiResponse.error("COMMON_DATA_CONFLICT","关联资料已失效、编码重复或数据不符合业务约束，请刷新后重试",requestId(request)));
     }
 
     @ExceptionHandler(Exception.class)

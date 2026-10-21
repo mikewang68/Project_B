@@ -37,7 +37,7 @@ public class FabricIdentityService {
                 s -> {
                   var prior =
                       db.queryForList(
-                          "SELECT * FROM identity_request WHERE caller_id=? AND request_key=?",
+                          "SELECT * FROM identity_request WHERE" + " caller_id=? AND request_key=?",
                           c.id(),
                           key);
                   if (!prior.isEmpty()) {
@@ -47,8 +47,8 @@ public class FabricIdentityService {
                   }
                   var rows =
                       db.queryForList(
-                          "SELECT * FROM fabric_identity WHERE issuer=? AND tenant=? AND user_id=?"
-                              + " FOR UPDATE",
+                          "SELECT * FROM fabric_identity WHERE issuer=?"
+                              + " AND tenant=? AND user_id=? FOR UPDATE",
                           r.issuer(),
                           r.tenant(),
                           r.userId());
@@ -81,11 +81,21 @@ public class FabricIdentityService {
                     if (r.revision() > revision) {
                       if ("DELETED".equals(old.get("desired_state")))
                         throw new ApiError(409, "已删除用户不能恢复");
+                      boolean revocationPending =
+                          db.queryForObject(
+                                  "SELECT COUNT(*) FROM"
+                                      + " fabric_certificate"
+                                      + " WHERE identity_id=? AND"
+                                      + " crl_state='REVOKING'",
+                                  Integer.class,
+                                  subject)
+                              > 0;
                       String state = initial(r);
                       if ("SYNC".equals(r.action())
                           && "ACTIVE".equals(r.desiredState())
                           && r.orgId().equals(old.get("org_id"))
-                          && "READY".equals(old.get("status"))) state = "READY";
+                          && "READY".equals(old.get("status"))
+                          && !revocationPending) state = "READY";
                       db.update(
                           "UPDATE fabric_identity SET"
                               + " org_id=?,revision=?,command_hash=?,desired_state=?,action=?,status=?,attempts=0,last_error=NULL,next_attempt=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP"
@@ -100,7 +110,8 @@ public class FabricIdentityService {
                     }
                   }
                   db.update(
-                      "INSERT INTO identity_request(caller_id,request_key,request_hash,identity_id)"
+                      "INSERT INTO"
+                          + " identity_request(caller_id,request_key,request_hash,identity_id)"
                           + " VALUES(?,?,?,?)",
                       c.id(),
                       key,
@@ -191,12 +202,25 @@ public class FabricIdentityService {
     if ("READY".equals(out.get("status"))) {
       var expiry =
           db.queryForList(
-              "SELECT not_after FROM fabric_certificate WHERE identity_id=? AND version=?",
+              "SELECT not_after,state,network_state,crl_state FROM fabric_certificate"
+                  + " WHERE identity_id=? AND version=?",
               id,
               row.get("certificate_version"));
       if (expiry.isEmpty()
           || !(expiry.get(0).get("not_after") instanceof java.util.Date date)
           || !date.toInstant().isAfter(java.time.Instant.now())) out.put("status", "EXPIRED");
+      else if (!"ACTIVE".equals(row.get("desired_state"))
+          || !"ISSUED".equals(expiry.get(0).get("state"))
+          || !"VERIFIED".equals(expiry.get(0).get("network_state"))
+          || db.queryForObject(
+                  "SELECT COUNT(*) FROM fabric_certificate WHERE identity_id=?"
+                      + " AND crl_state='REVOKING'",
+                  Integer.class,
+                  id)
+              > 0) {
+        out.put("status", "RETRY");
+        out.put("errorCode", "CERTIFICATE_NOT_USABLE");
+      }
     }
     return out;
   }
@@ -215,21 +239,25 @@ public class FabricIdentityService {
     try {
       tx.executeWithoutResult(
           s -> {
-            // One revision owner per issuer/tenant. Lock first so concurrent retries observe the
+            // One revision owner per issuer/tenant. Lock first so concurrent retries
+            // observe the
             // committed receipt.
             var locked =
                 db.queryForList(
-                    "SELECT id,action,desired_state FROM fabric_identity WHERE id=? FOR UPDATE", id);
+                    "SELECT id,action,desired_state FROM fabric_identity WHERE"
+                        + " id=? FOR UPDATE",
+                    id);
             if (locked.isEmpty()) throw new ApiError(404, "身份不存在");
             var current = get(c, id);
             var task = locked.get(0);
             if ("retry".equals(operation)
-                && requiresRevocation((String) task.get("action"), (String) task.get("desired_state"))
-                && !c.operations().contains("revoke"))
-              throw new ApiError(403, "吊销任务重试未授权");
+                && requiresRevocation(
+                    (String) task.get("action"), (String) task.get("desired_state"))
+                && !c.operations().contains("revoke")) throw new ApiError(403, "吊销任务重试未授权");
             var prior =
                 db.queryForList(
-                    "SELECT request_hash FROM identity_request WHERE caller_id=? AND request_key=?",
+                    "SELECT request_hash FROM identity_request WHERE"
+                        + " caller_id=? AND request_key=?",
                     c.id(),
                     key);
             if (!prior.isEmpty()) {
@@ -239,13 +267,14 @@ public class FabricIdentityService {
             }
             if (revision != ((Number) current.get("revision")).longValue())
               throw new ApiError(409, "身份修订号已变化");
-            if ("DELETED".equals(current.get("desiredState"))) throw new ApiError(409, "已删除用户不能操作");
+            if ("DELETED".equals(current.get("desiredState")) && !"retry".equals(operation))
+              throw new ApiError(409, "已删除用户不能操作");
             if ("retry".equals(operation)) {
               if (!Set.of("PENDING", "RETRY", "ISSUED", "NETWORK_PENDING", "REVOCATION_PENDING")
                   .contains(current.get("status"))) throw new ApiError(409, "身份当前不需要重试");
               db.update(
-                  "UPDATE fabric_identity SET next_attempt=CURRENT_TIMESTAMP WHERE id=? AND"
-                      + " revision=?",
+                  "UPDATE fabric_identity SET next_attempt=CURRENT_TIMESTAMP"
+                      + " WHERE id=? AND revision=?",
                   id,
                   revision);
               audit(id, revision, c.id(), "RETRY", "{}");
@@ -271,7 +300,8 @@ public class FabricIdentityService {
                           : "revoke".equals(operation) ? "REVOKE" : "SYNC"));
             }
             db.update(
-                "INSERT INTO identity_request(caller_id,request_key,request_hash,identity_id)"
+                "INSERT INTO"
+                    + " identity_request(caller_id,request_key,request_hash,identity_id)"
                     + " VALUES(?,?,?,?)",
                 c.id(),
                 key,

@@ -11,10 +11,49 @@ import { draftToPayload, fenceApi } from '@/api/fences'
 import { isDomainLiveEvent, sharedLiveSocket } from '@/api/live'
 
 const fences = ref<FenceRecord[]>([])
-const selectedId = ref('FENCE-001'), editing = ref(false), editPoints = ref<FencePoint[]>([]), publishOpen = ref(false)
-const draft = reactive<FenceDraft>({ name: '', kind: '临时围栏', riskLevel: '一般', teams: '装卸一班', startsAt: '2026-09-03 08:00', endsAt: '2026-09-03 18:00' })
+const selectedId = ref('FENCE-001')
+const editing = ref(false)
+const editingId = ref<string | null>(null)
+const editPoints = ref<FencePoint[]>([])
+const publishOpen = ref(false)
+const draft = reactive<FenceDraft>({
+  name: '',
+  kind: '临时围栏',
+  riskLevel: '一般',
+  teams: '装卸一班',
+  startsAt: '2026-09-03 08:00',
+  endsAt: '2026-09-03 18:00',
+  bufferDistance: 5.0,
+})
 let disposeLive: (() => void) | undefined
 const selectedFence = computed(() => fences.value.find((fence) => fence.id === selectedId.value))
+const isEditingExisting = computed(() => Boolean(editingId.value))
+
+function computeBufferPolygon(points: FencePoint[], bufferDist: number): FencePoint[] {
+  if (!points || points.length < 3) return []
+  const n = points.length
+  let cx = 0
+  let cy = 0
+  for (const p of points) {
+    cx += p.x
+    cy += p.y
+  }
+  cx /= n
+  cy /= n
+  const scale = 0.45 * Math.max(0.5, bufferDist)
+  return points.map((p) => {
+    const dx = p.x - cx
+    const dy = p.y - cy
+    const len = Math.hypot(dx, dy)
+    if (len < 0.001) return { x: p.x, y: p.y }
+    return {
+      x: Math.max(1, Math.min(99, Number((p.x + (dx / len) * scale).toFixed(1)))),
+      y: Math.max(1, Math.min(99, Number((p.y + (dy / len) * scale).toFixed(1)))),
+    }
+  })
+}
+
+const editBufferPoints = computed(() => computeBufferPolygon(editPoints.value, draft.bufferDistance ?? 5.0))
 
 async function loadFences(): Promise<void> {
   try {
@@ -32,21 +71,78 @@ function upsert(record: FenceRecord): void {
   selectedId.value = record.id
 }
 
-function selectFence(fence: FenceRecord): void { selectedId.value = fence.id; editing.value = false; editPoints.value = [] }
-function createFence(): void { editing.value = true; selectedId.value = ''; editPoints.value = []; Object.assign(draft, { name: '', kind: '临时围栏', riskLevel: '一般', teams: '装卸一班', startsAt: '2026-09-03 08:00', endsAt: '2026-09-03 18:00' }) }
+function selectFence(fence: FenceRecord): void {
+  selectedId.value = fence.id
+  editing.value = false
+  editingId.value = null
+  editPoints.value = []
+}
+
+function createFence(): void {
+  editing.value = true
+  editingId.value = null
+  selectedId.value = ''
+  editPoints.value = []
+  Object.assign(draft, {
+    name: '',
+    kind: '临时围栏',
+    riskLevel: '一般',
+    teams: '装卸一班',
+    startsAt: '2026-09-03 08:00',
+    endsAt: '2026-09-03 18:00',
+    bufferDistance: 5.0,
+  })
+}
+
+function editFence(fence: FenceRecord): void {
+  editing.value = true
+  editingId.value = fence.id
+  selectedId.value = fence.id
+  editPoints.value = fence.polygon.map((p) => ({ ...p }))
+  Object.assign(draft, {
+    name: fence.name,
+    kind: fence.kind,
+    riskLevel: fence.riskLevel ?? '一般',
+    teams: fence.teams,
+    startsAt: fence.effectiveAt,
+    endsAt: fence.expiresAt,
+    bufferDistance: fence.bufferDistance ?? 5.0,
+  })
+}
+
+function cancelEdit(): void {
+  editing.value = false
+  editingId.value = null
+  editPoints.value = []
+}
 
 async function ensureDraft(status: '草稿' | '待评审'): Promise<void> {
-  if (editPoints.value.length < 3 || !draft.name.trim()) { ElMessage.warning('请填写围栏名称，并在地图上添加至少 3 个边界点'); return }
+  if (editPoints.value.length < 3 || !draft.name.trim()) {
+    ElMessage.warning('请填写围栏名称，并在地图上添加至少 3 个边界点')
+    return
+  }
   try {
-    const payload = { ...draftToPayload({ ...draft, polygon: [...editPoints.value] }), submitReview: status === '待评审' }
-    const record = await fenceApi.create(payload)
+    const payload = {
+      ...draftToPayload({ ...draft, polygon: [...editPoints.value] }),
+      submitReview: status === '待评审',
+    }
+    let record: FenceRecord
+    if (editingId.value) {
+      record = await fenceApi.update(editingId.value, payload)
+      ElMessage.success('围栏修改已保存')
+    } else {
+      record = await fenceApi.create(payload)
+      ElMessage.success(status === '草稿' ? '围栏草稿已保存' : '围栏已提交评审')
+    }
     upsert(record)
     editing.value = false
-    ElMessage.success(status === '草稿' ? '围栏草稿已保存' : '围栏已提交评审')
+    editingId.value = null
+    editPoints.value = []
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '保存失败')
   }
 }
+
 function updateDraft(value: FenceDraft): void { Object.assign(draft, value) }
 
 async function submitSelectedReview(): Promise<void> {
@@ -103,12 +199,46 @@ onBeforeUnmount(() => disposeLive?.())
     <div class="fence-workspace">
       <FenceList :fences="fences" :selected-id="selectedId" @select="selectFence" @create="createFence" />
       <article class="dashboard-card fence-map-card">
-        <header class="workspace-card-header"><div><span>FENCE PREVIEW</span><h2>{{ editing ? '绘制围栏边界' : '围栏空间分布' }}</h2><p>{{ editing ? '点击站场地图添加顶点，至少需要 3 个点' : '选择左侧围栏查看对应范围与规则状态' }}</p></div><button v-if="editing && editPoints.length" type="button" class="clear-point-button" @click="editPoints = []"><el-icon><Delete /></el-icon>清空点位</button></header>
-        <div class="fence-map-stage"><SafetyMapCanvas :fences="fences" :selected-fence-id="selectedId" :edit-points="editPoints" :editing="editing" :show-equipment="false" @select-fence="selectFence" @map-point="editPoints.push($event)" /></div>
+        <header class="workspace-card-header">
+          <div>
+            <span>FENCE PREVIEW</span>
+            <h2>{{ editing ? (isEditingExisting ? '编辑围栏与隔离带' : '绘制围栏边界') : '围栏空间分布' }}</h2>
+            <p>{{ editing ? '可点击增补顶点或在右侧调整外围逻辑缓冲区距离' : '选择左侧围栏查看对应范围、隔离带与规则状态' }}</p>
+          </div>
+          <button v-if="editing && editPoints.length" type="button" class="clear-point-button" @click="editPoints = []">
+            <el-icon><Delete /></el-icon>清空点位
+          </button>
+        </header>
+        <div class="fence-map-stage">
+          <SafetyMapCanvas
+            :fences="fences"
+            :selected-fence-id="selectedId"
+            :edit-points="editPoints"
+            :edit-buffer-points="editBufferPoints"
+            :editing="editing"
+            :show-equipment="false"
+            @select-fence="selectFence"
+            @map-point="editPoints.push($event)"
+          />
+        </div>
       </article>
-      <FenceDetailPanel :fence="selectedFence" :editing="editing" :draft="draft" :point-count="editPoints.length" @update:draft="updateDraft" @save="ensureDraft('草稿')" @review="editing ? ensureDraft('待评审') : submitSelectedReview()" @publish="publishOpen = true" @fail="simulateFail" @retry="retry" />
+      <FenceDetailPanel
+        :fence="selectedFence"
+        :editing="editing"
+        :is-editing-existing="isEditingExisting"
+        :draft="draft"
+        :point-count="editPoints.length"
+        @update:draft="updateDraft"
+        @edit="selectedFence && editFence(selectedFence)"
+        @cancel="cancelEdit"
+        @save="ensureDraft('草稿')"
+        @review="editing ? ensureDraft('待评审') : submitSelectedReview()"
+        @publish="publishOpen = true"
+        @fail="simulateFail"
+        @retry="retry"
+      />
     </div>
-    <div class="fence-page-note"><el-icon><RefreshRight /></el-icon><span><b>演示环境</b>围栏生命周期由 Spring Boot Backend Demo 驱动（InMemory），边缘节点下发为模拟状态。</span></div>
+    <div class="fence-page-note"><el-icon><RefreshRight /></el-icon><span><b>演示环境</b>围栏生命周期由 Spring Boot Backend Demo 驱动（InMemory），支持隔离带预警与边缘节点下发。</span></div>
     <FencePublishDialog v-model="publishOpen" :fence="selectedFence" @completed="published" />
   </section>
 </template>

@@ -5,6 +5,7 @@ import {
   Bell,
   Camera,
   Cellphone,
+  Cpu,
   DataAnalysis,
   Location,
   Monitor,
@@ -28,6 +29,7 @@ const navigation = [
       { path: '/fences', label: '电子围栏', icon: markRaw(Location) },
       { path: '/devices', label: '设备防碰撞', icon: markRaw(Aim) },
       { path: '/ai', label: 'AI违规识别', icon: markRaw(Camera) },
+      { path: '/ai/models', label: 'AI模型管理', icon: markRaw(Cpu) },
     ],
   },
   {

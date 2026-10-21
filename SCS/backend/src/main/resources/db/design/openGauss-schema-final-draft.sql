@@ -79,10 +79,11 @@ CREATE TABLE safety.sys_team (
     team_type       VARCHAR(24)  NOT NULL DEFAULT 'INTERNAL',  -- INTERNAL / CONTRACTOR / QUALITY
     enabled         BOOLEAN      NOT NULL DEFAULT TRUE,       -- 停用不物理删除
     demo_unverified BOOLEAN      NOT NULL DEFAULT FALSE,      -- Demo 数据核验标记
+    is_deleted      BOOLEAN      NOT NULL DEFAULT FALSE,      -- 逻辑删除标记（严禁物理删除）
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ,
-    CONSTRAINT pk_sys_team PRIMARY KEY (id),
-    CONSTRAINT uq_sys_team_code UNIQUE (team_code)
+    CONSTRAINT pk_sys_team PRIMARY KEY (id)
+    -- 唯一约束改由下文部分索引 uq_sys_team_code_active (WHERE is_deleted = false) 承载
 );
 COMMENT ON TABLE safety.sys_team IS '班组主数据台账（Demo 6 行）';
 
@@ -95,12 +96,13 @@ CREATE TABLE safety.safety_area (
     parent_id       BIGINT,                                   -- 区域层级（UNRESOLVED 期间一律 NULL）
     enabled         BOOLEAN      NOT NULL DEFAULT TRUE,
     demo_unresolved BOOLEAN      NOT NULL DEFAULT FALSE,      -- 箱区/通道等未确认层级置 TRUE
+    is_deleted      BOOLEAN      NOT NULL DEFAULT FALSE,      -- 逻辑删除标记（严禁物理删除）
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ,
     CONSTRAINT pk_safety_area PRIMARY KEY (id),
-    CONSTRAINT uq_safety_area_code UNIQUE (area_code),
+    -- 唯一约束改由下文部分索引 uq_safety_area_code_active (WHERE is_deleted = false) 承载
     CONSTRAINT fk_safety_area_parent FOREIGN KEY (parent_id)
-        REFERENCES safety.safety_area (id)
+        REFERENCES safety.safety_area (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_area IS '作业区域主数据（Demo 12 个，含独立未确定层级区域）';
 
@@ -118,8 +120,8 @@ CREATE TABLE safety.sys_user (
     is_deleted             BOOLEAN      NOT NULL DEFAULT FALSE, -- 软删除标记
     created_at             TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at             TIMESTAMPTZ,
-    CONSTRAINT pk_sys_user PRIMARY KEY (id),
-    CONSTRAINT uq_sys_user_code UNIQUE (user_code)
+    CONSTRAINT pk_sys_user PRIMARY KEY (id)
+    -- 唯一约束改由下文部分索引 uq_sys_user_code_active (WHERE is_deleted = false) 承载
 );
 COMMENT ON TABLE safety.sys_user IS '系统用户与责任人台账（不存密码/Token，供派单、审批、复核软引用）';
 
@@ -152,9 +154,8 @@ CREATE TABLE safety.safety_personnel (
     is_deleted           BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at           TIMESTAMPTZ,
-    CONSTRAINT pk_safety_personnel PRIMARY KEY (id),
-    CONSTRAINT uq_safety_personnel_code UNIQUE (personnel_code),
-    CONSTRAINT uq_safety_personnel_job UNIQUE (job_no)
+    CONSTRAINT pk_safety_personnel PRIMARY KEY (id)
+    -- 唯一约束改由下文部分索引 uq_safety_personnel_code_active / job_active (WHERE is_deleted = false) 承载
     -- VERIFY ON OPENGAUSS: CHECK (battery_pct >= 0 AND battery_pct <= 100)
 );
 COMMENT ON TABLE safety.safety_personnel IS '现场作业人员台账与最新态势（高频连续轨迹归 openGemini）';
@@ -178,8 +179,8 @@ CREATE TABLE safety.device_camera (
     is_deleted         BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at         TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at         TIMESTAMPTZ,
-    CONSTRAINT pk_device_camera PRIMARY KEY (id),
-    CONSTRAINT uq_device_camera_code UNIQUE (camera_code)
+    CONSTRAINT pk_device_camera PRIMARY KEY (id)
+    -- 唯一约束改由下文部分索引 uq_device_camera_code_active (WHERE is_deleted = false) 承载
 );
 COMMENT ON TABLE safety.device_camera IS '监控摄像头台账与分析关联';
 
@@ -211,8 +212,8 @@ CREATE TABLE safety.collision_device (
     is_deleted           BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at           TIMESTAMPTZ,
-    CONSTRAINT pk_collision_device PRIMARY KEY (id),
-    CONSTRAINT uq_collision_device_code UNIQUE (device_code)
+    CONSTRAINT pk_collision_device PRIMARY KEY (id)
+    -- 唯一约束改由下文部分索引 uq_collision_device_code_active (WHERE is_deleted = false) 承载
 );
 COMMENT ON TABLE safety.collision_device IS '防碰撞重点受控设备台账与最新态势（高频毫米波测距归 openGemini，告警查询走 Alert dedupKey）';
 
@@ -246,8 +247,8 @@ CREATE TABLE safety.edge_node (
     is_deleted            BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at            TIMESTAMPTZ,
-    CONSTRAINT pk_edge_node PRIMARY KEY (id),
-    CONSTRAINT uq_edge_node_code UNIQUE (node_code)
+    CONSTRAINT pk_edge_node PRIMARY KEY (id)
+    -- 唯一约束改由下文部分索引 uq_edge_node_code_active (WHERE is_deleted = false) 承载
 );
 COMMENT ON TABLE safety.edge_node IS '边缘计算节点台账与运行态摘要（高频性能指标归 openGemini）';
 
@@ -345,7 +346,7 @@ CREATE TABLE safety.safety_alert_timeline (
     CONSTRAINT pk_safety_alert_timeline PRIMARY KEY (id),
     CONSTRAINT uq_safety_alert_timeline_seq UNIQUE (alert_id, sequence_no),
     CONSTRAINT fk_safety_alert_timeline_alert FOREIGN KEY (alert_id)
-        REFERENCES safety.safety_alert (id) ON DELETE CASCADE
+        REFERENCES safety.safety_alert (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_alert_timeline IS '告警流转审计时间线（Append-only，由 sequence_no 保序）';
 
@@ -361,7 +362,7 @@ CREATE TABLE safety.safety_alert_evidence (
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
     CONSTRAINT pk_safety_alert_evidence PRIMARY KEY (id),
     CONSTRAINT fk_safety_alert_evidence_alert FOREIGN KEY (alert_id)
-        REFERENCES safety.safety_alert (id) ON DELETE CASCADE
+        REFERENCES safety.safety_alert (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_alert_evidence IS '告警多态结构化证据快照（单表 + JSONB Payload）';
 
@@ -378,7 +379,7 @@ CREATE TABLE safety.safety_alert_treatment (
     created_at             TIMESTAMPTZ  NOT NULL DEFAULT now(),
     CONSTRAINT pk_safety_alert_treatment PRIMARY KEY (id),
     CONSTRAINT fk_safety_alert_treatment_alert FOREIGN KEY (alert_id)
-        REFERENCES safety.safety_alert (id) ON DELETE CASCADE
+        REFERENCES safety.safety_alert (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_alert_treatment IS '现场处置执行记录（复核驳回可有多条）';
 
@@ -392,7 +393,7 @@ CREATE TABLE safety.safety_alert_linkage (
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
     CONSTRAINT pk_safety_alert_linkage PRIMARY KEY (id),
     CONSTRAINT fk_safety_alert_linkage_alert FOREIGN KEY (alert_id)
-        REFERENCES safety.safety_alert (id) ON DELETE CASCADE
+        REFERENCES safety.safety_alert (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_alert_linkage IS '现场声光/PLC控制联动会话主表';
 
@@ -409,7 +410,7 @@ CREATE TABLE safety.safety_alert_linkage_step (
     CONSTRAINT pk_safety_alert_linkage_step PRIMARY KEY (id),
     CONSTRAINT uq_safety_alert_linkage_step_no UNIQUE (linkage_id, step_no),
     CONSTRAINT fk_safety_alert_linkage_step_linkage FOREIGN KEY (linkage_id)
-        REFERENCES safety.safety_alert_linkage (id) ON DELETE CASCADE
+        REFERENCES safety.safety_alert_linkage (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_alert_linkage_step IS '联动步骤执行状态记录（权威在 Alert 侧，设备侧仅为回显）';
 
@@ -475,7 +476,7 @@ CREATE TABLE safety.ai_event_timeline (
     CONSTRAINT pk_ai_event_timeline PRIMARY KEY (id),
     CONSTRAINT uq_ai_event_timeline_seq UNIQUE (ai_event_id, sequence_no),
     CONSTRAINT fk_ai_event_timeline_ai FOREIGN KEY (ai_event_id)
-        REFERENCES safety.ai_event (id) ON DELETE CASCADE
+        REFERENCES safety.ai_event (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.ai_event_timeline IS 'AI 识别与复核流程审计时间线';
 
@@ -498,14 +499,15 @@ CREATE TABLE safety.safety_fence (
     expires_at             TIMESTAMPTZ,                       -- 临时围栏失效时间
     approver_user_code     VARCHAR(32),
     approver_name_snapshot VARCHAR(64),
+    buffer_distance        NUMERIC(6,2) NOT NULL DEFAULT 5.00, -- 外围逻辑缓冲区/隔离带距离（百分比/米，提前预警）
     lock_version           INT          NOT NULL DEFAULT 0,   -- 乐观锁版本号
     is_deleted             BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at             TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at             TIMESTAMPTZ,
-    CONSTRAINT pk_safety_fence PRIMARY KEY (id),
-    CONSTRAINT uq_safety_fence_code UNIQUE (fence_code)
+    CONSTRAINT pk_safety_fence PRIMARY KEY (id)
+    -- 唯一约束改由下文部分索引 uq_safety_fence_code_active (WHERE is_deleted = false) 承载
 );
-COMMENT ON TABLE safety.safety_fence IS '电子围栏业务主表（记录当前状态与生效版本主指针）';
+COMMENT ON TABLE safety.safety_fence IS '电子围栏业务主表（记录当前状态与生效版本主指针，含外围隔离带）';
 
 -- 7.2 电子围栏版本明细 safety_fence_version ------------------------------------
 -- team_scope 包含未决班组（如检修班），使用 JSONB 保留原始结构，不强制主数据外键
@@ -516,6 +518,7 @@ CREATE TABLE safety.safety_fence_version (
     risk_level_code        VARCHAR(16)  NOT NULL,             -- 越界告警等级（RiskLevels）
     status_code            VARCHAR(24)  NOT NULL,             -- 该版本的状态
     polygon                JSONB        NOT NULL,             -- 多边形顶点数组 [{x,y}]
+    buffer_distance        NUMERIC(6,2) NOT NULL DEFAULT 5.00, -- 几何版本对应的外围逻辑缓冲区距离
     team_scope             JSONB,                             -- 授权/管控班组结构快照 [{teamCode,rawLabel,unresolved}]
     created_by_user_code   VARCHAR(32),
     created_by_name_snapshot VARCHAR(64),
@@ -524,7 +527,7 @@ CREATE TABLE safety.safety_fence_version (
     CONSTRAINT pk_safety_fence_version PRIMARY KEY (id),
     CONSTRAINT uq_safety_fence_version_no UNIQUE (fence_id, version_no),
     CONSTRAINT fk_safety_fence_version_fence FOREIGN KEY (fence_id)
-        REFERENCES safety.safety_fence (id) ON DELETE CASCADE
+        REFERENCES safety.safety_fence (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_fence_version IS '电子围栏几何形状与参数版本历史快照';
 
@@ -540,7 +543,7 @@ CREATE TABLE safety.safety_fence_edge_sync (
     CONSTRAINT pk_safety_fence_edge_sync PRIMARY KEY (id),
     CONSTRAINT uq_safety_fence_edge_sync_node UNIQUE (fence_id, edge_node_code),
     CONSTRAINT fk_safety_fence_edge_sync_fence FOREIGN KEY (fence_id)
-        REFERENCES safety.safety_fence (id) ON DELETE CASCADE
+        REFERENCES safety.safety_fence (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_fence_edge_sync IS '电子围栏向各边缘节点的下发与同步对账表';
 
@@ -576,8 +579,8 @@ CREATE TABLE safety.safety_rule (
     is_deleted             BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at             TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at             TIMESTAMPTZ,
-    CONSTRAINT pk_safety_rule PRIMARY KEY (id),
-    CONSTRAINT uq_safety_rule_code UNIQUE (rule_code)
+    CONSTRAINT pk_safety_rule PRIMARY KEY (id)
+    -- 唯一约束改由下文部分索引 uq_safety_rule_code_active (WHERE is_deleted = false) 承载
 );
 COMMENT ON TABLE safety.safety_rule IS '安全卡控规则主表（记录当前线上运行版本与全局主状态，编辑时不降级）';
 
@@ -590,7 +593,7 @@ CREATE TABLE safety.safety_rule_area (
     CONSTRAINT pk_safety_rule_area PRIMARY KEY (id),
     CONSTRAINT uq_safety_rule_area_unique UNIQUE (rule_id, area_code),
     CONSTRAINT fk_safety_rule_area_rule FOREIGN KEY (rule_id)
-        REFERENCES safety.safety_rule (id) ON DELETE CASCADE
+        REFERENCES safety.safety_rule (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_rule_area IS '安全规则适用作业区域多值关联表';
 
@@ -612,7 +615,7 @@ CREATE TABLE safety.safety_rule_version (
     CONSTRAINT pk_safety_rule_version PRIMARY KEY (id),
     CONSTRAINT uq_safety_rule_version_no UNIQUE (rule_id, version_no),
     CONSTRAINT fk_safety_rule_version_rule FOREIGN KEY (rule_id)
-        REFERENCES safety.safety_rule (id) ON DELETE CASCADE
+        REFERENCES safety.safety_rule (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_rule_version IS '安全规则历史版本与参数配置快照';
 
@@ -628,7 +631,7 @@ CREATE TABLE safety.safety_rule_edge_sync (
     CONSTRAINT pk_safety_rule_edge_sync PRIMARY KEY (id),
     CONSTRAINT uq_safety_rule_edge_sync_node UNIQUE (rule_id, edge_node_code),
     CONSTRAINT fk_safety_rule_edge_sync_rule FOREIGN KEY (rule_id)
-        REFERENCES safety.safety_rule (id) ON DELETE CASCADE
+        REFERENCES safety.safety_rule (id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE safety.safety_rule_edge_sync IS '安全规则边缘节点分发与同步状态表';
 
@@ -743,6 +746,40 @@ CREATE INDEX idx_safety_fence_status ON safety.safety_fence (status_code);
 CREATE INDEX idx_ops_event_log_node_time ON safety.ops_event_log (edge_node_code, occurred_at DESC);
 CREATE INDEX idx_ops_event_log_type_time ON safety.ops_event_log (event_type, occurred_at DESC);
 
+-- 11.6 逻辑删除与活跃业务主键部分唯一索引（Partial Unique Indexes for Soft-Deleted Entities）
+-- 核心设计准则：当实体执行逻辑删除（is_deleted = true）后，业务上允许重新录入同名/同编码数据；
+-- 普通 UNIQUE 约束会阻碍重用，因此改用 openGauss / PostgreSQL 部分唯一索引（WHERE is_deleted = false）。
+CREATE UNIQUE INDEX uq_sys_team_code_active ON safety.sys_team (team_code)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX uq_safety_area_code_active ON safety.safety_area (area_code)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX uq_sys_user_code_active ON safety.sys_user (user_code)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX uq_safety_personnel_code_active ON safety.safety_personnel (personnel_code)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX uq_safety_personnel_job_active ON safety.safety_personnel (job_no)
+    WHERE is_deleted = false AND job_no IS NOT NULL;
+
+CREATE UNIQUE INDEX uq_device_camera_code_active ON safety.device_camera (camera_code)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX uq_collision_device_code_active ON safety.collision_device (device_code)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX uq_edge_node_code_active ON safety.edge_node (node_code)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX uq_safety_fence_code_active ON safety.safety_fence (fence_code)
+    WHERE is_deleted = false;
+
+CREATE UNIQUE INDEX uq_safety_rule_code_active ON safety.safety_rule (rule_code)
+    WHERE is_deleted = false;
+
+
 -- =============================================================================
 -- 12. 延期实施表定义（DEFERRED TABLES -- 仅以注释保留设计）
 --     本批活动 DDL 明确不执行建表，留待后续依赖就绪后再行落地
@@ -769,3 +806,92 @@ CREATE INDEX idx_ops_event_log_type_time ON safety.ops_event_log (event_type, oc
 -- 架构边界红线：人员高频连续轨迹（每秒数点）、防碰撞毫米波高频测距（10-50Hz）、边缘 CPU/内存每秒监控点，
 -- 属于典型时序写入负载，严禁写入 openGauss 关系型数据库，正式环境统一由 openGemini 时序数据库承载！
 */
+
+-- =============================================================================
+-- 13. 防物理删除保护触发器（Database-level Guard against Physical Deletion）
+-- =============================================================================
+-- 核心原则：数据库严格禁止物理删除（Physical DELETE），所有操作必须走逻辑删除（is_deleted = true）或状态机流转。
+-- 通过通用 BEFORE DELETE 触发器在 openGauss / PostgreSQL 数据库引擎底层全面硬性拦截 DELETE 操作，
+-- 即使运维人员手误输入 DELETE 语句或遭遇 SQL 注入，也会被数据库直接报错阻断并回滚事务。
+CREATE OR REPLACE FUNCTION safety.fn_prevent_physical_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Physical DELETE is strictly prohibited on table %. Use logical deletion (is_deleted = true or status transition) instead.', TG_TABLE_NAME;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 核心主数据与资产表防删保护
+CREATE TRIGGER trg_prevent_delete_sys_team BEFORE DELETE ON safety.sys_team FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_area BEFORE DELETE ON safety.safety_area FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_sys_user BEFORE DELETE ON safety.sys_user FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_personnel BEFORE DELETE ON safety.safety_personnel FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_device_camera BEFORE DELETE ON safety.device_camera FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_collision_device BEFORE DELETE ON safety.collision_device FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_edge_node BEFORE DELETE ON safety.edge_node FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+
+-- 告警处置聚合群防删保护
+CREATE TRIGGER trg_prevent_delete_safety_alert BEFORE DELETE ON safety.safety_alert FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_alert_timeline BEFORE DELETE ON safety.safety_alert_timeline FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_alert_evidence BEFORE DELETE ON safety.safety_alert_evidence FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_alert_treatment BEFORE DELETE ON safety.safety_alert_treatment FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_alert_linkage BEFORE DELETE ON safety.safety_alert_linkage FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_alert_linkage_step BEFORE DELETE ON safety.safety_alert_linkage_step FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+
+-- AI 识别事件聚合群防删保护
+CREATE TRIGGER trg_prevent_delete_ai_event BEFORE DELETE ON safety.ai_event FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_ai_event_timeline BEFORE DELETE ON safety.ai_event_timeline FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+
+-- 电子围栏聚合群防删保护
+CREATE TRIGGER trg_prevent_delete_safety_fence BEFORE DELETE ON safety.safety_fence FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_fence_version BEFORE DELETE ON safety.safety_fence_version FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_fence_edge_sync BEFORE DELETE ON safety.safety_fence_edge_sync FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+
+-- 安全规则配置聚合群防删保护
+CREATE TRIGGER trg_prevent_delete_safety_rule BEFORE DELETE ON safety.safety_rule FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_rule_area BEFORE DELETE ON safety.safety_rule_area FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_rule_version BEFORE DELETE ON safety.safety_rule_version FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_safety_rule_edge_sync BEFORE DELETE ON safety.safety_rule_edge_sync FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+
+-- 边缘离线队列与运维审计防删保护
+CREATE TRIGGER trg_prevent_delete_edge_pending_event BEFORE DELETE ON safety.edge_pending_event FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_ops_event_log BEFORE DELETE ON safety.ops_event_log FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_sys_business_number BEFORE DELETE ON safety.sys_business_number FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+
+-- =============================================================================
+-- 14. 统一有效数据查询视图（Unified Logical Deletion & Active Data Views）
+-- =============================================================================
+-- 核心原则：业务层与报表端统一通过视图查询有效数据，隔离软删除与作废脏数据。
+CREATE OR REPLACE VIEW safety.v_sys_team AS
+    SELECT * FROM safety.sys_team WHERE is_deleted = false;
+
+CREATE OR REPLACE VIEW safety.v_safety_area AS
+    SELECT * FROM safety.safety_area WHERE is_deleted = false;
+
+CREATE OR REPLACE VIEW safety.v_sys_user AS
+    SELECT * FROM safety.sys_user WHERE is_deleted = false;
+
+CREATE OR REPLACE VIEW safety.v_safety_personnel AS
+    SELECT * FROM safety.safety_personnel WHERE is_deleted = false;
+
+CREATE OR REPLACE VIEW safety.v_device_camera AS
+    SELECT * FROM safety.device_camera WHERE is_deleted = false;
+
+CREATE OR REPLACE VIEW safety.v_collision_device AS
+    SELECT * FROM safety.collision_device WHERE is_deleted = false;
+
+CREATE OR REPLACE VIEW safety.v_edge_node AS
+    SELECT * FROM safety.edge_node WHERE is_deleted = false;
+
+CREATE OR REPLACE VIEW safety.v_safety_fence AS
+    SELECT * FROM safety.safety_fence WHERE is_deleted = false;
+
+CREATE OR REPLACE VIEW safety.v_safety_rule AS
+    SELECT * FROM safety.safety_rule WHERE is_deleted = false;
+
+CREATE OR REPLACE VIEW safety.v_safety_alert AS
+    SELECT * FROM safety.safety_alert WHERE status_code <> 'CANCELLED';
+
+CREATE OR REPLACE VIEW safety.v_ai_event AS
+    SELECT * FROM safety.ai_event WHERE status_code <> 'CANCELLED' AND status_code <> 'FALSE_POSITIVE';
+

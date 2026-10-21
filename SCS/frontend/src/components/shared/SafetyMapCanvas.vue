@@ -13,13 +13,14 @@ const props = withDefaults(defineProps<{
   selectedPersonId?: string | undefined
   selectedFenceId?: string | undefined
   editPoints?: FencePoint[]
+  editBufferPoints?: FencePoint[]
   track?: TrackPoint[]
   trackIndex?: number
   editing?: boolean
   showEquipment?: boolean
 }>(), {
   people: () => [], equipment: () => [], fences: () => [], selectedPersonId: '',
-  selectedFenceId: '', editPoints: () => [], track: () => [], trackIndex: 0,
+  selectedFenceId: '', editPoints: () => [], editBufferPoints: () => [], track: () => [], trackIndex: 0,
   editing: false, showEquipment: true,
 })
 
@@ -62,6 +63,7 @@ function addPoint(event: MouseEvent): void {
         v-for="fence in fences"
         :key="fence.id"
         :points="fence.polygon"
+        :buffer-points="fence.bufferPolygon"
         :tone="fence.tone"
         :selected="selectedFenceId === fence.id"
         :label="fence.name"
@@ -69,7 +71,14 @@ function addPoint(event: MouseEvent): void {
       />
       <polyline v-if="track.length > 1" class="track-path" :points="track.map((point) => `${point.x},${point.y}`).join(' ')" />
       <circle v-for="(point, index) in track" :key="`track-${index}`" class="track-node" :class="{ 'is-passed': index <= trackIndex }" :cx="point.x" :cy="point.y" r="0.55" />
-      <FencePolygon v-if="editPoints.length" :points="editPoints" tone="temporary" preview label="新围栏预览" />
+      <FencePolygon
+        v-if="editPoints.length"
+        :points="editPoints"
+        :buffer-points="editBufferPoints"
+        tone="temporary"
+        preview
+        label="围栏编辑预览"
+      />
     </svg>
 
     <PersonnelMarker

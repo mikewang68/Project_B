@@ -153,14 +153,14 @@ class AgentRepository {
             JOIN wms_warehouse w ON w.id=:w AND w.company_id=u.company_id AND w.status='ENABLED'
             JOIN wms_owner o ON o.id=:o AND o.company_id=u.company_id AND o.status='ENABLED'
             WHERE u.id=:u AND u.company_id=:c AND u.status='ENABLED' AND u.login_enabled=TRUE AND c.status='ENABLED'
-            AND EXISTS(SELECT 1 FROM auth_user_role ur JOIN auth_role_permission rp ON rp.role_id=ur.role_id JOIN auth_permission p ON p.id=rp.permission_id WHERE ur.user_id=u.id AND p.code='agent:manage')
-            AND EXISTS(SELECT 1 FROM auth_user_role ur JOIN auth_role_permission rp ON rp.role_id=ur.role_id JOIN auth_permission p ON p.id=rp.permission_id WHERE ur.user_id=u.id AND p.code='inventory:read')
-            AND (EXISTS(SELECT 1 FROM auth_user_role ur JOIN auth_role_permission rp ON rp.role_id=ur.role_id JOIN auth_permission p ON p.id=rp.permission_id WHERE ur.user_id=u.id AND p.code='tenant:all')
-              OR (EXISTS(SELECT 1 FROM auth_user_warehouse uw WHERE uw.user_id=u.id AND uw.warehouse_id=:w) AND EXISTS(SELECT 1 FROM auth_user_owner uo WHERE uo.user_id=u.id AND uo.owner_id=:o)))
+            AND EXISTS(SELECT 1 FROM auth_user_role ur JOIN auth_role_permission rp ON rp.role_id=ur.role_id JOIN auth_permission p ON p.id=rp.permission_id WHERE ur.user_id=u.id AND ur.revoked_at IS NULL AND p.code='agent:manage')
+            AND EXISTS(SELECT 1 FROM auth_user_role ur JOIN auth_role_permission rp ON rp.role_id=ur.role_id JOIN auth_permission p ON p.id=rp.permission_id WHERE ur.user_id=u.id AND ur.revoked_at IS NULL AND p.code='inventory:read')
+            AND (EXISTS(SELECT 1 FROM auth_user_role ur JOIN auth_role_permission rp ON rp.role_id=ur.role_id JOIN auth_permission p ON p.id=rp.permission_id WHERE ur.user_id=u.id AND ur.revoked_at IS NULL AND p.code='tenant:all')
+              OR (EXISTS(SELECT 1 FROM auth_user_warehouse uw WHERE uw.user_id=u.id AND uw.revoked_at IS NULL AND uw.warehouse_id=:w) AND EXISTS(SELECT 1 FROM auth_user_owner uo WHERE uo.user_id=u.id AND uo.revoked_at IS NULL AND uo.owner_id=:o)))
             """).param("c",s.companyId()).param("w",s.warehouseId()).param("o",s.ownerId()).param("u",s.userId()).query(Long.class).single()>0;
     }
     boolean allOwners(long userId) {
-        return jdbc.sql("SELECT COUNT(*) FROM auth_user_role ur JOIN auth_role_permission rp ON rp.role_id=ur.role_id JOIN auth_permission p ON p.id=rp.permission_id WHERE ur.user_id=:u AND p.code='tenant:all'").param("u",userId).query(Long.class).single()>0;
+        return jdbc.sql("SELECT COUNT(*) FROM auth_user_role ur JOIN auth_role_permission rp ON rp.role_id=ur.role_id JOIN auth_permission p ON p.id=rp.permission_id WHERE ur.user_id=:u AND ur.revoked_at IS NULL AND p.code='tenant:all'").param("u",userId).query(Long.class).single()>0;
     }
     void snapshot(Scope s,int occupied,int total,BigDecimal weight,int missing) {
         scoped("INSERT INTO wms_agent_snapshot(company_id,warehouse_id,owner_id,occupied_locations,total_locations,known_weight_kg,unknown_weight_rows) VALUES(:c,:w,:o,:occ,:total,:weight,:missing)",s)

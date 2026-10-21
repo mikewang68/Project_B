@@ -3,7 +3,7 @@ import { toRef } from "vue";
 import type { ApiRecord } from "../../shared/types";
 import { useEventDetail } from "./useEventDetail";
 import { typeLabels } from "./presentation";
-import { fmt, label } from "../../shared/presentation";
+import { fmt, label, recoveryHint } from "../../shared/presentation";
 import { exportEvent } from "../verification/api";
 import EvidenceFiles from "../evidence/EvidenceFiles.vue";
 import VerificationResult from "../verification/VerificationResult.vue";
@@ -13,9 +13,8 @@ const emit = defineEmits<{
   open: [id: string];
   correct: [record: ApiRecord];
 }>();
-const { selected, check, detailEvent, busy, run, verify } = useEventDetail(
-  toRef(props, "id"),
-);
+const { selected, check, detailEvent, busy, act, verify, refresh } =
+  useEventDetail(toRef(props, "id"));
 </script>
 
 <template>
@@ -23,10 +22,19 @@ const { selected, check, detailEvent, busy, run, verify } = useEventDetail(
     ><div class="detail-bar">
       <button @click="emit('close')">← 返回列表</button>
       <div>
+        <button @click="refresh" :disabled="busy">刷新状态</button>
         <button @click="verify" :disabled="busy">核验证据</button
         ><button
           @click="
-            run(() => exportEvent(selected!.id, selected!.source_event_id))
+            act(
+              {
+                action: 'EXPORT',
+                menuId: 'events',
+                objectId: selected!.id,
+                summary: '导出证据包',
+              },
+              () => exportEvent(selected!.id, selected!.source_event_id),
+            )
           "
           :disabled="busy || selected.chain_state !== 'COMMITTED'"
         >
@@ -36,6 +44,12 @@ const { selected, check, detailEvent, busy, run, verify } = useEventDetail(
         </button>
       </div>
     </div>
+    <p class="small muted" role="status">
+      状态不会自动更新。请点击“刷新状态”查看最新归档和上链结果。
+    </p>
+    <p v-if="selected.chain_state !== 'COMMITTED'" class="alert warning">
+      此事件尚未完成上链，暂不能导出完整证据包。请到“补办任务”查看原因；修复原因并完成上链后再核验、导出。
+    </p>
     <article class="panel">
       <div class="section-title">
         <h2>
@@ -121,9 +135,13 @@ const { selected, check, detailEvent, busy, run, verify } = useEventDetail(
           label(selected.chain_state)
         }}</span>
       </div>
-      <p v-if="selected.last_error" class="alert error">
-        {{ selected.last_error }}
-      </p>
+      <div v-if="selected.last_error" class="alert error">
+        <p>{{ recoveryHint(selected.last_error) || selected.last_error }}</p>
+        <details v-if="recoveryHint(selected.last_error)">
+          <summary>查看原始错误</summary>
+          {{ selected.last_error }}
+        </details>
+      </div>
       <p v-if="selected.missingReferences?.length" class="alert warning">
         关联记录尚未到达：{{ selected.missingReferences.join("、") }}
       </p>

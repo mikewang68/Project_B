@@ -4,13 +4,17 @@
 .map-vector-layer { width: 100%; height: 100%; position: absolute; inset: 0; z-index: 6; overflow: visible; pointer-events: none; }
 .fence-polygon { cursor: pointer; pointer-events: auto; }
 .fence-polygon polygon, .fence-polygon polyline { vector-effect: non-scaling-stroke; fill: rgb(64 158 255 / 7%); stroke: #79bbff; stroke-width: 1.4; stroke-dasharray: 5 3; transition: fill .2s ease, stroke-width .2s ease; }
+.fence-polygon .fence-buffer-zone { vector-effect: non-scaling-stroke; fill: rgb(230 162 60 / 6%); stroke: #e6a23c; stroke-width: 1.0; stroke-dasharray: 4 3; pointer-events: none; transition: all .2s ease; }
 .fence-polygon circle { fill: #fff; stroke: #79bbff; stroke-width: .35; vector-effect: non-scaling-stroke; }
 .fence-polygon text { fill: #337ecc; font-size: 1.55px; font-weight: 700; paint-order: stroke; stroke: rgb(255 255 255 / 90%); stroke-width: .3px; }
 .fence-polygon[data-tone="danger"] polygon { fill: rgb(245 108 108 / 7%); stroke: #f78989; }
+.fence-polygon[data-tone="danger"] .fence-buffer-zone { fill: rgb(230 162 60 / 8%); stroke: #e6a23c; }
 .fence-polygon[data-tone="warning"] polygon { fill: rgb(230 162 60 / 8%); stroke: #e6a23c; }
 .fence-polygon[data-tone="temporary"] polygon, .fence-polygon[data-tone="temporary"] polyline { fill: rgb(230 162 60 / 6%); stroke: #e6a23c; stroke-dasharray: 7 4; }
 .fence-polygon.is-selected polygon { fill-opacity: 1; stroke-width: 2.5; filter: drop-shadow(0 3px 5px rgb(31 45 61 / 15%)); }
+.fence-polygon.is-selected .fence-buffer-zone { stroke-width: 1.6; stroke: #e6a23c; fill: rgb(230 162 60 / 12%); }
 .fence-polygon.is-preview polygon, .fence-polygon.is-preview polyline { fill: rgb(64 158 255 / 11%); stroke: var(--color-primary); stroke-width: 2; }
+.fence-polygon.is-preview .fence-buffer-zone { stroke: #67c23a; fill: rgb(103 194 58 / 8%); stroke-dasharray: 3 3; }
 .track-path { fill: none; stroke: #66b1ff; stroke-width: .8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 2px 3px rgb(64 158 255 / 22%)); }
 .track-node { fill: #fff; stroke: #a0cfff; stroke-width: .3; vector-effect: non-scaling-stroke; }
 .track-node.is-passed { fill: var(--color-primary); stroke: #fff; }
@@ -36,8 +40,9 @@
 .demo-outline-button { height: 45px; display: flex; align-items: center; gap: 7px; padding: 0 13px; border: 1px solid #fdf6ec; border-radius: 12px; color: #b87a1e; background: #fdf6ec; cursor: pointer; font-size: 9px; font-weight: 650; }
 .demo-outline-button.active { color: var(--color-primary); border-color: #d9ecff; background: var(--color-primary-faint); }
 
-.compact-filter-bar { min-height: 62px; display: grid; grid-template-columns: minmax(170px, 1.4fr) repeat(4, minmax(115px, .8fr)) auto; align-items: center; gap: 10px; margin-bottom: 14px; padding: 10px 12px; overflow: visible; }
+.compact-filter-bar { min-height: 62px; display: grid; grid-template-columns: minmax(140px, 1.1fr) repeat(4, minmax(90px, .7fr)) auto minmax(150px, 1.1fr); align-items: center; gap: 10px; margin-bottom: 14px; padding: 10px 12px; overflow: visible; }
 .compact-filter-bar .el-input__wrapper, .compact-filter-bar .el-select__wrapper, .fence-form .el-input__wrapper, .fence-form .el-select__wrapper { min-height: 38px; border-radius: 11px; box-shadow: 0 0 0 1px var(--color-border) inset; }
+.refresh-rate-select { width: 100%; }
 .compact-filter-bar > label { display: flex; align-items: center; gap: 8px; color: var(--color-text-secondary); font-size: 9px; white-space: nowrap; }
 .personnel-workspace { height: max(550px, calc(100vh - 292px)); display: grid; grid-template-columns: minmax(0, 7fr) minmax(280px, 3fr); gap: 14px; }
 .personnel-map-card { min-height: 0; display: flex; flex-direction: column; position: relative; overflow: visible; }

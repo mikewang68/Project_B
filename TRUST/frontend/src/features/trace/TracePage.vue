@@ -9,11 +9,14 @@ const emit = defineEmits<{ open: [id: string] }>();
 const traceKind = ref("BATCH"),
   traceValue = ref("STEEL-2026-001"),
   traceResult = ref<ApiRecord | null>(null);
-const { busy, run } = useFeedback();
+const { busy, act } = useFeedback();
 async function trace() {
-  await run(async () => {
-    traceResult.value = await traceEvents(traceKind.value, traceValue.value);
-  });
+  await act(
+    { action: "READ", menuId: "trace", summary: "查询溯源" },
+    async () => {
+      traceResult.value = await traceEvents(traceKind.value, traceValue.value);
+    },
+  );
 }
 </script>
 

@@ -39,7 +39,7 @@ public class TraceService {
       String[] parts = term.split("\n", 2);
       String sql =
           "SELECT DISTINCT e.* FROM events e LEFT JOIN event_links l ON l.event_id=e.id WHERE"
-              + " e.org_id=? AND ((l.kind=? AND l.target=?) OR (?='EVENT' AND"
+              + " e.record_kind='LEGACY_V1' AND e.org_id=? AND ((l.kind=? AND l.target=?) OR (?='EVENT' AND"
               + " e.source_system||':'||e.source_event_id=?)) LIMIT 501";
       for (var row : db.queryForList(sql, org, parts[0], parts[1], parts[0], parts[1])) {
         String id = (String) row.get("id");
@@ -48,7 +48,7 @@ public class TraceService {
         found.put(id, row);
         queue.add("EVENT\n" + row.get("source_system") + ":" + row.get("source_event_id"));
         for (var version : db.queryForList(
-            "SELECT source_system,source_event_id FROM events WHERE root_id=? AND org_id=?",
+            "SELECT source_system,source_event_id FROM events WHERE record_kind='LEGACY_V1' AND root_id=? AND org_id=?",
             row.get("root_id"), org))
           queue.add("EVENT\n" + version.get("source_system") + ":" + version.get("source_event_id"));
         // Batch, bundle and handover are search indexes, not evidence of parentage.

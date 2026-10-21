@@ -14,12 +14,21 @@ let timer: number | undefined
 function tick(): void {
   clock.value = new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' })
 }
+let unsubscribeLive: (() => void) | undefined
+let unsubscribeReconnect: (() => void) | undefined
+
 onMounted(() => {
   tick()
   timer = window.setInterval(tick, 1000 * 20)
   void store.loadAll()
+  unsubscribeLive = liveStore.onAlertEvent(() => store.scheduleRefresh())
+  unsubscribeReconnect = liveStore.onReconnected(() => { void store.loadAll() })
 })
-onBeforeUnmount(() => window.clearInterval(timer))
+onBeforeUnmount(() => {
+  if (timer) window.clearInterval(timer)
+  unsubscribeLive?.()
+  unsubscribeReconnect?.()
+})
 
 const activeTab = computed(() => route.path.includes('/alerts') || route.path.includes('/alert/') ? 'alerts' : 'home')
 const reconnecting = computed(() => liveStore.status === 'reconnecting' || liveStore.status === 'connecting')

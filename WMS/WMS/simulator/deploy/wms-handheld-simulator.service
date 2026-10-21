@@ -1,0 +1,25 @@
+[Unit]
+Description=WMS handheld simulator - isolated local DEMO only
+After=network.target
+
+[Service]
+Type=simple
+User=wms-sim
+Group=wms-sim
+WorkingDirectory=/opt/project-b-test/wms-simulator
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 /opt/project-b-test/wms-simulator/simulator.py run --config /etc/project-b-test/wms-simulator/config.local.json
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=80
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateNetwork=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/project-b-test/wms-simulator
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -30,21 +30,21 @@ public class DemoSeedInitializer implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DemoSeedInitializer.class);
 
     private final DemoFeatureGuard guard;
-    private final InMemoryFenceRepository fenceRepository;
-    private final InMemoryPersonnelRepository personnelRepository;
+    private final ObjectProvider<InMemoryFenceRepository> fenceRepositoryProvider;
+    private final ObjectProvider<InMemoryPersonnelRepository> personnelRepositoryProvider;
     private final ObjectProvider<InMemoryCollisionRepository> collisionRepositoryProvider;
     private final ObjectProvider<InMemoryEdgeNodeRepository> edgeNodeRepositoryProvider;
     private final OpsInventory opsInventory;
 
     public DemoSeedInitializer(DemoFeatureGuard guard,
-                               InMemoryFenceRepository fenceRepository,
-                               InMemoryPersonnelRepository personnelRepository,
+                               ObjectProvider<InMemoryFenceRepository> fenceRepositoryProvider,
+                               ObjectProvider<InMemoryPersonnelRepository> personnelRepositoryProvider,
                                ObjectProvider<InMemoryCollisionRepository> collisionRepositoryProvider,
                                ObjectProvider<InMemoryEdgeNodeRepository> edgeNodeRepositoryProvider,
                                OpsInventory opsInventory) {
         this.guard = guard;
-        this.fenceRepository = fenceRepository;
-        this.personnelRepository = personnelRepository;
+        this.fenceRepositoryProvider = fenceRepositoryProvider;
+        this.personnelRepositoryProvider = personnelRepositoryProvider;
         this.collisionRepositoryProvider = collisionRepositoryProvider;
         this.edgeNodeRepositoryProvider = edgeNodeRepositoryProvider;
         this.opsInventory = opsInventory;
@@ -56,8 +56,8 @@ public class DemoSeedInitializer implements CommandLineRunner {
             log.info("Demo 种子初始化已关闭（app.demo.seed-enabled=false），跳过 Fence/Personnel/Collision/Edge/Ops 台账灌种");
             return;
         }
-        fenceRepository.resetDemoData();
-        personnelRepository.resetDemoData();
+        fenceRepositoryProvider.ifAvailable(DemoResettableStore::resetDemoData);
+        personnelRepositoryProvider.ifAvailable(DemoResettableStore::resetDemoData);
         collisionRepositoryProvider.ifAvailable(DemoResettableStore::resetDemoData);
         edgeNodeRepositoryProvider.ifAvailable(DemoResettableStore::resetDemoData);
         opsInventory.reset();

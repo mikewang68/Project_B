@@ -4,7 +4,7 @@ import { typeLabels } from "./presentation";
 import { fmt, label } from "../../shared/presentation";
 defineProps<{ canWrite: boolean }>();
 const emit = defineEmits<{ open: [id: string]; create: [] }>();
-const { rows, total, page, query, loadEvents, busy, run } = useEventLedger();
+const { rows, total, page, query, loadEvents, busy, act } = useEventLedger();
 </script>
 
 <template>
@@ -15,12 +15,20 @@ const { rows, total, page, query, loadEvents, busy, run } = useEventLedger();
     <div><span>证据保存</span><strong class="word">独立 IPFS</strong></div>
     <div><span>可信登记</span><strong class="word">Fabric</strong></div>
   </div>
+  <p class="small muted" role="status">
+    状态不会自动更新。请点击“查询”查看最新事件和处理结果。
+  </p>
   <article class="panel">
     <form
       class="toolbar"
       @submit.prevent="
-        page = 0;
-        run(loadEvents);
+        act(
+          { action: 'READ', menuId: 'events', summary: '查询事件' },
+          async () => {
+            page = 0;
+            await loadEvents();
+          },
+        )
       "
     >
       <input
@@ -86,16 +94,26 @@ const { rows, total, page, query, loadEvents, busy, run } = useEventLedger();
       ><button
         :disabled="page === 0 || busy"
         @click="
-          page--;
-          run(loadEvents);
+          act(
+            { action: 'READ', menuId: 'events', summary: '事件上一页' },
+            async () => {
+              page--;
+              await loadEvents();
+            },
+          )
         "
       >
         上一页</button
       ><button
         :disabled="(page + 1) * 20 >= total || busy"
         @click="
-          page++;
-          run(loadEvents);
+          act(
+            { action: 'READ', menuId: 'events', summary: '事件下一页' },
+            async () => {
+              page++;
+              await loadEvents();
+            },
+          )
         "
       >
         下一页

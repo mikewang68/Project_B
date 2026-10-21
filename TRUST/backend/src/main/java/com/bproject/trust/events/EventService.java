@@ -39,8 +39,7 @@ public class EventService {
           status -> {
             // Serialize source ingestion so a parent and child arriving concurrently cannot
             // both pass their missing-counterpart checks with inconsistent snapshots.
-            if (actor.startsWith("source:"))
-              db.execute("LOCK TABLE events IN SHARE ROW EXCLUSIVE MODE");
+            com.bproject.trust.ingress.EventSourceRoutes.reserve(db, org, input.sourceSystem(), "LEGACY_V1", null);
             var existing =
                 db.queryForList(
                     "SELECT * FROM events WHERE org_id=? AND source_system=? AND source_event_id=?",
@@ -52,7 +51,7 @@ public class EventService {
             String id = UUID.randomUUID().toString(), root = id;
             int version = 1;
             if (previous != null) {
-              var old = get(previous, org);
+              var old = correctionTarget(previous, org);
               db.queryForList("SELECT id FROM events WHERE id=? FOR UPDATE", old.get("root_id"));
               if (!old.get("source_system").equals(input.sourceSystem()))
                 throw new ApiError(409, "更正必须保持来源系统一致");
@@ -133,6 +132,7 @@ public class EventService {
   }
 
   private Map<String, Object> replay(Map<String, Object> row, String request) {
+    if (!"LEGACY_V1".equals(row.get("record_kind"))) throw new ApiError(404, "记录不存在或无权访问");
     if (!row.get("request_json").equals(request)) throw new ApiError(409, "同一来源事件号已经登记了不同内容");
     return row;
   }
@@ -148,6 +148,24 @@ public class EventService {
   }
 
   public Map<String, Object> detail(String id, String org) {
+    legacyGet(id, org);
+    return detailForVerification(id, org);
+  }
+
+  public Map<String, Object> legacyGet(String id, String org) {
+    var row = get(id, org);
+    if (!"LEGACY_V1".equals(row.get("record_kind"))) throw new ApiError(404, "记录不存在或无权访问");
+    return row;
+  }
+
+  public Map<String, Object> correctionTarget(String id, String org) {
+    var row = get(id, org);
+    if (!"LEGACY_V1".equals(row.get("record_kind")))
+      throw new com.bproject.trust.ingress.IngressError(409,"EVENT_SCHEMA_MISMATCH","该记录须由原来源通过通用入口追加更正");
+    return row;
+  }
+
+  public Map<String, Object> detailForVerification(String id, String org) {
     Map<String, Object> row = get(id, org);
     row.put(
         "evidence",
@@ -164,7 +182,7 @@ public class EventService {
             row.get("root_id"),
             org));
     row.put("links", db.queryForList("SELECT kind,target FROM event_links WHERE event_id=?", id));
-    row.put("missingReferences", relations.missing(row, org));
+    row.put("missingReferences", "LEGACY_V1".equals(row.get("record_kind")) ? relations.missing(row, org) : java.util.List.of());
     return row;
   }
 
@@ -172,7 +190,7 @@ public class EventService {
     if (page < 0 || size < 1 || size > 100) throw new ApiError(400, "分页参数超出范围");
     String q = "%" + (query == null ? "" : query) + "%";
     String where =
-        " FROM events WHERE org_id=? AND (batch_id LIKE ? OR source_event_id LIKE ? OR object_id"
+        " FROM events WHERE record_kind='LEGACY_V1' AND org_id=? AND (batch_id LIKE ? OR source_event_id LIKE ? OR object_id"
             + " LIKE ?)";
     return Map.of(
         "total",

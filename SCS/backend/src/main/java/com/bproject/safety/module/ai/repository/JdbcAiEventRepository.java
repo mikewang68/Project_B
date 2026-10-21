@@ -105,7 +105,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
 
     @Override
     public List<DemoAiEvent> findAll() {
-        String sql = BASE_SELECT_ROOT + " ORDER BY e.occurred_at DESC, e.id DESC";
+        String sql = BASE_SELECT_ROOT + " WHERE e.status_code <> 'CANCELLED' ORDER BY e.occurred_at DESC, e.id DESC";
         Map<UUID, DemoAiEvent> map = new LinkedHashMap<>();
         jdbcTemplate.query(sql, Collections.emptyMap(), rs -> {
             UUID id = (UUID) rs.getObject("id");
@@ -119,7 +119,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
     @Override
     public List<DemoAiEvent> filter(AiEventQuery query) {
         MapSqlParameterSource params = new MapSqlParameterSource();
-        StringBuilder sql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE 1=1 ");
+        StringBuilder sql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE e.status_code <> 'CANCELLED' ");
         buildQueryConditions(query, sql, params);
         sql.append(" ORDER BY e.occurred_at DESC, e.id DESC");
 
@@ -136,7 +136,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
     @Override
     public AiPageResult page(AiEventQuery query) {
         MapSqlParameterSource params = new MapSqlParameterSource();
-        StringBuilder countSql = new StringBuilder("SELECT COUNT(*) FROM safety.ai_event e WHERE 1=1 ");
+        StringBuilder countSql = new StringBuilder("SELECT COUNT(*) FROM safety.ai_event e WHERE e.status_code <> 'CANCELLED' ");
         buildQueryConditions(query, countSql, params);
 
         Long totalObj = jdbcTemplate.queryForObject(countSql.toString(), params, Long.class);
@@ -212,14 +212,13 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
 
     @Override
     public long count() {
-        Long c = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM safety.ai_event", Collections.emptyMap(), Long.class);
+        Long c = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM safety.ai_event WHERE status_code <> 'CANCELLED'", Collections.emptyMap(), Long.class);
         return c != null ? c : 0L;
     }
 
     @Override
     public void clearDemoData() {
-        jdbcTemplate.update("DELETE FROM safety.ai_event_timeline", Collections.emptyMap());
-        jdbcTemplate.update("DELETE FROM safety.ai_event", Collections.emptyMap());
+        jdbcTemplate.update("UPDATE safety.ai_event SET status_code = 'CANCELLED', updated_at = now() WHERE status_code <> 'CANCELLED'", Collections.emptyMap());
     }
 
     // ---------- 内部持久化辅助 ----------
@@ -246,12 +245,12 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
         // 置信度与阈值转为 openGauss NUMERIC(5,4) 范围：0.0000 ~ 1.0000
         BigDecimal confBd = null;
         if (e.confidence > 0) {
-            double c = e.confidence > 1.0 ? e.confidence / 100.0 : e.confidence;
+            double c = e.confidence >= 1.0 ? e.confidence / 100.0 : e.confidence;
             confBd = BigDecimal.valueOf(Math.min(1.0, Math.max(0.0, c))).setScale(4, RoundingMode.HALF_UP);
         }
         BigDecimal threshBd = null;
         if (e.threshold > 0) {
-            double t = e.threshold > 1.0 ? e.threshold / 100.0 : e.threshold;
+            double t = e.threshold >= 1.0 ? e.threshold / 100.0 : e.threshold;
             threshBd = BigDecimal.valueOf(Math.min(1.0, Math.max(0.0, t))).setScale(4, RoundingMode.HALF_UP);
         }
 

@@ -22,8 +22,13 @@ function hhmmss(iso: unknown): string {
   if (typeof iso !== 'string' || !iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return typeof iso === 'string' && iso.length <= 8 ? iso : ''
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  return new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Shanghai',
+  }).format(d)
 }
 
 export function mapSummary(dto: unknown): OverviewSummaryDto {

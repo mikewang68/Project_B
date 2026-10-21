@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "sourceEventId": "5b2188e78366198c569d7cc0c2891e96ea28e4459e6bf8020476c7de3c7a308d",
+  "payloadHash": "5df7dcdd51178183e770e892bfe878d7cb317f6be638b581c00ada29536ca0f6",
+  "originalSha256": "807ac614f643592347b9ec34a254c56cdcca5a959d4efcddda1751b3ae6fea1f",
+  "originalSizeBytes": 944,
+  "eventSha256": "409911289d172ea46b992db4826818844776127741c09507ad7993ff60d807f1",
+  "canonicalContext": {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "orgId": "SYNTHETIC_ORG",
+    "sourceId": "synthetic-audit",
+    "sourceSystem": "SYNTHETIC_AUDIT"
+  },
+  "canonicalSizeBytes": 1374
+}

@@ -100,14 +100,16 @@ public class InMemoryEdgeNodeRepository implements EdgeNodeRepository, DemoReset
 
     @Override
     public List<DemoEdgeNode> findAll() {
-        return store.values().stream().map(DemoEdgeNode::copy)
+        return store.values().stream()
+                .filter(n -> !n.isDeleted)
+                .map(DemoEdgeNode::copy)
                 .sorted(Comparator.comparing(n -> n.id)).toList();
     }
 
     @Override
     public Optional<DemoEdgeNode> findById(String id) {
         DemoEdgeNode n = store.get(id);
-        return n == null ? Optional.empty() : Optional.of(n.copy());
+        return (n == null || n.isDeleted) ? Optional.empty() : Optional.of(n.copy());
     }
 
     @Override
@@ -119,6 +121,6 @@ public class InMemoryEdgeNodeRepository implements EdgeNodeRepository, DemoReset
 
     @Override
     public long count() {
-        return store.size();
+        return store.values().stream().filter(n -> !n.isDeleted).count();
     }
 }

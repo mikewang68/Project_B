@@ -150,13 +150,32 @@
 
 | 表类型 | 数据库物理主键 | 业务对外唯一编号 | 并发生成与保障机制 |
 |---|---|---|---|
-| **主数据 / 资产** (`sys_user`, `collision_device` 等) | `BIGINT DEFAULT nextval(...)` (21 个独立 Sequence 显式绑定) | `user_code`, `device_code` UNIQUE | 管理端低频新建，由独立序列保证物理自增 |
+| **主数据 / 资产** (`sys_user`, `collision_device` 等) | `BIGINT DEFAULT nextval(...)` (21 个独立 Sequence 显式绑定) | `user_code`, `device_code`（部分唯一索引 `WHERE is_deleted = false`） | 管理端低频新建，由独立序列保证物理自增；软删除后释放编号重用能力 |
 | **事件主表** (`safety_alert`, `ai_event`, `edge_pending_event`) | **应用层 UUID** | `alert_no`, `event_no` UNIQUE | 边缘端离线安全、多实例无协调；业务单号由 `sys_business_number` 排他行锁控制 |
 | **子表明细** (`timeline`, `evidence`, `treatment`, `version`) | `BIGINT DEFAULT nextval(...)` (独立 Sequence) | 联合键 `(parent_id, sequence_no / version_no)` UNIQUE | 聚合根级联插入，单调保序 |
 
 ---
 
-## 7. 事务边界与事件发布（Transaction Boundaries）
+## 7. 数据安全与防物理删除治理（No Physical Delete Governance）
+
+系统遵循工业级安全生产与审计规范，**数据库层全面禁止物理删除（Zero Physical DELETE）**：
+
+1. **库级防删除硬拦截触发器（Guard Triggers）**：
+   - 编写全局拦截函数 `safety.fn_prevent_physical_delete()`，当捕获任何 `DELETE` 语句时直接抛出异常 `Physical DELETE is strictly prohibited on table %` 并回滚事务；
+   - 覆盖全部 24 张核心活动表及 1 张发号辅助表，杜绝误操作与恶意注入。
+2. **外键级联风险规避（Foreign Key RESTRICT）**：
+   - 全库 11 处子表明细外键（`safety_alert_timeline`, `evidence`, `treatment`, `linkage`, `rule_version`, `fence_version` 等）一律声明为 `ON DELETE RESTRICT`，彻底禁用 `ON DELETE CASCADE`，防止隐式级联清空。
+3. **逻辑删除与部分唯一索引（Soft Delete & Partial Unique Indexes）**：
+   - 核心台账表（`sys_team`, `safety_area`, `sys_user`, `safety_personnel`, `device_camera`, `collision_device`, `edge_node`, `safety_fence`, `safety_rule`）均配备 `is_deleted BOOLEAN NOT NULL DEFAULT FALSE`；
+   - 废除整表 `UNIQUE` 约束，改为 openGauss 部分唯一索引（`CREATE UNIQUE INDEX ... WHERE is_deleted = false`），确保软删除记录不阻碍新记录使用相同业务编码。
+4. **状态驱动作废（Status-Driven Invalidation）**：
+   - 告警通过 `status_code = 'CANCELLED'`（已作废）退出活跃主链路；AI 识别事件通过 `status_code = 'FALSE_POSITIVE'` 或 `CANCELLED` 作废。
+5. **统一有效数据查询视图（Unified Active Views）**：
+   - 数据库底层统一提供 `safety.v_*` 视图（如 `v_sys_user`, `v_safety_alert` 等），自动内置 `WHERE is_deleted = false` 与 `WHERE status_code <> 'CANCELLED'` 过滤条件，报表与只读业务可直接基于视图消费。
+
+---
+
+## 8. 事务边界与事件发布（Transaction Boundaries）
 
 ```
 [用户/API 请求] 
@@ -188,7 +207,7 @@
 
 ---
 
-## 8. 数据库迁移与演进路线图
+## 9. 数据库迁移与演进路线图
 
 ```
 [Step 0: Compatibility Spike] ──> 在 openGauss 6.x 验证驱动、Sequence、UUID、TIMESTAMPTZ、部分索引

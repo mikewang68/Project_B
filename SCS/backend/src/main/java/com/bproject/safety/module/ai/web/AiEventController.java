@@ -138,6 +138,7 @@ public class AiEventController {
     @Operation(summary = "触发边缘 AI 视觉推理（调用 Python 端点运行真实检测并自动上报落库）")
     public Map<String, Object> triggerEdge(@RequestBody(required = false) TriggerEdgeRequest body,
                                            @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
+        demoGuard.requireSimulator();
         return service.triggerEdge(edgeAiUrl, body, idemKey);
     }
 

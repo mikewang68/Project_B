@@ -61,7 +61,8 @@ public class FenceService {
         DemoFence f = new DemoFence();
         f.id = nextFenceId();
         applyBasics(f, req.name(), req.kind() == null ? "临时围栏" : req.kind(),
-                req.riskLevel(), req.teams(), req.startsAt(), req.endsAt(), req.polygon());
+                req.riskLevel(), req.teams(), req.startsAt(), req.endsAt(), req.polygon(),
+                req.bufferDistance());
         boolean review = Boolean.TRUE.equals(req.submitReview());
         f.version = "v1.0";
         f.statusCode = review ? FenceStatuses.TO_REVIEW : FenceStatuses.DRAFT;
@@ -83,7 +84,7 @@ public class FenceService {
         }
         validate(req.name(), req.polygon());
         applyBasics(f, req.name(), req.kind(), req.riskLevel(), req.teams(), req.startsAt(), req.endsAt(),
-                req.polygon());
+                req.polygon(), req.bufferDistance());
         // 已生效围栏被编辑后回到待评审，版本递增，需要重新发布（专业配置中心口径）
         if (FenceStatuses.EFFECTIVE.equals(f.statusCode) || FenceStatuses.MISMATCH.equals(f.statusCode)) {
             f.statusCode = FenceStatuses.TO_REVIEW;
@@ -182,7 +183,8 @@ public class FenceService {
     // ---------- 内部 ----------
 
     private void applyBasics(DemoFence f, String name, String kind, String risk, String teams,
-                             String startsAt, String endsAt, List<FencePoint> polygon) {
+                             String startsAt, String endsAt, List<FencePoint> polygon,
+                             Double bufferDistance) {
         f.name = name;
         f.kind = kind;
         f.tone = toneOf(kind);
@@ -201,6 +203,8 @@ public class FenceService {
         if (polygon != null) {
             f.polygon = List.copyOf(polygon);
         }
+        f.bufferDistance = (bufferDistance != null && bufferDistance > 0) ? bufferDistance : 5.0;
+        f.bufferPolygon = com.bproject.safety.common.geo.Polygon2D.expandPolygon(f.polygon, f.bufferDistance);
     }
 
     private void validate(String name, List<FencePoint> polygon) {

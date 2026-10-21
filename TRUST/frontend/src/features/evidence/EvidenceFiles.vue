@@ -4,7 +4,7 @@ import { label } from "../../shared/presentation";
 import { useFeedback } from "../../shared/composables/useFeedback";
 import { downloadEvidence } from "./api";
 defineProps<{ evidence: ApiRecord[] }>();
-const { busy, run } = useFeedback();
+const { busy, act } = useFeedback();
 </script>
 
 <template>
@@ -21,7 +21,17 @@ const { busy, run } = useFeedback();
       >
     </div>
     <button
-      @click="run(() => downloadEvidence(ev.id, ev.filename))"
+      @click="
+        act(
+          {
+            action: 'DOWNLOAD',
+            menuId: 'events',
+            objectId: ev.id,
+            summary: '下载证据',
+          },
+          () => downloadEvidence(ev.id, ev.filename),
+        )
+      "
       :disabled="busy || !ev.cid"
     >
       下载
