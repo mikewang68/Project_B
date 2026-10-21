@@ -60,11 +60,24 @@ TRUST_BASE = _env("TRUST_BASE", "http://127.0.0.1:28185").rstrip("/")
 EMCS_BASE = _env("EMCS_BASE", "http://127.0.0.1:18095").rstrip("/")
 
 # --- shared secret ------------------------------------------------------------
-# No default. The gateway signs its own short-lived WMS tickets with this key.
-raw_secret = _env("SSO_JWT_SECRET", required=True).strip().strip("'").strip('"')
-if len(raw_secret) < 32:
-    raise SystemExit("SSO_JWT_SECRET must be at least 32 characters")
-SSO_JWT_SECRET = raw_secret.encode("utf-8")
+# --- SSO：由 IAM 集中签票，BFF 不再自签 ---------------------------------------
+#
+# 历史问题：BFF 曾用一把与代码同源、已公开的 HS256 密钥自行签发
+# `iss=project-b-iam-bff` 的 WMS 短票，等于任何知道该值的人都能伪造任意用户。
+# 该路径已删除：BFF 现在只作为**已登录用户的代理**，向 IAM 请求一次性短票。
+#
+# 令牌不落浏览器：票只在服务端内存中出现一次，换完即弃。
+IAM_BASE_URL = _env("IAM_BASE_URL", "").rstrip("/")
+# 可选：仅当 IAM 以 context-path 方式挂载时才需要（默认空）
+IAM_CONTEXT_PATH = _env("IAM_CONTEXT_PATH", "/api/v1/iam").rstrip("/")
+# 签票请求超时
+IAM_TICKET_TIMEOUT = float(_env("IAM_TICKET_TIMEOUT", "5"))
+# 关闭即表示本 BFF 不提供任何 SSO 换票（fail-closed，不退回自签）
+SSO_ENABLED = _env("SSO_ENABLED", "true").lower() != "false"
+
+# 换票后是否把下游 Cookie 代理给浏览器（与同源约束配合）。
+# 默认 True；若部署为纯服务端会话，设为 false 由 BFF 自己保管。
+FORWARD_DOWNSTREAM_COOKIE = _env("FORWARD_DOWNSTREAM_COOKIE", "true").lower() != "false"
 
 LEGACY_BRIDGE_UNSAFE_FOR_RELEASE = _env("LEGACY_BRIDGE_UNSAFE_FOR_RELEASE", "false").lower() == "true"
 
@@ -152,26 +165,75 @@ def map_iam_user_to_wms_company(username: str, raw_company: str = None) -> str:
         return "tenant2"
     return "default"
 
-def create_sso_ticket(username: str, company: str = "default", exp_delta: int = 60) -> str:
-    now = int(time.time())
-    header = {"alg": "HS256", "typ": "JWT"}
-    safe_company = map_iam_user_to_wms_company(username, company)
-    payload = {
-        "iss": "project-b-iam-bff",
-        "aud": "wms",
-        "sub": username,
-        "company": safe_company,
-        "iat": now,
-        "nbf": now,
-        "exp": now + exp_delta,
-        "jti": str(uuid.uuid4())
-    }
-    h_b64 = b64url_encode(json.dumps(header, separators=(',', ':')).encode('utf-8'))
-    p_b64 = b64url_encode(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
-    signing_input = f"{h_b64}.{p_b64}".encode('ascii')
-    sig = hmac.new(SSO_JWT_SECRET, signing_input, hashlib.sha256).digest()
-    sig_b64 = b64url_encode(sig)
-    return f"{h_b64}.{p_b64}.{sig_b64}"
+def request_iam_ticket(iam_token: str, audience: str) -> str:
+    """
+    向 IAM 请求一次性短票（服务端到服务端）。
+
+    BFF 不再自行签票：签名密钥只在 IAM 侧，BFF 拿不到，也就不可能被伪造。
+
+    :param iam_token: 当前登录用户的 IAM Bearer（来自 BFF 服务端会话，不来自浏览器）
+    :param audience:  目标系统受众，如 wms / scs / ehms
+    :return: IAM 签发的票据字符串
+    :raises SsoTicketError: 任何失败（IAM 不可达、非 2xx、业务码非 0、无显式映射）
+    """
+    if not SSO_ENABLED:
+        raise SsoTicketError("SSO_DISABLED", "BFF 未启用 SSO 换票")
+
+    if not IAM_BASE_URL:
+        raise SsoTicketError("SSO_NOT_CONFIGURED", "未配置 IAM_BASE_URL")
+
+    if not iam_token:
+        raise SsoTicketError("SSO_NO_SESSION", "当前会话没有可用的 IAM 凭据")
+
+    url = f"{IAM_BASE_URL}{IAM_CONTEXT_PATH}/auth/sso/ticket"
+    body = json.dumps({"audience": audience}).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Accept", "application/json")
+    req.add_header("Authorization", f"Bearer {iam_token}")
+
+    try:
+        with urllib.request.urlopen(req, timeout=IAM_TICKET_TIMEOUT) as resp:
+            raw = resp.read()
+            status = resp.status
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = e.read().decode("utf-8", "replace")[:200]
+        except Exception:
+            pass
+        # IAM 用 403 表示"无显式映射"——这是必须如实透传的拒绝，不能回退
+        code = "SSO_NO_MAPPING" if e.code == 403 else "SSO_TICKET_REJECTED"
+        raise SsoTicketError(code, f"IAM 拒绝签票（HTTP {e.code}）: {detail}")
+    except Exception as e:
+        raise SsoTicketError("SSO_IAM_UNREACHABLE", f"IAM 不可达: {e.__class__.__name__}")
+
+    if status // 100 != 2:
+        raise SsoTicketError("SSO_TICKET_REJECTED", f"IAM 返回 HTTP {status}")
+
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception:
+        raise SsoTicketError("SSO_BAD_RESPONSE", "IAM 响应不是合法 JSON")
+
+    if payload.get("code") != 0:
+        raise SsoTicketError(
+            "SSO_TICKET_REJECTED",
+            f"IAM 业务码失败: {payload.get('message', '')[:120]}")
+
+    ticket = (payload.get("data") or {}).get("ticket") or ""
+    if not ticket:
+        raise SsoTicketError("SSO_BAD_RESPONSE", "IAM 未返回票据")
+    return ticket
+
+
+class SsoTicketError(Exception):
+    """SSO 换票失败。携带业务码，便于上层返回 502/403 而不是假 200。"""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
 
 class ThreadingGatewayServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
@@ -245,7 +307,10 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
                             "LEGACY_BRIDGE_UNSAFE_FOR_RELEASE is enabled (unsafe test mode only)")
 
             try:
-                ticket = create_sso_ticket(username=username, company=company, exp_delta=60)
+                # 关键变更：票据由 IAM 签发，BFF 不再自签。
+                # iam_token 来自 BFF 服务端会话，浏览器拿不到。
+                iam_token = sess.get("token") or ""
+                ticket = request_iam_ticket(iam_token, "wms")
                 exchange_payload = json.dumps({"ticket": ticket}).encode("utf-8")
                 exchange_req = urllib.request.Request(
                     f"{WMS_BASE_URL}/api/v1/auth/sso/exchange",
@@ -275,6 +340,11 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
                     log_network("SSO_TRUSTED_EXCHANGE", f"/api/v1/auth/sso/exchange[{username}]", 200,
                                 f"Obtained trusted WMS session for IAM user '{username}' (company: '{company}') on node4")
                     return cookie_str, csrf_token
+            except SsoTicketError as e:
+                # IAM 拒绝签票（含无显式映射）：必须 fail-closed，不退回自签
+                log_network("SSO_IAM_TICKET_DENIED", f"/iam/auth/sso/ticket[{username}]", 403,
+                            f"{e.code}: {e.message[:160]}")
+                return None, None
             except urllib.error.HTTPError as e:
                 err_data = e.read().decode("utf-8", errors="replace")
                 log_network("SSO_TRUSTED_EXCHANGE_ERR", f"/api/v1/auth/sso/exchange[{username}]", e.code,

@@ -45,7 +45,9 @@ addresses, absolute home paths, or default secrets in the code.
 
 | Variable | Required | Default | Notes |
 |---|---|---|---|
-| `SSO_JWT_SECRET` | **yes** | — | ≥32 chars, no shipped default |
+| `IAM_BASE_URL` | **yes**（启用 SSO 时） | — | BFF 向此地址请求一次性短票 |
+| `IAM_CONTEXT_PATH` | no | `/api/v1/iam` | IAM 以 context-path 挂载时使用 |
+| `SSO_ENABLED` | no | `true` | 设为 `false` 即完全禁用换票（不退回自签） |
 | `BASE_DIR` | **yes** | — | contains `artifacts/frontend/{portal,iam,sys}` and `logs/` |
 | `BFF_PORT` | no | 18288 | |
 | `BFF_BIND` | no | 127.0.0.1 | |
