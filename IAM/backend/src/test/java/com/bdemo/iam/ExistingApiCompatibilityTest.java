@@ -43,6 +43,7 @@ import org.springframework.test.web.servlet.MvcResult;
       "iam.isolation-enabled=false",
       "iam.identity.idempotency-secret=offline-idempotency-test-0123456789abcdef",
       "app.jwt.secret=offline-test-only-0123456789abcdef0123456789abcdef",
+      "app.sso.ticket-secret=offline-sso-ticket-secret-0123456789abcdef",
       "spring.datasource.url=jdbc:postgresql://127.0.0.1/unused",
       "spring.datasource.username=unused",
       "spring.datasource.password=unused"
