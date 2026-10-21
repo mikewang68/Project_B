@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import simulator as sim
 
 
-def check(config, credentials):
+def check(config, credentials, include_web=False):
     cfg = sim.load_config(Path(config))
     for line in Path(credentials).read_text(encoding="utf-8").splitlines():
         key, _, value = line.partition("=")
@@ -33,7 +33,16 @@ def check(config, credentials):
         if forbidden[path] != 403:
             raise sim.SimError("受限接口未按预期拒绝")
     results = []
-    for index, order in enumerate([cfg["order"], *cfg.get("additional_orders", [])]):
+    orders = [cfg["order"], *cfg.get("additional_orders", [])]
+    registry = Path(cfg["state_dir"]) / "handheld.sqlite3"
+    if include_web and registry.exists():
+        with sqlite3.connect(registry.as_uri() + "?mode=ro", uri=True) as db:
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='web_batches'").fetchone():
+                for (raw,) in db.execute("SELECT plan FROM web_batches WHERE state='READY' ORDER BY created"):
+                    plan = json.loads(raw)
+                    sim.validate_order(plan)
+                    orders.append(plan)
+    for index, order in enumerate(orders):
         actual = client.call("GET", f"/api/v1/stockin/{order['id']}")
         receipts = client.call("GET", f"/api/v1/stockin/{order['id']}/receipts")
         root = Path(cfg["state_dir"]) if index == 0 else Path(cfg["state_dir"]) / "tasks" / sim.task_id(order)
@@ -53,9 +62,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True)
     parser.add_argument("--credentials", required=True)
+    parser.add_argument("--include-web", action="store_true", help="只读核对网页动态创建并持久化的 READY 任务")
     args = parser.parse_args()
     try:
-        print(json.dumps(check(args.config, args.credentials), ensure_ascii=False))
+        print(json.dumps(check(args.config, args.credentials, args.include_web), ensure_ascii=False))
     except Exception as exc:
         print("CHECK_FAILED " + (str(exc) if isinstance(exc, sim.SimError) else type(exc).__name__), file=sys.stderr)
         raise SystemExit(2)

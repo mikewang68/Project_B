@@ -1,8 +1,10 @@
-# 实验室 WMS 模拟采集部署与验收（2026-10-19）
+# 实验室 WMS 模拟采集部署与验收（原始批次 2026-10-19）
+
+**当前更新：2026-10-22 已新增服务器网页入口。** “入库管理 → 模拟手持终端”，相对路径 `/simulator/`；运行版本改为 `/opt/project-b/wms-simulator/releases/20261021-web-v1`，WMS 前端现由 node6 独立静态目录发布，node4 JAR 和业务 API 沿用。动态网页任务及重建/回退详见 [WEB_DEPLOYMENT.md](WEB_DEPLOYMENT.md)。下文六单数量、旧运行版本和轮询行为是 10 月 19 日历史快照，不是当前任务总量。
 
 本文件只描述 WMS 的模拟手持终端 / 称重程序，不是其他模块的部署脚本。没有安装真实 RFID 或地磅驱动，没有改统一 IAM、Portal、共享消息队列或其他模块。
 
-## 当前部署
+## 2026-10-19 部署快照（当前增量见上方链接）
 
 | 节点 | 路径 / 服务 | 用途 |
 |---|---|---|
@@ -53,7 +55,7 @@ sudo systemctl start project-b-wms-simulator
 # 只读核对 API 收货量与本地队列；不输出密码
 sudo python3 -B /opt/project-b/wms-simulator/current/deploy/check_lab.py \
   --config /etc/project-b/WMS/simulator/config.local.json \
-  --credentials /etc/project-b/WMS/simulator/credentials.env
+  --credentials /etc/project-b/WMS/simulator/credentials.env --include-web
 ```
 
 `check_lab.py` 同时核对模拟账号仅有 `master:read / stockin:read / stockin:write`，对用户管理、出库、库存余额读取应返回 403；管理员仍可在正常页面查看库存。这不是错误，也不要因此给模拟账号加 ADMIN。

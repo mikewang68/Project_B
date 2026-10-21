@@ -1,0 +1,28 @@
+[Unit]
+Description=Project B WMS authenticated web handheld simulator
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wms-sim
+Group=wms-sim
+WorkingDirectory=/opt/project-b/wms-simulator/current
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=/etc/project-b/WMS/simulator/credentials.env
+ExecStart=/usr/bin/python3 /opt/project-b/wms-simulator/current/web_gateway.py --config /etc/project-b/WMS/simulator/config.local.json --port 18766 --enable-lab-writes
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=80
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/project-b-wms-simulator
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
