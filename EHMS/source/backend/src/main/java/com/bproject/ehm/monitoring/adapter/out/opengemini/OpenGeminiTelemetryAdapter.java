@@ -23,6 +23,7 @@ import java.util.Map;
 
 @Component
 @Profile("server")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="ehm.telemetry.adapter", havingValue="openGemini", matchIfMissing=true)
 public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
     private static final String MEASUREMENT = "ehm_point_value";
 

@@ -1,0 +1,6 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const root=path.join(__dirname,'../web'),sample=fs.readFileSync(path.join(root,'sample-workbench.js'),'utf8'),detail=fs.readFileSync(path.join(root,'asset-detail-data.js'),'utf8');
+test('sample import is explicit and user actions remain server-authorized',()=>{assert.match(sample,/openModal\('虚拟演示数据'/);assert.match(sample,/industrial-sample-v1/);assert.match(sample,/EhmAuth.canWrite\(\)/);assert.doesNotMatch(sample,/setInterval\(/);});
+test('all design pages expose an implementation boundary instead of fake completion',()=>{assert.match(sample,/设计展示 \/ 待接入/);assert.match(sample,/部分实现 \/ 条件待定/);assert.match(sample,/不代表现场采集或AI预测/);});
+test('asset detail uses related database records filtered by selected device',()=>{assert.match(detail,/Promise.allSettled/);assert.match(detail,/c.assetCode===asset.code/);assert.match(detail,/c.position/);assert.match(detail,/暂无此类已保存记录/);assert.doesNotMatch(detail,/CERT-62218|照片5张|波形3份/);});
+test('menus and post-render sample notices keep click handlers',()=>{assert.match(sample,/\.nav-parent.*onclick/s);assert.match(sample,/\.nav-child.*onclick/s);assert.match(sample,/note.querySelector\('button'\).onclick/);});

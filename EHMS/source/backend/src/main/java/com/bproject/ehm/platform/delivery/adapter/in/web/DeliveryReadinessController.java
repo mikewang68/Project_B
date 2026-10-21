@@ -20,6 +20,7 @@ public class DeliveryReadinessController {
     private final boolean jwtEnabled;
     private final boolean rbacEnabled;
     private final boolean tlsEnabled;
+    @Value("${ehm.auth.mode:disabled}") private String authMode;
 
     public DeliveryReadinessController(ReadinessProbe readinessProbe,
                                        @Value("${ehm.persistence.adapter:MongoDB}") String persistenceAdapter,
@@ -60,7 +61,7 @@ public class DeliveryReadinessController {
                 capability("easegress", "Easegress统一网关", "RESERVED", "由六系统统一环境接入", "固定API前缀、限流和路由"),
                 capability("ai", "外部AI推理", aiEnabled ? "ACTIVE" : "DISABLED", "默认使用可审计规则模式", "问答、知识检索和诊断辅助"),
                 capability("jwt", "统一登录令牌", jwtEnabled ? "ACTIVE" : "BLOCKED", "等待统一身份体系", "登录认证和会话管理"),
-                capability("rbac", "RBAC与数据权限", rbacEnabled ? "ACTIVE" : "BLOCKED", "当前仅展示权限设计", "API强制鉴权和设备范围控制"),
+                capability("rbac", "角色与业务操作权限", rbacEnabled || "local".equals(authMode) || "iam".equals(authMode) ? "ACTIVE" : "BLOCKED", "local/iam模式已强制校验两类角色；更细设备范围授权尚需联调", "一般用户只读、超级管理员管理"),
                 capability("tls", "TLS传输加密", tlsEnabled ? "ACTIVE" : "BLOCKED", "等待证书和统一入口", "正式环境HTTPS")
         );
     }
@@ -74,7 +75,7 @@ public class DeliveryReadinessController {
         result.put("productionReady", false);
         result.put("runtime", probe.ready() ? "UP" : "DOWN");
         result.put("completedScope", List.of("资产/BOM/测点", "时序样本与数据质量准入", "告警诊断工单复测", "健康评估与Demo预测", "维保点检缺陷", "备件库存", "FMECA/规则/知识库/SLA", "操作审计"));
-        result.put("productionBlockers", List.of("现场PLC、网关、点表与采样口径未冻结", "统一身份认证、RBAC和数据权限尚未启用", "TLS证书及统一API网关尚未接入", "现场时序采集链路、消息队列和监控平台尚未全部联调", "AI与RUL模型仍需真实历史数据、标签和实机验证"));
+        result.put("productionBlockers", List.of("现场PLC、网关、点表与采样口径未冻结", "两类角色已实现；统一IAM SSO和细粒度设备范围授权仍需联调", "TLS证书及统一API网关尚未接入", "现场时序采集链路、消息队列和监控平台尚未全部联调", "AI与RUL模型仍需真实历史数据、标签和实机验证"));
         result.put("time", Instant.now());
         return result;
     }

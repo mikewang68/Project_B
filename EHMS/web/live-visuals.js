@@ -92,7 +92,7 @@ function telemetryChart(){
   if(!p)return visualEmpty('未选择测点','请先选择已登记测点。');
   const samples=v.samples.filter(s=>Number.isFinite(s.value)&&s.sourceTimestamp).sort((a,b)=>new Date(a.sourceTimestamp)-new Date(b.sourceTimestamp));
   if(!samples.length)return visualEmpty('此时间范围没有时序样本','质量快照与时序历史是不同数据源；旧快照不代表历史已入库。可切换“最近入库时间附近”或手动录入一条明确标注的演示样本。');
-  return `${lineChart(samples.map(s=>s.value),[],{live:true,times:samples.map(s=>s.sourceTimestamp),labels:samples.map(s=>new Date(s.sourceTimestamp).toLocaleString('zh-CN',{hour12:false})),unit:p.unit,threshold:p.upperLimit,name:p.name,caption:'openGemini实际保存的样本'})}<p class="muted">${samples.length===1?'仅1条样本，只显示一个点；不足以判断变化趋势。 ':''}GOOD ${samples.filter(s=>s.quality==='GOOD').length} / ${samples.length}；最多2000条（达到上限时不是完整范围）。质量码为入库时判定，当前新鲜度请查看测点表。</p>`;
+  return `${lineChart(samples.map(s=>s.value),[],{live:true,times:samples.map(s=>s.sourceTimestamp),labels:samples.map(s=>new Date(s.sourceTimestamp).toLocaleString('zh-CN',{hour12:false})),unit:p.unit,threshold:p.upperLimit,name:p.name,caption:'openGemini实际保存的样本'})}<p class="muted">${samples.length===1?'仅1条样本，只显示一个点；不足以判断变化趋势。 ':''}GOOD ${samples.filter(s=>s.quality==='GOOD').length} / ${samples.length}${samples.some(s=>String(s.quality).startsWith('SYNTHETIC_'))?`；其中虚拟样本 ${samples.filter(s=>String(s.quality).startsWith('SYNTHETIC_')).length} 条（不计作现场GOOD）`:''}；最多2000条（达到上限时不是完整范围）。质量码为入库时判定，当前新鲜度请查看测点表。</p>`;
 }
 function visualMonitorBody(){
   const v=state.visual;

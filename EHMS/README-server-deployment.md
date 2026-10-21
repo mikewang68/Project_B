@@ -1,4 +1,4 @@
-# EHM 1.6.1 服务器版部署说明（openGauss + openGemini）
+# EHM 1.8.1 服务器版部署说明（openGauss + openGemini）
 
 > 本仓库为公开脱敏示例。`192.0.2.74`、`node4.example.internal`、
 > `node6.example.internal` 和 `/opt/b-project/ehm` 均为示例值，部署前必须按现场环境替换。
@@ -27,7 +27,7 @@ openGemini保存温度、振动、电流、压力、载荷等测点采样以及�
 
 ## 3. 初始化
 
-1. DBA在EHM业务库执行 `sql/001_init_opengauss.sql`。
+1. DBA在EHM业务库检查并执行 `sql/001_init_opengauss.sql` 及 `002_audit_outbox.sql`、`003_audit_tasks.sql`、`004_local_auth.sql`；使用实际 schema/表前缀，升级前备份，不清空已有记录。公共 AUDIT 库另按 `../AUDIT/README.md` 初始化，已有库核查迁移版本后再升级。
 2. 给EHM应用账号授予ehm schema的USAGE权限，以及aggregate_store的SELECT、INSERT、UPDATE权限。
 3. 在时序节点执行 `bin/init-opengemini.sh`，创建ehm_telemetry。
 4. 从 `config/ehm-server.env.example` 复制出 `config/ehm-server.env` 并填写真实参数。
@@ -36,6 +36,9 @@ openGemini保存温度、振动、电流、压力、载荷等测点采样以及�
 
 在应用节点执行以下命令生成 `app/ehm-service.jar`：
 
+    # 在仓库根目录先安装配套日志 SDK，再构建 EHM
+    mvn -f AUDIT/pom.xml clean install
+    cd EHMS
     cd source/backend
     mvn clean package
     mkdir -p /opt/b-project/ehm/{app,config,logs,run,web,bin}
@@ -43,6 +46,12 @@ openGemini保存温度、振动、电流、压力、载荷等测点采样以及�
 
 把交付包中的web目录内容发布到Web节点的 `/srv/b-project/ehm/web/`。
 把本目录的bin、sql、config示例及systemd模板按需复制到安装目录；真实配置单独保留，不用源码示例覆盖。
+
+1.8.1默认使用服务端本地账号认证：`EHM_AUTH_MODE=local`。空账号库需在服务器权限600的私有JSON文件中初始化账号（字段见`api/auth-v1.md`），配置`EHM_AUTH_BOOTSTRAP_FILE`；没有公开默认密码。保留已有账号表和密码，不重复初始化。正式HTTPS设置`EHM_AUTH_COOKIE_SECURE=true`；仅受控HTTP/SSH验收环境明确设为`false`。接入IAM时需按契约配置，不能只靠前端角色切换授予权限。
+
+公共日志转发配置、凭据和多作用域规则见`api/audit-console-v1.md`及`../AUDIT/README.md`。`ACCEPTED`仅表示公共日志已持久化；不表示已上链。未完成真实TRUST联调时保持链提交关闭。
+
+虚拟场景默认关闭（`EHM_SAMPLE_DATA_ENABLED=false`）。只有隔离演示实例可显式启用并由管理员导入；不要将本机H2数据库、样例适配器或账号文件带入正式服务器。openGemini无数据/异常时如实显示，不自动切换为虚拟时序。
 
 脚本默认从PATH执行java；若服务器Java不在PATH，在config/ehm-server.env中增加
 JAVA_BIN=/实际路径/bin/java。systemd模板中的用户和安装路径也必须按现场账号修改。
@@ -121,4 +130,4 @@ HTTP接口仅用于已批准的受控网络；后端校验精确的受信任主�
     python3 tests/test_lab_model_config.py
 
 后端构建要求Java 17；Python配置写入权限测试应在Linux运行。测试不会使用真实模型Key或访问现场数据库。
-本版功能边界见`docs/IMPLEMENTATION-STATUS-v1.6.1.md`；旧版文档保留作历史记录，以本说明为当前部署基线。
+本版增量边界见`RELEASE-NOTES-v1.8.1.md`、`RELEASE-NOTES-v1.8.0.md`及`api/sample-data-v1.md`；旧版文档保留作历史记录，以本说明为当前部署基线。支持角色权限、持久化日志和显式虚拟场景，不代表所有设计菜单、真实AI预测或链上联调已经完成。

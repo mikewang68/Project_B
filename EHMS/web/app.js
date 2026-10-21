@@ -63,6 +63,7 @@ const API_BASE = location.protocol === 'file:' ? 'http://localhost:8080/api/ehm/
 const state = { page:'dashboard', asset:'GT-01', assetTab:'overview', drawer:null, modal:null, api:null, summary:null, backendConnected:false, backendError:'', selectedAlarmNos:new Set() };
 
 async function apiRequest(path,options={}){
+  if(window.EhmAuth?.enabled&&!window.EhmAuth.user)await window.EhmAuth.ready;
   const headers={Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})};
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),options.timeoutMs||25000);
   let response;
@@ -553,5 +554,5 @@ function init(){
   const tick=()=>{$('#clock').textContent=new Date().toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replaceAll('/','-')};tick();setInterval(tick,30000);
 }
 
-init();
+if(window.EhmAuth)window.EhmAuth.ready.then(init);else init();
 

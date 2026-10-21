@@ -1,0 +1,9 @@
+iam:
+  audit:
+    public:
+      enabled: ${IAM_PUBLIC_AUDIT_ENABLED:false}
+      endpoint: ${IAM_PUBLIC_AUDIT_ENDPOINT:}
+      token-file: ${IAM_PUBLIC_AUDIT_TOKEN_FILE:}
+      domain: ${IAM_PUBLIC_AUDIT_DOMAIN:unassigned}
+      zone: ${IAM_PUBLIC_AUDIT_ZONE:unassigned}
+      source-timezone: Asia/Shanghai

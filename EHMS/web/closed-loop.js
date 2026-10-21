@@ -12,16 +12,8 @@ function selectedCaseAlarm(){
 }
 
 async function caseRequest(path, options={}){
-  const headers={Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})};
-  const response=await fetch(`${API_BASE}${path}`,{...options,headers});
-  if(response.status===404) return null;
-  if(!response.ok){
-    let message=`HTTP ${response.status}`;
-    try{const body=await response.json();message=body.message||body.detail||message;}catch{}
-    throw new Error(message);
-  }
-  if(response.status===204) return null;
-  return response.json();
+  // Share the verified-session header, timeout and error handling of every other EHM request.
+  try{return await apiRequest(path,options);}catch(error){if(error.status===404)return null;throw error;}
 }
 
 async function loadCaseFlow(showMessage=false){

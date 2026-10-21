@@ -1,0 +1,17 @@
+[
+  {
+    "id": "AUDIT_EHM_TEST",
+    "domainId": "demo-domain",
+    "zoneId": "zone-a",
+    "appCode": "ehealth",
+    "orgId": "APPROVED_ORG_REQUIRED",
+    "sourceSystem": "APPROVED_AUDIT_EHM_TEST",
+    "baseUrl": "https://trust.example.internal/api/v1/integrations/evidence/events",
+    "tokenFile": "/private/runtime/secrets/ehm-trust.token",
+    "enabled": false,
+    "archiveApproved": false,
+    "retryAllowed": false,
+    "eligibleFrom": "2026-10-19T00:00:00Z",
+    "instanceId": "APPROVED_INSTANCE_REQUIRED"
+  }
+]

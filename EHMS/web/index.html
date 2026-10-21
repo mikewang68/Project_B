@@ -12,7 +12,8 @@
   <link rel="stylesheet" href="./maintenance-program.css?v=1.0" />
   <link rel="stylesheet" href="./spares-inventory.css?v=1.0" />
   <link rel="stylesheet" href="./reliability-governance.css?v=1.0" />
-  <link rel="stylesheet" href="./delivery-console.css?v=1.0" />
+  <link rel="stylesheet" href="./delivery-console.css?v=1.7.4" />
+  <link rel="stylesheet" href="./auth-session.css?v=1.8.0" />
   <link rel="stylesheet" href="./unified-theme.css?v=2.0" />
   <link rel="stylesheet" href="./ai-assistant.css?v=1.5.0" />
 </head>
@@ -23,7 +24,7 @@
         <div class="brand-mark">EHM</div>
         <div>
           <strong>设备健康管理系统</strong>
-          <span>B项目 · 服务器联调版 1.6.1</span>
+          <span>B项目 · 服务器联调版 1.8.1</span>
         </div>
       </div>
 
@@ -65,7 +66,7 @@
           <button class="icon-button has-count" data-tip="活动告警" type="button" data-goto="alarm-center">告<span>—</span></button>
           <button class="icon-button has-count" data-tip="我的待办" type="button" data-goto="my-tasks">办<span>—</span></button>
           <div class="shift"><b>白班</b><span id="clock">--</span></div>
-          <button class="avatar" type="button" aria-label="用户菜单">维</button>
+          <button class="button auth-account-label" id="authAccountButton" type="button" aria-label="用户菜单">账号</button>
         </div>
       </header>
 
@@ -146,18 +147,24 @@
 
   <div class="toast" id="toast" role="status"></div>
 
+  <script src="./auth-session.js?v=1.8.0"></script>
   <script src="./governance-console.js?v=1.0"></script>
-  <script src="./app.js?v=1.6.0.1"></script>
+  <script src="./app.js?v=1.8.0"></script>
   <script src="./asset-structure.js?v=1.0"></script>
   <script src="./closed-loop.js?v=1.0"></script>
   <script src="./health-prediction.js?v=1.6.0"></script>
   <script src="./maintenance-program.js?v=1.0"></script>
-  <script src="./spares-inventory.js?v=1.0"></script>
+  <script src="./spares-inventory.js?v=1.8.1"></script>
   <script src="./reliability-governance.js?v=1.0"></script>
-  <script src="./delivery-console.js?v=1.0"></script>
+  <script src="./delivery-console.js?v=1.8.1"></script>
+  <script src="./audit-browser.js?v=1.7.4"></script>
   <script src="./ai-assistant.js?v=1.6.1"></script>
   <script src="./crud-console.js?v=1.6.0.1"></script>
-  <script src="./live-visuals.js?v=1.6.0.1"></script>
+  <script src="./live-visuals.js?v=1.8.1"></script>
+  <script src="./audit-events.js?v=1.7.0"></script>
+  <script src="./asset-detail-data.js?v=1.8.1"></script>
+  <script src="./sample-workbench.js?v=1.8.1"></script>
+  <script src="./auth-users.js?v=1.8.1"></script>
   <script id="prototype-fallback">
     document.addEventListener('click', function(event){
       const button = event.target.closest('button');

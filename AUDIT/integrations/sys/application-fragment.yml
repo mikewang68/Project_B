@@ -1,0 +1,9 @@
+sys:
+  audit:
+    public:
+      enabled: ${SYS_PUBLIC_AUDIT_ENABLED:false}
+      endpoint: ${SYS_PUBLIC_AUDIT_ENDPOINT:}
+      token-file: ${SYS_PUBLIC_AUDIT_TOKEN_FILE:}
+      domain: ${SYS_PUBLIC_AUDIT_DOMAIN:unassigned}
+      zone: ${SYS_PUBLIC_AUDIT_ZONE:unassigned}
+      interval-ms: 5000

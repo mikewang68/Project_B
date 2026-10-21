@@ -26,12 +26,14 @@ public class HealthAssessmentController {
     }
 
     @PostMapping("/devices/{assetCode}/health-assessments/run")
+    @com.bproject.ehm.platform.audit.application.AuditedTask(menu="health")
     @ResponseStatus(HttpStatus.CREATED)
     public HealthAssessment run(@PathVariable String assetCode) {
         return health.run(assetCode);
     }
 
     @PostMapping("/devices/{assetCode}/health-assessments/replay")
+    @com.bproject.ehm.platform.audit.application.AuditedTask(menu="health-replay")
     @ResponseStatus(HttpStatus.CREATED)
     public HealthAssessment replay(@PathVariable String assetCode) {
         return health.replay(assetCode);

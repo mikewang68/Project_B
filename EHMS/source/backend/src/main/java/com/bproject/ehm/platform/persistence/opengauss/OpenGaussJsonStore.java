@@ -105,6 +105,19 @@ public class OpenGaussJsonStore {
         return value == null ? 0 : value;
     }
 
+    /** Insert-only helper for opt-in sample bundles: never resets an existing business aggregate. */
+    public boolean insertIfAbsent(String type, String id, Object value) {
+        if (find(type, id, Object.class).isPresent()) return false;
+        try {
+            jdbc.update("INSERT INTO " + qualifiedTable
+                    + " (aggregate_type, aggregate_id, payload, updated_at) VALUES (?, ?, ?, ?)",
+                    type, id, encode(value), Timestamp.from(Instant.now()));
+            return true;
+        } catch (DuplicateKeyException race) {
+            throw new IllegalStateException("Concurrent sample import; retry after the current import finishes");
+        }
+    }
+
     public void ping() {
         jdbc.queryForObject("SELECT 1", Integer.class);
     }

@@ -1,0 +1,465 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "WriteLog 公共操作日志 API",
+    "version": "1.0.0",
+    "description": "服务身份按app/domain/zone限定；202表示可靠入库，不代表Fabric提交。"
+  },
+  "security": [
+    {
+      "serviceBearer": []
+    }
+  ],
+  "paths": {
+    "/api/logs/v1/events": {
+      "post": {
+        "summary": "可靠接收日志",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogEvent"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Durably stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid event"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Scope/permission denied"
+          },
+          "409": {
+            "description": "Same ID different content"
+          }
+        }
+      },
+      "get": {
+        "summary": "查询授权范围日志",
+        "parameters": [
+          {
+            "name": "appCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "description": "LogEvent plus receivedAt and receipt"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "size": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logs/v1/events/{id}/receipt": {
+      "get": {
+        "summary": "查询入库及上链回执",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "appCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or inaccessible"
+          }
+        }
+      }
+    },
+    "/api/logs/v1/events/{id}/retry": {
+      "post": {
+        "summary": "RETRY权限重排失败上链任务",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "appCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Requeued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "409": {
+            "description": "Not retryable or chain not configured"
+          }
+        }
+      }
+    },
+    "/api/logs/v1/whoami": {
+      "get": {
+        "summary": "服务身份与权限，不包含凭据",
+        "responses": {
+          "200": {
+            "description": "Service scope"
+          }
+        }
+      }
+    },
+    "/api/logs/v1/export": {
+      "get": {
+        "summary": "EXPORT权限导出最新100条CSV",
+        "parameters": [
+          {
+            "name": "appCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UTF-8 BOM CSV, not full archive",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "serviceBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Per-app/scope private service credential; not user JWT"
+      }
+    },
+    "schemas": {
+      "LogEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "eventId",
+          "occurredAt",
+          "appCode",
+          "domainId",
+          "zoneId",
+          "userId",
+          "actorTrust",
+          "menuId",
+          "action",
+          "objectId",
+          "outcome",
+          "method",
+          "path",
+          "traceId",
+          "durationMs",
+          "sourceKind",
+          "summary"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "appCode": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "domainId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "zoneId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "userId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "actorTrust": {
+            "type": "string",
+            "enum": [
+              "AUTHENTICATED",
+              "ANONYMOUS",
+              "SYSTEM"
+            ]
+          },
+          "menuId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CREATE",
+              "READ",
+              "UPDATE",
+              "DELETE",
+              "LOGIN",
+              "LOGOUT",
+              "EXPORT",
+              "IMPORT",
+              "UPLOAD",
+              "DOWNLOAD",
+              "BACKUP",
+              "RESTORE",
+              "TRAIN",
+              "EXECUTE",
+              "NAVIGATE"
+            ]
+          },
+          "objectId": {
+            "type": "string",
+            "maxLength": 192
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "SUCCESS",
+              "FAILED",
+              "DENIED",
+              "STARTED"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "No query string or fragment"
+          },
+          "traceId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "sourceKind": {
+            "type": "string",
+            "enum": [
+              "BUSINESS",
+              "REQUEST",
+              "POLL",
+              "JOB",
+              "CLIENT"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 512
+          }
+        }
+      },
+      "Receipt": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string"
+          },
+          "appCode": {
+            "type": "string"
+          },
+          "stored": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "payloadHash": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "chainState": {
+            "type": "string",
+            "enum": [
+              "NOT_CONFIGURED",
+              "PENDING",
+              "SENDING",
+              "ACCEPTED",
+              "COMMITTED",
+              "FAILED"
+            ]
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "transactionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "trust": {
+            "type": "object",
+            "description": "Generic TRUST delivery projection; separate from AUDIT stored=true and chainState. Contains latest raw TRUST receipt without payload or credentials.",
+            "properties": {
+              "remote_id": {"type":"string","nullable":true},
+              "remote_status": {"type":"string","nullable":true},
+              "outcome_unknown": {"type":"boolean"},
+              "original_sha256": {"type":"string"},
+              "remote_event_sha256": {"type":"string","nullable":true},
+              "receipt": {"type":"object","nullable":true,"additionalProperties":true}
+            }
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      }
+    }
+  }
+}

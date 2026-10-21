@@ -12,7 +12,7 @@ public record AuditRecord(
                                      String clientAddress, long durationMs) {
         return new AuditRecord(required(auditId, "审计编号"), occurredAt == null ? Instant.now() : occurredAt,
                 fallback(operator, "未识别用户"), fallback(role, "未识别角色"), required(method, "请求方法"),
-                required(path, "请求路径"), statusCode, statusCode < 400 ? "SUCCESS" : "FAILED",
+                required(path, "请求路径"), statusCode, statusCode == 401 || statusCode == 403 ? "DENIED" : statusCode < 400 ? "SUCCESS" : "FAILED",
                 fallback(traceId, "无追踪编号"), fallback(clientAddress, "未知地址"), Math.max(0, durationMs));
     }
 

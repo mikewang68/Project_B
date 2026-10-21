@@ -23,7 +23,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOrigins(allowedOrigins)
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("Content-Type", "Authorization", "Idempotency-Key", "If-Match", "X-Trace-Id")
+                .allowedHeaders("Content-Type", "Authorization", "Idempotency-Key", "If-Match", "X-Trace-Id", "X-EHM-CSRF")
                 .exposedHeaders("X-Trace-Id")
                 .maxAge(3600);
     }

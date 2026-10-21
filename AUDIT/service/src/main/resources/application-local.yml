@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./runtime/audit-local;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password: ''
+audit:
+  auto-ddl: true

@@ -1,0 +1,30 @@
+server:
+  port: ${AUDIT_PORT:18110}
+  address: ${AUDIT_BIND:127.0.0.1}
+  max-http-request-header-size: 16KB
+spring:
+  application:
+    name: common-audit
+  sql:
+    init:
+      mode: never
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  datasource:
+    url: ${AUDIT_DB_URL:jdbc:postgresql://localhost:5432/audit}
+    username: ${AUDIT_DB_USER:}
+    password: ${AUDIT_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 8
+audit:
+  clients-file: ${AUDIT_CLIENTS_FILE:runtime/secrets/clients.json}
+  auto-ddl: ${AUDIT_AUTO_DDL:false}
+  chain:
+    enabled: ${AUDIT_CHAIN_ENABLED:false}
+    mode: ${AUDIT_CHAIN_MODE:generic}
+    sources-file: ${AUDIT_TRUST_SOURCES_FILE:}
+    max-wait-seconds: ${AUDIT_TRUST_MAX_WAIT_SECONDS:86400}
+    base-url: ${AUDIT_CHAIN_BASE_URL:}
+    token-file: ${AUDIT_CHAIN_TOKEN_FILE:}
+    interval-ms: ${AUDIT_CHAIN_INTERVAL_MS:5000}

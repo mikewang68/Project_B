@@ -17,13 +17,17 @@ import java.util.List;
 @RequestMapping("/api/ehm/v1/system/audit-logs")
 public class AuditController {
     private final AuditApplicationService audit;
+    private final org.springframework.beans.factory.ObjectProvider<com.bproject.ehm.platform.audit.application.AuditConsoleService> console;
 
-    public AuditController(AuditApplicationService audit) {
-        this.audit = audit;
+    public AuditController(AuditApplicationService audit,org.springframework.beans.factory.ObjectProvider<com.bproject.ehm.platform.audit.application.AuditConsoleService> console) {
+        this.audit = audit;this.console=console;
     }
 
     @GetMapping
-    public List<AuditRecord> latest(@RequestParam(defaultValue = "100") @Min(1) @Max(200) int limit) {
-        return audit.latest(limit);
+    public List<AuditRecord> latest(@RequestParam(defaultValue = "100") @Min(1) @Max(200) int limit,jakarta.servlet.http.HttpServletRequest request) {
+        var actor=IamAuditIdentityFilter.actor(request);
+        if(actor==null)return List.of();
+        var viewer=console.getIfAvailable();
+        return audit.latest(limit).stream().filter(row->(viewer!=null&&viewer.all(request))||actor.getName().equals(row.operator())).toList();
     }
 }

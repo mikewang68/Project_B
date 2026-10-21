@@ -26,17 +26,42 @@ spring:
         type: none
 
 ehm:
+  sample-data:
+    enabled: ${EHM_SAMPLE_DATA_ENABLED:false}
+  auth:
+    mode: ${EHM_AUTH_MODE:local}
+    bootstrap-file: ${EHM_AUTH_BOOTSTRAP_FILE:}
+    table-prefix: ${EHM_AUTH_TABLE_PREFIX:auth_}
+    cookie-name: ${EHM_AUTH_COOKIE_NAME:EHM_SESSION}
+    cookie-secure: ${EHM_AUTH_COOKIE_SECURE:true}
+    session-hours: ${EHM_AUTH_SESSION_HOURS:8}
+    idle-minutes: ${EHM_AUTH_IDLE_MINUTES:30}
+  audit:
+    domain: ${EHM_AUDIT_DOMAIN:unassigned}
+    zone: ${EHM_AUDIT_ZONE:unassigned}
+    endpoint: ${EHM_AUDIT_ENDPOINT:}
+    token-file: ${EHM_AUDIT_TOKEN_FILE:}
+    interval-ms: ${EHM_AUDIT_INTERVAL_MS:5000}
+    iam-me-url: ${EHM_AUDIT_IAM_ME_URL:}
+    iam-required: ${EHM_AUDIT_IAM_REQUIRED:false}
+    task-max-seconds: ${EHM_AUDIT_TASK_MAX_SECONDS:900}
+    evidence-export-enabled: ${EHM_AUDIT_EVIDENCE_EXPORT_ENABLED:false}
+    evidence-export-actors: ${EHM_AUDIT_EVIDENCE_EXPORT_ACTORS:}
+    query-actors: ${EHM_AUDIT_QUERY_ACTORS:}
+    reader-token-file: ${EHM_AUDIT_READER_TOKEN_FILE:}
+    outbox-table: ${EHM_AUDIT_OUTBOX_TABLE:audit_outbox}
+    task-table: ${EHM_AUDIT_TASK_TABLE:audit_task}
   release:
-    version: 1.6.1-server
+    version: 1.8.1-server
   cors:
     allowed-origins: ${EHM_ALLOWED_ORIGINS:http://192.0.2.74:18090}
   persistence:
-    adapter: openGauss
+    adapter: ${EHM_PERSISTENCE_ADAPTER:openGauss}
     schema: ${EHM_OPENGAUSS_SCHEMA:ehm}
-    table: aggregate_store
+    table: ${EHM_OPENGAUSS_TABLE:aggregate_store}
     auto-ddl: ${EHM_OPENGAUSS_AUTO_DDL:false}
   telemetry:
-    adapter: openGemini
+    adapter: ${EHM_TELEMETRY_ADAPTER:openGemini}
     base-url: ${EHM_OPENGEMINI_BASE_URL:http://node6.example.internal:8086}
     database: ${EHM_OPENGEMINI_DATABASE:ehm_telemetry}
     username: ${EHM_OPENGEMINI_USERNAME:}
