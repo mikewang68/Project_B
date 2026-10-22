@@ -38,7 +38,7 @@ AUDIT 负责正确选路，TRUST 按凭据绑定来源隔离。payload 的 domai
 
 样例给出三种摘要；其中 eventSha256 使用 vectors 的固定合成来源、内部 ID 和版本，对应 [canonical 原始字节](../examples/audit-operation-log-canonical.json)。实际提交由服务端生成内部 ID，因此实际 eventSha256 通常不同，不得把样例值作为实际回执。请求样例末尾含一个 LF，canonical 样例末尾无换行；摘要覆盖文件所有字节。
 
-提交前或结果未知时 `GET /by-source-event/{sourceEventId}`；本来源确实 404 才以原号原文提交。受理后保存内部 id，后续 `GET /{id}`。号码、已知 id 或摘要漂移及 409 都进入人工核查。
+首次确定尚未发送的记录，先持久保存完整请求字节、摘要和发送意图，再 POST；不要求先空查。可能已经发送或结果未知时，先 `GET /by-source-event/{sourceEventId}`。只有实例、来源、凭据正确、入口启用且明确返回 `RECEIPT_NOT_FOUND`，才以原号原文重新提交；入口关闭、普通 404 或网关错误不能证明未受理。受理后保存内部 id，后续 `GET /{id}`。号码、已知 id 或摘要漂移及 409 都进入人工核查。
 
 ACCEPTED/PROCESSING/RETRY_WAIT/CONFIRMING 均不是上链成功。COMMITTED 需与有效 txId 和记录相符。ACTION_REQUIRED 需要核查并显式补办；outcomeUnknown=true 时不能声称链上无交易。即使调用方显示四态，也须保留原始状态、未知标记和错误码。
 
@@ -51,3 +51,36 @@ ACCEPTED/PROCESSING/RETRY_WAIT/CONFIRMING 均不是上链成功。COMMITTED 需�
 [日志专用接口](audit-evidence.md) 保留兼容：请求 eventKey/eventId/payloadHash/event、加密正文、内部 AUDIT_LOG、单独授权恢复。两套路径、凭据、摘要对象、状态与归档语义不可混用，也不应让同一业务日志同时走两条链路。
 
 真实联调前须确认：新版 ChainWorker 提交版本、字段与摘要向量、来源矩阵、全文归档许可、实例和访问路径、read/submit 凭据交付、retry 决策、吞吐/入口限流、补传及未知结果对账。材料准备完成不代表上述事项已经确认。
+
+## TRUST 维护方的准备与默认联调标准
+
+TRUST 负责来源配置、凭据、钱包绑定、精确链策略、受理后的处理和原文/链核验；业务范围及内容许可由权属方提供，AUDIT 提供运行节点、凭据接收人、日志量与已有投递记录。不要将 TRUST 自己未做完的配置和工具统称为双方待确认。
+
+合成测试使用明显标记的独立来源，不冒用业务 appCode 或正式范围。初始发送并发 1、全局新事件提交不高于每秒 1 次、每事件轮询间隔至少 5 秒；遇持续积压或依赖异常暂停新投递。此值是测试约束，不是已测容量 SLA，也不是服务端强制限额。应用当前不承诺通用入口专属 429/Retry-After；如网关产生 429，先核实发送状态，尊重有效 Retry-After，缺失时采用 5/10/20/30 秒有界退避，持续失败转人工对账，不生成新号。
+
+### 凭据轮换和停止投递
+
+1. AUDIT 暂停该来源新投递，持久保存号码、请求字节及未决回执；TRUST 记录配置摘要与回退配置。
+2. TRUST 生成新随机 token，通过受限渠道交指定后端维护人；配置只保存 SHA256。原子替换同一来源的摘要，保留组织、sourceId、sourceSystem、类型和已批准权限。
+3. 验证旧 token 失效、新 token 能查询原记录，内部 id 和摘要保持一致，再恢复投递。当前每来源只有一个摘要，没有新旧 token 并行窗口或自动到期能力；轮换需要协调暂停。
+4. 若只停止新增投递，移除 submit/retry、保留 read；已受理且来源仍启用的任务继续处理。替换 token 可使泄露的旧凭据失效；禁用来源还会停止该来源任务后续推进，不等同于仅停止客户端。外部已经发出的交易不能撤回，未知结果必须保留并对账。
+5. 配置更新前校验所有现有来源、身份供给与 WMS 凭据不冲突，保留原文件所有者和受限权限，使用同目录临时文件原子替换。失败时恢复上一配置并复查凭据和在途状态，不回灌数据库覆盖新记录。
+
+### OPERATION_LOG 精确链策略
+
+旧钱包 API 导出的 eventTypes 仍为 WAREHOUSE_IN/DISPATCH，旧 `signer-policy.sh` 也不是通用日志授权入口；不要直接套用或据此声明 OPERATION_LOG 已获准。
+
+使用 [通用日志维护命令](../scripts/generic-signer-policy.py)，由具有既有网络维护权限的操作员运行。它不替普通应用申请管理员密钥，不改变旧 WMS API。准备两个不同文件：独立允许名单和执行计划，均 schemaVersion=1。
+
+- 允许名单 `targets[targetId]` 固定 enabled、purpose=`isolated-operation-log-policy`、隔离 channel、contract=`evidence`、orderer/ordererTlsCa 和 peers（address/tlsCa）；只允许明确回环端点和 `trust-iam-` 隔离通道。
+- `changes[changeId]` 包含 policy、binding、expectedPrevious。policy 使用链契约的 orgId/sourceSystem/mspId/fingerprint/enabled/revision/changeId/eventTypes，类型必须仅为 OPERATION_LOG。首次 expectedPrevious=null/revision=1；更新按批准前态递增版本。
+- binding 从本实例当前钱包和绑定申请查询取得，包含 orgId/sourceSystem/mspId/fingerprint、state=APPROVED、action=BIND、walletState=ACTIVE、proposedBy/reviewedBy、requestId/currentBindingRequestId、带时区 observedAt。双人身份必须不同，绑定及指纹须与策略一致，观察超过 15 分钟须重新查询。该文件是维护方的现场观察，不是第三方签名凭证；类型许可需独立批准，不能由绑定审批推导。
+- 计划含 targetId/target、changeId/change，值必须与独立允许名单完全一致。默认只检查本地输入；`--check` 查询所有批准 Peer 并输出差异；`--apply` 仅在所有 Peer 与批准前态一致时提交一次。已存在相同策略则不重复提交；分歧或版本冲突停止，提交响应未知先查询，不自动重发。
+
+```sh
+python3 scripts/generic-signer-policy.py --allowlist /private/approved.json --plan /private/plan.json
+python3 scripts/generic-signer-policy.py --allowlist /private/approved.json --plan /private/plan.json --check
+python3 scripts/generic-signer-policy.py --allowlist /private/approved.json --plan /private/plan.json --apply
+```
+
+实际基址、来源映射、批准记录、凭据、计划和执行证据放私有目录。合成单端验证、独立实例故障测试、AUDIT 双端联调和真实启用分别记账，不互相替代。

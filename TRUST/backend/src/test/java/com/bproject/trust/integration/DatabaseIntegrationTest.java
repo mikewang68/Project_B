@@ -76,6 +76,10 @@ class DatabaseIntegrationTest {
     String base = System.getenv("TRUST_ROOT");
     testRoot = Path.of(base, "runtime/db-integration");
     Files.createDirectories(testRoot);
+    Files.createDirectories(testRoot.resolve("runtime/secrets"));
+    Files.writeString(
+        testRoot.resolve("runtime/secrets/integration.json"),
+        "{\"iamUrl\":\"\",\"iamMode\":\"development\",\"orgMap\":{},\"services\":[]}");
     p.add("trust.root", () -> testRoot.toString());
     p.add("spring.datasource.url", () -> url);
   }
@@ -182,9 +186,9 @@ class DatabaseIntegrationTest {
   @org.junit.jupiter.api.AfterEach
   void stopOnlyThisRunTasks() {
     db.update(
-        "UPDATE tasks SET"
+        "UPDATE tasks_read SET"
             + " state='FAILED',lease_token=NULL,lease_until=NULL,last_error='TEST_RUN_COMPLETE'"
-            + " WHERE state IN ('READY','RUNNING') AND event_id IN (SELECT id FROM events"
+            + " WHERE state IN ('READY','RUNNING') AND event_id IN (SELECT id FROM events_read"
             + " WHERE org_id=?)",
         org);
   }
@@ -269,19 +273,26 @@ class DatabaseIntegrationTest {
         "Committed-but-timeout transaction must be found before resubmitting");
     var verified = verification.verify(id, org, actor);
     assertEquals(true, verified.get("ok"), Json.write(verified));
-    db.update("UPDATE events SET batch_id='REPLACED' WHERE id=?", id);
+    new JdbcTemplate(com.bproject.trust.support.TestDatabase.dataSource(true))
+        .update("UPDATE events SET batch_id='REPLACED' WHERE id=?", id);
     assertEquals(false, verification.verify(id, org, actor).get("ok"));
-    db.update("UPDATE events SET batch_id=? WHERE id=?", initial.batchId(), id);
+    new JdbcTemplate(com.bproject.trust.support.TestDatabase.dataSource(true))
+        .update("UPDATE events SET batch_id=? WHERE id=?", initial.batchId(), id);
     db.update("INSERT INTO event_links VALUES(?,'BATCH','REPLACED')", id);
     assertEquals(false, verification.verify(id, org, actor).get("ok"));
-    db.update(
-        "DELETE FROM event_links WHERE event_id=? AND kind='BATCH' AND target='REPLACED'", id);
+    new JdbcTemplate(com.bproject.trust.support.TestDatabase.dataSource(true))
+        .update(
+            "DELETE FROM event_links WHERE event_id=? AND kind='BATCH' AND target='REPLACED'", id);
     String originalSha =
-        (String) db.queryForMap("SELECT sha256 FROM evidence WHERE id=?", evidenceId).get("sha256");
-    db.update("UPDATE evidence SET sha256=? WHERE id=?", "0".repeat(64), evidenceId);
+        (String)
+            db.queryForMap("SELECT sha256 FROM evidence_read WHERE id=?", evidenceId).get("sha256");
+    new JdbcTemplate(com.bproject.trust.support.TestDatabase.dataSource(true))
+        .update("UPDATE evidence SET sha256=? WHERE id=?", "0".repeat(64), evidenceId);
     assertEquals(false, verification.verify(id, org, actor).get("ok"));
-    db.update("UPDATE evidence SET sha256=? WHERE id=?", originalSha, evidenceId);
-    String cid = db.queryForObject("SELECT cid FROM evidence WHERE id=?", String.class, evidenceId);
+    new JdbcTemplate(com.bproject.trust.support.TestDatabase.dataSource(true))
+        .update("UPDATE evidence SET sha256=? WHERE id=?", originalSha, evidenceId);
+    String cid =
+        db.queryForObject("SELECT cid FROM evidence_read WHERE id=?", String.class, evidenceId);
     byte[] original = stored.remove(cid);
     assertEquals(false, verification.verify(id, org, actor).get("ok"));
     stored.put(cid, original);
@@ -390,8 +401,7 @@ class DatabaseIntegrationTest {
                 .andExpect(status().isOk()));
     assertEquals(1, ((Number) imported.get("accepted")).intValue());
     String csv =
-        "sourceSystem,sourceEventId,eventType,businessObjectId,batchId,occurredAt\n"
-            + "TEST,CSV-"
+        "sourceSystem,sourceEventId,eventType,businessObjectId,batchId,occurredAt\nTEST,CSV-"
             + actor
             + ",ARRIVAL,CSV-OBJECT,CSV-LOT,2026-09-10T01:00:00Z\n";
     var csvResult =

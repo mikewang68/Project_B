@@ -143,3 +143,5 @@ python scripts/verify-export.py evidence.zip --manifest-sha256 EXPECTED_SHA256
 
 - [钱包链授权状态](docs/wallet-chain-authorization.md)：只读组织观察、当前绑定与维护交接。
 - [通用模拟发送规范](docs/simulator.md)：持久输入、多输出独立回执、有限发送与重启恢复；默认不连接真实服务。
+
+业务修改留存与迁移恢复规则：[数据版本留存](docs/data-retention.md)。前端 HTTP 单元回归：在 frontend 运行 npm run test:unit。

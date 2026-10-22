@@ -114,6 +114,40 @@ func TestPolicyRequiresNetworkAdminAndSequentialRevision(t *testing.T) {
 		t.Fatal("stale policy revision accepted")
 	}
 }
+
+func TestPolicyVersionsPreserveLegacyAndFollowCurrentHead(t *testing.T) {
+	creator, fp := testIdentity(t, "Admin@org1.trust", "Org1MSP", false)
+	s := &signerStub{creator: creator, state: map[string][]byte{}}
+	old := SignerPolicy{OrgID: "B-PROJECT", SourceSystem: "WMS", MSPID: "Org1MSP", Fingerprint: fp, Enabled: true, Revision: 4, ChangeID: "00000000-0000-0000-0000-000000000001", EventTypes: []string{"WAREHOUSE_IN"}}
+	legacy, _ := policyKey(s, old.OrgID, old.SourceSystem, fp)
+	original, _ := json.Marshal(old)
+	s.state[legacy] = original
+	next := old
+	next.Revision = 5
+	next.Enabled = false
+	raw, _ := json.Marshal(next)
+	if result := setSigner(s, []string{string(raw)}); result.Status != 200 {
+		t.Fatal(result.Message)
+	}
+	if string(s.state[legacy]) != string(original) {
+		t.Fatal("legacy key changed")
+	}
+	history := getSignerVersion(s, []string{old.OrgID, old.SourceSystem, fp, "4"})
+	if string(history.Payload) != string(original) {
+		t.Fatal("previous snapshot changed")
+	}
+	current := getSigner(s, []string{old.OrgID, old.SourceSystem, fp})
+	if string(current.Payload) != string(raw) {
+		t.Fatal("head does not select new policy")
+	}
+	missing := getSignerVersion(s, []string{old.OrgID, old.SourceSystem, fp, "3"})
+	if string(missing.Payload) != "null" {
+		t.Fatal("invented missing legacy history")
+	}
+	if setSigner(s, []string{string(raw)}).Status == 200 {
+		t.Fatal("overwrote immutable revision")
+	}
+}
 func TestLegacyReadCompatibilityAndRestrictedNewWrites(t *testing.T) {
 	creator, _ := testIdentity(t, "User1@org1.trust", "Org1MSP", false)
 	s := &signerStub{creator: creator, state: map[string][]byte{}}

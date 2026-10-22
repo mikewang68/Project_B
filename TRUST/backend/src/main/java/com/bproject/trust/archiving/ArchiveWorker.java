@@ -4,6 +4,7 @@ import com.bproject.trust.events.EventService;
 import com.bproject.trust.evidence.EvidenceService;
 import com.bproject.trust.ports.EvidenceStorage;
 import com.bproject.trust.ports.LedgerGateway;
+import com.bproject.trust.shared.BoundedWork;
 import com.bproject.trust.shared.json.Json;
 import com.bproject.trust.shared.web.ApiError;
 import jakarta.annotation.PreDestroy;
@@ -13,7 +14,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import com.bproject.trust.shared.BoundedWork;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -73,26 +73,26 @@ public class ArchiveWorker {
         String token = UUID.randomUUID().toString();
         int changed =
             db.update(
-                "UPDATE tasks SET"
-                    + " state='RUNNING',lease_token=?,lease_until=CURRENT_TIMESTAMP+INTERVAL"
-                    + " '60 seconds',attempts=attempts+1,updated_at=CURRENT_TIMESTAMP"
-                    + " WHERE event_id=? AND ((state='READY' AND"
-                    + " next_at<=CURRENT_TIMESTAMP) OR (state='RUNNING' AND"
+                "UPDATE tasks_read SET"
+                    + " state='RUNNING',lease_token=?,lease_until=CURRENT_TIMESTAMP+INTERVAL '60"
+                    + " seconds',attempts=attempts+1,updated_at=CURRENT_TIMESTAMP WHERE event_id=?"
+                    + " AND ((state='READY' AND next_at<=CURRENT_TIMESTAMP) OR (state='RUNNING' AND"
                     + " lease_until<CURRENT_TIMESTAMP))",
                 token,
                 id);
         if (changed == 1) {
           active.put(id, token);
-          boolean accepted = executor.execute(
-              () -> {
-                try {
-                  process(id, token);
-                } catch (Exception e) {
-                  failed(id, token, e);
-                } finally {
-                  active.remove(id, token);
-                }
-              });
+          boolean accepted =
+              executor.execute(
+                  () -> {
+                    try {
+                      process(id, token);
+                    } catch (Exception e) {
+                      failed(id, token, e);
+                    } finally {
+                      active.remove(id, token);
+                    }
+                  });
           if (!accepted) {
             active.remove(id, token);
             defer(id, token);
@@ -100,7 +100,7 @@ public class ArchiveWorker {
         }
       }
     } catch (Exception e) {
-      /* Database outage: leases and unacknowledged tasks remain durable. */
+      com.bproject.trust.shared.WorkerSignals.failure("ArchiveWorker", "poll", e);
     }
   }
 
@@ -123,9 +123,9 @@ public class ArchiveWorker {
     }
     arguments.add(slots);
     return db.queryForList(
-        "SELECT t.event_id FROM tasks t JOIN events e ON e.id=t.event_id WHERE"
-            + " ((t.state='READY' AND t.next_at<=CURRENT_TIMESTAMP) OR (t.state='RUNNING'"
-            + " AND t.lease_until<CURRENT_TIMESTAMP)) AND ("
+        "SELECT t.event_id FROM tasks_read t JOIN events_read e ON e.id=t.event_id WHERE"
+            + " ((t.state='READY' AND t.next_at<=CURRENT_TIMESTAMP) OR (t.state='RUNNING' AND"
+            + " t.lease_until<CURRENT_TIMESTAMP)) AND ("
             + scope
             + ") ORDER BY t.next_at LIMIT ?",
         String.class,
@@ -137,17 +137,18 @@ public class ArchiveWorker {
     for (var e : active.entrySet())
       try {
         db.update(
-            "UPDATE tasks SET lease_until=CURRENT_TIMESTAMP+INTERVAL '60 seconds' WHERE"
+            "UPDATE tasks_read SET lease_until=CURRENT_TIMESTAMP+INTERVAL '60 seconds' WHERE"
                 + " event_id=? AND lease_token=? AND state='RUNNING' AND"
                 + " lease_until>clock_timestamp()",
             e.getKey(),
             e.getValue());
       } catch (Exception ignored) {
+        com.bproject.trust.shared.WorkerSignals.failure("ArchiveWorker", "persistence", ignored);
       }
   }
 
   void process(String id, String token) throws Exception {
-    var row = db.queryForMap("SELECT * FROM events WHERE id=?", id);
+    var row = db.queryForMap("SELECT * FROM events_read WHERE id=?", id);
     if (!proceed(row, id, token, true)) return;
     String org = (String) row.get("org_id");
     if (logChainGate != null && !logChainGate.allows(id)) {
@@ -155,7 +156,7 @@ public class ArchiveWorker {
       boolean possiblySubmitted =
           row.get("tx_id") != null
               || db.queryForObject(
-                      "SELECT COUNT(*) FROM signing_attempts WHERE event_id=?", Long.class, id)
+                      "SELECT COUNT(*) FROM signing_attempts_read WHERE event_id=?", Long.class, id)
                   > 0;
       if (!possiblySubmitted) {
         defer(id, token);
@@ -165,6 +166,8 @@ public class ArchiveWorker {
       try {
         confirmed = fabric.find(org, id);
       } catch (Exception temporarilyUnavailable) {
+        com.bproject.trust.shared.WorkerSignals.failure(
+            "ArchiveWorker", "poll", temporarilyUnavailable);
         if (temporarilyUnavailable instanceof InterruptedException)
           Thread.currentThread().interrupt();
         // A paused reconciliation is not a submission attempt. Keep its original failure budget.
@@ -185,13 +188,13 @@ public class ArchiveWorker {
     EvidenceService.assertBindings(
         canonical,
         db.queryForList(
-            "SELECT v.* FROM evidence v JOIN event_evidence x ON x.evidence_id=v.id"
-                + " WHERE x.event_id=?",
+            "SELECT v.* FROM evidence_read v JOIN event_evidence x ON x.evidence_id=v.id WHERE"
+                + " x.event_id=?",
             id));
     var archived = new ArrayList<Map<String, Object>>();
     for (String eid :
         db.queryForList(
-            "SELECT evidence_id FROM event_evidence WHERE event_id=? ORDER BY" + " evidence_id",
+            "SELECT evidence_id FROM event_evidence WHERE event_id=? ORDER BY evidence_id",
             String.class,
             id)) {
       if (!proceed(row, id, token)) return;
@@ -229,11 +232,11 @@ public class ArchiveWorker {
     if (row.get("manifest_cid") == null) {
       String cid = ipfs.add(manifest.getBytes(StandardCharsets.UTF_8));
       if (db.update(
-              "UPDATE events SET"
-                  + " manifest_json=?,manifest_cid=?,manifest_sha256=?,file_state='STORED'"
-                  + " WHERE id=? AND EXISTS(SELECT 1 FROM tasks WHERE event_id=? AND"
-                  + " lease_token=? AND state='RUNNING' AND"
-                  + " lease_until>clock_timestamp())",
+              "UPDATE events_read SET"
+                  + " expected_lease_token=?,manifest_json=?,manifest_cid=?,manifest_sha256=?,file_state='STORED'"
+                  + " WHERE id=? AND EXISTS(SELECT 1 FROM tasks_read WHERE event_id=? AND"
+                  + " lease_token=? AND state='RUNNING' AND lease_until>clock_timestamp())",
+              token,
               manifest,
               cid,
               manifestSha,
@@ -268,16 +271,16 @@ public class ArchiveWorker {
               tid -> {
                 tx.executeWithoutResult(
                     status -> {
+                      com.bproject.trust.shared.RetentionLock.row(db, "tasks", "event_id=?", id);
                       wallets.prepared(id, tid);
                       int n =
                           db.update(
-                              "UPDATE events SET"
-                                  + " tx_id=?,chain_state='CONFIRMING'"
-                                  + " WHERE id=? AND EXISTS(SELECT 1"
-                                  + " FROM tasks WHERE event_id=? AND"
-                                  + " lease_token=? AND"
-                                  + " state='RUNNING' AND"
+                              "UPDATE events_read SET"
+                                  + " expected_lease_token=?,tx_id=?,chain_state='CONFIRMING' WHERE"
+                                  + " id=? AND EXISTS(SELECT 1 FROM tasks_read WHERE event_id=? AND"
+                                  + " lease_token=? AND state='RUNNING' AND"
                                   + " lease_until>clock_timestamp())",
+                              token,
                               tid,
                               id,
                               id,
@@ -296,7 +299,7 @@ public class ArchiveWorker {
         s -> {
           int n =
               db.update(
-                  "UPDATE tasks SET"
+                  "UPDATE tasks_read SET"
                       + " state='DONE',lease_token=NULL,lease_until=NULL,last_error=NULL,updated_at=CURRENT_TIMESTAMP"
                       + " WHERE event_id=? AND lease_token=? AND state='RUNNING' AND"
                       + " lease_until>clock_timestamp()",
@@ -305,9 +308,9 @@ public class ArchiveWorker {
           if (n == 1) {
             wallets.committed(id, confirmed);
             db.update(
-                "UPDATE generic_event_data SET last_error_code=NULL WHERE" + " event_id=?", id);
+                "UPDATE generic_event_data_read SET last_error_code=NULL WHERE event_id=?", id);
             db.update(
-                "UPDATE events SET"
+                "UPDATE events_read SET"
                     + " chain_state='COMMITTED',tx_id=?,block_number=COALESCE(?,block_number),ledger_identity=?,last_error=NULL"
                     + " WHERE id=?",
                 confirmed.get("txId"),
@@ -325,8 +328,8 @@ public class ArchiveWorker {
   private boolean proceed(Map<String, Object> row, String id, String token, boolean reconcile) {
     if (executor.closing()) return false;
     if (db.queryForObject(
-            "SELECT COUNT(*) FROM tasks WHERE event_id=? AND lease_token=? AND"
-                + " state='RUNNING' AND lease_until>clock_timestamp()",
+            "SELECT COUNT(*) FROM tasks_read WHERE event_id=? AND lease_token=? AND state='RUNNING'"
+                + " AND lease_until>clock_timestamp()",
             Long.class,
             id,
             token)
@@ -339,7 +342,7 @@ public class ArchiveWorker {
 
   private void defer(String id, String token) {
     db.update(
-        "UPDATE tasks SET state='READY',next_at=CURRENT_TIMESTAMP+INTERVAL '5 seconds',"
+        "UPDATE tasks_read SET state='READY',next_at=CURRENT_TIMESTAMP+INTERVAL '5 seconds',"
             + " attempts=GREATEST(attempts-1,0),lease_token=NULL,lease_until=NULL,updated_at=CURRENT_TIMESTAMP"
             + " WHERE event_id=? AND lease_token=? AND state='RUNNING' AND"
             + " lease_until>clock_timestamp()",
@@ -360,12 +363,13 @@ public class ArchiveWorker {
       tx.executeWithoutResult(
           s -> {
             Integer attempt =
-                db.queryForObject("SELECT attempts FROM tasks WHERE event_id=?", Integer.class, id);
+                db.queryForObject(
+                    "SELECT attempts FROM tasks_read WHERE event_id=?", Integer.class, id);
             long delay = Math.min(300, 2L << (Math.min(attempt, 8)));
             boolean manual = error instanceof ApiError || attempt >= 10;
             int n =
                 db.update(
-                    "UPDATE tasks SET state=?,next_at=CURRENT_TIMESTAMP+?*INTERVAL '1"
+                    "UPDATE tasks_read SET state=?,next_at=CURRENT_TIMESTAMP+?*INTERVAL '1"
                         + " second',lease_token=NULL,lease_until=NULL,last_error=?,updated_at=CURRENT_TIMESTAMP"
                         + " WHERE event_id=? AND lease_token=? AND state='RUNNING' AND"
                         + " lease_until>clock_timestamp()",
@@ -380,19 +384,19 @@ public class ArchiveWorker {
                       ? e.code
                       : error instanceof ApiError ? "SIGNING_NOT_READY" : "DEPENDENCY_UNAVAILABLE";
               db.update(
-                  "UPDATE generic_event_data SET last_error_code=? WHERE" + " event_id=?",
+                  "UPDATE generic_event_data_read SET last_error_code=? WHERE event_id=?",
                   code,
                   id);
               wallets.uncertain(id, reason);
               db.update(
-                  "UPDATE events SET chain_state=CASE WHEN"
-                      + " chain_state='COMMITTED' THEN chain_state ELSE 'FAILED'"
-                      + " END,last_error=? WHERE id=?",
+                  "UPDATE events_read SET chain_state=CASE WHEN chain_state='COMMITTED' THEN"
+                      + " chain_state ELSE 'FAILED' END,last_error=? WHERE id=?",
                   reason,
                   id);
             }
           });
     } catch (Exception ignored) {
+      com.bproject.trust.shared.WorkerSignals.failure("ArchiveWorker", "persistence", ignored);
       /* An expired lease will make this task eligible again. */
     }
   }

@@ -88,6 +88,8 @@ func (c *EvidenceContract) Invoke(stub shim.ChaincodeStubInterface) *pb.Response
 		return shim.Success(result)
 	case "SetSigner":
 		return setSigner(stub, args)
+	case "GetSignerVersion":
+		return getSignerVersion(stub, args)
 	case "GetSigner":
 		return getSigner(stub, args)
 	case "RegisterEvent", "AppendCorrection":

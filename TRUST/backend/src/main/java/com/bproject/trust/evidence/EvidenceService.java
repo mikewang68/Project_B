@@ -33,50 +33,168 @@ public class EvidenceService {
     Files.createDirectories(staging);
   }
 
-  public synchronized Map<String, Object> upload(MultipartFile file, String org, String actor)
-      throws Exception {
+  private final java.util.concurrent.locks.ReentrantLock uploadLock =
+      new java.util.concurrent.locks.ReentrantLock(true);
+
+  public Map<String, Object> upload(MultipartFile file, String org, String actor) throws Exception {
     if (file.isEmpty() || file.getSize() > 20L * 1024 * 1024)
       throw new ApiError(413, "文件为空或超过 20 MiB");
     byte[] bytes = file.getBytes();
+    if (bytes.length > 20L * 1024 * 1024) throw new ApiError(413, "文件超过 20 MiB");
     String mime = detect(bytes);
     String filename =
         Objects.requireNonNullElse(file.getOriginalFilename(), "evidence").replace('\\', '/');
     filename = filename.substring(filename.lastIndexOf('/') + 1).replaceAll("[\\p{Cntrl}]", "_");
     if (filename.isBlank() || filename.length() > 240) throw new ApiError(400, "文件名无效");
-    long retained =
-        db.queryForObject("SELECT COALESCE(SUM(size_bytes),0) FROM evidence", Long.class);
-    if (retained + bytes.length > 10L * 1024 * 1024 * 1024
-        || Files.getFileStore(staging).getUsableSpace() < bytes.length + 512L * 1024 * 1024)
-      throw new ApiError(503, "证据暂存容量不足，文件未确认接收");
-    String id = UUID.randomUUID().toString();
-    Path temp = staging.resolve(id + ".part"), dest = staging.resolve(id);
-    try {
-      try (var channel =
-          FileChannel.open(temp, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-        var buf = ByteBuffer.wrap(bytes);
-        while (buf.hasRemaining()) channel.write(buf);
-        channel.force(true);
+    long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(30);
+    if (!uploadLock.tryLock(30, java.util.concurrent.TimeUnit.SECONDS))
+      throw new ApiError(503, "接收队列繁忙，请稍后重试");
+    try (var mutex =
+        com.bproject.trust.shared.DatabaseMutex.acquire(db, "staging:primary", deadline)) {
+      long retained =
+          db.queryForObject("SELECT COALESCE(SUM(size_bytes),0) FROM evidence", Long.class);
+      var registered =
+          new java.util.HashSet<>(db.queryForList("SELECT id FROM evidence", String.class));
+      try (var paths = Files.newDirectoryStream(staging)) {
+        for (var path : paths) {
+          String name = path.getFileName().toString();
+          if ((name.matches("[a-f0-9-]{36}") && !registered.contains(name))
+              || name.endsWith(".part")) {
+            if (Files.isSymbolicLink(path)) throw new ApiError(503, "暂存目录需要人工核查");
+            retained = Math.addExact(retained, Files.size(path));
+          }
+        }
       }
-      Files.move(temp, dest, StandardCopyOption.ATOMIC_MOVE);
-      try (var channel = FileChannel.open(staging, StandardOpenOption.READ)) {
-        channel.force(true);
+      if (retained + bytes.length > 10L * 1024 * 1024 * 1024
+          || Files.getFileStore(staging).getUsableSpace() < bytes.length + 512L * 1024 * 1024)
+        throw new ApiError(503, "证据暂存容量不足，文件未确认接收");
+      String id = UUID.randomUUID().toString();
+      var receipt = new java.util.LinkedHashMap<String, Object>();
+      receipt.put("id", id);
+      receipt.put("org_id", org);
+      receipt.put("uploaded_by", actor);
+      receipt.put("filename", filename);
+      receipt.put("mime", mime);
+      receipt.put("size_bytes", bytes.length);
+      receipt.put("sha256", Json.sha(bytes));
+      receipt.put("created_at", java.time.Instant.now().toString());
+      Path temp = staging.resolve(id + ".part"), dest = staging.resolve(id);
+      Path manifestTemp = staging.resolve(id + ".receipt.part"),
+          manifest = staging.resolve(id + ".receipt.json");
+      try {
+        durableWrite(
+            manifestTemp, Json.write(receipt).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        Files.move(manifestTemp, manifest, StandardCopyOption.ATOMIC_MOVE);
+        syncDirectory();
+        durableWrite(temp, bytes);
+        Files.move(temp, dest, StandardCopyOption.ATOMIC_MOVE);
+        syncDirectory();
+        register(receipt);
+        receipt.put("cid", null);
+        receipt.put("storage_state", "PENDING");
+        return receipt;
+      } catch (Exception e) {
+        // A final file may already be committed or its DB outcome may be unknown. Never remove it.
+        try {
+          Files.deleteIfExists(temp);
+          Files.deleteIfExists(manifestTemp);
+        } catch (Exception cleanup) {
+          e.addSuppressed(cleanup);
+        }
+        throw e;
       }
-      db.update(
-          "INSERT INTO evidence(id,org_id,uploaded_by,filename,mime,size_bytes,sha256)"
-              + " VALUES(?,?,?,?,?,?,?)",
-          id,
-          org,
-          actor,
-          filename,
-          mime,
-          bytes.length,
-          Json.sha(bytes));
-      return get(id, org);
-    } catch (Exception e) {
-      Files.deleteIfExists(temp);
-      Files.deleteIfExists(dest);
-      throw e;
+    } finally {
+      uploadLock.unlock();
     }
+  }
+
+  private static void durableWrite(Path path, byte[] bytes) throws Exception {
+    try (var channel =
+        FileChannel.open(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+      var buffer = ByteBuffer.wrap(bytes);
+      while (buffer.hasRemaining()) channel.write(buffer);
+      channel.force(true);
+    }
+  }
+
+  void syncDirectory() throws Exception {
+    try (var channel = FileChannel.open(staging, StandardOpenOption.READ)) {
+      channel.force(true);
+    }
+  }
+
+  private void register(Map<String, Object> receipt) {
+    db.update(
+        "INSERT INTO evidence(id,org_id,uploaded_by,filename,mime,size_bytes,sha256,created_at)"
+            + " VALUES(?,?,?,?,?,?,?,?)",
+        receipt.get("id"),
+        receipt.get("org_id"),
+        receipt.get("uploaded_by"),
+        receipt.get("filename"),
+        receipt.get("mime"),
+        receipt.get("size_bytes"),
+        receipt.get("sha256"),
+        java.sql.Timestamp.from(java.time.Instant.parse((String) receipt.get("created_at"))));
+  }
+
+  /** Operator-only reconciliation. Scan is the default; apply uses the original durable ID. */
+  public List<Map<String, Object>> reconcile(boolean apply) throws Exception {
+    var results = new java.util.ArrayList<Map<String, Object>>();
+    try (var paths = Files.newDirectoryStream(staging, "*.receipt.json")) {
+      for (var manifest : paths) {
+        String name = manifest.getFileName().toString(), id = name.substring(0, name.length() - 13);
+        try {
+          if (!id.matches("[a-f0-9-]{36}")
+              || Files.isSymbolicLink(manifest)
+              || Files.size(manifest) > 16384)
+            throw new IllegalArgumentException("INVALID_MANIFEST");
+          var receipt = Json.map(Files.readString(manifest));
+          Path original = staging.resolve(id);
+          if (!id.equals(receipt.get("id"))
+              || Files.isSymbolicLink(original)
+              || !Files.isRegularFile(original)
+              || Files.size(original) > 20L * 1024 * 1024
+              || Files.size(original) != ((Number) receipt.get("size_bytes")).longValue())
+            throw new IllegalArgumentException("MISSING_OR_INVALID_ORIGINAL");
+          byte[] bytes = Files.readAllBytes(original);
+          if (!Json.sha(bytes).equals(receipt.get("sha256"))
+              || !detect(bytes).equals(receipt.get("mime")))
+            throw new IllegalArgumentException("ORIGINAL_MISMATCH");
+          var rows = db.queryForList("SELECT * FROM evidence WHERE id=?", id);
+          String status = "REGISTERED";
+          if (rows.isEmpty()) {
+            status = "PENDING_REGISTRATION";
+            if (apply) {
+              try {
+                register(receipt);
+              } catch (org.springframework.dao.DuplicateKeyException concurrent) {
+                /* Verify the winner below. */
+              }
+              rows = db.queryForList("SELECT * FROM evidence WHERE id=?", id);
+              if (rows.isEmpty()) throw new IllegalStateException("REGISTRATION_UNCONFIRMED");
+              status = "RECONCILED";
+            }
+          }
+          if (!rows.isEmpty())
+            for (String field :
+                List.of("id", "org_id", "uploaded_by", "filename", "mime", "size_bytes", "sha256"))
+              if (!Objects.toString(rows.get(0).get(field))
+                  .equals(Objects.toString(receipt.get(field))))
+                throw new IllegalStateException("REGISTERED_METADATA_MISMATCH");
+          results.add(Map.of("id", id, "status", status));
+        } catch (Exception failure) {
+          results.add(
+              Map.of(
+                  "id",
+                  id,
+                  "status",
+                  "REQUIRES_REVIEW",
+                  "reason",
+                  failure.getClass().getSimpleName()));
+        }
+      }
+    }
+    return results;
   }
 
   static String detect(byte[] b) {
@@ -91,7 +209,7 @@ public class EvidenceService {
   }
 
   public Map<String, Object> get(String id, String org) {
-    return db.queryForList("SELECT * FROM evidence WHERE id=? AND org_id=?", id, org).stream()
+    return db.queryForList("SELECT * FROM evidence_read WHERE id=? AND org_id=?", id, org).stream()
         .findFirst()
         .orElseThrow(() -> new ApiError(404, "证据不存在或无权访问"));
   }
@@ -114,21 +232,25 @@ public class EvidenceService {
 
   public byte[] storedBytes(Map<String, Object> e) throws Exception {
     byte[] bytes = ipfs.cat((String) e.get("cid"));
-    if (!Json.sha(bytes).equals(e.get("sha256"))) throw new ApiError(409, "证据摘要不一致");
+    if (bytes.length != ((Number) e.get("size_bytes")).longValue()
+        || !Json.sha(bytes).equals(e.get("sha256"))) throw new ApiError(409, "证据摘要不一致");
     return bytes;
   }
 
-  public synchronized Map<String, Object> archive(String id, String org) throws Exception {
+  public Map<String, Object> archive(String id, String org) throws Exception {
     var e = get(id, org);
     if (e.get("cid") != null) {
       storedBytes(e);
       return e;
     }
     byte[] bytes = Files.readAllBytes(staging.resolve(id));
-    if (!Json.sha(bytes).equals(e.get("sha256"))) throw new ApiError(409, "暂存证据摘要不一致，需人工核查");
+    if (bytes.length != ((Number) e.get("size_bytes")).longValue()
+        || !Json.sha(bytes).equals(e.get("sha256"))) throw new ApiError(409, "暂存证据摘要不一致，需人工核查");
     String cid = ipfs.add(bytes);
     db.update(
-        "UPDATE evidence SET cid=?,storage_state='STORED' WHERE id=? AND cid IS NULL", cid, id);
+        "UPDATE evidence_read SET cid=?,storage_state='STORED' WHERE id=? AND cid IS NULL",
+        cid,
+        id);
     return get(id, org);
   }
 }

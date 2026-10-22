@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import VersionHistory from "../../shared/components/VersionHistory.vue";
 import { usePageLoad } from "../../shared/composables/usePageLoad";
 import { pageActionId } from "../../shared/http/actionContext";
 import { useFeedback } from "../../shared/composables/useFeedback";
@@ -76,6 +77,16 @@ usePageLoad(refresh, "identities");
     <p v-else-if="!rows.length && !loading">当前组织暂无已分配身份。</p>
     <div class="identity-grid">
       <article v-for="row in rows" :key="String(row.id)">
+        <VersionHistory
+          :url="`/identity-management/${row.id}/history`"
+          menu-id="identities"
+          title="身份修订历史"
+        />
+        <VersionHistory
+          :url="`/identity-management/${row.id}/certificates/history`"
+          menu-id="identities"
+          title="全部证书版本及处理历史"
+        />
         <strong>{{ identityLabel(row.status) }}</strong>
         <h3>{{ row.user_id }}</h3>
         <dl>

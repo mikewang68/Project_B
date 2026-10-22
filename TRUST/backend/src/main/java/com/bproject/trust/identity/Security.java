@@ -167,7 +167,7 @@ public class Security {
                         }))
         .exceptionHandling(
             e ->
-                e.authenticationEntryPoint((q, s, x) -> s.sendError(401))
+                e.authenticationEntryPoint((q, s, x) -> failure(s, 401, "需要登录"))
                     .accessDeniedHandler(
                         (q, s, x) -> {
                           try {
@@ -177,12 +177,20 @@ public class Security {
                                     .getAuthentication(),
                                 q.getMethod(),
                                 q.getRequestURI());
-                            s.sendError(403);
+                            failure(s, 403, "请求未获授权或 CSRF 校验失败");
                           } catch (Exception unavailable) {
-                            s.sendError(503, "操作留痕暂不可用");
+                            failure(s, 503, "操作留痕暂不可用");
                           }
                         }));
     return http.build();
+  }
+
+  // Do not dispatch to /error: a second security pass can replace a denial with 401.
+  static void failure(jakarta.servlet.http.HttpServletResponse response, int status, String message)
+      throws java.io.IOException {
+    response.setStatus(status);
+    response.setContentType("application/json;charset=UTF-8");
+    response.getWriter().write(Json.write(Map.of("message", message)));
   }
 
   @Bean

@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 import { useFeedback } from "../../shared/composables/useFeedback";
 import { request } from "../../shared/http/request";
+import { applicationPath } from "../../shared/http/basePath";
 
 interface QuickAccount {
   username: string;
@@ -65,7 +66,7 @@ onMounted(async () => {
   }
   if (!localLoginEnabled.value) return;
   try {
-    let response = await fetch("/api/v1/dev-login", { cache: "no-store" });
+    let response = await fetch(applicationPath("/api/v1/dev-login"), { cache: "no-store" });
     if (
       !response.ok &&
       ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)

@@ -28,7 +28,8 @@ public class LogEvidenceVerification {
     if (!"COMMITTED".equals(receipt.get("state")))
       throw new IngressError(409, "LOG_NOT_COMMITTED", "日志尚未获得有效上链回执");
     try {
-      var event = logs.db.queryForMap("SELECT * FROM events WHERE id=?", log.get("chain_event_id"));
+      var event =
+          logs.db.queryForMap("SELECT * FROM events_read WHERE id=?", log.get("chain_event_id"));
       byte[] originalProjection = archive.verify(event);
       var input = GenericEventInput.parse(originalProjection);
       var expected =

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "TRUST audit evidence and page operation contract",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Session writes require CSRF. Audit ingress uses dedicated service Bearer credentials and exact domain/zone/app scope. See audit-evidence.md for durability, encryption and recovery boundaries."
   },
   "paths": {
@@ -413,7 +413,37 @@
         ],
         "responses": {
           "200": {
-            "description": "Existing receipt or result"
+            "description": "Current controls and backlog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "revision",
+                    "canReadHistory"
+                  ],
+                  "properties": {
+                    "revision": {
+                      "type": "integer",
+                      "format": "int64"
+                    },
+                    "canReadHistory": {
+                      "type": "boolean"
+                    },
+                    "canManage": {
+                      "type": "boolean"
+                    },
+                    "archivePaused": {
+                      "type": "boolean"
+                    },
+                    "chainPaused": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
           },
           "202": {
             "description": "Durably accepted, not yet committed"
@@ -468,7 +498,7 @@
             "description": "Disabled or not visible"
           },
           "409": {
-            "description": "Conflict or not yet committed"
+            "description": "VERSION_REQUIRED or VERSION_CONFLICT; refresh settings before another edit; no silent overwrite."
           },
           "413": {
             "description": "Request exceeds 65536 bytes"
@@ -597,6 +627,49 @@
           }
         }
       ]
+    },
+    "/api/v1/audit/settings/history": {
+      "get": {
+        "summary": "Log control history",
+        "description": "trust:audit:read plus existing log manager allowlist. History grants no extra read/download/export permission. Empty items when outside organization; version numbers start at observed migration baseline.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visible immutable snapshots, newest first, at most 50 per page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid page"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "503": {
+            "description": "Authentication configuration unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -831,7 +904,8 @@
         "required": [
           "archivePaused",
           "chainPaused",
-          "reason"
+          "reason",
+          "expectedRevision"
         ],
         "properties": {
           "archivePaused": {
@@ -844,6 +918,65 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 300
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Revision from latest GET settings; missing ->409 VERSION_REQUIRED, stale ->409 VERSION_CONFLICT."
+          }
+        }
+      },
+      "RetentionEntry": {
+        "type": "object",
+        "required": [
+          "version",
+          "actor",
+          "operation",
+          "reason",
+          "happened_at"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "happened_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": true,
+        "description": "Typed domain snapshot joined with immutable original fields; never contains private keys or temporary secrets."
+      },
+      "RetentionPage": {
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "hasMore"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RetentionEntry"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "hasMore": {
+            "type": "boolean"
           }
         }
       }

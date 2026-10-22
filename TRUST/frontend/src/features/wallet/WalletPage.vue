@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import VersionHistory from "../../shared/components/VersionHistory.vue";
 import type { ApiRecord } from "../../shared/types";
 import { json, post } from "../../shared/http/client";
 import { useFeedback } from "../../shared/composables/useFeedback";
 import { usePageLoad } from "../../shared/composables/usePageLoad";
 import WalletChainAuthorization from "./WalletChainAuthorization.vue";
 import { fmt } from "../../shared/presentation";
+import { hasPermission } from "../auth/access";
 const props = defineProps<{ me: ApiRecord }>();
 const { run, act, busy } = useFeedback();
 const allowed = (permission: string) =>
-  props.me.identityProvider === "IAM" && props.me.roles.includes(permission);
+  props.me.identityProvider === "IAM" && hasPermission(props.me, permission);
 const canRead = computed(() => allowed("trust:wallet:read"));
 const data = ref<ApiRecord>({
   wallets: [],
@@ -47,7 +49,7 @@ const names: Record<string, string> = {
 async function load() {
   if (canRead.value) data.value = await json("/wallets");
 }
-usePageLoad(load, 'wallets');
+usePageLoad(load, "wallets");
 async function propose() {
   await act(
     {
@@ -144,6 +146,11 @@ async function review(id: string, approve: boolean) {
               <td>
                 {{ w.label }}
                 <p class="small muted">{{ w.msp_id }} · {{ w.key_ref }}</p>
+                <VersionHistory
+                  :url="`/wallets/${w.id}/history`"
+                  menu-id="wallets"
+                  title="钱包状态历史"
+                />
               </td>
               <td>
                 <code class="fingerprint">{{ w.fingerprint }}</code>
@@ -174,6 +181,11 @@ async function review(id: string, approve: boolean) {
       <p v-if="!data.bindings.length">尚未配置来源绑定；业务事件将保留待办。</p>
       <dl class="facts">
         <div v-for="b in data.bindings" :key="b.source_system">
+          <VersionHistory
+            :url="`/wallets/bindings/${encodeURIComponent(b.source_system)}/history`"
+            menu-id="wallets"
+            title="绑定历史"
+          />
           <dt>{{ b.source_system }} · 版本 {{ b.revision }}</dt>
           <dd>
             {{
@@ -308,6 +320,11 @@ async function review(id: string, approve: boolean) {
       <h2>变更记录与复核</h2>
       <p v-if="!data.requests.length">暂无变更申请。</p>
       <div v-for="r in data.requests" :key="r.id" class="wallet-request">
+        <VersionHistory
+          :url="`/wallets/requests/${r.id}/history`"
+          menu-id="wallets"
+          title="申请与复核历史"
+        />
         <strong>{{ names[r.action] }} · {{ names[r.state] }}</strong>
         <p>{{ r.reason }}</p>
         <p class="small muted">

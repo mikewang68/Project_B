@@ -53,7 +53,7 @@ class IamClientTest {
   @Test
   void readsCurrentUserAndExplicitPermissions() {
     body =
-        "{\"code\":0,\"data\":{\"user\":{\"id\":\"1\",\"username\":\"admin\",\"status\":\"active\",\"orgCodes\":[\"COMPANY\"]},\"permissions\":[\"trust:wallet:read\"]}}";
+        "{\"code\":0,\"data\":{\"user\":{\"id\":\"1\",\"username\":\"admin\",\"status\":\"active\",\"orgCodes\":[\"COMPANY\"]},\"roles\":[],\"permissions\":[\"trust:wallet:read\"]}}";
     var u = client.current("token");
     assertEquals(Set.of("trust:wallet:read"), u.permissions());
     assertEquals(List.of("COMPANY"), u.orgCodes());
@@ -65,5 +65,29 @@ class IamClientTest {
     body =
         "{\"code\":0,\"data\":{\"user\":{\"id\":\"1\",\"status\":\"inactive\"},\"permissions\":[]}}";
     assertEquals(401, assertThrows(ApiError.class, () -> client.current("token")).status);
+  }
+
+  @Test
+  void onlyVerifiedActiveRoleCodeCreatesReadOnlyRestriction() {
+    body = """
+        {"code":0,"data":{"user":{"id":"1","status":"active","orgCodes":["ORG"]},
+        "permissions":["trust:event:submit"],"roles":[
+        {"code":"PLATFORM_ADMIN_FULL","status":"active"},
+        {"code":"PLATFORM_AUDITOR_READONLY","status":"active"}]}}
+        """;
+    assertTrue(client.current("token").readOnly());
+    assertTrue(client.current("token").permissions().contains("trust:event:submit"));
+    body = body.replace("\"PLATFORM_AUDITOR_READONLY\",\"status\":\"active\"",
+        "\"PLATFORM_AUDITOR_READONLY\",\"status\":\"inactive\"");
+    assertFalse(client.current("token").readOnly());
+  }
+
+  @Test
+  void malformedOrMissingRolesFailClosed() {
+    for (String roles : List.of("null", "{}", "[\"PLATFORM_AUDITOR_READONLY\"]",
+        "[{\"code\":\"PLATFORM_AUDITOR_READONLY\"}]")) {
+      body = "{\"code\":0,\"data\":{\"user\":{\"id\":\"1\",\"status\":\"active\"},\"roles\":"+roles+"}}";
+      assertEquals(503, assertThrows(ApiError.class, () -> client.current("token")).status);
+    }
   }
 }

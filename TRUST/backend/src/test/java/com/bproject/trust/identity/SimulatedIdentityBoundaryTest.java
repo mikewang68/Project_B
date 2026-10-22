@@ -38,15 +38,23 @@ class SimulatedIdentityBoundaryTest {
     filter = new PlatformIdentityFilter(iam, settings);
     var controller = new IamLoginController(iam, iam, settings);
     var request = new MockHttpServletRequest();
-    controller.login(new IamLoginController.Login("wallet-applicant", "fixture-applicant", "B-PROJECT"),
-        request, new MockHttpServletResponse());
+    controller.login(
+        new IamLoginController.Login("wallet-applicant", "fixture-applicant", "B-PROJECT"),
+        request,
+        new MockHttpServletResponse());
     session = (MockHttpSession) request.getSession(false);
   }
 
   private void writeSettings(String mode, boolean isolated) throws Exception {
-    Files.writeString(root.resolve("runtime/secrets/integration.json"), Json.write(
-        new IntegrationSettings.Settings("", mode, isolated,
-            Map.of("ORG-A", "B-PROJECT", "ORG-B", "OTHER-PROJECT"), List.of())));
+    Files.writeString(
+        root.resolve("runtime/secrets/integration.json"),
+        Json.write(
+            new IntegrationSettings.Settings(
+                "",
+                mode,
+                isolated,
+                Map.of("ORG-A", "B-PROJECT", "ORG-B", "OTHER-PROJECT"),
+                List.of())));
   }
 
   @AfterEach
@@ -54,8 +62,8 @@ class SimulatedIdentityBoundaryTest {
     SecurityContextHolder.clearContext();
   }
 
-  private MockHttpServletResponse request(String path, MockHttpSession currentSession, boolean allowed)
-      throws Exception {
+  private MockHttpServletResponse request(
+      String path, MockHttpSession currentSession, boolean allowed) throws Exception {
     var request = new MockHttpServletRequest("GET", path);
     request.setServletPath(path);
     request.setSession(currentSession);
@@ -68,8 +76,11 @@ class SimulatedIdentityBoundaryTest {
 
   @Test
   void whitelistRejectsUnknownUsersAndWrongPasswords() {
-    assertEquals(401, assertThrows(ApiError.class, () -> iam.login("arbitrary", "fixture-arbitrary")).status);
-    assertEquals(401, assertThrows(ApiError.class, () -> iam.login("wallet-applicant", "wrong")).status);
+    assertEquals(
+        401,
+        assertThrows(ApiError.class, () -> iam.login("arbitrary", "fixture-arbitrary")).status);
+    assertEquals(
+        401, assertThrows(ApiError.class, () -> iam.login("wallet-applicant", "wrong")).status);
     assertEquals(401, assertThrows(ApiError.class, () -> iam.current("unissued-token")).status);
   }
 
@@ -79,7 +90,10 @@ class SimulatedIdentityBoundaryTest {
     assertEquals(List.of("ORG-B"), crossOrg.orgCodes());
     assertTrue(crossOrg.permissions().contains("trust:wallet:review"));
     var selfReviewer = iam.current(iam.login("wallet-self-reviewer", "fixture-selfreview"));
-    assertTrue(selfReviewer.permissions().containsAll(Set.of("trust:wallet:manage", "trust:wallet:review")));
+    assertTrue(
+        selfReviewer
+            .permissions()
+            .containsAll(Set.of("trust:wallet:manage", "trust:wallet:review")));
     assertEquals(Set.of(), iam.current(iam.login("no-permission", "fixture-noperm")).permissions());
   }
 
@@ -103,15 +117,19 @@ class SimulatedIdentityBoundaryTest {
     iam.setAvailable(false);
     assertEquals(503, request("/api/v1/wallets", session, false).getStatus());
     assertNull(SecurityContextHolder.getContext().getAuthentication());
-    assertEquals(503, assertThrows(ApiError.class, () -> iam.login("wallet-applicant", "fixture-applicant")).status);
+    assertEquals(
+        503,
+        assertThrows(ApiError.class, () -> iam.login("wallet-applicant", "fixture-applicant"))
+            .status);
     iam.setAvailable(true);
     assertEquals(200, request("/api/v1/wallets", session, true).getStatus());
   }
 
   @Test
   void emptyIamUrlDoesNotAllowLocalAuthenticationInSimulation() throws Exception {
-    SecurityContextHolder.getContext().setAuthentication(
-        UsernamePasswordAuthenticationToken.authenticated("admin", null, List.of()));
+    SecurityContextHolder.getContext()
+        .setAuthentication(
+            UsernamePasswordAuthenticationToken.authenticated("admin", null, List.of()));
     assertEquals(401, request("/api/v1/wallets", null, false).getStatus());
     assertEquals(401, request("/api/v1/login", null, false).getStatus());
     assertEquals(401, request("/api/v1/dev-login", null, false).getStatus());
@@ -120,8 +138,9 @@ class SimulatedIdentityBoundaryTest {
   @Test
   void simulationIsDisabledByDefaultAndRequiresExplicitIsolation() throws Exception {
     Files.delete(root.resolve("runtime/secrets/integration.json"));
-    assertFalse(settings.read().simulated());
-    assertEquals(503, assertThrows(ApiError.class, () -> iam.login("wallet-applicant", "fixture-applicant")).status);
+    assertThrows(IllegalStateException.class, settings::read);
+    assertThrows(
+        IllegalStateException.class, () -> iam.login("wallet-applicant", "fixture-applicant"));
     writeSettings("simulated", false);
     assertThrows(IllegalStateException.class, settings::read);
     writeSettings("unexpected", true);

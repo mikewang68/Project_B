@@ -8,7 +8,7 @@ import { getStatus } from "./api";
 import { listAudit } from "../audit/api";
 import AuditSettings from "../audit/AuditSettings.vue";
 import AuditLog from "../audit/AuditLog.vue";
-const props = defineProps<{ canAdmin: boolean; verifiedIdentity: boolean }>();
+const props = defineProps<{ canAdmin: boolean; verifiedIdentity: boolean; readOnly: boolean }>();
 const status = ref<ApiRecord | null>(null),
   audit = ref<ApiRecord[]>([]);
 const { busy, act } = useFeedback();
@@ -83,7 +83,7 @@ usePageLoad(load, "status");
       显示正常仅表示查询连接可用；写链还需要有效钱包、来源绑定及链上授权。
     </p>
   </article>
-  <AuditSettings v-if="verifiedIdentity" />
+  <AuditSettings v-if="verifiedIdentity" :read-only="readOnly" />
   <p v-else class="small muted">
     当前为隔离演示：操作仅保存在本地，不对外投递。
   </p>

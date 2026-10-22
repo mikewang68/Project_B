@@ -47,7 +47,8 @@ public class LogEvidenceService {
       return tx.execute(
           s -> {
             var prior =
-                db.queryForList("SELECT * FROM audit_evidence WHERE event_key=?", input.eventKey());
+                db.queryForList(
+                    "SELECT * FROM audit_evidence_read WHERE event_key=?", input.eventKey());
             if (!prior.isEmpty()) return replay(source, input, prior.get(0));
             var encrypted =
                 cipher.encrypt(input.eventKey(), input.payloadHash(), input.canonical());
@@ -84,7 +85,7 @@ public class LogEvidenceService {
   Map<String, Object> owned(LogSettings.Source source, String key) {
     if (key == null || !key.matches("[a-f0-9]{64}")) throw missing();
     var row =
-        db.queryForList("SELECT * FROM audit_evidence WHERE event_key=?", key).stream()
+        db.queryForList("SELECT * FROM audit_evidence_read WHERE event_key=?", key).stream()
             .findFirst()
             .orElseThrow(LogEvidenceService::missing);
     checkOwner(source, row);
@@ -135,7 +136,8 @@ public class LogEvidenceService {
     return tx.execute(
         t -> {
           var row = owned(source, key);
-          row = db.queryForMap("SELECT * FROM audit_evidence WHERE event_key=? FOR UPDATE", key);
+          row =
+              com.bproject.trust.shared.RetentionLock.row(db, "audit_evidence", "event_key=?", key);
           if (row.get("lease_until") instanceof java.sql.Timestamp until
               && until.toInstant().isAfter(java.time.Instant.now()))
             throw new IngressError(409, "LOG_TASK_RUNNING", "日志任务正在处理");
@@ -149,9 +151,10 @@ public class LogEvidenceService {
                         .get("queued"));
           if ("FAILED".equals(row.get("archive_state"))) {
             db.update(
-                "UPDATE audit_evidence SET"
-                    + " archive_state='PENDING',attempts=0,last_error=NULL,next_at=CURRENT_TIMESTAMP"
-                    + " WHERE event_key=?",
+                "UPDATE audit_evidence_read SET"
+                    + " archive_state='PENDING',attempts=0,last_error=NULL,next_at=CURRENT_TIMESTAMP,change_actor=?,change_operation='RETRY',change_reason='Accepted"
+                    + " source retry' WHERE event_key=?",
+                "source:" + source.id(),
                 key);
             queued = true;
           }

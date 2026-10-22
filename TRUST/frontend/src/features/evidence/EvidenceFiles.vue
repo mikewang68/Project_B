@@ -3,6 +3,8 @@ import type { ApiRecord } from "../../shared/types";
 import { label } from "../../shared/presentation";
 import { useFeedback } from "../../shared/composables/useFeedback";
 import { downloadEvidence } from "./api";
+import { useAccess } from "../auth/access";
+const allowed = useAccess();
 defineProps<{ evidence: ApiRecord[] }>();
 const { busy, act } = useFeedback();
 </script>
@@ -32,7 +34,7 @@ const { busy, act } = useFeedback();
           () => downloadEvidence(ev.id, ev.filename),
         )
       "
-      :disabled="busy || !ev.cid"
+      :disabled="busy || !allowed('trust:evidence:read') || !ev.cid"
     >
       下载
     </button>

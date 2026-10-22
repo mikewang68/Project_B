@@ -32,22 +32,21 @@ public class WalletService {
     return Map.of(
         "wallets",
         db.queryForList(
-            "SELECT"
-                + " id,label,msp_id,key_ref,fingerprint,subject,not_after,state,created_at"
-                + " FROM wallets WHERE org_id=? ORDER BY created_at DESC",
+            "SELECT id,label,msp_id,key_ref,fingerprint,subject,not_after,state,created_at FROM"
+                + " wallets_read WHERE org_id=? ORDER BY created_at DESC",
             org),
         "bindings",
-        db.queryForList("SELECT * FROM wallet_bindings WHERE org_id=? ORDER BY source_system", org),
+        db.queryForList(
+            "SELECT * FROM wallet_bindings_read WHERE org_id=? ORDER BY source_system", org),
         "requests",
         db.queryForList(
-            "SELECT * FROM wallet_requests WHERE org_id=? ORDER BY created_at DESC" + " LIMIT 100",
+            "SELECT * FROM wallet_requests_read WHERE org_id=? ORDER BY created_at DESC LIMIT 100",
             org),
         "signatures",
         db.queryForList(
-            "SELECT s.*,e.source_system,e.source_event_id,e.submitted_by,e.chain_state"
-                + " FROM signing_attempts s JOIN events e ON e.id=s.event_id WHERE"
-                + " e.record_kind='LEGACY_V1' AND e.org_id=? ORDER BY s.created_at DESC"
-                + " LIMIT 100",
+            "SELECT s.*,e.source_system,e.source_event_id,e.submitted_by,e.chain_state FROM"
+                + " signing_attempts_read s JOIN events_read e ON e.id=s.event_id WHERE"
+                + " e.record_kind='LEGACY_V1' AND e.org_id=? ORDER BY s.created_at DESC LIMIT 100",
             org));
   }
 
@@ -90,8 +89,7 @@ public class WalletService {
     tx.executeWithoutResult(
         s -> {
           db.update(
-              "INSERT INTO"
-                  + " wallet_requests(id,org_id,action,payload,reason,proposed_by)"
+              "INSERT INTO wallet_requests(id,org_id,action,payload,reason,proposed_by)"
                   + " VALUES(?,?,?,?,?,?)",
               id,
               org,
@@ -142,8 +140,8 @@ public class WalletService {
     return tx.execute(
         s -> {
           var rows =
-              db.queryForList(
-                  "SELECT * FROM wallet_requests WHERE id=? AND org_id=? FOR" + " UPDATE", id, org);
+              com.bproject.trust.shared.RetentionLock.rows(
+                  db, "wallet_requests", "id=? AND org_id=?", id, org);
           if (rows.isEmpty()) throw new ApiError(404, "变更申请不存在");
           var request = rows.get(0);
           if (actor.equals(request.get("proposed_by"))) throw new ApiError(403, "申请人与复核人必须不同");
@@ -162,8 +160,8 @@ public class WalletService {
                 var m = material(c.keyRef());
                 db.update(
                     "INSERT INTO"
-                        + " wallets(id,org_id,label,msp_id,key_ref,certificate_pem,fingerprint,subject,not_after)"
-                        + " VALUES(?,?,?,?,?,?,?,?,?)",
+                        + " wallets(id,org_id,label,msp_id,key_ref,certificate_pem,fingerprint,subject,not_after,accepted_actor,accepted_reason)"
+                        + " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                     id,
                     org,
                     c.label(),
@@ -172,38 +170,43 @@ public class WalletService {
                     m.pem(),
                     m.fingerprint(),
                     m.certificate().getSubjectX500Principal().getName(),
-                    new Timestamp(m.certificate().getNotAfter().getTime()));
+                    new Timestamp(m.certificate().getNotAfter().getTime()),
+                    actor,
+                    request.get("reason"));
               }
               case "BIND" -> {
                 // Lock the wallet so an approval cannot race a disable of this
                 // identity.
-                db.queryForMap("SELECT id FROM wallets WHERE id=? FOR UPDATE", c.walletId());
+                com.bproject.trust.shared.RetentionLock.row(db, "wallets", "id=?", c.walletId());
                 active(c.walletId(), org);
                 if (c.expectedRevision() == 0) {
                   if (!db.queryForList(
-                          "SELECT 1 FROM wallet_bindings WHERE org_id=?" + " AND source_system=?",
+                          "SELECT 1 FROM wallet_bindings_read WHERE org_id=? AND source_system=?",
                           org,
                           c.sourceSystem())
                       .isEmpty()) throw new ApiError(409, "绑定已变化，请重新申请");
                   try {
                     db.update(
                         "INSERT INTO"
-                            + " wallet_bindings(org_id,source_system,wallet_id,change_request_id)"
-                            + " VALUES(?,?,?,?)",
+                            + " wallet_bindings(org_id,source_system,wallet_id,change_request_id,accepted_actor,accepted_reason)"
+                            + " VALUES(?,?,?,?,?,?)",
                         org,
                         c.sourceSystem(),
                         c.walletId(),
-                        id);
+                        id,
+                        actor,
+                        request.get("reason"));
                   } catch (DuplicateKeyException conflict) {
                     throw new ApiError(409, "绑定已变化，请重新申请");
                   }
                 } else if (db.update(
-                        "UPDATE wallet_bindings SET"
-                            + " wallet_id=?,change_request_id=?,revision=revision+1"
-                            + " WHERE org_id=? AND source_system=? AND"
-                            + " revision=?",
+                        "UPDATE wallet_bindings_read SET"
+                            + " wallet_id=?,change_request_id=?,revision=revision+1,change_actor=?,change_operation='BIND',change_reason=?"
+                            + " WHERE org_id=? AND source_system=? AND revision=?",
                         c.walletId(),
                         id,
+                        actor,
+                        request.get("reason"),
                         org,
                         c.sourceSystem(),
                         c.expectedRevision())
@@ -211,16 +214,23 @@ public class WalletService {
               }
               case "DISABLE" ->
                   db.update(
-                      "UPDATE wallets SET state='DISABLED' WHERE id=? AND" + " org_id=?",
+                      "UPDATE wallets_read SET"
+                          + " state='DISABLED',change_actor=?,change_operation='DISABLE',change_reason=?"
+                          + " WHERE id=? AND org_id=?",
+                      actor,
+                      request.get("reason"),
                       c.walletId(),
                       org);
             }
           }
           db.update(
-              "UPDATE wallet_requests SET"
-                  + " state=?,reviewed_by=?,reviewed_at=CURRENT_TIMESTAMP WHERE id=?",
+              "UPDATE wallet_requests_read SET"
+                  + " state=?,reviewed_by=?,reviewed_at=CURRENT_TIMESTAMP,change_actor=?,change_operation='REVIEW',change_reason=?"
+                  + " WHERE id=?",
               approve ? "APPROVED" : "REJECTED",
               actor,
+              actor,
+              request.get("reason"),
               id);
           audit.record(
               org,
@@ -240,7 +250,7 @@ public class WalletService {
   }
 
   public Map<String, Object> wallet(String id, String org) {
-    return db.queryForList("SELECT * FROM wallets WHERE id=? AND org_id=?", id, org).stream()
+    return db.queryForList("SELECT * FROM wallets_read WHERE id=? AND org_id=?", id, org).stream()
         .findFirst()
         .orElseThrow(() -> new ApiError(404, "钱包不存在或无权访问"));
   }
@@ -250,8 +260,8 @@ public class WalletService {
     var r =
         db
             .queryForList(
-                "SELECT * FROM wallet_requests WHERE id=? AND org_id=? AND"
-                    + " state='APPROVED' AND action='BIND'",
+                "SELECT * FROM wallet_requests_read WHERE id=? AND org_id=? AND state='APPROVED'"
+                    + " AND action='BIND'",
                 requestId,
                 org)
             .stream()
@@ -265,7 +275,7 @@ public class WalletService {
     }
     var binding =
         db.queryForList(
-            "SELECT wallet_id,change_request_id FROM wallet_bindings WHERE org_id=? AND"
+            "SELECT wallet_id,change_request_id FROM wallet_bindings_read WHERE org_id=? AND"
                 + " source_system=?",
             org,
             c.sourceSystem());
@@ -302,26 +312,25 @@ public class WalletService {
   public void prepare(String eventId) {
     tx.executeWithoutResult(
         s -> {
-          var event = db.queryForMap("SELECT * FROM events WHERE id=? FOR UPDATE", eventId);
+          var event = com.bproject.trust.shared.RetentionLock.row(db, "events", "id=?", eventId);
           if (!Boolean.TRUE.equals(event.get("signing_required"))) return;
           String org = (String) event.get("org_id"), id = (String) event.get("wallet_id");
           var existing =
               db.queryForList(
-                  "SELECT context_json,context_sha256 FROM event_signing_context"
-                      + " WHERE event_id=?",
+                  "SELECT context_json,context_sha256 FROM event_signing_context WHERE event_id=?",
                   eventId);
           if (existing.isEmpty()) {
             if (id != null) throw new ApiError(409, "历史签名缺少批准快照，禁止根据当前绑定补写");
             var bindings =
                 db.queryForList(
-                    "SELECT wallet_id,revision,change_request_id FROM"
-                        + " wallet_bindings WHERE org_id=? AND source_system=?",
+                    "SELECT wallet_id,revision,change_request_id FROM wallet_bindings_read WHERE"
+                        + " org_id=? AND source_system=?",
                     org,
                     event.get("source_system"));
             if (bindings.isEmpty()) throw new ApiError(409, "该组织与来源系统尚未绑定签名钱包");
             var binding = bindings.get(0);
             id = (String) binding.get("wallet_id");
-            db.queryForMap("SELECT id FROM wallets WHERE id=? FOR UPDATE", id);
+            com.bproject.trust.shared.RetentionLock.row(db, "wallets", "id=?", id);
             var wallet = active(id, org);
             var registration = approval(id, org, "REGISTER");
             var bindingApproval = approval((String) binding.get("change_request_id"), org, "BIND");
@@ -345,8 +354,7 @@ public class WalletService {
             context.put("bindingApproval", bindingApproval);
             String json = Json.write(context);
             db.update(
-                "INSERT INTO"
-                    + " event_signing_context(event_id,context_json,context_sha256)"
+                "INSERT INTO event_signing_context(event_id,context_json,context_sha256)"
                     + " VALUES(?,?,?)",
                 eventId,
                 json,
@@ -363,7 +371,7 @@ public class WalletService {
           }
           var wallet = active(id, org);
           db.update(
-              "UPDATE events SET wallet_id=?,signer_fingerprint=? WHERE id=?",
+              "UPDATE events_read SET wallet_id=?,signer_fingerprint=? WHERE id=?",
               id,
               wallet.get("fingerprint"),
               eventId);
@@ -373,8 +381,8 @@ public class WalletService {
   private Map<String, Object> approval(String id, String org, String action) {
     var rows =
         db.queryForList(
-            "SELECT id,proposed_by,reviewed_by,reason,reviewed_at FROM wallet_requests"
-                + " WHERE id=? AND org_id=? AND action=? AND state='APPROVED'",
+            "SELECT id,proposed_by,reviewed_by,reason,reviewed_at FROM wallet_requests_read WHERE"
+                + " id=? AND org_id=? AND action=? AND state='APPROVED'",
             id,
             org,
             action);
@@ -396,13 +404,12 @@ public class WalletService {
   public void prepared(String eventId, String txId) {
     tx.executeWithoutResult(
         s -> {
-          var event = db.queryForMap("SELECT * FROM events WHERE id=? FOR UPDATE", eventId);
+          var event = com.bproject.trust.shared.RetentionLock.row(db, "events", "id=?", eventId);
           if (event.get("wallet_id") == null) return;
           active((String) event.get("wallet_id"), (String) event.get("org_id"));
           var context =
               db.queryForMap(
-                  "SELECT context_json,context_sha256 FROM event_signing_context"
-                      + " WHERE event_id=?",
+                  "SELECT context_json,context_sha256 FROM event_signing_context WHERE event_id=?",
                   eventId);
           db.update(
               "INSERT INTO"
@@ -422,11 +429,10 @@ public class WalletService {
   /** Called inside the worker's completion transaction, including recovery after commit timeout. */
   public void committed(String eventId, Map<String, Object> receipt) {
     db.update(
-        "UPDATE signing_attempts SET state=CASE WHEN tx_id=? THEN 'COMMITTED' WHEN"
-            + " state='INVALID' THEN state ELSE 'SUPERSEDED' END, ledger_identity=CASE WHEN"
-            + " tx_id=? THEN ? ELSE ledger_identity END, block_number=CASE WHEN tx_id=?"
-            + " THEN ? ELSE block_number END, resolved_at=CURRENT_TIMESTAMP WHERE"
-            + " event_id=?",
+        "UPDATE signing_attempts_read SET state=CASE WHEN tx_id=? THEN 'COMMITTED' WHEN"
+            + " state='INVALID' THEN state ELSE 'SUPERSEDED' END, ledger_identity=CASE WHEN tx_id=?"
+            + " THEN ? ELSE ledger_identity END, block_number=CASE WHEN tx_id=? THEN ? ELSE"
+            + " block_number END, resolved_at=CURRENT_TIMESTAMP WHERE event_id=?",
         receipt.get("txId"),
         receipt.get("txId"),
         receipt.get("ledgerIdentity"),
@@ -437,7 +443,7 @@ public class WalletService {
 
   public void rejected(String eventId, String txId, long blockNumber, String reason) {
     db.update(
-        "UPDATE signing_attempts SET state='INVALID',block_number=?,last_error=?,"
+        "UPDATE signing_attempts_read SET state='INVALID',block_number=?,last_error=?,"
             + " resolved_at=CURRENT_TIMESTAMP WHERE event_id=? AND tx_id=? AND state IN"
             + " ('PREPARED','UNKNOWN')",
         blockNumber,
@@ -449,7 +455,7 @@ public class WalletService {
   /** A transport failure is not proof that Fabric rejected a transaction. */
   public void uncertain(String eventId, String reason) {
     db.update(
-        "UPDATE signing_attempts SET state='UNKNOWN',last_error=? WHERE event_id=? AND"
+        "UPDATE signing_attempts_read SET state='UNKNOWN',last_error=? WHERE event_id=? AND"
             + " state='PREPARED'",
         reason,
         eventId);

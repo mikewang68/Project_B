@@ -45,6 +45,7 @@ function localQuickLogin(): Plugin {
 }
 
 export default defineConfig({
+  base: "./",
   plugins: [vue(), localQuickLogin()],
   server: { proxy: { "/api": "http://127.0.0.1:28182" } },
   preview: { proxy: { "/api": "http://127.0.0.1:28182" } },

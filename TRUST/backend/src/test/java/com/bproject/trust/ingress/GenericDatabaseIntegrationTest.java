@@ -131,8 +131,8 @@ class GenericDatabaseIntegrationTest {
   void isolateFixtures() {
     ReflectionTestUtils.invokeMethod(worker, "close");
     db.update(
-        "UPDATE tasks SET state='FAILED',lease_token=NULL,lease_until=NULL WHERE event_id"
-            + " IN(SELECT id FROM events WHERE org_id=?)",
+        "UPDATE tasks_read SET state='FAILED',lease_token=NULL,lease_until=NULL WHERE event_id"
+            + " IN(SELECT id FROM events_read WHERE org_id=?)",
         org);
   }
 
@@ -151,7 +151,7 @@ class GenericDatabaseIntegrationTest {
   }
 
   void ready(String id) {
-    db.update("UPDATE tasks SET next_at=CURRENT_TIMESTAMP WHERE event_id=?", id);
+    db.update("UPDATE tasks_read SET next_at=CURRENT_TIMESTAMP WHERE event_id=?", id);
   }
 
   long count(String table) {
@@ -189,20 +189,22 @@ class GenericDatabaseIntegrationTest {
     String id = (String) results.get(0).receipt().get("id");
     String original =
         db.queryForObject(
-            "SELECT original_utf8 FROM generic_event_data WHERE event_id=?", String.class, id);
+            "SELECT original_utf8 FROM generic_event_data_read WHERE event_id=?", String.class, id);
     var replay = service.submit(source, GenericEventInputTest.parse(" \n" + original));
     assertEquals(200, replay.status());
     assertEquals(
         original,
         db.queryForObject(
-            "SELECT original_utf8 FROM generic_event_data WHERE event_id=?", String.class, id));
+            "SELECT original_utf8 FROM generic_event_data_read WHERE event_id=?",
+            String.class,
+            id));
     assertEquals(
-        1, db.queryForObject("SELECT COUNT(*) FROM tasks WHERE event_id=?", Integer.class, id));
+        1,
+        db.queryForObject("SELECT COUNT(*) FROM tasks_read WHERE event_id=?", Integer.class, id));
     assertEquals(
         1,
         db.queryForObject(
-            "SELECT COUNT(*) FROM audit_log WHERE object_id=? AND"
-                + " action='GENERIC_EVENT_SUBMIT'",
+            "SELECT COUNT(*) FROM audit_log WHERE object_id=? AND action='GENERIC_EVENT_SUBMIT'",
             Integer.class,
             id));
     assertEquals(
@@ -239,8 +241,8 @@ class GenericDatabaseIntegrationTest {
               count("audit_log"),
               count("event_source_routes"));
       migration.execute(
-          "CREATE FUNCTION generic_injected_failure() RETURNS trigger LANGUAGE plpgsql AS"
-              + " $$ BEGIN RAISE EXCEPTION 'injected transaction failure'; END $$");
+          "CREATE FUNCTION generic_injected_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN"
+              + " RAISE EXCEPTION 'injected transaction failure'; END $$");
       migration.execute(
           "CREATE TRIGGER generic_fail BEFORE INSERT ON "
               + table
@@ -348,7 +350,7 @@ class GenericDatabaseIntegrationTest {
   void concurrentCorrectionsAppendOnlyOneVersion() throws Exception {
     String id = submit("original");
     String original =
-        db.queryForObject("SELECT canonical_json FROM events WHERE id=?", String.class, id);
+        db.queryForObject("SELECT canonical_json FROM events_read WHERE id=?", String.class, id);
     var results =
         concurrent(
             8,
@@ -367,9 +369,11 @@ class GenericDatabaseIntegrationTest {
     assertEquals(7, results.stream().filter(s -> s == 409).count());
     assertEquals(
         original,
-        db.queryForObject("SELECT canonical_json FROM events WHERE id=?", String.class, id));
+        db.queryForObject("SELECT canonical_json FROM events_read WHERE id=?", String.class, id));
     assertEquals(
-        2, db.queryForObject("SELECT MAX(version) FROM events WHERE root_id=?", Integer.class, id));
+        2,
+        db.queryForObject(
+            "SELECT MAX(version) FROM events_read WHERE root_id=?", Integer.class, id));
   }
 
   @Test
@@ -384,20 +388,20 @@ class GenericDatabaseIntegrationTest {
             true,
             Set.of("read"),
             source.allowedEventTypes());
-    var before = db.queryForMap("SELECT * FROM tasks WHERE event_id=?", id);
+    var before = db.queryForMap("SELECT * FROM tasks_read WHERE event_id=?", id);
     assertEquals(403, assertThrows(IngressError.class, () -> service.retry(readOnly, id)).status);
-    assertEquals(before, db.queryForMap("SELECT * FROM tasks WHERE event_id=?", id));
+    assertEquals(before, db.queryForMap("SELECT * FROM tasks_read WHERE event_id=?", id));
     assertEquals(false, service.retry(source, id).receipt().get("queued"));
     db.update(
-        "UPDATE tasks SET state='RUNNING',lease_until=CURRENT_TIMESTAMP-INTERVAL '1 hour'"
+        "UPDATE tasks_read SET state='RUNNING',lease_until=CURRENT_TIMESTAMP-INTERVAL '1 hour'"
             + " WHERE event_id=?",
         id);
     assertEquals(409, assertThrows(IngressError.class, () -> service.retry(source, id)).status);
     db.update(
-        "UPDATE tasks SET state='FAILED',attempts=10,last_error='private error' WHERE"
+        "UPDATE tasks_read SET state='FAILED',attempts=10,last_error='private error' WHERE"
             + " event_id=?",
         id);
-    db.update("UPDATE events SET tx_id='retained',chain_state='FAILED' WHERE id=?", id);
+    db.update("UPDATE events_read SET tx_id='retained',chain_state='FAILED' WHERE id=?", id);
     assertEquals(200, service.submit(source, input("retry", 1)).status());
     assertEquals("FAILED", service.receipt(source, id).get("taskState"));
     var results = concurrent(12, i -> service.retry(source, id));
@@ -405,16 +409,15 @@ class GenericDatabaseIntegrationTest {
     assertEquals(
         1,
         db.queryForObject(
-            "SELECT COUNT(*) FROM audit_log WHERE object_id=? AND"
-                + " action='GENERIC_EVENT_RETRY'",
+            "SELECT COUNT(*) FROM audit_log WHERE object_id=? AND action='GENERIC_EVENT_RETRY'",
             Integer.class,
             id));
     assertEquals("retained", service.receipt(source, id).get("txId"));
-    db.update("UPDATE tasks SET state='DONE' WHERE event_id=?", id);
+    db.update("UPDATE tasks_read SET state='DONE' WHERE event_id=?", id);
     assertEquals(
         "INTEGRITY_MISMATCH",
         assertThrows(IngressError.class, () -> service.retry(source, id)).code);
-    db.update("UPDATE events SET chain_state='COMMITTED' WHERE id=?", id);
+    db.update("UPDATE events_read SET chain_state='COMMITTED' WHERE id=?", id);
     assertEquals(false, service.retry(source, id).receipt().get("queued"));
   }
 
@@ -573,7 +576,7 @@ class GenericDatabaseIntegrationTest {
     assertEquals(
         0,
         db.queryForObject(
-            "SELECT COUNT(*) FROM signing_attempts WHERE event_id=?", Integer.class, id));
+            "SELECT COUNT(*) FROM signing_attempts_read WHERE event_id=?", Integer.class, id));
   }
 
   @Test
@@ -587,7 +590,7 @@ class GenericDatabaseIntegrationTest {
     when(settings.permits(anyMap())).thenReturn(true);
     doAnswer(
             call -> {
-              db.update("UPDATE tasks SET lease_token='new-owner' WHERE event_id=?", id);
+              db.update("UPDATE tasks_read SET lease_token='new-owner' WHERE event_id=?", id);
               return "baf-lost";
             })
         .when(ipfs)
@@ -603,8 +606,8 @@ class GenericDatabaseIntegrationTest {
     doAnswer(
             call -> {
               db.update(
-                  "UPDATE tasks SET lease_until=CURRENT_TIMESTAMP-INTERVAL '1"
-                      + " second' WHERE event_id=?",
+                  "UPDATE tasks_read SET lease_until=CURRENT_TIMESTAMP-INTERVAL '1 second' WHERE"
+                      + " event_id=?",
                   id);
               return "baf-expired";
             })
@@ -630,7 +633,7 @@ class GenericDatabaseIntegrationTest {
     assertEquals(true, service.receipt(source, id).get("outcomeUnknown"));
     byte[] ledgerBefore = Files.readAllBytes(root.resolve("ledger.json"));
     db.update(
-        "UPDATE tasks SET lease_until=CURRENT_TIMESTAMP-INTERVAL '1 second' WHERE" + " event_id=?",
+        "UPDATE tasks_read SET lease_until=CURRENT_TIMESTAMP-INTERVAL '1 second' WHERE event_id=?",
         id);
     assertEquals(0, child("recover"));
     assertNotEquals(
@@ -642,7 +645,7 @@ class GenericDatabaseIntegrationTest {
     assertEquals(
         1,
         db.queryForObject(
-            "SELECT COUNT(*) FROM signing_attempts WHERE event_id=?", Integer.class, id));
+            "SELECT COUNT(*) FROM signing_attempts_read WHERE event_id=?", Integer.class, id));
     System.out.println(
         "PROCESS_RESTART_PROOF crashPid="
             + Files.readString(root.resolve("crash-pid.txt"))
@@ -714,18 +717,18 @@ class GenericDatabaseIntegrationTest {
   void disabledGenericBacklogCannotStarveLegacyQueue() {
     for (int i = 0; i < 6; i++) {
       String id = submit("disabled-backlog-" + i);
-      db.update("UPDATE tasks SET next_at=TIMESTAMP '1900-01-01' WHERE event_id=?", id);
+      db.update("UPDATE tasks_read SET next_at=TIMESTAMP '1900-01-01' WHERE event_id=?", id);
     }
     String legacy =
         (String) events.submit(legacy("OLD-QUEUE", "ready"), org, "local-actor", null).get("id");
-    db.update("UPDATE tasks SET next_at=TIMESTAMP '1900-01-02' WHERE event_id=?", legacy);
+    db.update("UPDATE tasks_read SET next_at=TIMESTAMP '1900-01-02' WHERE event_id=?", legacy);
     when(settings.processingSources()).thenReturn(List.of());
     List<String> due = ReflectionTestUtils.invokeMethod(worker, "due", 1);
     assertEquals(List.of(legacy), due);
     assertEquals(
         0,
         db.queryForObject(
-            "SELECT SUM(attempts) FROM tasks WHERE event_id IN(SELECT id FROM events"
+            "SELECT SUM(attempts) FROM tasks_read WHERE event_id IN(SELECT id FROM events_read"
                 + " WHERE org_id=? AND record_kind='GENERIC_V1')",
             Integer.class,
             org));

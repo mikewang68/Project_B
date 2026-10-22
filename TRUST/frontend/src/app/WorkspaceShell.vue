@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import type { ApiRecord } from "../shared/types";
 import { useFeedback } from "../shared/composables/useFeedback";
 import { nav, descriptions } from "./navigation";
 import AppearancePanel from "./AppearancePanel.vue";
 import { useAppearance } from "./appearance";
+import { canOpenPage } from "../features/auth/access";
 
-defineProps<{ me: ApiRecord; tab: string }>();
+const props = defineProps<{ me: ApiRecord; tab: string }>();
+const visibleNav = computed(() => nav.filter(([id]) => canOpenPage(props.me, id)));
 const emit = defineEmits<{ navigate: [id: string]; logout: [] }>();
 const { busy, error, notice, pendingResults, retryResults } = useFeedback();
 const { preference } = useAppearance();
@@ -23,7 +25,7 @@ const appearanceOpen = ref(false);
       <span class="aside-label">工作空间</span>
       <nav class="workspace-nav" aria-label="工作空间导航">
         <button
-          v-for="[id, name, n] in nav"
+          v-for="[id, name, n] in visibleNav"
           :key="id"
           :class="{ active: tab === id }"
           :title="preference.layout === 'compact' ? name : undefined"
@@ -48,7 +50,7 @@ const appearanceOpen = ref(false);
         <span class="breadcrumb">B项目 <b>/</b> 可信存证与溯源</span>
         <nav class="top-layout-nav" aria-label="工作空间导航">
           <button
-            v-for="[id, name] in nav"
+            v-for="[id, name] in visibleNav"
             :key="id"
             :class="{ active: tab === id }"
             @click="emit('navigate', id)"
@@ -90,6 +92,9 @@ const appearanceOpen = ref(false);
         <p v-if="me.simulated" class="alert" role="status">
           隔离测试 · 当前使用模拟 IAM
           身份，权限和组织范围由隔离测试身份服务校验。
+        </p>
+        <p v-if="me.readOnly" class="alert" role="status">
+          当前身份为强制只读：可查看已授权记录，不能修改、补办、核验或下载导出。
         </p>
         <p v-if="error" class="alert error" role="alert">{{ error }}</p>
         <p v-if="notice" class="alert success" role="status">{{ notice }}</p>

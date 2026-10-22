@@ -42,7 +42,9 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
     String path = request.getServletPath();
     if (path.isEmpty()) path = request.getRequestURI().substring(request.getContextPath().length());
     // Login-page metadata remains available even during an IAM outage.
-    if (path.equals("/api/v1/identity-mode") || path.equals("/api/v1/csrf")) {
+    if (path.equals("/api/v1/identity-mode")
+        || path.equals("/api/v1/csrf")
+        || path.equals("/api/v1/logout")) {
       chain.doFilter(request, response);
       return;
     }
@@ -103,10 +105,12 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
             authorities.add(new SimpleGrantedAuthority("ROLE_EDITOR"));
           if (user.permissions().contains("trust:audit:read"))
             authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
-          var principal = new PlatformPrincipal(user.id(), user.username(), org);
+          var principal = new PlatformPrincipal(user.id(), user.username(), org, user.readOnly());
           SecurityContextHolder.getContext()
               .setAuthentication(
                   UsernamePasswordAuthenticationToken.authenticated(principal, null, authorities));
+          if (user.readOnly() && !ReadOnlyPolicy.permits(path, request.getMethod()))
+            throw new ApiError(403, "当前身份为强制只读，禁止业务变更、核验、原文下载及导出");
           String permission = requiredPermission(path, request.getMethod());
           if (permission != null && !user.permissions().contains(permission))
             throw new ApiError(403, "缺少权限：" + permission);
@@ -121,7 +125,7 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
               SecurityContextHolder.getContext().getAuthentication(), request.getMethod(), path);
         } catch (Exception failure) {
           SecurityContextHolder.clearContext();
-          response.sendError(503, "操作留痕暂不可用");
+          Security.failure(response, 503, "操作留痕暂不可用");
           return;
         }
       }
@@ -132,7 +136,7 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
       return;
     } catch (IllegalStateException e) {
       SecurityContextHolder.clearContext();
-      response.sendError(503, "身份接入配置不可用");
+      Security.failure(response, 503, "身份接入配置不可用");
       return;
     }
     chain.doFilter(request, response);

@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import VersionHistory from "../../shared/components/VersionHistory.vue";
 import { json } from "../../shared/http/client";
 import { useFeedback } from "../../shared/composables/useFeedback";
 import { usePageLoad } from "../../shared/composables/usePageLoad";
 import { fmt } from "../../shared/presentation";
+const props = defineProps<{ readOnly: boolean }>();
 
 type Settings = {
+  revision: number;
+  canReadHistory: boolean;
   canManage: boolean;
   configured: boolean;
   collectionEnabled: true;
@@ -37,7 +41,7 @@ async function load() {
 }
 usePageLoad(load, "status");
 async function save() {
-  if (!settings.value?.canManage) return;
+  if (props.readOnly || !settings.value?.canManage) return;
   await act(
     { action: "UPDATE", menuId: "status", summary: "修改日志处理设置" },
     async () => {
@@ -48,6 +52,7 @@ async function save() {
           archivePaused: archivePaused.value,
           chainPaused: chainPaused.value,
           reason: reason.value,
+          expectedRevision: settings.value?.revision,
         }),
       });
       reason.value = "";
@@ -79,6 +84,12 @@ async function save() {
     </p>
     <p v-if="loadError" role="alert">{{ loadError }}</p>
     <template v-if="settings">
+      <VersionHistory
+        v-if="settings.canReadHistory"
+        url="/audit/settings/history"
+        menu-id="status"
+        title="设置修改历史"
+      />
       <p v-if="!settings.configured" class="alert warning">
         日志处理配置尚未就绪，已采集记录保留待办。
       </p>
@@ -113,7 +124,7 @@ async function save() {
         </div>
       </dl>
       <form
-        v-if="settings.canManage"
+        v-if="settings.canManage && !readOnly"
         class="settings-form"
         @submit.prevent="save"
       >

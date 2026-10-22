@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "TRUST + IAM Identity API",
-    "version": "identity-v1",
+    "version": "1.1.0",
     "description": "独立联调协议。TRUST使用独立服务Bearer；IAM使用持久会话JWT。生命周期实际状态必须查询响应体。"
   },
   "servers": [
@@ -1169,6 +1169,167 @@
           }
         }
       }
+    },
+    "/api/v1/identity-management/{id}/history": {
+      "get": {
+        "summary": "Identity revision history",
+        "description": "trust:identity:read; both current and historical organization. History grants no extra read/download/export permission. Empty items when outside organization; version numbers start at observed migration baseline.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visible immutable snapshots, newest first, at most 50 per page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid page"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "503": {
+            "description": "Authentication configuration unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/identity-management/{id}/certificates/{version}/history": {
+      "get": {
+        "summary": "Certificate processing history",
+        "description": "trust:identity:read; both certificate and current identity organization. History grants no extra read/download/export permission. Empty items when outside organization; version numbers start at observed migration baseline.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visible immutable snapshots, newest first, at most 50 per page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid page"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "503": {
+            "description": "Authentication configuration unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/identity-management/{id}/certificates/history": {
+      "get": {
+        "summary": "All certificate version histories",
+        "description": "trust:identity:read; both certificate and current identity organization. History grants no extra read/download/export permission. Empty items when outside organization; version numbers start at observed migration baseline.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visible immutable snapshots, newest first, at most 50 per page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid page"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission denied"
+          },
+          "503": {
+            "description": "Authentication configuration unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1506,6 +1667,59 @@
         "properties": {
           "message": {
             "type": "string"
+          }
+        }
+      },
+      "RetentionEntry": {
+        "type": "object",
+        "required": [
+          "version",
+          "actor",
+          "operation",
+          "reason",
+          "happened_at"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "happened_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": true,
+        "description": "Typed domain snapshot joined with immutable original fields; never contains private keys or temporary secrets."
+      },
+      "RetentionPage": {
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "hasMore"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RetentionEntry"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "hasMore": {
+            "type": "boolean"
           }
         }
       }

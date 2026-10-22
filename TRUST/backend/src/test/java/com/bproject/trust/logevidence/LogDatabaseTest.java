@@ -13,10 +13,8 @@ import java.util.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.*;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -42,26 +40,23 @@ class LogDatabaseTest {
 
   @BeforeEach
   void setup() throws Exception {
-    String url = System.getenv("TRUST_LOG_DB_URL");
-    if (!"jdbc:postgresql://127.0.0.1:25434/trust_audit_local_test".equals(url))
-      throw new IllegalStateException("Only dedicated local audit test database allowed");
-    var data = new DriverManagerDataSource(url, "trust_local_test", "");
+    var data = com.bproject.trust.support.TestDatabase.dataSource(true);
     admin = new JdbcTemplate(data);
     schema = "audit_test_" + UUID.randomUUID().toString().replace("-", "");
     admin.execute("CREATE SCHEMA " + schema);
     data.setSchema(schema);
     try (var connection = data.getConnection()) {
-      for (String file :
-          List.of(
-              "001.sql",
-              "002-wallet.sql",
-              "003-signing-audit.sql",
-              "004-identities.sql",
-              "005-generic-ingress.sql",
-              "006-audit-log.sql",
-              "007-audit-optional-text.sql",
-              "008-audit-ownership.sql"))
-        ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/" + file));
+      var database =
+          liquibase.database.DatabaseFactory.getInstance()
+              .findCorrectDatabaseImplementation(
+                  new liquibase.database.jvm.JdbcConnection(connection));
+      database.setDefaultSchemaName(schema);
+      database.setLiquibaseSchemaName(schema);
+      try (var migrations =
+          new liquibase.Liquibase(
+              "db/changelog.xml", new liquibase.resource.ClassLoaderResourceAccessor(), database)) {
+        migrations.update(new liquibase.Contexts(), new liquibase.LabelExpression());
+      }
     }
     db = new JdbcTemplate(data);
     tx = new TransactionTemplate(new DataSourceTransactionManager(data));
@@ -133,50 +128,75 @@ class LogDatabaseTest {
     service.submit(source, event);
     var entered = new java.util.concurrent.CountDownLatch(1);
     var release = new java.util.concurrent.CountDownLatch(1);
-    doAnswer(c -> {
-      entered.countDown();
-      assertTrue(release.await(10, java.util.concurrent.TimeUnit.SECONDS));
-      return "bafsynthetic";
-    }).when(storage).add(any());
+    doAnswer(
+            c -> {
+              entered.countDown();
+              assertTrue(release.await(10, java.util.concurrent.TimeUnit.SECONDS));
+              return "bafsynthetic";
+            })
+        .when(storage)
+        .add(any());
     worker.dispatch();
     try {
       assertTrue(entered.await(10, java.util.concurrent.TimeUnit.SECONDS));
-      db.update("UPDATE audit_evidence SET lease_until=CURRENT_TIMESTAMP+INTERVAL '2 seconds'");
+      db.update(
+          "UPDATE audit_evidence_read SET lease_until=CURRENT_TIMESTAMP+INTERVAL '2 seconds'");
       worker.renew();
-      assertTrue(db.queryForObject("SELECT lease_until>CURRENT_TIMESTAMP+INTERVAL '50 seconds' FROM audit_evidence", Boolean.class));
+      assertTrue(
+          db.queryForObject(
+              "SELECT lease_until>CURRENT_TIMESTAMP+INTERVAL '50 seconds' FROM audit_evidence_read",
+              Boolean.class));
       worker.dispatch();
       verify(storage, times(1)).add(any());
-      db.update("UPDATE audit_evidence SET lease_token='replacement-owner'");
-    } finally { release.countDown(); worker.close(); }
-    assertNull(db.queryForObject("SELECT archive_cid FROM audit_evidence", String.class));
-    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events", Integer.class));
-    assertEquals("replacement-owner", db.queryForObject("SELECT lease_token FROM audit_evidence", String.class));
+      db.update("UPDATE audit_evidence_read SET lease_token='replacement-owner'");
+    } finally {
+      release.countDown();
+      worker.close();
+    }
+    assertNull(db.queryForObject("SELECT archive_cid FROM audit_evidence_read", String.class));
+    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events_read", Integer.class));
+    assertEquals(
+        "replacement-owner",
+        db.queryForObject("SELECT lease_token FROM audit_evidence_read", String.class));
   }
 
   @Test
   void expiredLeaseRollsBackProjectionEvenInsideAnOlderTransaction() {
     var event = input("projection-expiry", "synthetic");
     service.submit(source, event);
-    db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+    db.update("UPDATE audit_log_settings_read SET chain_paused=TRUE");
     worker.poll();
-    db.update("UPDATE audit_log_settings SET chain_paused=FALSE");
-    db.update("UPDATE audit_evidence SET lease_token='test-owner',lease_until=clock_timestamp()+INTERVAL '60 seconds'");
+    db.update("UPDATE audit_log_settings_read SET chain_paused=FALSE");
+    db.update(
+        "UPDATE audit_evidence_read SET"
+            + " lease_token='test-owner',lease_until=clock_timestamp()+INTERVAL '60 seconds'");
     var delayed = spy(generic);
-    doAnswer(call -> {
-      Object result = call.callRealMethod();
-      // Expire after the real insert, but after the transaction's fixed CURRENT_TIMESTAMP.
-      db.update("UPDATE audit_evidence SET lease_until=clock_timestamp()");
-      db.execute("SELECT pg_sleep(0.02)");
-      return result;
-    }).when(delayed).submit(any(), any());
-    var delayedService = new LogEvidenceService(db, tx, new LogCipher(config), delayed, ingress, storage);
+    doAnswer(
+            call -> {
+              Object result = call.callRealMethod();
+              // Expire after the real insert, but after the transaction's fixed CURRENT_TIMESTAMP.
+              db.update("UPDATE audit_evidence_read SET lease_until=clock_timestamp()");
+              db.execute("SELECT pg_sleep(0.02)");
+              return result;
+            })
+        .when(delayed)
+        .submit(any(), any());
+    var delayedService =
+        new LogEvidenceService(db, tx, new LogCipher(config), delayed, ingress, storage);
     var delayedWorker = new LogArchiveWorker(config, delayedService);
     try {
-      assertThrows(IllegalStateException.class, () -> delayedWorker.process(
-          db.queryForMap("SELECT * FROM audit_evidence"), "test-owner", config.read()));
-      assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events", Integer.class));
-      assertNull(db.queryForObject("SELECT chain_event_id FROM audit_evidence", String.class));
-    } finally { delayedWorker.close(); }
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              delayedWorker.process(
+                  db.queryForMap("SELECT * FROM audit_evidence_read"),
+                  "test-owner",
+                  config.read()));
+      assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events_read", Integer.class));
+      assertNull(db.queryForObject("SELECT chain_event_id FROM audit_evidence_read", String.class));
+    } finally {
+      delayedWorker.close();
+    }
   }
 
   @Test
@@ -184,7 +204,7 @@ class LogDatabaseTest {
     var input = input("one", "original");
     assertEquals(202, service.submit(source, input).status());
     assertEquals(200, service.submit(source, input).status());
-    assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM audit_evidence", Integer.class));
+    assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM audit_evidence_read", Integer.class));
     assertEquals(
         409,
         assertThrows(IngressError.class, () -> service.submit(source, input("one", "changed")))
@@ -205,7 +225,8 @@ class LogDatabaseTest {
     var input = input("two", "confidential operation");
     service.submit(source, input);
     worker.poll();
-    var row = db.queryForMap("SELECT * FROM audit_evidence WHERE event_key=?", input.eventKey());
+    var row =
+        db.queryForMap("SELECT * FROM audit_evidence_read WHERE event_key=?", input.eventKey());
     assertEquals("STORED", row.get("archive_state"));
     assertNotNull(row.get("chain_event_id"));
     assertEquals(1, blocks.size());
@@ -213,51 +234,52 @@ class LogDatabaseTest {
         new String(blocks.values().iterator().next(), java.nio.charset.StandardCharsets.UTF_8)
             .contains("confidential operation"));
     assertFalse(
-        db.queryForObject("SELECT original_utf8 FROM generic_event_data", String.class)
+        db.queryForObject("SELECT original_utf8 FROM generic_event_data_read", String.class)
             .contains("confidential operation"));
     assertEquals(
         input.canonical(), service.original(source, input.eventKey(), true).get("canonicalJson"));
     assertEquals("PENDING", service.receipt(source, input.eventKey()).get("state"));
     // Only a verified DONE+COMMITTED generic task can map to COMMITTED; a bare chain label cannot.
-    db.update("UPDATE events SET chain_state='COMMITTED',tx_id='verified-fixture-tx'");
+    db.update("UPDATE events_read SET chain_state='COMMITTED',tx_id='verified-fixture-tx'");
     assertNotEquals("COMMITTED", service.receipt(source, input.eventKey()).get("state"));
-    db.update("UPDATE tasks SET state='DONE'");
+    db.update("UPDATE tasks_read SET state='DONE'");
     assertEquals("COMMITTED", service.receipt(source, input.eventKey()).get("state"));
     worker.poll();
-    assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM events", Integer.class));
+    assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM events_read", Integer.class));
   }
 
   @Test
   void pausesDoNotStopAcceptanceAndFailedArchiveRecoversOnlyByExplicitRetry() throws Exception {
     var input = input("three", "");
-    db.update("UPDATE audit_log_settings SET archive_paused=TRUE");
+    db.update("UPDATE audit_log_settings_read SET archive_paused=TRUE");
     service.submit(source, input);
     worker.poll();
     verifyNoInteractions(storage);
-    db.update("UPDATE audit_log_settings SET archive_paused=FALSE,chain_paused=TRUE");
+    db.update("UPDATE audit_log_settings_read SET archive_paused=FALSE,chain_paused=TRUE");
     worker.poll();
     assertEquals(
-        "STORED", db.queryForObject("SELECT archive_state FROM audit_evidence", String.class));
-    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events", Integer.class));
-    db.update("UPDATE audit_log_settings SET chain_paused=FALSE");
+        "STORED", db.queryForObject("SELECT archive_state FROM audit_evidence_read", String.class));
+    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events_read", Integer.class));
+    db.update("UPDATE audit_log_settings_read SET chain_paused=FALSE");
     worker.poll();
     var gate = new LogChainGate(db);
-    String event = db.queryForObject("SELECT chain_event_id FROM audit_evidence", String.class);
+    String event =
+        db.queryForObject("SELECT chain_event_id FROM audit_evidence_read", String.class);
     assertTrue(gate.allows(event));
-    db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+    db.update("UPDATE audit_log_settings_read SET chain_paused=TRUE");
     assertFalse(gate.allows(event));
     assertTrue(gate.allows("unrelated"));
     var second = input("failed", "");
     service.submit(source, second);
     doThrow(new java.io.IOException("offline")).when(storage).add(any());
-    db.update("UPDATE audit_evidence SET attempts=9 WHERE event_key=?", second.eventKey());
+    db.update("UPDATE audit_evidence_read SET attempts=9 WHERE event_key=?", second.eventKey());
     worker.poll();
     assertEquals("FAILED", service.receipt(source, second.eventKey()).get("state"));
     service.receipt(source, second.eventKey());
     assertEquals(
         "FAILED",
         db.queryForObject(
-            "SELECT archive_state FROM audit_evidence WHERE event_key=?",
+            "SELECT archive_state FROM audit_evidence_read WHERE event_key=?",
             String.class,
             second.eventKey()));
     assertEquals(202, service.retry(source, second.eventKey()).status());
@@ -269,20 +291,21 @@ class LogDatabaseTest {
     var input = input("pause-projection", "");
     service.submit(source, input);
     worker.poll();
-    String id = db.queryForObject("SELECT chain_event_id FROM audit_evidence", String.class);
+    String id = db.queryForObject("SELECT chain_event_id FROM audit_evidence_read", String.class);
     db.update(
         "INSERT INTO"
             + " wallets(id,org_id,label,msp_id,key_ref,certificate_pem,fingerprint,subject,not_after)"
             + " VALUES('test-wallet','TEST_ORG','test','TEST','test-key','test',repeat('a',64),'test',CURRENT_TIMESTAMP+INTERVAL"
             + " '1 day')");
     db.update(
-        "UPDATE events SET wallet_id='test-wallet',signer_fingerprint=repeat('a',64) WHERE id=?",
+        "UPDATE events_read SET wallet_id='test-wallet',signer_fingerprint=repeat('a',64) WHERE"
+            + " id=?",
         id);
     var ledger = mock(com.bproject.trust.ports.LedgerGateway.class);
     when(ledger.find(anyString(), eq(id))).thenReturn(null);
     var eventService = mock(com.bproject.trust.events.EventService.class);
     when(eventService.get(eq(id), anyString()))
-        .thenAnswer(c -> db.queryForMap("SELECT * FROM events WHERE id=?", id));
+        .thenAnswer(c -> db.queryForMap("SELECT * FROM events_read WHERE id=?", id));
     when(ingress.permits(anyMap())).thenReturn(true);
     when(ledger.submit(anyMap(), any()))
         .thenAnswer(
@@ -307,49 +330,64 @@ class LogDatabaseTest {
     org.springframework.test.util.ReflectionTestUtils.setField(archive, "logChainGate", gate);
     String token = UUID.randomUUID().toString();
     try {
-      db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+      db.update("UPDATE audit_log_settings_read SET chain_paused=TRUE");
       lease(id, token);
       org.springframework.test.util.ReflectionTestUtils.invokeMethod(archive, "process", id, token);
       verify(ledger, never()).submit(anyMap(), any());
       assertEquals(
-          "READY", db.queryForObject("SELECT state FROM tasks WHERE event_id=?", String.class, id));
-      db.update("UPDATE audit_log_settings SET chain_paused=FALSE");
+          "READY",
+          db.queryForObject("SELECT state FROM tasks_read WHERE event_id=?", String.class, id));
+      db.update("UPDATE audit_log_settings_read SET chain_paused=FALSE");
       lease(id, token);
       org.springframework.test.util.ReflectionTestUtils.invokeMethod(archive, "process", id, token);
       verify(ledger, times(1)).submit(anyMap(), any());
       assertEquals(
-          "DONE", db.queryForObject("SELECT state FROM tasks WHERE event_id=?", String.class, id));
+          "DONE",
+          db.queryForObject("SELECT state FROM tasks_read WHERE event_id=?", String.class, id));
       // A receipt lost after the transaction was committed may be resolved while paused.
       var committed =
           new HashMap<>(
               com.bproject.trust.archiving.AttestationRecord.record(
-                  db.queryForMap("SELECT * FROM events WHERE id=?", id)));
+                  db.queryForMap("SELECT * FROM events_read WHERE id=?", id)));
       committed.put("txId", "synthetic-confirmed");
       when(ledger.find(anyString(), eq(id))).thenReturn(committed);
-      db.update("UPDATE events SET chain_state='CONFIRMING' WHERE id=?", id);
-      db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+      // Migration-owner fault injection simulates a missing local commit receipt.
+      db.update(
+          "UPDATE events_versions SET chain_state='CONFIRMING' WHERE id=? AND"
+              + " retention_revision=(SELECT retention_revision FROM events_head WHERE id=?)",
+          id,
+          id);
+      db.update("UPDATE audit_log_settings_read SET chain_paused=TRUE");
       lease(id, token);
       org.springframework.test.util.ReflectionTestUtils.invokeMethod(archive, "process", id, token);
       verify(ledger, times(1)).submit(anyMap(), any());
       assertEquals(
-          "DONE", db.queryForObject("SELECT state FROM tasks WHERE event_id=?", String.class, id));
+          "DONE",
+          db.queryForObject("SELECT state FROM tasks_read WHERE event_id=?", String.class, id));
       assertEquals(
           "COMMITTED",
-          db.queryForObject("SELECT chain_state FROM events WHERE id=?", String.class, id));
+          db.queryForObject("SELECT chain_state FROM events_read WHERE id=?", String.class, id));
       // A paused ledger outage must not spend the submission failure budget or require manual
       // retry.
       when(ledger.find(anyString(), eq(id))).thenThrow(new java.io.IOException("offline"));
-      db.update("UPDATE events SET chain_state='CONFIRMING' WHERE id=?", id);
-      db.update("UPDATE tasks SET attempts=9 WHERE event_id=?", id);
+      // Migration-owner fault injection simulates a missing local commit receipt.
+      db.update(
+          "UPDATE events_versions SET chain_state='CONFIRMING' WHERE id=? AND"
+              + " retention_revision=(SELECT retention_revision FROM events_head WHERE id=?)",
+          id,
+          id);
+      db.update("UPDATE tasks_read SET attempts=9 WHERE event_id=?", id);
       lease(id, token);
       assertDoesNotThrow(
           () ->
               org.springframework.test.util.ReflectionTestUtils.invokeMethod(
                   archive, "process", id, token));
       assertEquals(
-          "READY", db.queryForObject("SELECT state FROM tasks WHERE event_id=?", String.class, id));
+          "READY",
+          db.queryForObject("SELECT state FROM tasks_read WHERE event_id=?", String.class, id));
       assertEquals(
-          9, db.queryForObject("SELECT attempts FROM tasks WHERE event_id=?", Integer.class, id));
+          9,
+          db.queryForObject("SELECT attempts FROM tasks_read WHERE event_id=?", Integer.class, id));
       verify(ledger, times(1)).submit(anyMap(), any());
     } finally {
       org.springframework.test.util.ReflectionTestUtils.invokeMethod(archive, "close");
@@ -358,8 +396,8 @@ class LogDatabaseTest {
 
   private void lease(String id, String token) {
     db.update(
-        "UPDATE tasks SET state='RUNNING',lease_token=?,lease_until=CURRENT_TIMESTAMP+INTERVAL '60"
-            + " seconds',attempts=attempts+1 WHERE event_id=?",
+        "UPDATE tasks_read SET state='RUNNING',lease_token=?,lease_until=CURRENT_TIMESTAMP+INTERVAL"
+            + " '60 seconds',attempts=attempts+1 WHERE event_id=?",
         token,
         id);
   }
@@ -368,9 +406,9 @@ class LogDatabaseTest {
   void fourPausedOldestProjectionsYieldSlotsToANewerNonLogEvent() throws Exception {
     for (int i = 0; i < 4; i++) service.submit(source, input("paused-oldest-" + i, ""));
     worker.poll();
-    var paused = db.queryForList("SELECT chain_event_id FROM audit_evidence", String.class);
+    var paused = db.queryForList("SELECT chain_event_id FROM audit_evidence_read", String.class);
     assertEquals(4, paused.size());
-    db.update("UPDATE tasks SET next_at=CURRENT_TIMESTAMP-INTERVAL '1 minute'");
+    db.update("UPDATE tasks_read SET next_at=CURRENT_TIMESTAMP-INTERVAL '1 minute'");
     var simulator =
         new EvidenceIngressSettings.Source(
             "sim-test",
@@ -402,7 +440,8 @@ class LogDatabaseTest {
         simulator,
         GenericEventInput.parse(request.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
     String ordinary =
-        db.queryForObject("SELECT id FROM events WHERE source_system='SIM_TEST'", String.class);
+        db.queryForObject(
+            "SELECT id FROM events_read WHERE source_system='SIM_TEST'", String.class);
     var ledger = mock(com.bproject.trust.ports.LedgerGateway.class);
     when(ingress.permits(anyMap())).thenReturn(true);
     var archive =
@@ -420,7 +459,7 @@ class LogDatabaseTest {
     org.springframework.test.util.ReflectionTestUtils.setField(gate, "settings", config);
     org.springframework.test.util.ReflectionTestUtils.setField(archive, "logChainGate", gate);
     try {
-      db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+      db.update("UPDATE audit_log_settings_read SET chain_paused=TRUE");
       List<String> first =
           org.springframework.test.util.ReflectionTestUtils.invokeMethod(archive, "due", 4);
       assertEquals(new HashSet<>(paused), new HashSet<>(first));
@@ -436,8 +475,8 @@ class LogDatabaseTest {
       assertEquals(
           4,
           db.queryForObject(
-              "SELECT COUNT(*) FROM tasks WHERE next_at>CURRENT_TIMESTAMP"
-                  + " AND state='READY' AND attempts=0",
+              "SELECT COUNT(*) FROM tasks_read WHERE next_at>CURRENT_TIMESTAMP AND state='READY'"
+                  + " AND attempts=0",
               Integer.class));
       verifyNoInteractions(ledger);
     } finally {
@@ -447,54 +486,60 @@ class LogDatabaseTest {
 
   @Test
   void chainPauseStillArchivesNewEventsBeyondTenStoredRows() {
-    db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+    db.update("UPDATE audit_log_settings_read SET chain_paused=TRUE");
     for (int i = 0; i < 11; i++) service.submit(source, input("archive-past-paused-" + i, ""));
     worker.poll();
     assertEquals(
         10,
         db.queryForObject(
-            "SELECT COUNT(*) FROM audit_evidence WHERE archive_state='STORED'", Integer.class));
+            "SELECT COUNT(*) FROM audit_evidence_read WHERE archive_state='STORED'",
+            Integer.class));
     worker.poll();
     assertEquals(
         11,
         db.queryForObject(
-            "SELECT COUNT(*) FROM audit_evidence WHERE archive_state='STORED'", Integer.class));
-    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events", Integer.class));
-    assertEquals(0, db.queryForObject("SELECT SUM(attempts) FROM audit_evidence", Integer.class));
+            "SELECT COUNT(*) FROM audit_evidence_read WHERE archive_state='STORED'",
+            Integer.class));
+    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM events_read", Integer.class));
+    assertEquals(
+        0, db.queryForObject("SELECT SUM(attempts) FROM audit_evidence_read", Integer.class));
   }
 
   @Test
   void archivePauseStillProjectsStoredEventBeyondTenPendingRows() {
-    db.update("UPDATE audit_log_settings SET chain_paused=TRUE");
+    db.update("UPDATE audit_log_settings_read SET chain_paused=TRUE");
     for (int i = 0; i < 10; i++) service.submit(source, input("pending-archive-" + i, ""));
     var last = input("already-stored-newest", "");
     service.submit(source, last);
     db.update(
-        "UPDATE audit_evidence SET next_at=CURRENT_TIMESTAMP+INTERVAL '1 hour' WHERE event_key<>?",
+        "UPDATE audit_evidence_read SET next_at=CURRENT_TIMESTAMP+INTERVAL '1 hour' WHERE"
+            + " event_key<>?",
         last.eventKey());
     worker.poll();
     assertEquals(
         "STORED",
         db.queryForObject(
-            "SELECT archive_state FROM audit_evidence WHERE event_key=?",
+            "SELECT archive_state FROM audit_evidence_read WHERE event_key=?",
             String.class,
             last.eventKey()));
     db.update(
-        "UPDATE audit_evidence SET next_at=CURRENT_TIMESTAMP-INTERVAL '1 minute' WHERE"
+        "UPDATE audit_evidence_read SET next_at=CURRENT_TIMESTAMP-INTERVAL '1 minute' WHERE"
             + " event_key<>?",
         last.eventKey());
-    db.update("UPDATE audit_log_settings SET archive_paused=TRUE,chain_paused=FALSE");
+    db.update("UPDATE audit_log_settings_read SET archive_paused=TRUE,chain_paused=FALSE");
     worker.poll();
     assertNotNull(
         db.queryForObject(
-            "SELECT chain_event_id FROM audit_evidence WHERE event_key=?",
+            "SELECT chain_event_id FROM audit_evidence_read WHERE event_key=?",
             String.class,
             last.eventKey()));
     assertEquals(
         10,
         db.queryForObject(
-            "SELECT COUNT(*) FROM audit_evidence WHERE archive_state='PENDING'", Integer.class));
-    assertEquals(0, db.queryForObject("SELECT SUM(attempts) FROM audit_evidence", Integer.class));
+            "SELECT COUNT(*) FROM audit_evidence_read WHERE archive_state='PENDING'",
+            Integer.class));
+    assertEquals(
+        0, db.queryForObject("SELECT SUM(attempts) FROM audit_evidence_read", Integer.class));
     assertEquals(1, blocks.size());
   }
 
@@ -506,7 +551,7 @@ class LogDatabaseTest {
     var request = new LogOperations.PageAction(id, "READ", "events", "", "/events", "Read event");
     ops.page(user, request);
     ops.page(user, request);
-    assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM audit_delivery", Integer.class));
+    assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM audit_delivery_read", Integer.class));
     assertEquals(
         404,
         assertThrows(
@@ -514,14 +559,21 @@ class LogDatabaseTest {
                 () -> ops.result(manager, id, new LogOperations.PageResult("SUCCESS", "")))
             .status);
     ops.result(user, id, new LogOperations.PageResult("SUCCESS", "Client finished"));
-    assertEquals(2, db.queryForObject("SELECT COUNT(*) FROM audit_delivery", Integer.class));
+    assertEquals(2, db.queryForObject("SELECT COUNT(*) FROM audit_delivery_read", Integer.class));
     assertEquals(
         403,
         assertThrows(
                 IngressError.class,
                 () -> ops.controls(user, new LogOperations.Controls(true, true, "pause")))
             .status);
-    ops.controls(manager, new LogOperations.Controls(true, true, "maintenance"));
+    ops.controls(
+        manager,
+        new LogOperations.Controls(
+            true,
+            true,
+            "maintenance",
+            db.queryForObject(
+                "SELECT retention_revision FROM audit_log_settings_read WHERE id=1", Long.class)));
     assertEquals(true, ops.controls(user).get("archivePaused"));
     db.execute("ALTER TABLE audit_delivery ADD CONSTRAINT reject_test CHECK(action<>'NAVIGATE')");
     String failed = UUID.randomUUID().toString();
@@ -534,7 +586,7 @@ class LogDatabaseTest {
     assertEquals(
         0,
         db.queryForObject(
-            "SELECT COUNT(*) FROM audit_page_action WHERE id=?", Integer.class, failed));
+            "SELECT COUNT(*) FROM audit_page_action_read WHERE id=?", Integer.class, failed));
   }
 
   @Test
@@ -576,13 +628,13 @@ class LogDatabaseTest {
             request,
             new org.springframework.mock.web.MockHttpServletResponse()));
     assertEquals("verified-user", request.getSession(false).getAttribute("IAM_USER"));
-    var anonymous = db.queryForMap("SELECT * FROM audit_delivery WHERE outcome='STARTED'");
+    var anonymous = db.queryForMap("SELECT * FROM audit_delivery_read WHERE outcome='STARTED'");
     assertNull(anonymous.get("actor"));
     assertNull(anonymous.get("object_id"));
     assertNull(anonymous.get("menu_id"));
     assertNull(anonymous.get("summary"));
     assertEquals("UNVERIFIED_SECURITY", anonymous.get("org_id"));
-    var verified = db.queryForMap("SELECT * FROM audit_delivery WHERE outcome='SUCCESS'");
+    var verified = db.queryForMap("SELECT * FROM audit_delivery_read WHERE outcome='SUCCESS'");
     assertEquals("verified-user", verified.get("actor"));
     assertEquals("TEST_ORG", verified.get("org_id"));
   }
@@ -640,7 +692,7 @@ class LogDatabaseTest {
       ops.enqueue("TEST_ORG", "", "READ", "", "SUCCESS", "REQUEST", "", "GET", "/events", "", "");
       var delivery = new LogDeliveryWorker(db, config);
       delivery.poll();
-      var row = db.queryForMap("SELECT * FROM audit_delivery");
+      var row = db.queryForMap("SELECT * FROM audit_delivery_read");
       assertEquals("FAILED", row.get("state"));
       assertEquals("AUDIT_INVALID_RECEIPT", row.get("last_error"));
       delivery.poll();
@@ -654,7 +706,7 @@ class LogDatabaseTest {
       assertEquals(
           "DELIVERED",
           db.queryForObject(
-              "SELECT state FROM audit_delivery WHERE id=?", String.class, row.get("id")));
+              "SELECT state FROM audit_delivery_read WHERE id=?", String.class, row.get("id")));
       assertEquals(requests.get(0), requests.get(1));
       var delivered = Json.map(requests.get(0));
       assertEquals("", delivered.get("userId"));
@@ -671,26 +723,26 @@ class LogDatabaseTest {
     var input = input("verify", "");
     service.submit(source, input);
     worker.poll();
-    String id = db.queryForObject("SELECT chain_event_id FROM audit_evidence", String.class),
+    String id = db.queryForObject("SELECT chain_event_id FROM audit_evidence_read", String.class),
         lease = UUID.randomUUID().toString();
     db.update(
-        "UPDATE tasks SET state='RUNNING',lease_token=?,lease_until=CURRENT_TIMESTAMP+INTERVAL '60"
-            + " seconds'",
+        "UPDATE tasks_read SET state='RUNNING',lease_token=?,lease_until=CURRENT_TIMESTAMP+INTERVAL"
+            + " '60 seconds'",
         lease);
     var archive = new GenericEvidenceArchive(db, storage);
-    var event = db.queryForMap("SELECT * FROM events WHERE id=?", id);
+    var event = db.queryForMap("SELECT * FROM events_read WHERE id=?", id);
     String manifest = archive.manifest(event, lease);
     String manifestCid = storage.add(manifest.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     db.update(
-        "UPDATE events SET"
+        "UPDATE events_read SET"
             + " manifest_json=?,manifest_cid=?,manifest_sha256=?,file_state='STORED',chain_state='COMMITTED',tx_id='fixture-tx'"
             + " WHERE id=?",
         manifest,
         manifestCid,
         LogInput.hash(manifest),
         id);
-    db.update("UPDATE tasks SET state='DONE'");
-    event = db.queryForMap("SELECT * FROM events WHERE id=?", id);
+    db.update("UPDATE tasks_read SET state='DONE'");
+    event = db.queryForMap("SELECT * FROM events_read WHERE id=?", id);
     var record =
         new TreeMap<String, Object>(com.bproject.trust.archiving.AttestationRecord.record(event));
     record.put("txId", "fixture-tx");
@@ -833,8 +885,9 @@ class LogDatabaseTest {
       workerClass.getMethod("runBatch").invoke(original);
       assertEquals(1, posts.get());
       worker.poll();
-      db.update("UPDATE events SET chain_state='COMMITTED',tx_id='synthetic-verified-transaction'");
-      db.update("UPDATE tasks SET state='DONE'");
+      db.update(
+          "UPDATE events_read SET chain_state='COMMITTED',tx_id='synthetic-verified-transaction'");
+      db.update("UPDATE tasks_read SET state='DONE'");
       db.update("UPDATE log_chain SET next_attempt=CURRENT_TIMESTAMP");
       workerClass.getMethod("runBatch").invoke(original);
       assertEquals("COMMITTED", db.queryForObject("SELECT state FROM log_chain", String.class));

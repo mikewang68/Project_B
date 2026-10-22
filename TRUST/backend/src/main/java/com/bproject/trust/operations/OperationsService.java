@@ -31,14 +31,24 @@ public class OperationsService {
     }
     result.put("fabric", fabric.healthy() ? "UP" : "DOWN");
     result.put("checkedAt", Instant.now());
+    result.put("workerFailures", com.bproject.trust.shared.WorkerSignals.counts());
+    result.put(
+        "oldestPendingSeconds",
+        db.queryForObject(
+            "SELECT CAST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP-MIN(e.received_at))) AS BIGINT) FROM"
+                + " tasks_read t JOIN events e ON e.id=t.event_id WHERE e.org_id=? AND"
+                + " t.state<>'DONE'",
+            Long.class,
+            org));
     result.put(
         "tasks",
         db.queryForList(
-            "SELECT t.state,COUNT(*) AS count FROM tasks t JOIN events e ON e.id=t.event_id WHERE"
-                + " e.org_id=? GROUP BY t.state",
+            "SELECT t.state,COUNT(*) AS count FROM tasks_read t JOIN events_read e ON"
+                + " e.id=t.event_id WHERE e.org_id=? GROUP BY t.state",
             org));
     result.put(
-        "events", db.queryForObject("SELECT COUNT(*) FROM events WHERE org_id=?", Long.class, org));
+        "events",
+        db.queryForObject("SELECT COUNT(*) FROM events_read WHERE org_id=?", Long.class, org));
     return result;
   }
 }

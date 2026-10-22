@@ -121,7 +121,9 @@ class OperationSecurityChainTest {
                 "user",
                 List.of("ORG"),
                 Set.of("trust:event:read", "trust:operations:read")));
-    http = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+    http = MockMvcBuilders.webAppContextSetup(context)
+        .addFilters(new com.bproject.trust.config.TrustPrefixConfiguration.PrefixFilter())
+        .apply(springSecurity()).build();
   }
 
   MockHttpSession session() {
@@ -130,6 +132,31 @@ class OperationSecurityChainTest {
     s.setAttribute("IAM_USER", "real-user");
     s.setAttribute("IAM_ORG", "TRUST_ORG");
     return s;
+  }
+
+  @Test
+  void prefixUsesTheSameAuthenticationAuditAndCsrfChain() throws Exception {
+    http.perform(get("/trust?navTab=tasks")).andExpect(status().isPermanentRedirect())
+        .andExpect(header().string("Location", "/trust/?navTab=tasks"));
+    http.perform(get("/trust/api/v1/events")).andExpect(status().isUnauthorized());
+    http.perform(get("/trust/api/v1/events").session(session())).andExpect(status().isOk());
+    verify(operations).enqueue(eq("TRUST_ORG"),eq("real-user"),eq("READ"),eq(""),eq("STARTED"),
+        eq("REQUEST"),eq(""),eq("GET"),eq("/api/v1/events"),eq(""),anyString());
+    http.perform(post("/trust/api/v1/logout").session(session())).andExpect(status().isForbidden());
+    var s=session();
+    http.perform(post("/trust/api/v1/logout").session(s).with(csrf())).andExpect(status().isNoContent());
+    assertTrue(s.isInvalid());
+  }
+
+  @Test
+  void prefixReadonlyAndAuditFailureCannotBypassBusinessRejection() throws Exception {
+    when(iam.current("synthetic-session-token")).thenReturn(new PlatformIdentity.User("real-user",
+        "user",List.of("ORG"),Set.of("trust:event:submit", "trust:event:read"),true));
+    for (String prefix:List.of("", "/trust")) {
+      http.perform(post(prefix+"/api/v1/events").session(session()).with(csrf()))
+          .andExpect(status().isForbidden());
+      http.perform(get(prefix+"/api/v1/events").session(session())).andExpect(status().isOk());
+    }
   }
 
   @Test
@@ -265,7 +292,10 @@ class OperationSecurityChainTest {
 
   @Test
   void csrfDenialIsPersistedBeforeReturningForbidden() throws Exception {
-    http.perform(post("/api/v1/events").session(session())).andExpect(status().isForbidden());
+    var response = http.perform(post("/api/v1/events").session(session()))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.message").exists()).andReturn().getResponse();
+    assertNull(response.getErrorMessage(), "must not initiate an ERROR redispatch");
     verify(operations).rejected(any(), eq("POST"), eq("/api/v1/events"));
   }
 

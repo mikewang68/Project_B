@@ -63,7 +63,17 @@ class EvidenceIngressSecurityTest {
             Set.of("MAINTENANCE_CONFIRMED"));
     when(settings.read())
         .thenReturn(new EvidenceIngressSettings.Settings(1, true, List.of(source)));
-    http = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+    http = MockMvcBuilders.webAppContextSetup(context)
+        .addFilters(new com.bproject.trust.config.TrustPrefixConfiguration.PrefixFilter())
+        .apply(springSecurity()).build();
+  }
+
+  @Test
+  void prefixRetainsDedicatedMachineCredentialBoundary() throws Exception {
+    String path="/trust"+EvidenceIngressSecurity.BASE+"/capabilities";
+    http.perform(get(path)).andExpect(status().isUnauthorized());
+    http.perform(get(path).header("Authorization","Bearer "+token))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.instanceId").value("offline"));
   }
 
   @Test

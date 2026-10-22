@@ -60,12 +60,14 @@ class GenericMigrationDatabaseTest {
     assertDoesNotThrow(
         () ->
             db.execute(
-                "UPDATE generic_event_data SET"
+                "UPDATE generic_event_data_read SET"
                     + " original_cid=NULL,last_error_code=NULL WHERE 1=0"));
-    assertDoesNotThrow(() -> db.execute(
-        "UPDATE audit_delivery SET lease_token=NULL,lease_until=NULL WHERE 1=0"));
+    assertDoesNotThrow(
+        () ->
+            db.execute(
+                "UPDATE audit_delivery_read SET lease_token=NULL,lease_until=NULL WHERE 1=0"));
     assertEquals(
-        8,
+        9,
         new JdbcTemplate(dataSource(true))
             .queryForObject("SELECT COUNT(*) FROM databasechangelog", Integer.class));
   }
@@ -129,6 +131,133 @@ class GenericMigrationDatabaseTest {
           s.execute("DROP SCHEMA " + schema + " CASCADE");
         }
       }
+    }
+  }
+
+  @Test
+  void eightChangeSetSnapshotRetainsEveryExistingDomainColumn() throws Exception {
+    String schema = "retention_upgrade_" + UUID.randomUUID().toString().replace("-", "");
+    var migrationDs = dataSource(true);
+    var admin = new JdbcTemplate(migrationDs);
+    admin.execute("CREATE SCHEMA " + schema);
+    migrationDs.setSchema(schema);
+    var fixture = new JdbcTemplate(migrationDs);
+    var before = new java.util.LinkedHashMap<String, java.util.List<String>>();
+    var fields = new java.util.LinkedHashMap<String, String>();
+    try (var c = migrationDs.getConnection()) {
+      var database =
+          DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(c));
+      database.setDefaultSchemaName(schema);
+      database.setLiquibaseSchemaName(schema);
+      try (var migrations =
+          new Liquibase("db/changelog.xml", new ClassLoaderResourceAccessor(), database)) {
+        migrations.update(8, new liquibase.Contexts(), new liquibase.LabelExpression());
+        fixture.execute(
+            "INSERT INTO"
+                + " wallets(id,org_id,label,msp_id,key_ref,certificate_pem,fingerprint,subject,not_after,state)"
+                + " VALUES('wallet','OLD','old wallet','Org1MSP','synthetic-key','synthetic"
+                + " certificate',repeat('a',64),'synthetic',CURRENT_TIMESTAMP,'DISABLED')");
+        fixture.execute(
+            "INSERT INTO"
+                + " wallet_requests(id,org_id,action,payload,reason,proposed_by,reviewed_by,state,reviewed_at)"
+                + " VALUES('request','OLD','BIND','{}','old"
+                + " approval','proposer','reviewer','APPROVED',CURRENT_TIMESTAMP)");
+        fixture.execute(
+            "INSERT INTO wallet_bindings(org_id,source_system,wallet_id,revision,change_request_id)"
+                + " VALUES('OLD','SOURCE','wallet',3,'request')");
+        fixture.execute(
+            "INSERT INTO"
+                + " evidence(id,org_id,uploaded_by,filename,mime,size_bytes,sha256,cid,storage_state)"
+                + " VALUES('evidence','OLD','receiver','old.pdf','application/pdf',5,repeat('b',64),'synthetic-cid','STORED')");
+        fixture.execute(
+            "INSERT INTO"
+                + " events(id,org_id,source_system,source_event_id,event_type,batch_id,object_id,occurred_at,submitted_by,request_json,canonical_json,event_sha256,root_id,version,wallet_id,chain_state)"
+                + " VALUES('event','OLD','SOURCE','one','ARRIVAL','batch','object',CURRENT_TIMESTAMP,'actor','"
+                + " { } ',' { } ',repeat('c',64),'event',1,'wallet','COMMITTED')");
+        fixture.execute(
+            "INSERT INTO event_evidence(event_id,evidence_id) VALUES('event','evidence')");
+        fixture.execute(
+            "INSERT INTO tasks(event_id,state,attempts,last_error) VALUES('event','DONE',4,'old"
+                + " result')");
+        fixture.execute(
+            "INSERT INTO signing_attempts(tx_id,event_id,wallet_id,fingerprint,state)"
+                + " VALUES('transaction','event','wallet',repeat('a',64),'COMMITTED')");
+        fixture.execute(
+            "INSERT INTO"
+                + " fabric_identity(id,issuer,tenant,user_id,org_id,revision,command_hash,desired_state,action,status)"
+                + " VALUES('identity','issuer','tenant','user','OLD',7,repeat('d',64),'DELETED','REVOKE','REVOKED')");
+        fixture.execute(
+            "INSERT INTO"
+                + " fabric_certificate(identity_id,version,requested_revision,org_id,msp_id,ca_id,enrollment_id,key_ref,state,fingerprint,certificate_pem)"
+                + " VALUES('identity',2,6,'OLD','Org1MSP','ca','synthetic-enrollment','synthetic-identity-key','CA_REVOKED',repeat('e',64),'synthetic"
+                + " certificate')");
+        fixture.execute(
+            "INSERT INTO audit_page_action(id,org_id,actor,request_json,result_json)"
+                + " VALUES('page','OLD','actor','{ }','{ }')");
+        fixture.execute(
+            "INSERT INTO"
+                + " audit_delivery(id,org_id,actor,action,object_id,outcome,source_kind,menu_id,occurred_at,event_json,state)"
+                + " VALUES('delivery','OLD','actor','READ','object','SUCCESS','BUSINESS','events','2026-01-01T00:00:00Z','{"
+                + " }','DELIVERED')");
+        for (String table :
+            java.util.List.of(
+                "events",
+                "evidence",
+                "generic_event_data",
+                "wallets",
+                "wallet_bindings",
+                "wallet_requests",
+                "fabric_identity",
+                "fabric_certificate",
+                "audit_log_settings",
+                "audit_evidence",
+                "audit_delivery",
+                "audit_page_action",
+                "signing_attempts",
+                "tasks")) {
+          var cols =
+              fixture.queryForList(
+                  "SELECT column_name FROM information_schema.columns WHERE table_schema=? AND"
+                      + " table_name=? ORDER BY ordinal_position",
+                  String.class,
+                  schema,
+                  table);
+          String selected = String.join(",", cols);
+          fields.put(table, selected);
+          before.put(
+              table,
+              fixture.queryForList(
+                  "SELECT row_to_json(x)::text FROM (SELECT " + selected + " FROM " + table + ") x",
+                  String.class));
+        }
+        migrations.update(new liquibase.Contexts(), new liquibase.LabelExpression());
+        for (var entry : fields.entrySet()) {
+          String table = entry.getKey(), cols = entry.getValue();
+          assertEquals(
+              before.get(table),
+              fixture.queryForList(
+                  "SELECT row_to_json(x)::text FROM (SELECT " + cols + " FROM " + table + ") x",
+                  String.class),
+              table + " original changed");
+          assertEquals(
+              before.get(table),
+              fixture.queryForList(
+                  "SELECT row_to_json(x)::text FROM (SELECT "
+                      + cols
+                      + " FROM "
+                      + table
+                      + "_read) x",
+                  String.class),
+              table + " read baseline differs");
+          assertEquals(
+              before.get(table).size(),
+              fixture.queryForObject(
+                  "SELECT count(*) FROM " + table + "_versions WHERE change_operation='BASELINE'",
+                  Integer.class));
+        }
+      }
+    } finally {
+      admin.execute("DROP SCHEMA " + schema + " CASCADE");
     }
   }
 }

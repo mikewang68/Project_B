@@ -31,6 +31,7 @@ public class GenericEventService {
     source.require("submit");
     source.type(input.eventType());
     String request = input.request(source.sourceSystem());
+    EventSourceRoutes.prepare(db, source.orgId(), source.sourceSystem());
     try {
       return tx.execute(
           s -> {
@@ -41,8 +42,8 @@ public class GenericEventService {
             // The unique domain includes legacy/other owners; never return their row on
             // collision.
             if (db.queryForObject(
-                    "SELECT COUNT(*) FROM events WHERE org_id=? AND"
-                        + " source_system=? AND source_event_id=?",
+                    "SELECT COUNT(*) FROM events_read WHERE org_id=? AND source_system=? AND"
+                        + " source_event_id=?",
                     Long.class,
                     source.orgId(),
                     source.sourceSystem(),
@@ -52,13 +53,13 @@ public class GenericEventService {
             int version = 1;
             if (input.supersedesId() != null) {
               var previous = owned(source, input.supersedesId());
-              db.queryForList(
-                  "SELECT id FROM events WHERE id=? FOR UPDATE", previous.get("root_id"));
+              com.bproject.trust.shared.RetentionLock.rows(
+                  db, "events", "id=?", previous.get("root_id"));
               if (!input.eventType().equals(previous.get("event_type"))
                   || !input.businessObjectId().equals(previous.get("object_id")))
                 throw new IngressError(400, "INVALID_REQUEST", "更正必须保持事件类型及业务对象");
               if (db.queryForObject(
-                      "SELECT COUNT(*) FROM events WHERE supersedes_id=?",
+                      "SELECT COUNT(*) FROM events_read WHERE supersedes_id=?",
                       Long.class,
                       input.supersedesId())
                   > 0) throw new IngressError(409, "CORRECTION_CONFLICT", "请基于最新版本追加更正");
@@ -124,7 +125,7 @@ public class GenericEventService {
 
   private List<Map<String, Object>> ownedByNumber(EvidenceIngressSettings.Source s, String number) {
     return db.queryForList(
-        "SELECT e.* FROM events e WHERE " + SCOPE + " AND e.source_event_id=?",
+        "SELECT e.* FROM events_read e WHERE " + SCOPE + " AND e.source_event_id=?",
         s.orgId(),
         s.sourceSystem(),
         s.actor(),
@@ -134,7 +135,7 @@ public class GenericEventService {
   private Map<String, Object> owned(EvidenceIngressSettings.Source s, String id) {
     return db
         .queryForList(
-            "SELECT e.* FROM events e WHERE " + SCOPE + " AND e.id=?",
+            "SELECT e.* FROM events_read e WHERE " + SCOPE + " AND e.id=?",
             s.orgId(),
             s.sourceSystem(),
             s.actor(),
@@ -160,9 +161,9 @@ public class GenericEventService {
             .queryForList(
                 "SELECT e.*,t.state AS"
                     + " task_state,t.attempts,t.next_at,g.original_sha256,g.original_cid,g.last_error_code,EXISTS(SELECT"
-                    + " 1 FROM signing_attempts s WHERE s.event_id=e.id AND s.state IN"
-                    + " ('PREPARED','UNKNOWN')) AS uncertain FROM events e JOIN tasks t ON"
-                    + " t.event_id=e.id JOIN generic_event_data g ON g.event_id=e.id WHERE "
+                    + " 1 FROM signing_attempts_read s WHERE s.event_id=e.id AND s.state IN"
+                    + " ('PREPARED','UNKNOWN')) AS uncertain FROM events_read e JOIN tasks_read t"
+                    + " ON t.event_id=e.id JOIN generic_event_data_read g ON g.event_id=e.id WHERE "
                     + SCOPE
                     + " AND e.id=?",
                 source.orgId(),
@@ -185,20 +186,21 @@ public class GenericEventService {
         s -> {
           // Check scope before locking; lock task then event, as worker completion does.
           owned(source, id);
-          var task = db.queryForMap("SELECT * FROM tasks WHERE event_id=? FOR UPDATE", id);
-          db.queryForList("SELECT id FROM events WHERE id=? FOR UPDATE", id);
+          var task = com.bproject.trust.shared.RetentionLock.row(db, "tasks", "event_id=?", id);
+          com.bproject.trust.shared.RetentionLock.rows(db, "events", "id=?", id);
           var event = owned(source, id);
           source.type((String) event.get("event_type"));
           String state = (String) task.get("state");
           boolean queued = GenericEventRules.retryQueued(state, (String) event.get("chain_state"));
           if (queued) {
             db.update(
-                "UPDATE tasks SET"
-                    + " state='READY',attempts=0,next_at=CURRENT_TIMESTAMP,lease_token=NULL,lease_until=NULL,last_error=NULL,updated_at=CURRENT_TIMESTAMP"
-                    + " WHERE event_id=?",
+                "UPDATE tasks_read SET"
+                    + " state='READY',attempts=0,next_at=CURRENT_TIMESTAMP,lease_token=NULL,lease_until=NULL,last_error=NULL,updated_at=CURRENT_TIMESTAMP,change_actor=?,change_operation='RETRY',change_reason='Accepted"
+                    + " source retry' WHERE event_id=?",
+                source.actor(),
                 id);
             db.update(
-                "UPDATE generic_event_data SET last_error_code=NULL WHERE" + " event_id=?", id);
+                "UPDATE generic_event_data_read SET last_error_code=NULL WHERE event_id=?", id);
             audit.record(
                 source.orgId(),
                 source.actor(),

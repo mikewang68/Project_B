@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { toRef } from "vue";
+import VersionHistory from "../../shared/components/VersionHistory.vue";
 import type { ApiRecord } from "../../shared/types";
 import { useEventDetail } from "./useEventDetail";
 import { typeLabels } from "./presentation";
@@ -7,6 +8,8 @@ import { fmt, label, recoveryHint } from "../../shared/presentation";
 import { exportEvent } from "../verification/api";
 import EvidenceFiles from "../evidence/EvidenceFiles.vue";
 import VerificationResult from "../verification/VerificationResult.vue";
+import { useAccess } from "../auth/access";
+const allowed = useAccess();
 const props = defineProps<{ id: string; canWrite: boolean }>();
 const emit = defineEmits<{
   close: [];
@@ -22,8 +25,21 @@ const { selected, check, detailEvent, busy, act, verify, refresh } =
     ><div class="detail-bar">
       <button @click="emit('close')">← 返回列表</button>
       <div>
+        <button
+          v-if="
+            selected.currentVersionId &&
+            selected.currentVersionId !== selected.id
+          "
+          @click="emit('open', selected.currentVersionId)"
+        >
+          查看当前版本
+        </button>
         <button @click="refresh" :disabled="busy">刷新状态</button>
-        <button @click="verify" :disabled="busy">核验证据</button
+        <button
+          @click="verify"
+          :disabled="busy || !allowed('trust:evidence:verify')"
+        >
+          核验证据</button
         ><button
           @click="
             act(
@@ -36,7 +52,11 @@ const { selected, check, detailEvent, busy, act, verify, refresh } =
               () => exportEvent(selected!.id, selected!.source_event_id),
             )
           "
-          :disabled="busy || selected.chain_state !== 'COMMITTED'"
+          :disabled="
+            busy ||
+            !allowed('trust:evidence:export') ||
+            selected.chain_state !== 'COMMITTED'
+          "
         >
           导出证据包</button
         ><button v-if="canWrite" @click="emit('correct', selected)">
@@ -47,6 +67,10 @@ const { selected, check, detailEvent, busy, act, verify, refresh } =
     <p class="small muted" role="status">
       状态不会自动更新。请点击“刷新状态”查看最新归档和上链结果。
     </p>
+    <VersionHistory
+      :url="`/events/${selected.id}/processing-history`"
+      menu-id="events"
+      title="归档与上链处理历史" />
     <p v-if="selected.chain_state !== 'COMMITTED'" class="alert warning">
       此事件尚未完成上链，暂不能导出完整证据包。请到“补办任务”查看原因；修复原因并完成上链后再核验、导出。
     </p>
