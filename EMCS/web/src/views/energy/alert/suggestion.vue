@@ -218,7 +218,7 @@
           </section>
 
           <section v-else class="detail-actions" aria-label="后端授权的建议动作">
-            <el-button
+            <el-button v-sso-write
               v-for="action in visibleActions"
               :key="action.value"
               :type="action.primary ? 'primary' : 'default'"
@@ -414,7 +414,7 @@
       </el-form>
       <template #footer>
         <el-button @click="transitionVisible = false">取消</el-button>
-        <el-button type="primary" :loading="actionLoading === transitionForm.action" @click="submitTransition">确认</el-button>
+        <el-button v-sso-write type="primary" :loading="actionLoading === transitionForm.action" @click="submitTransition">确认</el-button>
       </template>
     </el-dialog>
 
@@ -426,7 +426,7 @@
       </el-form>
       <template #footer>
         <el-button @click="activityVisible = false">取消</el-button>
-        <el-button type="primary" :loading="actionLoading === 'addActivity'" @click="submitActivity">保存执行记录</el-button>
+        <el-button v-sso-write type="primary" :loading="actionLoading === 'addActivity'" @click="submitActivity">保存执行记录</el-button>
       </template>
     </el-dialog>
   </div>

@@ -67,7 +67,7 @@
         </section>
         <div class="trace-actions">
           <el-button v-if="trace.relatedSuggestionId" type="primary" @click="$emit('suggestion', trace.relatedSuggestionId)">查看关联建议</el-button>
-          <el-button
+          <el-button v-sso-write
             v-else-if="canCreateSuggestion && trace.suggestionContext"
             type="primary"
             @click="$emit('create-suggestion', trace.suggestionContext)"

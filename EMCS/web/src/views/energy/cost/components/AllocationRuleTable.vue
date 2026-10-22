@@ -6,7 +6,7 @@
         <b>分摊规则</b>
         <small>历史成本反查始终读取版本行冻结快照</small>
       </div>
-      <el-button
+      <el-button v-sso-write
         v-if="access.allocation"
         v-hasRole="['finance']"
         type="primary"
@@ -51,7 +51,7 @@
       </el-form>
       <template #footer>
         <el-button @click="visible=false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        <el-button v-sso-write type="primary" :loading="saving" @click="save">保存</el-button>
       </template>
     </el-dialog>
   </section>

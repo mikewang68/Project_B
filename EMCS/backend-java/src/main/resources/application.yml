@@ -51,3 +51,13 @@ b-demo:
     register-enabled: false
     jwt-secret: ${JWT_SECRET_KEY:change-this-development-secret-change-this-development-secret}
     token-minutes: ${JWT_EXPIRE_MINUTES:120}
+
+
+emcs:
+  sso:
+    enabled: ${EMCS_SSO_ENABLED:false}
+    iam-base-url: ${EMCS_SSO_IAM_BASE_URL:}
+    service-token: ${EMCS_SSO_SERVICE_TOKEN:}
+    allow-insecure-http: ${EMCS_SSO_ALLOW_INSECURE_HTTP:false}
+    timeout-ms: ${EMCS_SSO_TIMEOUT_MS:3000}
+    session-minutes: ${EMCS_SSO_SESSION_MINUTES:15}

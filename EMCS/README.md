@@ -2,6 +2,8 @@
 
 前端 Vue 3 + Element Plus，后端 Spring Boot + JDK 17。关系数据库为 **openGauss**，缓存使用 **Kvrocks** 的 Redis 协议。初始化数据为固定 SQL，无需 Python。
 
+可选的可信 SSO 入口、显式主体/区域绑定、只读限制、测试与迁移回退见 [SSO_INTEGRATION.md](SSO_INTEGRATION.md)。SSO 默认关闭，原生验证码登录保留；本地验证不代表真实 IAM/Portal 联调或正式部署通过。
+
 ## 环境与目录
 
 | 组件 | 版本 / 位置 |

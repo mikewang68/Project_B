@@ -6,7 +6,7 @@
         <b>重算版本与差异</b>
         <small>旧版本 → 新版本 · diffSummary 冻结为审计证据</small>
       </div>
-      <el-button
+      <el-button v-sso-write
         v-if="access.recompute"
         v-hasRole="['energy_mgr', 'finance']"
         type="primary"
@@ -55,7 +55,7 @@
       </el-table-column>
       <el-table-column label="操作" width="150">
         <template #default="{row}">
-          <el-button
+          <el-button v-sso-write
             v-if="row.reviewStatus==='pending' && access.review"
             v-hasRole="['finance']"
             link
@@ -78,7 +78,7 @@
       </el-form>
       <template #footer>
         <el-button @click="createVisible=false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="create">确认重算</el-button>
+        <el-button v-sso-write type="primary" :loading="saving" @click="create">确认重算</el-button>
       </template>
     </el-dialog>
 
@@ -94,7 +94,7 @@
       </el-form>
       <template #footer>
         <el-button @click="reviewVisible=false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="review">提交复核</el-button>
+        <el-button v-sso-write type="primary" :loading="saving" @click="review">提交复核</el-button>
       </template>
     </el-dialog>
   </section>

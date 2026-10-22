@@ -27,6 +27,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final SystemUserMapper userMapper;
     private final SystemMenuMapper menuMapper;
+    private final com.bdemo.auth.sso.EmcsSsoSessionRepository ssoSessions;
 
     public AuthController(
             @Value("${b-demo.auth.captcha-enabled}") boolean captchaEnabled,
@@ -35,7 +36,8 @@ public class AuthController {
             JwtService jwtService,
             PasswordEncoder passwordEncoder,
             SystemUserMapper userMapper,
-            SystemMenuMapper menuMapper) {
+            SystemMenuMapper menuMapper,
+            com.bdemo.auth.sso.EmcsSsoSessionRepository ssoSessions) {
         this.captchaEnabled = captchaEnabled;
         this.registerEnabled = registerEnabled;
         this.captchaService = captchaService;
@@ -43,6 +45,7 @@ public class AuthController {
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;
         this.menuMapper = menuMapper;
+        this.ssoSessions = ssoSessions;
     }
 
     @GetMapping("/captchaImage")
@@ -94,16 +97,29 @@ public class AuthController {
                 .add("roles", roles)
                 .add("permissions", permissions)
                 .add("isDefaultModifyPwd", false)
-                .add("isPasswordExpired", false);
+                .add("isPasswordExpired", false)
+                .add("sso", ssoInfo());
     }
 
     @GetMapping("/getRouters")
     public AjaxResult getRouters(@AuthenticationPrincipal AuthenticatedUser principal) {
-        return AjaxResult.success(RouterTreeBuilder.build(menuMapper.findRouterMenus(principal.userId())));
+        var menus=menuMapper.findRouterMenus(principal.userId());
+        var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if(auth.getDetails() instanceof com.bdemo.auth.sso.EmcsSsoAccess access)
+            menus=com.bdemo.auth.sso.EmcsSsoPolicy.menus(menus,access);
+        return AjaxResult.success(RouterTreeBuilder.build(menus));
     }
 
     @PostMapping("/logout")
-    public AjaxResult logout() {
+    public AjaxResult logout(HttpServletRequest request) {
+        String authorization=request.getHeader("Authorization");
+        if(authorization!=null && authorization.startsWith("Bearer ")) ssoSessions.revokeToken(authorization.substring(7));
         return AjaxResult.success();
+    }
+    private Map<String,Object> ssoInfo(){
+        var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if(auth!=null && auth.getDetails() instanceof com.bdemo.auth.sso.EmcsSsoAccess access)
+            return Map.of("enabled",true,"readOnly",access.effectiveReadOnly(),"scopeArea",access.scopeArea());
+        return Map.of("enabled",false,"readOnly",false);
     }
 }

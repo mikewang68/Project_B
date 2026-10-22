@@ -26,6 +26,7 @@ import Layout from '@/layout'
 
 // 公共路由
 export const constantRoutes = [
+  { path: '/sso', component: () => import('@/views/sso/index.vue'), hidden: true },
   {
     path: '/redirect',
     component: Layout,

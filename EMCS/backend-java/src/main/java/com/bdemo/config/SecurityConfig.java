@@ -19,11 +19,18 @@ public class SecurityConfig {
                                             SecurityAuditAccessDeniedHandler accessDeniedHandler) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
+                // The application logout controller revokes opaque SSO tokens; do not intercept it with a redirect.
+                .logout(logout -> logout.disable())
                 .cors(cors -> {})
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/captchaImage", "/error", "/actuator/health/**",
                                 "/transport/crypto/frontend-config", "/transport/crypto/public-key").permitAll()
+                        // 可信 SSO：exchange 必须匿名可达（主体尚未建立），
+                        // 安全性由服务端IAM验票、本地主体/范围绑定及独立服务身份保证；
+                        // health 是诊断端点，不含凭据。
+                        .requestMatchers(HttpMethod.POST, "/api/auth/sso/exchange", "/api/auth/sso/logout-notify").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/sso/health").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/system/**").hasRole("admin")
                         .requestMatchers("/monitor/**").hasRole("admin")

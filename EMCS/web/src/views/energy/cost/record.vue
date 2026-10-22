@@ -198,7 +198,7 @@
       </el-form>
       <template #footer>
         <el-button @click="suggestionVisible=false">取消</el-button>
-        <el-button type="primary" :loading="suggestionSaving" @click="submitSuggestion">创建人工建议</el-button>
+        <el-button v-sso-write type="primary" :loading="suggestionSaving" @click="submitSuggestion">创建人工建议</el-button>
       </template>
     </el-dialog>
   </div>
