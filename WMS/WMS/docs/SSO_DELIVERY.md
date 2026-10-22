@@ -57,6 +57,23 @@ sessions. Distributed sessions or multiple WMS instances require a shared revoca
 store or reliable notification to every instance; this implementation makes no
 cross-instance guarantee. Revocation tombstones currently live until process restart.
 
+### Simulator service-account delegation
+
+The same-origin Python simulator also checks the native read-only role deny list
+on every write, even when a read-only user is accidentally granted `stockin:write`.
+Otherwise its native `auth/me` GET could succeed and the simulator's privileged
+worker could receive inventory on that user's behalf, bypassing the Java filter.
+The page reports `can_write=false`; scan, weigh, create, confirm, task selection,
+automatic controls and flush return HTTP 403 / `AUTH_READONLY`. Read-only state
+inspection remains available with `stockin:read` and the approved scope.
+
+Keep `READ_ONLY_ROLES` in `simulator/web_gateway.py` aligned with
+`WmsReadOnlyFilter`. The regression test uses valid authentication and CSRF plus
+an intentionally over-granted write permission. It checks all five role aliases
+and all eight write endpoints, with no scan, queue or automatic-control mutation.
+After an IAM revocation, the gateway still asks native WMS `auth/me` and rejects
+the old browser session; it never falls back to its worker account.
+
 ## Apply and build
 
 Start from the exact baseline recorded in the external delivery manifest and a clean

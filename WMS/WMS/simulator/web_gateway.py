@@ -28,6 +28,14 @@ import simulator as sim
 LOG = logging.getLogger("wms-simulator")
 HERE = Path(__file__).resolve().parent
 HOSTS = {"bpoc-node6:18444", "192.168.101.74:18444", "100.65.200.125:18444"}
+# Keep this deny policy aligned with WMS's native WmsReadOnlyFilter. The gateway
+# delegates receipt jobs to a service account, so checking permissions alone
+# would bypass the native guard for an accidentally over-granted read-only user.
+READ_ONLY_ROLES = frozenset({"AUDITOR", "READONLY", "ROLE_READONLY", "READONLY_AUDITOR", "PLATFORM_AUDITOR_READONLY"})
+
+
+def is_read_only(user):
+    return any(isinstance(role, str) and role.upper() in READ_ONLY_ROLES for role in user.get("roles", []))
 
 
 class WebError(Exception):
@@ -74,6 +82,8 @@ class WebGateway:
             raise WebError(401, "请先登录 WMS", "AUTH_UNAUTHENTICATED")
         client = self.factory(self.session.cfg, cookie, csrf)
         user = client.call("GET", "/api/v1/auth/me")
+        if write and is_read_only(user):
+            raise WebError(403, "只读账号不能通过模拟终端执行入库作业", "AUTH_READONLY")
         permissions = set(user.get("permissions", []))
         if "stockin:read" not in permissions or (write and "stockin:write" not in permissions):
             raise WebError(403, "没有入库查看 / 作业权限", "AUTH_FORBIDDEN")
@@ -99,7 +109,7 @@ class WebGateway:
         state["order"] = {k: v for k, v in state["order"].items() if k != "lab_approval_sha256"}
         state["actual"] = next(t["actual"] for t in state["tasks"] if t["id"] == state["active_task"])
         state["user"] = {"id": user["id"], "name": user.get("displayName") or user.get("username"),
-                         "can_write": "stockin:write" in user.get("permissions", [])}
+                         "can_write": "stockin:write" in user.get("permissions", []) and not is_read_only(user)}
         state["scope"] = {k: self.session.cfg["target"][k] for k in ("company_code", "warehouse_code", "owner_code")}
         state["catalog"] = [{"code": o["good_code"], "name": o["good_name"], "unit": o["unit"],
                               "measurement_mode": sim.measurement_mode(o)} for o in self.catalog.values()]

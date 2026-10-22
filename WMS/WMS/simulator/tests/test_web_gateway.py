@@ -99,6 +99,28 @@ class WebTests(unittest.TestCase):
         self.user['permissions'] = ['stockin:write']
         self.assertEqual(self.request()[0], 403)
 
+    def test_readonly_role_blocks_delegated_writes_even_with_write_permission(self):
+        # A valid session and CSRF are intentional: this is an authorization
+        # rejection, not a CSRF failure or a missing stockin:write permission.
+        self.assertIn('stockin:write', self.user['permissions'])
+        for role in ('AUDITOR', 'readonly', 'ROLE_READONLY', 'READONLY_AUDITOR', 'PLATFORM_AUDITOR_READONLY'):
+            with self.subTest(role=role):
+                self.user['roles'] = [role]
+                status, state = self.request()
+                self.assertEqual(status, 200)
+                self.assertFalse(state['user']['can_write'])
+                body = self.spec()
+                body.update(auto=True, auto_confirm=True, device='SIM-PDA-01', epc=self.cfg['order']['tags'][0],
+                            selected=self.session.active_task, gross='2', tare='1')
+                for endpoint in ('batches','task','scan','weigh','confirm','tick','flush','settings'):
+                    status, data = self.request('POST', '/api/'+endpoint, body)
+                    self.assertEqual((status, data['code']), (403, 'AUTH_READONLY'))
+        self.assertEqual(self.posts, 0)
+        self.assertEqual(self.session.snapshot()['events'], [])
+        self.assertEqual(self.session.snapshot()['jobs'], [])
+        self.assertFalse(self.session.auto)
+        self.assertFalse(self.session.auto_confirm)
+
     def test_csrf_origin_host_and_duplicate_cookies(self):
         for header in ({'X-XSRF-TOKEN':''}, {'Origin':'https://evil.example'}, {'Host':'evil.example'},
                        {'Cookie':'JSESSIONID=test; XSRF-TOKEN=token; XSRF-TOKEN=other'}):
