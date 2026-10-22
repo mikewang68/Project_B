@@ -8,6 +8,7 @@ import SkeletonLayout from '../layouts/SkeletonLayout';
 import NotFoundPage from '../pages/NotFoundPage';
 import RouteErrorPage from '../pages/RouteErrorPage';
 import RoutePermissionBoundary from './RoutePermissionBoundary';
+import PlanEntryPage from '../pages/dispatch/PlanEntryPage';
 import {
   C03Suspense,
   createC03Element,
@@ -62,6 +63,8 @@ export const appRoutes: RouteObject[] = [
         element: <DefaultRouteRedirect />,
       },
       ...businessRoutes,
+      { path: 'dispatch/recommendation', element: createC03Element(RoutePermissionBoundary, { route: routeCatalog[2] }, <PlanEntryPage mode="recommendation" />) },
+      { path: 'dispatch/tasks', element: createC03Element(RoutePermissionBoundary, { route: routeCatalog[3] }, <PlanEntryPage mode="tasks" />) },
       {
         path: '*',
         element: <NotFoundPage />,

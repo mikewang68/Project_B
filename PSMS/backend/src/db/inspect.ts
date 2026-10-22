@@ -11,7 +11,7 @@ export const AUDIT_RETENTION_DAYS_DEFAULT = 365;
 export async function currentTableCounts(): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
   for (const table of CORE_TABLES) {
-    const n = await queryScalar<number | string>(`SELECT COUNT(*) FROM ${table}`);
+    const n = await queryScalar<number | string>(`SELECT COUNT(*) FROM ${table} WHERE valid = 1`);
     out[table] = Number(n ?? 0);
   }
   return out;
@@ -32,7 +32,7 @@ export async function totalBusinessRows(): Promise<number> {
 export async function currentAuditRetentionDays(): Promise<number> {
   const pool = getPool();
   const res = await pool.query<{ audit_retention_days: number }>(
-    `SELECT audit_retention_days FROM config_versions
+    `SELECT audit_retention_days FROM config_versions WHERE valid = 1
       ORDER BY (status = 'PUBLISHED') DESC, updated_at DESC LIMIT 1`,
   );
   const value = res.rows[0]?.audit_retention_days;

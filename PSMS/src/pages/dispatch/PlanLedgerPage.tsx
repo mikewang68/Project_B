@@ -6,6 +6,7 @@ import { routePolicies, type PolicyContext, type RoleCode } from '../../auth';
 import type { PublicErrorCode } from '../../contracts';
 import InterfaceHealthBanner from '../../features/plan-entry/components/InterfaceHealthBanner';
 import PageIdentity from '../../features/plan-entry/components/PageIdentity';
+import CsvImportPanel from '../../features/plan-entry/components/CsvImportPanel';
 import PageStatePanel, {
   type PageState,
 } from '../../features/plan-entry/components/PageStatePanel';
@@ -243,6 +244,7 @@ export default function PlanLedgerPage({
         </Space>
       </header>
 
+      <CsvImportPanel />
       <InterfaceHealthBanner
         health={health}
         policyContext={policyContext}

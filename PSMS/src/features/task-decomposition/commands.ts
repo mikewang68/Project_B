@@ -172,7 +172,8 @@ function currentGenerationVersion(state: DemoRootState, planId: string): number 
 }
 
 function nextGenerationVersion(state: DemoRootState, planId: string): number {
-  return currentGenerationVersion(state, planId) + 1;
+  const versions = state.workOrder.workOrders.filter((order) => order.planId === planId && order.id.startsWith('C06-WO-')).map(({ id }) => parseGenerationVersion(id) ?? 0);
+  return Math.max(0, ...versions) + 1;
 }
 
 function permissionFailure(
@@ -535,15 +536,17 @@ export function createTaskDecompositionCommandService({
           (item) => isC06WorkOrder(item, command.entityId) && item.status === 'DRAFT',
         );
         const removedNumbers = new Set(removedOrders.map(({ workOrderNo }) => workOrderNo));
-        candidateState.workOrder.workOrders = candidateState.workOrder.workOrders.filter(
-          (item) => !removedOrders.some(({ id }) => id === item.id),
-        );
-        candidateState.workOrder.nodes = candidateState.workOrder.nodes.filter(
-          (item) => !removedNumbers.has(item.workOrderNo),
-        );
+        for (const item of removedOrders) if (!staged.workOrders.some(({ id }) => id === item.id)) item.valid = 0;
+        for (const item of candidateState.workOrder.nodes) if (removedNumbers.has(item.workOrderNo) && !staged.nodes.some(({ id }) => id === item.id)) item.valid = 0;
       }
-      candidateState.workOrder.workOrders.push(...structuredClone(staged.workOrders));
-      candidateState.workOrder.nodes.push(...structuredClone(staged.nodes));
+      for (const item of structuredClone(staged.workOrders)) {
+        const existing = candidateState.workOrder.workOrders.find(({ id }) => id === item.id);
+        if (existing) Object.assign(existing, item, { valid: 1 }); else candidateState.workOrder.workOrders.push(item);
+      }
+      for (const item of structuredClone(staged.nodes)) {
+        const existing = candidateState.workOrder.nodes.find(({ id }) => id === item.id);
+        if (existing) Object.assign(existing, item, { valid: 1 }); else candidateState.workOrder.nodes.push(item);
+      }
     });
     stagedCandidates.delete(command.commandId);
   };

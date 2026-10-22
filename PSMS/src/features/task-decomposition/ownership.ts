@@ -13,14 +13,14 @@ function requireUnique(values: readonly string[], label: string): void {
 }
 
 export function isC06WorkOrder(order: WorkOrder, planId: string): boolean {
-  return order.planId === planId
+  return order.valid !== 0 && order.planId === planId
     && order.id.startsWith('C06-WO-')
     && order.workOrderNo.startsWith('C06-WO-')
     && order.ruleVersion === TASK_DECOMPOSITION_RULE_VERSION;
 }
 
 export function isC06WorkNode(node: WorkNode): boolean {
-  return node.id.startsWith('C06-NODE-') && node.nodeNo.startsWith('C06-N-');
+  return node.valid !== 0 && node.id.startsWith('C06-NODE-') && node.nodeNo.startsWith('C06-N-');
 }
 
 export function parseGenerationVersion(id: string): number | undefined {

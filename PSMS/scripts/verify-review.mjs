@@ -1,0 +1,44 @@
+import { chromium, expect } from '@playwright/test';
+
+const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
+const errors = [];
+page.on('pageerror', (error) => errors.push(error.message));
+const base = process.env.PSMS_REVIEW_URL ?? 'http://127.0.0.1:4173';
+const csv = '计划批次,车次,到达时间,离开时间,股道,货类\r\nREVIEW-IMPORT,T99999,2026-10-12T08:00:00+08:00,2026-10-12T10:00:00+08:00,T1,FLY_ASH';
+try {
+  await page.goto(`${base}/dispatch/plans`);
+  await page.getByLabel('选择 CSV 文件').setInputFiles({ name: 'review.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await page.getByRole('button', { name: '确认导入' }).click();
+  await expect(page.getByText('REVIEW-IMPORT', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('REVIEW-IMPORT', { exact: true })).toBeVisible();
+  await page.getByLabel('选择 CSV 文件').setInputFiles({ name: 'review.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await expect(page.getByText(/计划批次重复：REVIEW-IMPORT/)).toBeVisible();
+  const row = page.getByRole('row').filter({ hasText: 'REVIEW-IMPORT' });
+  await row.getByRole('button', { name: '查看详情' }).click();
+  const detail = page.getByRole('dialog').filter({ hasText: '计划详情' });
+  await detail.getByRole('button', { name: '确认计划' }).click();
+  await detail.getByRole('link', { name: '开放推荐入口' }).click();
+  await page.getByRole('button', { name: '确认推荐' }).click();
+  await page.getByRole('dialog', { name: '确认接车推荐' }).getByRole('button', { name: '提交确认' }).click();
+  await page.getByRole('link', { name: '进入任务拆解' }).click();
+  await page.getByRole('button', { name: '自动拆解', exact: true }).click();
+  await expect(page.getByLabel('任务树').locator('.task-tree-row')).toHaveCount(4);
+  await page.getByRole('button', { name: '确认工单草稿', exact: true }).click();
+  await page.getByRole('dialog', { name: '确认工单草稿' }).getByRole('button', { name: '确认任务定义' }).click();
+  await page.getByRole('link', { name: '进入派工看板' }).click();
+  await expect(page.getByLabel('工单队列')).toBeVisible();
+  await page.getByRole('button', { name: 'AI 调度助手', exact: true }).click();
+  await page.getByLabel('分析方式').click();
+  await page.getByTitle('本地规则分析', { exact: true }).click();
+  await page.getByRole('button', { name: '分析当前计划', exact: true }).click();
+  await expect(page.getByText('本地规则分析', { exact: true }).last()).toBeVisible();
+  await expect(page.getByText(/REVIEW-IMPORT \/ T99999/)).toBeVisible();
+  await page.getByRole('dialog', { name: 'AI 调度助手' }).getByRole('button', { name: '关闭' }).click();
+  await page.getByRole('navigation', { name: '页面导航' }).getByRole('link', { name: 'UI-004 任务拆解', exact: true }).click();
+  await expect(page).toHaveURL(/\/dispatch\/plans\/(?!PLAN-DEMO-001)[^/]+\/tasks/);
+  await expect(page.getByLabel('选择生产计划')).toBeVisible();
+  expect(errors).toEqual([]);
+  console.log('PASS: CSV import, refresh, duplicate rejection, plan confirmation, recommendation, task decomposition, dispatch entry, AI rule analysis, default plan navigation.');
+} finally { await browser.close(); }

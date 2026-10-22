@@ -115,7 +115,7 @@ function rate(
 export function deriveReportMetrics(state: DemoRootState): ReportMetricSnapshot {
   const visible = canReadAreaA(state);
   const plans = visible ? state.plan.plans : [];
-  const workOrders = visible ? state.workOrder.workOrders : [];
+  const workOrders = visible ? state.workOrder.workOrders.filter((item) => item.valid !== 0) : [];
   const exceptions = visible ? state.exception.exceptions : [];
   const interlocks = visible ? state.interlock.interlocks : [];
   const packets = visible ? state.offline.packets : [];

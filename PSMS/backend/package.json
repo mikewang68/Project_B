@@ -16,7 +16,10 @@
     "db:stats": "tsx src/scripts/db-stats.ts",
     "seed": "tsx src/seeds/seed.ts",
     "seed:built": "node dist/seeds/seed.js",
-    "smoke": "tsx src/scripts/smoke-test.ts"
+    "smoke": "tsx src/scripts/smoke-test.ts",
+    "ai:check": "tsx src/scripts/ai-check.ts",
+    "dev:ai": "tsx watch src/scripts/ai-dev.ts"
+    ,"simulate:s1": "tsx src/scripts/s1-simulator.ts"
   },
   "dependencies": {
     "bcryptjs": "3.0.2",

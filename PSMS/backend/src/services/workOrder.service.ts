@@ -1,5 +1,6 @@
 import { Equipment, Plan, Task, WorkOrder, type TaskDoc, type WorkOrderDoc } from '../db/tables.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { randomUUID } from 'node:crypto';
 import { writeBusinessAudit } from '../middleware/audit.js';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -249,7 +250,7 @@ export async function createTasksForPlan(planId: string, tasks: TaskInput[]) {
   const docs = tasks.map((task, index) => {
     const taskNo = `TASK-${String(index + 1).padStart(3, '0')}`;
     return {
-      _id: `${planId}-${taskNo}`,
+      _id: `${planId}-${taskNo}-${randomUUID()}`,
       planId,
       planBatchNo: plan.planBatchNo,
       taskNo,
@@ -265,9 +266,8 @@ export async function createTasksForPlan(planId: string, tasks: TaskInput[]) {
     };
   });
 
-  // 先删后插：整体替换该计划的任务集合，避免残留旧节点
-  await Task.deleteMany({ planId });
-  const inserted = await Task.insertMany(docs);
+  // 原代次标记 valid=0，新代次使用独立主键，事务失败时整体回滚。
+  const inserted = await Task.replaceMany({ planId }, docs);
 
   await writeBusinessAudit({
     actorId: 'system',

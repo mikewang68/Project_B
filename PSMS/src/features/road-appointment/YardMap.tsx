@@ -54,16 +54,16 @@ export default function YardMap(props: YardMapProps) {
     void import('maplibre-gl')
       .then((maplibre) => {
         if (disposed || !containerRef.current) return;
-        const vehicleData: GeoJSON.FeatureCollection = {
-          type: 'FeatureCollection',
+        const vehicleData = {
+          type: 'FeatureCollection' as const,
           features: props.appointments.map((appointment, index) => ({
-            type: 'Feature',
+            type: 'Feature' as const,
             properties: {
               id: appointment.id,
               selected: appointment.id === props.selectedId ? 1 : 0,
               label: displayVehicleNo(appointment.vehicleNo),
             },
-            geometry: { type: 'Point', coordinates: vehicleCoordinates[index % vehicleCoordinates.length] },
+            geometry: { type: 'Point' as const, coordinates: [...vehicleCoordinates[index % vehicleCoordinates.length]] },
           })),
         };
         map = new maplibre.Map({

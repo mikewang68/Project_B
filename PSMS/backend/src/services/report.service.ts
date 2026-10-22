@@ -26,7 +26,7 @@ interface WhereClause {
 
 /** 时间区间 + 作业区的公共过滤条件（统一按 created_at 归集） */
 function buildCommonWhere(query: ReportQuery): WhereClause {
-  const parts: string[] = [];
+  const parts: string[] = ['valid = 1'];
   const params: unknown[] = [];
 
   if (query.workArea) {
@@ -90,7 +90,7 @@ export async function generateReport(query: ReportQuery) {
     groupCountBy('plans', where, 'status'),
     groupCountBy('work_orders', where, 'status'),
     // 设备台账不按创建时间做期间统计，改为反映当前状态分布
-    groupCountBy('equipment', { sql: '', params: [] }, 'status'),
+    groupCountBy('equipment', { sql: 'WHERE valid = 1', params: [] }, 'status'),
     groupCountByTwo('exceptions', where, 'type', 'severity'),
   ]);
 

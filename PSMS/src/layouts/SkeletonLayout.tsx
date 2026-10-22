@@ -20,8 +20,10 @@ import {
   usePreferenceStore,
 } from '../stores/preference';
 import { navIcon } from './navIcons';
+import AiAssistant from '../features/ai-assistant/AiAssistant';
 
 const groups: RouteGroup[] = ['调度', '执行', '安全', '治理'];
+const navigationPath = (route: (typeof routeCatalog)[number]) => route.id === 'UI-003' ? '/dispatch/recommendation' : route.id === 'UI-004' ? '/dispatch/tasks' : route.smokePath;
 
 const SIDEBAR_WIDTH = 220;
 const SIDEBAR_COLLAPSED = 64;
@@ -98,7 +100,7 @@ export default function SkeletonLayout() {
         icon: navIcon(route.id),
         title: `${route.id} ${route.name}`,
         label: (
-          <Link to={route.smokePath} aria-label={`${route.id} ${route.name}`}>
+          <Link to={navigationPath(route)} aria-label={`${route.id} ${route.name}`}>
             {route.id} {route.name}
           </Link>
         ),
@@ -110,7 +112,7 @@ export default function SkeletonLayout() {
     key: route.id,
     title: `${route.id} ${route.name}`,
     label: (
-      <Link to={route.smokePath} aria-label={`${route.id} ${route.name}`}>
+      <Link to={navigationPath(route)} aria-label={`${route.id} ${route.name}`}>
         {route.id} {route.name}
       </Link>
     ),
@@ -203,6 +205,7 @@ export default function SkeletonLayout() {
             )}
           </div>
           <Space size={12}>
+            <AiAssistant />
             <Tooltip title="外观设置：切换皮肤与布局" placement="bottom">
               <Button
                 className="skeleton-pref-trigger"
@@ -225,7 +228,7 @@ export default function SkeletonLayout() {
         title="外观设置"
         open={prefOpen}
         onClose={() => setPrefOpen(false)}
-        width={330}
+        size={330}
         className="pref-drawer"
       >
         <div className="pref-section">

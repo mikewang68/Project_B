@@ -33,6 +33,7 @@ import {
 } from '../../features/task-decomposition';
 import '../../features/task-decomposition/task-decomposition.css';
 import PageIdentity from '../../features/plan-entry/components/PageIdentity';
+import PlanPicker from '../../features/plan-entry/components/PlanPicker';
 import PageStatePanel from '../../features/plan-entry/components/PageStatePanel';
 import {
   recommendationDraftSchema,
@@ -358,6 +359,7 @@ export default function TaskDecompositionPage() {
         currentStepIndex={demoPlayback.currentStepIndex}
         stages={taskDemoStages}
       />
+      <PlanPicker mode="tasks" planId={planId} />
       {renderBody()}
       <TaskEditDrawer
         open={workflow.editDrawerOpen}
@@ -388,7 +390,7 @@ export default function TaskDecompositionPage() {
           })}
       >
         <Typography.Paragraph>
-          将丢弃当前 {generationLabel(tree)} 人工编辑版本，并按当前 Store 真值生成下一代系统建议；历史审计仍保留。
+          将当前 {generationLabel(tree)} 人工编辑版本标记为无效，并生成下一代系统建议；旧记录与历史审计仍保留。
         </Typography.Paragraph>
       </Modal>
       <Modal

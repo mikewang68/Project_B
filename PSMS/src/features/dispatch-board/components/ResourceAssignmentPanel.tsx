@@ -36,7 +36,7 @@ export default function ResourceAssignmentPanel({
           <Radio.Group
             className="dispatch-resource-list"
             value={selectedResourceId}
-            onChange={(event: { target: { value: unknown } }) =>
+            onChange={(event: { target: { value?: unknown } }) =>
               onSelect(String(event.target.value))}
           >
             {item.resources.map((resource) => (

@@ -1,26 +1,29 @@
 /**
  * 存储维护操作：数据重置与审计保留期清理。
  *
- * 关系库不同于文档库的地方：这里用 TRUNCATE（按依赖顺序，一次事务内完成）
- * 代替「逐个 drop collection」，用 DELETE + 时间条件代替 TTL 索引。
+ * 所有清理均通过 valid=0 标记无效，原始行与子表历史版本仍保留。
  */
-import { getPool } from './openGaussClient.js';
+import { connectClient, getPool } from './openGaussClient.js';
 import { TRUNCATE_ORDER } from './schema.js';
 import { logger } from '../lib/logger.js';
+import type { PoolClient } from 'pg';
 
 /**
- * 清空全部业务表（保留表结构与索引）。
+ * 将演示业务记录标记无效（保留表结构、历史行、账号和审计）。
  *
- * 供演示重置与种子脚本使用。使用一条 `TRUNCATE t1, t2, ... CASCADE`
- * 而不是逐表 DELETE：更快，且能自动处理子表外键依赖。
+ * 供演示重置与种子脚本使用，可与新代次种子写入共用同一事务。
  */
-export async function resetAllData(): Promise<string[]> {
-  const pool = getPool();
-  // 按「先子后父」的顺序列出，CASCADE 会补上遗漏的引用
-  const list = TRUNCATE_ORDER.join(', ');
-  await pool.query(`TRUNCATE TABLE ${list} CASCADE`);
-  logger.warn({ tables: TRUNCATE_ORDER.length }, '已清空全部业务表（演示重置）');
-  return [...TRUNCATE_ORDER];
+export async function resetAllData(transaction?: PoolClient): Promise<string[]> {
+  const tables = TRUNCATE_ORDER.filter((table) => !['users', 'user_data_scopes', 'audit_logs'].includes(table));
+  const client = transaction ?? await connectClient();
+  try {
+    if (!transaction) await client.query('BEGIN');
+    for (const table of tables) await client.query(`UPDATE ${table} SET valid = 0 WHERE valid = 1`);
+    if (!transaction) await client.query('COMMIT');
+  } catch (error) { if (!transaction) await client.query('ROLLBACK').catch(() => undefined); throw error; }
+  finally { if (!transaction) client.release(); }
+  logger.warn({ tables: tables.length }, '演示业务记录已标记无效；账号和审计保留');
+  return tables;
 }
 
 /**
@@ -28,16 +31,16 @@ export async function resetAllData(): Promise<string[]> {
  *
  * 对应契约 DO-015 的 `auditRetentionDays`（1~3650 天）。
  * 文档库时代用的是 TTL 索引（由 mongod 后台线程删除）；
- * 关系库里没有 TTL，改为按时间条件删除，由启动期 + 定时任务触发。
+ * 关系库里按时间条件标记 valid=0，由启动期 + 定时任务触发。
  *
- * @returns 实际删除的行数
+ * @returns 本次标记为无效的行数
  */
 export async function purgeAuditLogs(retentionDays: number): Promise<number> {
   const days = Math.min(3650, Math.max(1, Math.floor(retentionDays)));
   const pool = getPool();
   const res = await pool.query(
-    `DELETE FROM audit_logs
-      WHERE COALESCE(occurred_at, created_at) < now() - ($1::int * INTERVAL '1 day')`,
+    `UPDATE audit_logs SET valid = 0
+      WHERE valid = 1 AND COALESCE(occurred_at, created_at) < now() - ($1::int * INTERVAL '1 day')`,
     [days],
   );
   const deleted = res.rowCount ?? 0;
@@ -58,7 +61,7 @@ export async function auditLogStats(): Promise<{
     `SELECT COUNT(*) AS total,
             MIN(COALESCE(occurred_at, created_at)) AS oldest,
             MAX(COALESCE(occurred_at, created_at)) AS newest
-       FROM audit_logs`,
+       FROM audit_logs WHERE valid = 1`,
   );
   const row = res.rows[0];
   return {

@@ -102,6 +102,7 @@ import { createFixtureSnapshot } from '../mocks/fixtures';
 import type { DemoScenario } from '../mocks/fixtures';
 import { createDemoStore, type DemoRootState, type DemoStoreApi } from '../stores';
 import { createAppFetch } from './appBasePath';
+import { loadImportedPlans, getImportedPlans } from '../features/plan-entry/importedPlans';
 
 export type RecommendationRuntime = {
   gateway: RecommendationGateway;
@@ -193,6 +194,8 @@ export function createDemoRuntime(
     scenarioId: options.initialScenarioId ?? 'SCN-01',
   });
   const gateway = createPlanEntryGateway(appFetcher);
+  const importedPlans = loadImportedPlans();
+  if (importedPlans.length) store.replaceDomainState((candidate) => { candidate.plan.plans.push(...importedPlans); });
   const workflow = createPlanEntryWorkflowStore();
   const recommendationGateway = createRecommendationGateway(appFetcher);
   const recommendationWorkflow = createRecommendationWorkflowStore();
@@ -257,6 +260,8 @@ export function createDemoRuntime(
     gateway,
     workflow,
     onSuccessfulReset: () => {
+      const imported = getImportedPlans();
+      if (imported.length) store.replaceDomainState((candidate) => { candidate.plan.plans.push(...imported); });
       recommendationWorkflow.reset();
       recommendationCommands.resetCommandState();
       taskDecompositionWorkflow.reset();
@@ -371,7 +376,16 @@ export function useDemoRuntime(): DemoRuntime {
 
 export function useDemoSelector<T>(selector: (state: DemoRootState) => T): T {
   const runtime = useDemoRuntime();
-  return useStore(runtime.store, selector);
+  return useStore(runtime.store, (state) => selector(activeDemoState(state)));
+}
+
+const activeStateCache = new WeakMap<DemoRootState, DemoRootState>();
+function activeDemoState(state: DemoRootState): DemoRootState {
+  const cached = activeStateCache.get(state);
+  if (cached) return cached;
+  const active = { ...state, workOrder: { workOrders: state.workOrder.workOrders.filter((item) => item.valid !== 0), nodes: state.workOrder.nodes.filter((item) => item.valid !== 0) } };
+  activeStateCache.set(state, active);
+  return active;
 }
 
 export function usePlanEntryWorkflow<T>(

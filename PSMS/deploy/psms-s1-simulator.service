@@ -1,0 +1,22 @@
+[Unit]
+Description=Project B PSMS S1 telemetry simulator
+After=network-online.target project-b-psms.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=psms
+Group=psms
+WorkingDirectory=/opt/project-b/PSMS/backend
+EnvironmentFile=/etc/project-b/PSMS/service.env
+Environment=PSMS_SIMULATOR_INTERVAL_MS=1000
+ExecStart=/opt/node-24.18.0/bin/node dist/scripts/s1-simulator.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

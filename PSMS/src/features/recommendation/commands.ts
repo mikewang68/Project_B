@@ -105,7 +105,7 @@ function recommendationPayload(command: DemoCommand): RecommendationCommandPaylo
 
 function linkedWorkOrderIds(state: DemoRootState, planId: string): string[] {
   return state.workOrder.workOrders
-    .filter((workOrder) => workOrder.planId === planId)
+    .filter((workOrder) => workOrder.valid !== 0 && workOrder.planId === planId)
     .map(({ id }) => id)
     .sort((left, right) => left.localeCompare(right));
 }

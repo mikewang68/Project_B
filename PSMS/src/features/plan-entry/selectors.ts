@@ -351,7 +351,7 @@ export function selectOverviewKpis(
     confirmedPlans: plans.filter(({ status }) => status === 'CONFIRMED').length,
     blockedPlans: blockedPlanIds.size,
     completedWorkOrders: state.workOrder.workOrders.filter(
-      ({ planId, status }) => planIds.has(planId) && status === 'COMPLETED',
+      ({ planId, status, valid }) => valid !== 0 && planIds.has(planId) && status === 'COMPLETED',
     ).length,
     waitingVehicles: state.vehicle.appointments.filter(({ status }) => status === 'QUEUED').length,
     availableResourceRate:

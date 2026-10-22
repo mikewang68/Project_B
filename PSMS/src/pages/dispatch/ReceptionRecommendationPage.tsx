@@ -21,6 +21,7 @@ import {
 } from '../../features/recommendation';
 import '../../features/recommendation/recommendation.css';
 import PageIdentity from '../../features/plan-entry/components/PageIdentity';
+import PlanPicker from '../../features/plan-entry/components/PlanPicker';
 import PageStatePanel from '../../features/plan-entry/components/PageStatePanel';
 import {
   useDemoRuntime,
@@ -53,7 +54,7 @@ export default function ReceptionRecommendationPage() {
   const [loading, setLoading] = useState(false);
   const [pageError, setPageError] = useState<PageError>();
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const requestedInput = useRef<string>();
+  const requestedInput = useRef<(string) | undefined>(undefined);
   const visible = hasAreaA(state.session.dataScope);
   const rawPlan = visible ? state.plan.plans.find(({ id }) => id === planId) : undefined;
   const confirmedPlan = selectConfirmedPlan(state, planId);
@@ -113,7 +114,7 @@ export default function ReceptionRecommendationPage() {
   }, [confirmedPlan, draft, draftInvalid, planId]);
 
   useEffect(() => {
-    if (!draft || draft.candidates.length === 0 || workflow.selectedCandidateId) return;
+    if (!draft || draft.candidates.length === 0 || draft.candidates.some(({ candidateId }) => candidateId === workflow.selectedCandidateId)) return;
     runtime.recommendation.workflow.selectCandidate(draft.candidates[0]?.candidateId);
   }, [draft, runtime.recommendation.workflow, workflow.selectedCandidateId]);
 
@@ -283,6 +284,7 @@ export default function ReceptionRecommendationPage() {
           { title: '生产准备建议' },
         ]}
       />
+      <PlanPicker mode="recommendation" planId={planId} />
       {renderState()}
       <RuleExplanationDrawer
         open={workflow.ruleDrawerOpen}

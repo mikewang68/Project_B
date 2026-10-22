@@ -63,17 +63,17 @@ function isNetworkError(error: PageError): boolean {
 export default function DispatchBoardPage() {
   const location = useLocation();
   const query = new URLSearchParams(location.search);
-  const planId = query.get('planId') ?? 'PLAN-001';
   const runtime = useDemoRuntime();
   const state = useDemoSelector((current) => current);
+  const planId = query.get('planId') ?? state.plan.plans.find((plan) => plan.status === 'DECOMPOSED')?.id ?? state.plan.plans[0]?.id ?? '';
   const workflow = useDispatchBoardWorkflow((current) => current);
   const [loading, setLoading] = useState(false);
   const [pageError, setPageError] = useState<PageError>();
   const [feedback, setFeedback] = useState<string>();
-  const retryAction = useRef<CommandAction>();
+  const retryAction = useRef<(CommandAction) | undefined>(undefined);
   const inFlightCommand = useRef<Promise<CommandResult> | undefined>(undefined);
-  const demoOrderId = useRef<string>();
-  const demoResourceId = useRef<string>();
+  const demoOrderId = useRef<(string) | undefined>(undefined);
+  const demoResourceId = useRef<(string) | undefined>(undefined);
 
   const visible = hasAreaAVisibility(state.session.dataScope);
   const plan = visible ? state.plan.plans.find(({ id }) => id === planId) : undefined;

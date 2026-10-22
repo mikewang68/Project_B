@@ -36,14 +36,14 @@ describe('稳定路由目录', () => {
     ).toEqual(expectedRoutes);
   });
 
-  it('参数路由统一使用 PLAN-DEMO-001 作为冒烟访问值', async () => {
+  it('参数路由使用真实存在的 PLAN-001 作为冒烟访问值', async () => {
     expect(existsSync(join(process.cwd(), 'src', 'app', 'routeCatalog.ts'))).toBe(true);
     const { routeCatalog } = await loadModule<typeof import('../routeCatalog')>(
       '../routeCatalog.ts',
     );
 
     for (const route of routeCatalog) {
-      const expectedSmokePath = route.path.replace(':planId', 'PLAN-DEMO-001');
+      const expectedSmokePath = route.path.replace(':planId', 'PLAN-001');
       expect(route.smokePath).toBe(expectedSmokePath);
     }
   });

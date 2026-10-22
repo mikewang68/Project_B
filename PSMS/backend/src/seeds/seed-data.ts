@@ -1,4 +1,6 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
+import { connectClient } from '../db/openGaussClient.js';
 import {
   Appointment,
   AuditLog,
@@ -145,13 +147,14 @@ function buildTelemetry(now: Date) {
 }
 
 export interface SeedOptions {
-  /** 是否先清空全部集合（默认 true） */
+  /** 是否先将旧演示业务记录标记无效（默认 true），保留账号与审计 */
   drop?: boolean;
   /** 是否写入最近遥测点（默认 true） */
   withTelemetry?: boolean;
 }
 
 export interface SeedResult {
+  /** 兼容字段名，表示被标记无效的表，未物理删除任何表或数据。 */
   dropped: string[];
   counts: Record<string, number>;
 }
@@ -165,22 +168,43 @@ export interface SeedResult {
 export async function seedDatabase(options: SeedOptions = {}): Promise<SeedResult> {
   const { drop = true, withTelemetry = true } = options;
 
-  const dropped = drop ? await resetAllData() : [];
-  if (drop) await migrate();
-
+  await migrate();
+  let dropped: string[] = [];
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
-
-  await User.insertMany(users.map((u) => ({ ...u, passwordHash, online: false })), { returnInserted: false });
-  await Equipment.insertMany(equipments.map((e) => ({ ...e, _id: e.equipmentId })), { returnInserted: false });
-  await Plan.insertMany(plans, { returnInserted: false });
-  await WorkOrder.insertMany(workOrders, { returnInserted: false });
-  await Task.insertMany(tasks, { returnInserted: false });
-  await Exception.insertMany(exceptions.map((e) => ({ ...e, _id: e.exceptionId })), { returnInserted: false });
-  await Interlock.insertMany(interlocks.map((i) => ({ ...i, _id: i.interlockId })), { returnInserted: false });
-  await Appointment.insertMany(appointments.map((a) => ({ ...a, _id: a.appointmentId })), { returnInserted: false });
-  await OfflinePacket.insertMany(offlinePackets.map((p) => ({ ...p, _id: p.packetId })), { returnInserted: false });
-  await ConfigVersion.create(configDoc);
-  await AuditLog.insertMany(auditLogs, { returnInserted: false });
+  const client = await connectClient();
+  try {
+    await client.query('BEGIN');
+    await client.query('LOCK TABLE plans IN SHARE ROW EXCLUSIVE MODE');
+    const existing = await client.query('SELECT 1 FROM plans LIMIT 1');
+    const suffix = existing.rows.length ? `-R${randomUUID()}` : '';
+    if (drop) dropped = await resetAllData(client);
+    // Preserve all old primary keys and references. Each reset receives a new seed namespace.
+    const remap = (value: unknown, field?: string): any => {
+      if (field === 'equipmentId') return value; // Telemetry identifies the physical device, not a seed-row version.
+      if (typeof value === 'string') return /^(PLAN-|WO-|EQ-IMG-|EX-\d|IL-\d|APT-\d|OFF-PKG-|CFG-|AUD-|PB-)/.test(value) ? `${value}${suffix}` : value;
+      if (value instanceof Date) return value;
+      if (Array.isArray(value)) return value.map((item) => remap(item));
+      if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, remap(item, key)]));
+      return value;
+    };
+    const options = { returnInserted: false, client };
+    for (const user of users) {
+      const found = await client.query('SELECT 1 FROM users WHERE username = $1', [user.username]);
+      if (!found.rows.length) await User.insertMany([{ ...user, passwordHash, online: false }], options);
+    }
+    await Equipment.insertMany(remap(equipments.map((e) => ({ ...e, _id: e.equipmentId }))), options);
+    await Plan.insertMany(remap(plans), options);
+    await WorkOrder.insertMany(remap(workOrders), options);
+    await Task.insertMany(remap(tasks), options);
+    await Exception.insertMany(remap(exceptions.map((e) => ({ ...e, _id: e.exceptionId }))), options);
+    await Interlock.insertMany(remap(interlocks.map((i) => ({ ...i, _id: i.interlockId }))), options);
+    await Appointment.insertMany(remap(appointments.map((a) => ({ ...a, _id: a.appointmentId }))), options);
+    await OfflinePacket.insertMany(remap(offlinePackets.map((p) => ({ ...p, _id: p.packetId }))), options);
+    await ConfigVersion.insertMany([remap(configDoc)], options);
+    await AuditLog.insertMany(remap(auditLogs), options);
+    await client.query('COMMIT');
+  } catch (error) { await client.query('ROLLBACK').catch(() => undefined); throw error; }
+  finally { client.release(); }
 
   if (withTelemetry) {
     await TelemetryPoint.insertMany(buildTelemetry(new Date()));

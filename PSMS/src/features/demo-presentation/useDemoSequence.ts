@@ -43,8 +43,8 @@ export function useDemoSequence<StepId extends string>({
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [errorMessage, setErrorMessage] = useState<string>();
   const runTokenRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-  const timerResolveRef = useRef<(() => void)>();
+  const timerRef = useRef<(ReturnType<typeof setTimeout>) | undefined>(undefined);
+  const timerResolveRef = useRef<((() => void)) | undefined>(undefined);
   const autoplayStartedRef = useRef(false);
 
   const cancelPendingWait = useCallback(() => {

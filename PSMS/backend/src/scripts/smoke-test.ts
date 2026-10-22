@@ -33,11 +33,11 @@ const BASE = `http://127.0.0.1:${env.PORT}`;
  *   WO-002   : 属 PLAN-002，状态 READY → 走 assign
  *   PLAN-002 下的 tasks 有 2 行（TASK-001/002），task_dependencies 有 1 行
  */
-const PLAN_BEING_CONFIRMED = 'PLAN-001';
-const WO_FLOW = 'WO-001';
-const WO_TO_ASSIGN = 'WO-002';
+let PLAN_BEING_CONFIRMED = 'PLAN-001';
+let WO_FLOW = 'WO-001';
+let WO_TO_ASSIGN = 'WO-002';
 const EQUIPMENT_FOR_ASSIGN = 'EQ-IMG-05';
-const TASKS_OWNER_PLAN = 'PLAN-002';
+let TASKS_OWNER_PLAN = 'PLAN-002';
 const TELEMETRY = 'equipment_telemetry';
 
 let passed = 0;
@@ -136,8 +136,18 @@ async function main(): Promise<void> {
   console.log('[3] 重置演示基线（保证冒烟可重复执行）');
   const reset = await call('POST', '/api/demo/reset', { token, body: {} });
   check('POST /api/demo/reset 成功', reset.status === 200, `status=${reset.status}`);
+  // A reset preserves invalid rows and allocates new primary keys for the active seed.
+  const activeId = async (table: string, prefix: string): Promise<string> => {
+    const id = await queryScalar<string>(`SELECT id FROM ${table} WHERE valid = 1 AND (id = $1 OR id LIKE $2) ORDER BY created_at DESC LIMIT 1`, [prefix, `${prefix}-R%`]);
+    if (!id) throw new Error(`有效演示对象缺失：${prefix}`);
+    return id;
+  };
+  PLAN_BEING_CONFIRMED = await activeId('plans', 'PLAN-001');
+  WO_FLOW = await activeId('work_orders', 'WO-001');
+  WO_TO_ASSIGN = await activeId('work_orders', 'WO-002');
+  TASKS_OWNER_PLAN = await activeId('plans', 'PLAN-002');
 
-  const planStatusBefore = await queryScalar<string>('SELECT status FROM plans WHERE id = $1', [
+  const planStatusBefore = await queryScalar<string>('SELECT status FROM plans WHERE valid = 1 AND id = $1', [
     PLAN_BEING_CONFIRMED,
   ]);
   check(
@@ -145,7 +155,7 @@ async function main(): Promise<void> {
     planStatusBefore === 'PENDING_CONFIRM',
     `status=${planStatusBefore}`,
   );
-  const woStatusBefore = await queryScalar<string>('SELECT status FROM work_orders WHERE id = $1', [
+  const woStatusBefore = await queryScalar<string>('SELECT status FROM work_orders WHERE valid = 1 AND id = $1', [
     WO_FLOW,
   ]);
   check(`重置后 ${WO_FLOW} 回到 ASSIGNED`, woStatusBefore === 'ASSIGNED', `status=${woStatusBefore}`);
@@ -179,8 +189,8 @@ async function main(): Promise<void> {
 
   // 记下命令前的审计与子表行数，用于增量断言
   const auditBefore = {
-    plan: await count(`SELECT COUNT(*) FROM audit_logs WHERE object_id = $1`, [PLAN_BEING_CONFIRMED]),
-    wo: await count(`SELECT COUNT(*) FROM audit_logs WHERE object_id = $1`, [WO_FLOW]),
+    plan: await count(`SELECT COUNT(*) FROM audit_logs WHERE valid = 1 AND object_id = $1`, [PLAN_BEING_CONFIRMED]),
+    wo: await count(`SELECT COUNT(*) FROM audit_logs WHERE valid = 1 AND object_id = $1`, [WO_FLOW]),
   };
 
   // 5.1 计划确认（PENDING_CONFIRM → CONFIRMED）
@@ -225,7 +235,7 @@ async function main(): Promise<void> {
   console.log();
   console.log('[6] 关系库落库校验（绕过 HTTP，直连 openGauss）');
 
-  const planStatus = await queryScalar<string>('SELECT status FROM plans WHERE id = $1', [
+  const planStatus = await queryScalar<string>('SELECT status FROM plans WHERE valid = 1 AND id = $1', [
     PLAN_BEING_CONFIRMED,
   ]);
   check(
@@ -233,41 +243,41 @@ async function main(): Promise<void> {
     planStatus === 'CONFIRMED',
     `status=${planStatus}`,
   );
-  const confirmedBy = await queryScalar<string>('SELECT confirmed_by FROM plans WHERE id = $1', [
+  const confirmedBy = await queryScalar<string>('SELECT confirmed_by FROM plans WHERE valid = 1 AND id = $1', [
     PLAN_BEING_CONFIRMED,
   ]);
   check('计划确认人已落库', confirmedBy === 'ACTOR-ADMIN', `confirmed_by=${confirmedBy}`);
 
-  const woStatus = await queryScalar<string>('SELECT status FROM work_orders WHERE id = $1', [WO_FLOW]);
+  const woStatus = await queryScalar<string>('SELECT status FROM work_orders WHERE valid = 1 AND id = $1', [WO_FLOW]);
   check(`work_orders 表 ${WO_FLOW} 状态为 COMPLETED`, woStatus === 'COMPLETED', `status=${woStatus}`);
 
   const feedback = await queryScalar<string>(
-    'SELECT feedback_quality FROM work_orders WHERE id = $1',
+    'SELECT feedback_quality FROM work_orders WHERE valid = 1 AND id = $1',
     [WO_FLOW],
   );
   check('执行反馈已落到列（嵌套对象已摊平）', feedback === 'GOOD', `feedback_quality=${feedback}`);
 
-  const woAssigned = await queryScalar<string>('SELECT status FROM work_orders WHERE id = $1', [
+  const woAssigned = await queryScalar<string>('SELECT status FROM work_orders WHERE valid = 1 AND id = $1', [
     WO_TO_ASSIGN,
   ]);
   check(`派工后 ${WO_TO_ASSIGN} 状态为 ASSIGNED`, woAssigned === 'ASSIGNED', `status=${woAssigned}`);
 
-  const crewCount = await count('SELECT COUNT(*) FROM work_order_crew WHERE work_order_id = $1', [
+  const crewCount = await count('SELECT COUNT(*) FROM work_order_crew WHERE valid = 1 AND work_order_id = $1', [
     WO_FLOW,
   ]);
   check('子表 work_order_crew 有数据（内嵌数组已规范化）', crewCount > 0, `${crewCount} 行`);
 
-  const depCount = await count('SELECT COUNT(*) FROM task_dependencies');
+  const depCount = await count('SELECT COUNT(*) FROM task_dependencies WHERE valid = 1');
   check('子表 task_dependencies 有数据（依赖图已落表）', depCount > 0, `${depCount} 行`);
 
-  const signalCount = await count('SELECT COUNT(*) FROM interlock_input_signals');
+  const signalCount = await count('SELECT COUNT(*) FROM interlock_input_signals WHERE valid = 1');
   check('子表 interlock_input_signals 有数据', signalCount > 0, `${signalCount} 行`);
 
-  const taskCount = await count('SELECT COUNT(*) FROM tasks WHERE plan_id = $1', [TASKS_OWNER_PLAN]);
+  const taskCount = await count('SELECT COUNT(*) FROM tasks WHERE valid = 1 AND plan_id = $1', [TASKS_OWNER_PLAN]);
   check(`tasks 表有 ${TASKS_OWNER_PLAN} 的拆解任务`, taskCount > 0, `${taskCount} 行`);
 
   // 审计用增量断言：种子本身有审计行，只比总量会被蒙过去
-  const auditAfterPlan = await count('SELECT COUNT(*) FROM audit_logs WHERE object_id = $1', [
+  const auditAfterPlan = await count('SELECT COUNT(*) FROM audit_logs WHERE valid = 1 AND object_id = $1', [
     PLAN_BEING_CONFIRMED,
   ]);
   check(
@@ -275,7 +285,7 @@ async function main(): Promise<void> {
     auditAfterPlan > auditBefore.plan,
     `${auditBefore.plan} → ${auditAfterPlan} 行`,
   );
-  const auditAfterWo = await count('SELECT COUNT(*) FROM audit_logs WHERE object_id = $1', [WO_FLOW]);
+  const auditAfterWo = await count('SELECT COUNT(*) FROM audit_logs WHERE valid = 1 AND object_id = $1', [WO_FLOW]);
   check(
     `审计表新增 ${WO_FLOW} 的命令留痕（≥3 条）`,
     auditAfterWo - auditBefore.wo >= 3,
@@ -283,7 +293,7 @@ async function main(): Promise<void> {
   );
 
   const actionRows = await count(
-    `SELECT COUNT(*) FROM audit_logs WHERE object_id = $1 AND action = 'plan:confirm'`,
+    `SELECT COUNT(*) FROM audit_logs WHERE valid = 1 AND object_id = $1 AND action = 'plan:confirm'`,
     [PLAN_BEING_CONFIRMED],
   );
   check('存在 plan:confirm 动作留痕', actionRows > 0, `${actionRows} 行`);

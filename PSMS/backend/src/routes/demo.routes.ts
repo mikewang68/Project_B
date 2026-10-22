@@ -8,8 +8,8 @@ export const demoRouter = Router();
 /**
  * 演示数据重置。
  *
- * 这里不是空壳：会真正清空 openGauss 的业务表（TRUNCATE 级联子表）并重新灌入
- * 固定种子数据（与 pnpm seed 同一份定义），用于把演示恢复到基线状态。
+ * 旧业务数据标记 valid=0，新代次种子使用新主键；账号和历史审计保留。
+ * 失效与写入在同一事务中完成，不执行物理删除。
  * 时序侧（openGemini）会一并重新写入演示遥测点。
  */
 demoRouter.post('/reset', authenticate, async (req, res, next) => {
@@ -26,6 +26,7 @@ demoRouter.post('/reset', authenticate, async (req, res, next) => {
         operationId: 'POST_mock_demo_reset',
         scenario: { id: scenarioId, resetAt: new Date().toISOString() },
         dropped: result.dropped,
+        invalidated: result.dropped,
         counts: result.counts,
       },
     });

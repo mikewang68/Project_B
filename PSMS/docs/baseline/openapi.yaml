@@ -3821,6 +3821,14 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "valid": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "description": "逻辑有效标识：0无效、1有效；旧演示记录未提供时按有效处理"
+          },
           "id": {
             "type": "string",
             "x-source-field": "id"
@@ -3910,6 +3918,14 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "valid": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "description": "逻辑有效标识：0无效、1有效；旧演示记录未提供时按有效处理"
+          },
           "id": {
             "type": "string",
             "x-source-field": "id"

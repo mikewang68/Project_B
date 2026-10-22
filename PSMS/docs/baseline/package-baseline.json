@@ -195,6 +195,22 @@
       "license": "MIT",
       "purpose": "DOM test runtime",
       "officialUrl": "https://www.npmjs.com/package/jsdom"
+    },
+    {
+      "package": "@types/react",
+      "version": "19.0.10",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "React TypeScript declarations",
+      "officialUrl": "https://github.com/DefinitelyTyped/DefinitelyTyped"
+    },
+    {
+      "package": "@types/react-dom",
+      "version": "19.0.4",
+      "scope": "development",
+      "license": "MIT",
+      "purpose": "React TypeScript declarations",
+      "officialUrl": "https://github.com/DefinitelyTyped/DefinitelyTyped"
     }
   ]
 }

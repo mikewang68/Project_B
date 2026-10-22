@@ -1,5 +1,10 @@
 node_modules/
+.typecheck-deps/
+.npm-cache/
+.pnpm-store/
+.pnpm-cache/
 dist/
+.deploy/
 playwright-report/
 test-results/
 *.log

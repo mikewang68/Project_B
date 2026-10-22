@@ -80,12 +80,12 @@ export default function OfflineSyncPage() {
   const [listError, setListError] = useState<PageError>();
   const [listRequest, setListRequest] = useState(0);
   const [resetting, setResetting] = useState(false);
-  const listFlight = useRef<Readonly<{
+  const listFlight = useRef<(Readonly<{
     request: number;
     scenarioId: string;
     promise: ReturnType<typeof runtime.offlineSync.gateway.listPackets>;
-  }>>();
-  const retryAction = useRef<CommandAction>();
+  }>) | undefined>(undefined);
+  const retryAction = useRef<(CommandAction) | undefined>(undefined);
   const inFlightCommand = useRef<Promise<CommandResult> | undefined>(undefined);
 
   useEffect(() => {

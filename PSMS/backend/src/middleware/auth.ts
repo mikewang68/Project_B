@@ -7,6 +7,7 @@ export interface JwtPayload {
   actorId: string;
   roleCode: string;
   dataScope: string[];
+  purpose?: 'ai-demo';
 }
 
 declare global {
@@ -29,6 +30,10 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
   const token = header.slice(7);
   try {
     req.user = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    if (req.user.purpose === 'ai-demo' && req.baseUrl !== '/api/ai') {
+      delete req.user;
+      res.status(403).json({ message: 'AI 演示会话仅可用于 AI 分析' }); return;
+    }
     next();
   } catch {
     res.status(401).json({ ok: false, errorCode: 'UNAUTHORIZED', message: '认证令牌无效或已过期' });
@@ -41,6 +46,7 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction): 
   if (header?.startsWith('Bearer ')) {
     try {
       req.user = jwt.verify(header.slice(7), env.JWT_SECRET) as JwtPayload;
+      if (req.user.purpose === 'ai-demo') delete req.user;
     } catch {
       // 令牌无效时按匿名处理，不阻断只读请求
     }

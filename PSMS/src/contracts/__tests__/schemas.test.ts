@@ -106,13 +106,13 @@ describe('C02 领域契约', () => {
     expect(domainSchemas['DO-014'].safeParse({ ...role, roleCode: 'ROOT' }).success).toBe(false);
   });
 
-  it('15 个运行时字段集合与 OpenAPI required 完全一致', () => {
+  it('15 个运行时字段集合与 OpenAPI properties/required 一致（包括可选有效标识）', () => {
     for (const [index, objectId] of domainObjectIds.entries()) {
       const component = openapi.components.schemas[`DO${String(index + 1).padStart(3, '0')}`];
-      const shape = (domainSchemas[objectId] as unknown as { shape: Record<string, unknown> }).shape;
+      const shape = (domainSchemas[objectId] as unknown as { shape: Record<string, { isOptional: () => boolean }> }).shape;
 
       expect(Object.keys(shape), objectId).toEqual(Object.keys(component.properties ?? {}));
-      expect(Object.keys(shape), objectId).toEqual(component.required);
+      expect(Object.keys(shape).filter((field) => !shape[field].isOptional()), objectId).toEqual(component.required);
     }
   });
 

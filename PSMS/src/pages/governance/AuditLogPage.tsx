@@ -68,11 +68,11 @@ export default function AuditLogPage() {
     : undefined;
   const [readRequest, setReadRequest] = useState(0);
   const [resetting, setResetting] = useState(false);
-  const hydratedSearch = useRef<string>();
-  const listFlight = useRef<Readonly<{
+  const hydratedSearch = useRef<(string) | undefined>(undefined);
+  const listFlight = useRef<(Readonly<{
     key: string;
     promise: Promise<AuditGatewayResult>;
-  }>>();
+  }>) | undefined>(undefined);
 
   useEffect(() => {
     if (hydratedSearch.current === location.search) return;

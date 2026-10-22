@@ -100,7 +100,7 @@ describe('UI-004 任务动作', () => {
     ));
     expect(dialog).toBeDefined();
     if (!dialog) throw new Error('重新生成确认框未打开');
-    expect(within(dialog).getByText('将丢弃当前 G001 人工编辑版本', { exact: false }))
+    expect(within(dialog).getByText('将当前 G001 人工编辑版本标记为无效', { exact: false }))
       .toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: '确认重新生成' }));
     expect((await screen.findAllByText('C06-WO-PLAN-001-G002-01', { exact: false }))[0]).toBeVisible();

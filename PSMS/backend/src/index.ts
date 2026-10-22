@@ -23,6 +23,7 @@ import { reportsRouter } from './routes/reports.routes.js';
 import { settingsRouter } from './routes/settings.routes.js';
 import { auditRouter } from './routes/audit.routes.js';
 import { demoRouter } from './routes/demo.routes.js';
+import { aiRouter } from './routes/ai.routes.js';
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/audit-logs', auditRouter);
 app.use('/api/demo', demoRouter);
+app.use('/api/ai', aiRouter);
 
 app.use(errorHandler);
 

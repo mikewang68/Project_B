@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { AuditLog } from '../db/tables.js';
 import { logger } from '../lib/logger.js';
 import { newAuditId, newTraceId } from '../lib/ids.js';
+import { dispatchWriteLog } from '../services/writeLog.service.js';
 
 /**
  * HTTP 访问留痕中间件。
@@ -37,8 +38,9 @@ export function auditOperation(action: string) {
       // 审计写入不阻塞响应返回
       void (async () => {
         try {
+          const auditId = newAuditId();
           await AuditLog.create({
-            _id: newAuditId(),
+            _id: auditId,
             actorId: req.user?.actorId ?? 'anonymous',
             actorRole: req.user?.roleCode ?? 'guest',
             operatorTerminal: 'WEB-BACKEND',
@@ -54,6 +56,7 @@ export function auditOperation(action: string) {
             traceId,
             occurredAt: new Date(),
           });
+          await dispatchWriteLog({ auditId, actorId: req.user?.actorId ?? 'anonymous', actorRole: req.user?.roleCode, action, objectType: 'HTTP', objectId: req.params?.id as string | undefined, reason: responseBody.slice(0, 500), traceId });
         } catch (err) {
           logger.warn({ err, action }, '审计留痕写入失败（已忽略，不影响业务）');
         }
@@ -95,6 +98,7 @@ export async function writeBusinessAudit(input: {
       traceId: input.traceId ?? newTraceId(),
       occurredAt: new Date(),
     });
+    await dispatchWriteLog({ auditId: id, actorId: input.actorId, actorRole: input.actorRole, action: input.action, objectType: input.objectType, objectId: input.objectId, before: input.before, after: input.after, reason: input.reason, traceId: input.traceId ?? newTraceId() });
   } catch (err) {
     logger.warn({ err, action: input.action }, '业务审计写入失败');
   }

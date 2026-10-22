@@ -5,6 +5,9 @@ import {
   isValidElement as reactIsValidElement,
   lazy as reactLazy,
   type ComponentType,
+  type ElementType,
+  type ReactNode,
+  type ReactElement,
 } from 'react';
 import { routePolicies, routeRequiredPermissions } from '../auth/permissionCatalog';
 import type { PageId, RoleCode } from '../auth/types';
@@ -33,11 +36,11 @@ export function createC03Element(
   props: Record<string, unknown> | null,
   ...children: unknown[]
 ) {
-  return reactCreateElement(type, props, ...children);
+  return reactCreateElement(type as ElementType, props, ...children as ReactNode[]);
 }
 
 export function cloneC03Element(element: unknown, props: Record<string, unknown>) {
-  return reactCloneElement(element, props);
+  return reactCloneElement(element as ReactElement<Record<string, unknown>>, props);
 }
 
 export function isC03Element(value: unknown): boolean {
@@ -71,7 +74,7 @@ const baseRouteCatalog = [
     id: 'UI-003',
     name: '生产准备建议',
     path: '/dispatch/plans/:planId/recommendation',
-    smokePath: '/dispatch/plans/PLAN-DEMO-001/recommendation',
+    smokePath: '/dispatch/plans/PLAN-001/recommendation',
     sourceFile: 'src/pages/dispatch/ReceptionRecommendationPage.tsx',
     group: '调度',
     loadPage: () => import('../pages/dispatch/ReceptionRecommendationPage'),
@@ -80,7 +83,7 @@ const baseRouteCatalog = [
     id: 'UI-004',
     name: '任务拆解',
     path: '/dispatch/plans/:planId/tasks',
-    smokePath: '/dispatch/plans/PLAN-DEMO-001/tasks',
+    smokePath: '/dispatch/plans/PLAN-001/tasks',
     sourceFile: 'src/pages/dispatch/TaskDecompositionPage.tsx',
     group: '调度',
     loadPage: () => import('../pages/dispatch/TaskDecompositionPage'),

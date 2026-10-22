@@ -33,7 +33,7 @@ ssh -N -i C:\Users\Administrator\.ssh\bpoc_ed25519 ^
 cd D:\Project_B-main\PSMS\backend
 copy .env.example .env      :: 按需修改；含 # 的口令必须写成 OPENGAUSS_PASSWORD="xxx#yyy"
 pnpm db:init                :: 幂等建表 + 建时序库
-pnpm seed                   :: 灌入固定种子数据（会先清空业务表）
+pnpm seed                   :: 旧演示业务记录标记无效，写入新代次种子（保留账号、审计和历史行）
 pnpm dev                    :: 启动服务（默认 3100）
 ```
 

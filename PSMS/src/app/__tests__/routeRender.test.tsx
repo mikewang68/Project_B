@@ -41,7 +41,8 @@ describe('业务路由渲染', () => {
       expect(screen.getByRole('heading', { name: route.name })).toBeVisible();
       expect(screen.getByText(`当前路由：${route.smokePath}`)).toBeVisible();
       if (route.id === 'UI-004') {
-        expect(screen.getByText('对象已变化或不存在', { exact: false })).toBeVisible();
+        expect(screen.queryByText('对象已变化或不存在', { exact: false })).not.toBeInTheDocument();
+        expect(screen.getByLabelText('选择生产计划')).toBeVisible();
         expect(screen.queryByText(/当前 C01 仅提供可验证的工程骨架/)).not.toBeInTheDocument();
       }
       view.unmount();

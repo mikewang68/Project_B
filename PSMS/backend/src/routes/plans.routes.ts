@@ -5,8 +5,44 @@ import * as planService from '../services/plan.service.js';
 import * as workOrderService from '../services/workOrder.service.js';
 import { Equipment } from '../db/tables.js';
 import { pathParam, q, qList, qNum } from '../lib/http.js';
+import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
+import { Plan } from '../db/tables.js';
+
+const importedPlanSchema = z.object({
+  planBatchNo: z.string().trim().min(1).max(100), trainNo: z.string().trim().min(1).max(100),
+  cargoType: z.enum(['FLY_ASH', 'STEEL', 'CEMENT', 'GENERAL_CARGO']), trackNo: z.string().trim().min(1).max(50),
+  arrivalTime: z.iso.datetime({ offset: true }), departureTime: z.iso.datetime({ offset: true }),
+  sourceStation: z.string().trim().min(1).max(100).default('手工导入'), workArea: z.enum(['AREA-A', 'AREA-B', 'AREA-C']).default('AREA-A'),
+}).strict().refine((plan) => Date.parse(plan.departureTime) > Date.parse(plan.arrivalTime), '离开时间必须晚于到达时间');
 
 export const plansRouter = Router();
+
+// The browser parses CSV and submits validated rows; database checks remain authoritative.
+plansRouter.post('/import', authenticate, auditOperation('importPlans'), async (req, res, next) => {
+  try {
+    if (!['super_admin', 'admin', 'scheduler', 'dispatcher'].includes(req.user!.roleCode)) {
+      res.status(403).json({ ok: false, message: '当前角色无计划导入权限' }); return;
+    }
+    const parsed = z.object({ plans: z.array(importedPlanSchema).min(1).max(1000) }).strict().safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ ok: false, message: '导入字段校验失败', issues: parsed.error.issues }); return; }
+    const batches = parsed.data.plans.map((plan) => plan.planBatchNo);
+    if (new Set(batches).size !== batches.length) { res.status(400).json({ ok: false, message: '导入文件中计划批次重复' }); return; }
+    if (parsed.data.plans.some((plan) => !req.user!.dataScope.some((scope) => [plan.workArea, '*', 'GLOBAL'].includes(scope)))) {
+      res.status(403).json({ ok: false, message: '计划作业区超出当前数据权限' }); return;
+    }
+    if (await Plan.countDocuments({ planBatchNo: { $in: batches } })) { res.status(409).json({ ok: false, message: '计划批次已存在，请勿重复导入' }); return; }
+    const docs = parsed.data.plans.map(({ arrivalTime, departureTime, ...plan }) => ({ ...plan,
+      _id: `PLAN-CSV-${randomUUID()}`, arriveTime: new Date(arrivalTime), status: 'PENDING_CONFIRM',
+      supplements: { sourceSystem: 'MANUAL_CSV', departureTime },
+    }));
+    const items = await Plan.insertMany(docs);
+    res.status(201).json({ ok: true, data: { items, imported: items.length } });
+  } catch (error) {
+    if ((error as { code?: string }).code === '23505') { res.status(409).json({ ok: false, message: '计划批次已存在，请刷新后重试' }); return; }
+    next(error);
+  }
+});
 
 // API-001/API-002 计划台账查询
 plansRouter.get('/', optionalAuth, async (req, res, next) => {

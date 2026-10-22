@@ -250,6 +250,9 @@ describe('TaskDecompositionCommandService TD-01/TD-04', () => {
     const result = await context.commands.regenerateTasks('PLAN-001');
 
     expect(result).toMatchObject({ ok: true, commandId: 'CMD-C06-002', traceId: 'TRACE-C06-002' });
+    expect(context.store.getState().workOrder.workOrders.filter((order) => order.id.includes('-G001-'))).toHaveLength(4);
+    expect(context.store.getState().workOrder.workOrders.filter((order) => order.id.includes('-G001-')).every((order) => order.valid === 0)).toBe(true);
+    expect(context.store.getState().workOrder.nodes.filter((node) => node.id.includes('-G001-')).every((node) => node.valid === 0)).toBe(true);
     expect(context.decomposePlan).toHaveBeenLastCalledWith('PLAN-001', {
       ruleVersion: TASK_DECOMPOSITION_RULE_VERSION,
       mode: 'REGENERATE',

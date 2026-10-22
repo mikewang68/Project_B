@@ -98,7 +98,7 @@ export function makeHydrate(child: ChildSpec, parentIdField = '_id') {
     const ids = rows.map((r) => String(r[parentIdField]));
     if (ids.length === 0) return;
     const res = await getPool().query<Record<string, unknown>>(
-      `SELECT * FROM ${child.table} WHERE ${child.foreignKey} = ANY($1::text[]) ORDER BY ${child.orderBy}`,
+      `SELECT * FROM ${child.table} WHERE valid = 1 AND ${child.foreignKey} = ANY($1::text[]) ORDER BY ${child.orderBy}`,
       [ids] as never[],
     );
     const bucket = new Map<string, Record<string, unknown>[]>();
@@ -140,7 +140,7 @@ function childItemsOf(
  * 注意：openGauss 6.0 **不支持 PostgreSQL 的 `ON CONFLICT ... DO NOTHING`**
  * （实测报 syntax error at or near "CONFLICT"），因此这里用普通 INSERT。
  * 语义上也不需要 upsert —— 新增父记录时子表必为空；
- * 更新路径会先删旧子行再插入（见 Table.findByIdAndUpdate）。
+ * 更新路径会先标记旧子行为无效再插入（见 Table.findByIdAndUpdate）。
  */
 export async function insertChildRows(
   client: PoolClient,
@@ -196,7 +196,7 @@ interface BuiltWhere {
 
 /** 把筛选对象翻译成参数化 WHERE 子句（全部值走占位符） */
 function buildWhere(spec: TableSpec, filter: Filter | undefined): BuiltWhere {
-  const parts: string[] = [];
+  const parts: string[] = filter?.valid === undefined ? ['valid = 1'] : [];
   const params: unknown[] = [];
 
   const push = (fragment: (ph: string[]) => string, values: unknown[]) => {
@@ -429,7 +429,8 @@ class DocQuery<T = any> implements PromiseLike<T | null> {
 }
 
 export class Table {
-  constructor(private readonly spec: TableSpec) {}
+  private readonly spec: TableSpec;
+  constructor(spec: TableSpec) { this.spec = { ...spec, columns: { ...spec.columns, valid: 'valid' } }; }
 
   get tableName(): string {
     return this.spec.table;
@@ -476,15 +477,16 @@ export class Table {
    */
   async insertMany(
     docs: Record<string, unknown>[],
-    options: { returnInserted?: boolean } = {},
+    options: { returnInserted?: boolean; client?: PoolClient } = {},
   ): Promise<any[]> {
     if (docs.length === 0) return [];
     const { returnInserted = true } = options;
-    const client = await connectClient();
+    const client = options.client ?? await connectClient();
+    const ownsTransaction = !options.client;
     const pk = this.spec.primaryKey ?? 'id';
     const ids: string[] = [];
     try {
-      await client.query('BEGIN');
+      if (ownsTransaction) await client.query('BEGIN');
 
       const json = new Set(this.spec.jsonColumns ?? []);
       const skip = childKeys(this.spec);
@@ -524,6 +526,7 @@ export class Table {
         await insertPerRow();
       } else {
         try {
+          await client.query('SAVEPOINT batch_insert');
           // 批量：每行用同一组列，缺的单元格写 DEFAULT（保留列默认值语义）
           const params: unknown[] = [];
           const rowsSql = perDoc.map((cells) => {
@@ -540,7 +543,10 @@ export class Table {
             params as never[],
           );
           for (const row of res.rows) ids.push(String(row[pk]));
+          await client.query('RELEASE SAVEPOINT batch_insert');
         } catch (batchErr) {
+          await client.query('ROLLBACK TO SAVEPOINT batch_insert');
+          ids.length = 0;
           logger.warn(
             { err: (batchErr as Error).message },
             `表 ${this.spec.table} 批量插入失败，回退为逐行插入`,
@@ -552,17 +558,17 @@ export class Table {
       if (this.spec.persistChildren) {
         await this.spec.persistChildren(ids, docs, client);
       }
-      await client.query('COMMIT');
+      if (ownsTransaction) await client.query('COMMIT');
     } catch (err) {
       try {
-        await client.query('ROLLBACK');
+        if (ownsTransaction) await client.query('ROLLBACK');
       } catch (rollbackErr) {
         // 连接已被远端断开时 ROLLBACK 本身也会失败，不能让这个次生错误掩盖原始错误
         logger.warn({ rollbackErr }, 'openGauss 回滚失败（连接已断开）');
       }
       throw err;
     } finally {
-      client.release();
+      if (ownsTransaction) client.release();
     }
 
     if (!returnInserted) return [];
@@ -588,7 +594,7 @@ export class Table {
     return new DocQuery<T>(this.spec, { _id: id }, async () => {
       const pk = this.spec.primaryKey ?? 'id';
 
-      // 多值字段（子表承载）走"整体替换"：先删旧行，再插新行，与文档库的 set 语义一致
+      // 多值字段整体替换：旧行 valid=0，新行使用新的 row_version。
       const childUpdates = (this.spec.children ?? []).filter((c) =>
         Object.prototype.hasOwnProperty.call(update, c.key),
       );
@@ -607,7 +613,7 @@ export class Table {
           const params = [...set.params, id];
           const runner = client ?? getPool();
           const res = await runner.query(
-            `UPDATE ${this.spec.table} SET ${set.sql}${touch} WHERE ${pk} = $${params.length} RETURNING ${pk}`,
+            `UPDATE ${this.spec.table} SET ${set.sql}${touch} WHERE valid = 1 AND ${pk} = $${params.length} RETURNING ${pk}`,
             params as never[],
           );
           if (res.rows.length === 0) {
@@ -617,7 +623,7 @@ export class Table {
         } else if (childUpdates.length > 0) {
           // 仅更新子表时也要确认父记录存在
           const runner = client ?? getPool();
-          const exists = await runner.query(`SELECT 1 FROM ${this.spec.table} WHERE ${pk} = $1`, [id]);
+          const exists = await runner.query(`SELECT 1 FROM ${this.spec.table} WHERE valid = 1 AND ${pk} = $1 FOR UPDATE`, [id]);
           if (exists.rows.length === 0) {
             if (client) await client.query('ROLLBACK');
             return null;
@@ -629,7 +635,7 @@ export class Table {
         if (client) {
           for (const child of childUpdates) {
             await client.query(
-              `DELETE FROM ${child.table} WHERE ${child.foreignKey} = $1`,
+              `UPDATE ${child.table} SET valid = 0 WHERE valid = 1 AND ${child.foreignKey} = $1`,
               [id] as never[],
             );
             await insertChildRows(client, child, id, childItemsOf(child, update));
@@ -662,17 +668,47 @@ export class Table {
   }
 
   async deleteMany(filter: Filter): Promise<number> {
+    const client = await connectClient();
+    try {
+      await client.query('BEGIN');
+      const count = await this.invalidate(filter, client);
+      await client.query('COMMIT');
+      return count;
+    } catch (error) { await client.query('ROLLBACK').catch(() => undefined); throw error; }
+    finally { client.release(); }
+  }
+
+  private async invalidate(filter: Filter, client: PoolClient): Promise<number> {
     const where = buildWhere(this.spec, filter);
-    const res = await getPool().query(
-      `DELETE FROM ${this.spec.table} ${where.sql}`,
+    const res = await client.query(
+      `UPDATE ${this.spec.table} SET valid = 0 ${where.sql} RETURNING *`,
       where.params as never[],
     );
+    for (const child of this.spec.children ?? []) {
+      const parentKey = child.foreignKey === 'actor_id' ? 'actor_id' : (this.spec.primaryKey ?? 'id');
+      const ids = res.rows.map((row) => String(row[parentKey]));
+      if (ids.length) await client.query(`UPDATE ${child.table} SET valid = 0 WHERE valid = 1 AND ${child.foreignKey} = ANY($1::text[])`, [ids]);
+    }
     return res.rowCount ?? 0;
   }
 
-  /** 清空表（演示重置用）；TRUNCATE 会级联清掉子表 */
+  /** Whole-set replacement is atomic; old records remain invalid and new IDs must be unique. */
+  async replaceMany(filter: Filter, docs: Record<string, unknown>[]): Promise<any[]> {
+    const client = await connectClient();
+    try {
+      await client.query('BEGIN');
+      await client.query(`LOCK TABLE ${this.spec.table} IN SHARE ROW EXCLUSIVE MODE`);
+      await this.invalidate(filter, client);
+      await this.insertMany(docs, { returnInserted: false, client });
+      await client.query('COMMIT');
+    } catch (error) { await client.query('ROLLBACK').catch(() => undefined); throw error; }
+    finally { client.release(); }
+    return this.find({ _id: { $in: docs.map((doc) => String(doc._id)) } });
+  }
+
+  /** Compatibility method: marks records invalid; never physically truncates. */
   async truncate(): Promise<void> {
-    await getPool().query(`TRUNCATE TABLE ${this.spec.table} CASCADE`);
+    await this.deleteMany({});
   }
 }
 

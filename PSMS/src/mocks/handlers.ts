@@ -16,6 +16,7 @@ import { waitForMockDelay } from './delayPolicy';
 import { type DemoScenario, type FixtureSnapshot } from './fixtures';
 import { mockRuntime, type MockRuntime, type RuntimeFailure } from './scenarios';
 import { withAppBasePath } from '../runtime/appBasePath';
+import { getImportedPlans } from '../features/plan-entry/importedPlans';
 
 const objectGroupsByApi: Partial<Record<ApiId, readonly DomainObjectId[]>> = {
   'API-001': ['DO-001', 'DO-005', 'DO-007', 'DO-008', 'DO-009', 'DO-010', 'DO-012'],
@@ -292,6 +293,7 @@ function successData(
     ? validated.pathId
     : undefined;
   const snapshot = runtime.getProjectedSnapshot({ restoreResolvedObjectId });
+  snapshot.objects['DO-001'].push(...getImportedPlans());
   return {
     apiId: contract.apiId,
     operationId: contract.operationId,

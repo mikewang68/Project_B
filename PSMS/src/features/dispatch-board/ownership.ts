@@ -20,7 +20,7 @@ export function hasAreaAVisibility(dataScope: readonly string[]): boolean {
 }
 
 export function isDispatchBoardWorkOrder(order: WorkOrder, planId: string): boolean {
-  return order.planId === planId
+  return order.valid !== 0 && order.planId === planId
     && order.id.startsWith('C06-WO-')
     && order.workOrderNo.startsWith('C06-WO-')
     && order.ruleVersion === DISPATCH_BOARD_RULE_VERSION
@@ -31,7 +31,7 @@ export function isDispatchBoardWorkNode(
   node: WorkNode,
   ownedWorkOrderNumbers: ReadonlySet<string>,
 ): boolean {
-  return node.id.startsWith('C06-NODE-')
+  return node.valid !== 0 && node.id.startsWith('C06-NODE-')
     && node.nodeNo.startsWith('C06-N-')
     && ownedWorkOrderNumbers.has(node.workOrderNo);
 }

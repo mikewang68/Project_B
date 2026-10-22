@@ -3,7 +3,7 @@
  *
  * 用法：pnpm seed
  *
- * 会清空全部业务表后重新写入固定种子数据，
+ * 将旧演示业务记录标记无效后写入新代次种子，保留历史行、账号和审计，
  * 与 POST /api/demo/reset 使用同一份数据定义（src/seeds/seed-data.ts）。
  */
 import { closePool, health as gaussHealth } from '../db/openGaussClient.js';

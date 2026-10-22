@@ -41,6 +41,7 @@ export default function OperationMonitorPage() {
   const [clockStep, setClockStep] = useState(0);
   const [apiChecked, setApiChecked] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'warning'; text: string }>();
+  const [telemetry, setTelemetry] = useState<{ equipmentId: string; pointCode: string; value: number; unit?: string; sourceTimestamp?: string }[]>([]);
   const gateway = useMemo(() => createOperationMonitorGateway(), []);
   const timeline = createTimeline(state, planId);
   const events = createMonitorEvents(state);
@@ -59,6 +60,16 @@ export default function OperationMonitorPage() {
       });
     return () => { active = false; };
   }, [gateway, state.scenario.activeScenarioId, state.session.demoTime]);
+  useEffect(() => {
+    let active = true;
+    void fetch('/api/monitor/operations?workArea=AREA-A')
+      .then((response) => response.ok ? response.json() : null)
+      .then((body) => {
+        const rows = body?.data?.items?.[0]?.telemetry;
+        if (active && Array.isArray(rows)) setTelemetry(rows.slice(0, 12));
+      }).catch(() => undefined);
+    return () => { active = false; };
+  }, [state.session.demoTime, clockStep]);
 
   useEffect(() => {
     if (!playing) return undefined;
@@ -175,6 +186,9 @@ export default function OperationMonitorPage() {
               </button>
             ))}
           </div>
+        </Card>
+        <Card title="实时设备采集" className="operation-telemetry-card" extra={<Tag color={telemetry.length ? 'success' : 'default'}>{telemetry.length ? '已接收' : '等待数据'}</Tag>}>
+          {telemetry.length ? telemetry.slice(0, 6).map((item) => <Typography.Paragraph key={`${item.equipmentId}-${item.pointCode}`} style={{ marginBottom: 4 }}>{item.equipmentId} · {item.pointCode}：{item.value} {item.unit ?? ''}</Typography.Paragraph>) : <Typography.Text type="secondary">S1 模拟采集数据将在后端守护进程启动后显示。</Typography.Text>}
         </Card>
 
         <Card title="资源运行状态" className="operation-resource-card">

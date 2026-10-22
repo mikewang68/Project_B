@@ -90,7 +90,7 @@ export default function SupplementPlanForm({
           >
             <Select
               aria-label="异人复核员"
-              options={reviewerOptions}
+              options={[...reviewerOptions]}
               placeholder="选择另一名在岗调度员"
             />
           </Form.Item>

@@ -73,7 +73,7 @@ export function selectAffectedWorkOrders(
   if (!canReadAreaA(state)) return deepFreeze([]);
   return cloneFrozen(
     state.workOrder.workOrders
-      .filter((workOrder) => workOrder.planId === planId)
+      .filter((workOrder) => workOrder.valid !== 0 && workOrder.planId === planId)
       .sort((left, right) => left.id.localeCompare(right.id)),
   );
 }

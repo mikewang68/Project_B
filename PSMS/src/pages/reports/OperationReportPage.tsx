@@ -115,10 +115,10 @@ export default function OperationReportPage() {
   const [reason, setReason] = useState(defaultReason);
   const [resetting, setResetting] = useState(false);
   const [commandPending, setCommandPending] = useState(false);
-  const listFlight = useRef<Readonly<{
+  const listFlight = useRef<(Readonly<{
     key: string;
     promise: Promise<ReportGatewayResult>;
-  }>>();
+  }>) | undefined>(undefined);
 
   useEffect(() => {
     if (!visible) return undefined;

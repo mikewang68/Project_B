@@ -20,8 +20,9 @@ export type MonitorEvent = Readonly<{
 
 export function createTimeline(state: DemoRootState, planId?: string): TimelineItem[] {
   return state.workOrder.nodes
-    .map((node) => {
-      const order = state.workOrder.workOrders.find(({ workOrderNo }) => workOrderNo === node.workOrderNo);
+    .filter((node) => node.valid !== 0)
+    .map((node): TimelineItem | undefined => {
+      const order = state.workOrder.workOrders.find(({ workOrderNo, valid }) => valid !== 0 && workOrderNo === node.workOrderNo);
       if (!order || (planId && order.planId !== planId)) return undefined;
       const start = new Date(node.plannedStartTime);
       const finish = new Date(node.plannedFinishTime);
@@ -44,8 +45,8 @@ export function createTimeline(state: DemoRootState, planId?: string): TimelineI
 }
 
 export function createMonitorEvents(state: DemoRootState): MonitorEvent[] {
-  return state.workOrder.nodes.slice(0, 6).map((node, index) => {
-    const order = state.workOrder.workOrders.find(({ workOrderNo }) => workOrderNo === node.workOrderNo);
+  return state.workOrder.nodes.filter((node) => node.valid !== 0).slice(0, 6).map((node, index) => {
+    const order = state.workOrder.workOrders.find(({ workOrderNo, valid }) => valid !== 0 && workOrderNo === node.workOrderNo);
     const resource = state.resource.resources.find(({ id }) => id === order?.resourceId);
     const level = node.status === 'BLOCKED' || node.status === 'FAILED'
       ? '预警' as const

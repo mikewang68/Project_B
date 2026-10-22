@@ -4,7 +4,7 @@
  * 与文档模型时代的差别：这里不再是"集合首次写入自动创建"，
  * 而是显式的、可重复执行的 DDL，便于在不同环境保持一致。
  */
-import { closePool, getPool } from './openGaussClient.js';
+import { closePool, connectClient, getPool } from './openGaussClient.js';
 import { SCHEMA_STATEMENTS, ALL_TABLES } from './schema.js';
 import { logger } from '../lib/logger.js';
 
@@ -37,17 +37,30 @@ export async function listExistingTables(): Promise<string[]> {
 export async function migrate(): Promise<MigrationResult> {
   const startedAt = Date.now();
   const before = new Set(await listExistingTables());
-  const pool = getPool();
-
+  const columns = await getPool().query<{ table_name: string; column_name: string }>(
+    'SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = current_schema()',
+  );
+  const existingColumns = new Set(columns.rows.map((row) => `${row.table_name}.${row.column_name}`));
+  // openGauss 6 does not support ADD COLUMN IF NOT EXISTS; inspect the catalog instead.
+  const statements = SCHEMA_STATEMENTS.filter((sql) => {
+    const add = sql.match(/^ALTER TABLE (\w+) ADD COLUMN (\w+)/);
+    return !add || !existingColumns.has(`${add[1]}.${add[2]}`);
+  });
+  const client = await connectClient();
   try {
-    await pool.query(`${SCHEMA_STATEMENTS.join(';\n')};`);
+    await client.query('BEGIN');
+    await client.query(`${statements.join(';\n')};`);
+    await client.query('COMMIT');
     logger.info({ statements: SCHEMA_STATEMENTS.length }, 'DDL 批量执行成功');
   } catch (batchErr) {
+    await client.query('ROLLBACK');
+    await client.query('BEGIN');
     logger.warn({ err: (batchErr as Error).message }, 'DDL 批量执行失败，改为逐条定位');
-    for (const [index, sql] of SCHEMA_STATEMENTS.entries()) {
+    for (const [index, sql] of statements.entries()) {
       try {
-        await pool.query(sql);
+        await client.query(sql);
       } catch (err) {
+        await client.query('ROLLBACK');
         logger.error(
           { index, sql: sql.slice(0, 160).replace(/\s+/g, ' '), err },
           'DDL 执行失败，迁移中断',
@@ -55,7 +68,8 @@ export async function migrate(): Promise<MigrationResult> {
         throw new Error(`第 ${index + 1} 条 DDL 失败: ${(err as Error).message}`);
       }
     }
-  }
+    await client.query('COMMIT');
+  } finally { client.release(); }
 
   const after = await listExistingTables();
   const created = after.filter((t) => !before.has(t));
@@ -66,7 +80,7 @@ export async function migrate(): Promise<MigrationResult> {
   }
 
   const result: MigrationResult = {
-    statements: SCHEMA_STATEMENTS.length,
+    statements: statements.length,
     tables: after,
     created: created.length,
     durationMs: Date.now() - startedAt,

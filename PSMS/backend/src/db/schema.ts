@@ -515,6 +515,11 @@ const DDL: string[] = [
     user_agent       TEXT,
     request_body     TEXT,
     response_summary TEXT,
+    writelog_state    TEXT NOT NULL DEFAULT 'LOCAL_SAVED',
+    writelog_id       TEXT,
+    chain_state       TEXT NOT NULL DEFAULT 'NOT_REQUIRED',
+    chain_tx_id       TEXT,
+    chain_error       TEXT,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS idx_audit_logs_occurred ON audit_logs (occurred_at DESC)`,
@@ -631,7 +636,40 @@ const COMMENT_DDL: string[] = COMMENTS.map(([table, second, third]) => {
 });
 
 
-export const SCHEMA_STATEMENTS: string[] = [...DDL, ...COMMENT_DDL];
+const childKeys: Record<string, string> = {
+  user_data_scopes: 'actor_id, scope', plan_cargo_items: 'plan_id, item_no', work_order_crew: 'work_order_id, crew',
+  task_crew: 'task_id, crew', task_dependencies: 'task_id, depends_on_task_id', exception_evidence: 'exception_id, seq',
+  interlock_input_signals: 'interlock_id, seq', appointment_documents: 'appointment_id, seq',
+  offline_packet_conflict_fields: 'packet_id, field', config_change_history: 'config_id, seq',
+};
+
+/** Existing rows become valid=1. Invalid rows and replaced child versions remain in the same tables. */
+export const SOFT_DELETE_STATEMENTS: string[] = [
+  ...ALL_TABLES.map((table) => `ALTER TABLE ${table} ADD COLUMN valid SMALLINT NOT NULL DEFAULT 1 CHECK (valid IN (0, 1))`),
+  `CREATE SEQUENCE IF NOT EXISTS psms_child_row_version`,
+  ...CHILD_TABLES.flatMap((table) => [
+    `ALTER TABLE ${table} ADD COLUMN row_version BIGINT NOT NULL DEFAULT 0`,
+    `ALTER TABLE ${table} ALTER COLUMN row_version SET DEFAULT nextval('psms_child_row_version')`,
+    `ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS ${table}_pkey`,
+    `ALTER TABLE ${table} ADD PRIMARY KEY (${childKeys[table]}, row_version)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS uk_${table}_valid ON ${table} (${childKeys[table]}) WHERE valid = 1`,
+  ]),
+  `ALTER TABLE tasks DROP CONSTRAINT IF EXISTS uk_tasks_plan_task_no`,
+  `ALTER TABLE plans DROP CONSTRAINT IF EXISTS plans_plan_batch_no_key`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS uk_plans_valid_batch ON plans (plan_batch_no) WHERE valid = 1`,
+  `ALTER TABLE equipment DROP CONSTRAINT IF EXISTS equipment_equipment_id_key`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS uk_equipment_valid_device ON equipment (equipment_id) WHERE valid = 1`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS uk_tasks_valid_plan_task_no ON tasks (plan_id, task_no) WHERE valid = 1`,
+  `DROP INDEX IF EXISTS uk_appointments_active_queue`,
+  `CREATE UNIQUE INDEX uk_appointments_active_queue ON appointments (queue_number) WHERE valid = 1 AND queue_number IS NOT NULL AND status IN ('QUEUED','CALLED','ON_SITE')`,
+  `ALTER TABLE audit_logs ADD COLUMN writelog_state TEXT NOT NULL DEFAULT 'LOCAL_SAVED'`,
+  `ALTER TABLE audit_logs ADD COLUMN writelog_id TEXT`,
+  `ALTER TABLE audit_logs ADD COLUMN chain_state TEXT NOT NULL DEFAULT 'NOT_REQUIRED'`,
+  `ALTER TABLE audit_logs ADD COLUMN chain_tx_id TEXT`,
+  `ALTER TABLE audit_logs ADD COLUMN chain_error TEXT`,
+  ...ALL_TABLES.map((table) => `COMMENT ON COLUMN ${table}.valid IS '逻辑有效标识：1有效，0无效；业务操作禁止物理删除'`),
+];
+export const SCHEMA_STATEMENTS: string[] = [...DDL, ...SOFT_DELETE_STATEMENTS, ...COMMENT_DDL];
 
 /** 清理顺序（先子后父），供演示重置与种子脚本使用 */
 export const TRUNCATE_ORDER: string[] = [

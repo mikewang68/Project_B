@@ -9,7 +9,8 @@ import { z } from 'zod';
  */
 export const BACKEND_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
-dotenv.config({ path: path.join(BACKEND_ROOT, '.env') });
+dotenv.config({ path: path.join(BACKEND_ROOT, '.env.ai'), quiet: true });
+dotenv.config({ path: path.join(BACKEND_ROOT, '.env'), quiet: true });
 
 /** 把配置里的相对路径统一解析为基于 backend/ 的绝对路径 */
 function resolveFromRoot(value: string): string {
@@ -24,6 +25,19 @@ function resolveFromRoot(value: string): string {
  * 变量命名与 SCS / EHMS 保持一致（OPENGAUSS_* / OPENGEMINI_*）。
  */
 const envSchema = z.object({
+  // OpenAI-compatible provider; credentials stay on the backend.
+  AI_BASE_URL: z.string().default(''),
+  AI_MODEL: z.string().default(''),
+  AI_API_KEY: z.string().default(''),
+  DASHSCOPE_API_KEY: z.string().trim().default(''),
+  AI_DEMO_AUTO_LOGIN: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  WRITELOG_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  WRITELOG_URL: z.string().trim().default(''),
+  WRITELOG_API_KEY: z.string().trim().default(''),
+  WRITELOG_TIMEOUT_MS: z.coerce.number().int().min(200).max(30000).default(5000),
+  CONTRACT_API_URL: z.string().trim().default(''),
+  CONTRACT_API_KEY: z.string().trim().default(''),
+  CONTRACT_TIMEOUT_MS: z.coerce.number().int().min(200).max(30000).default(8000),
   // ---------- openGauss（业务主库） ----------
   OPENGAUSS_HOST: z.string().trim().min(1).default('127.0.0.1'),
   OPENGAUSS_PORT: z.coerce.number().int().min(1).max(65535).default(5432),

@@ -112,6 +112,7 @@ export const do004Schema = z
 
 export const do005Schema = z
   .object({
+    valid: z.union([z.literal(0), z.literal(1)]).optional(),
     id: z.string(),
     workOrderNo: z.string(),
     planId: z.string(),
@@ -133,6 +134,7 @@ export const do005Schema = z
 
 export const do006Schema = z
   .object({
+    valid: z.union([z.literal(0), z.literal(1)]).optional(),
     id: z.string(),
     nodeNo: z.string(),
     workOrderNo: z.string(),
