@@ -222,6 +222,9 @@
         throw new Error('Path must be a non-empty string');
       }
       const trimmed = path.trim();
+      if (/[\\\u0000-\u0020\u007f]/.test(trimmed)) {
+        throw new Error('Backslash and control/space characters are prohibited');
+      }
       // 必须单斜杠开头
       if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.startsWith('\\')) {
         throw new Error('Path must start with a single "/" and cannot be protocol-relative');
@@ -231,11 +234,42 @@
         throw new Error('Dangerous URI scheme detected');
       }
       // 路径遍历检查
-      const segments = trimmed.split('/');
-      if (segments.includes('..') || trimmed.includes('%2e%2e')) {
+      const decoded = decodeURIComponent(trimmed.split(/[?#]/, 1)[0]);
+      const segments = decoded.split('/');
+      if (segments.includes('..') || segments.includes('.') || /[\\\u0000-\u0020\u007f%]/.test(decoded) || decoded.startsWith('//')) {
         throw new Error('Path traversal sequence ".." is strictly prohibited');
       }
       return trimmed;
+    },
+
+    /** The base comes only from the authenticated IAM navigation response; never from query parameters. */
+    resolveConfiguredAddress(system, entryPath) {
+      if (!system.entryBaseUrl) return null;
+      const raw = system.entryBaseUrl;
+      if (typeof raw !== 'string' || /[\\\u0000-\u0020\u007f]/.test(raw)) throw new Error('Invalid configured address');
+      const base = new URL(raw);
+      if (!['https:', 'http:'].includes(base.protocol) || base.username || base.password
+          || base.search || base.hash || !base.pathname.endsWith('/')) throw new Error('Invalid configured address');
+      this.sanitizePath(base.pathname);
+      const prefix = this.sanitizePath(system.entryBasePath).replace(/\/$/, '');
+      const path = this.sanitizePath(entryPath);
+      const relative = new URL(path, 'https://navigation.invalid');
+      if (relative.pathname !== prefix && !relative.pathname.startsWith(prefix + '/')) {
+        throw new Error('Page does not belong to the configured application path');
+      }
+      // Never forward authentication material across application origins.
+      for (const key of relative.searchParams.keys()) {
+        if (/^(token|accesstoken|refreshtoken|idtoken|ticket|ssoticket|password|secret|authorization|session|sessionid|sid|code|authcode|csrf|csrftoken|apikey)$/i.test(key.replace(/[-_]/g, ''))) {
+          throw new Error('Authentication query parameters cannot be forwarded');
+        }
+      }
+      if (/token|ticket|password|secret|authorization|session|csrf/i.test(relative.hash)) {
+        throw new Error('Authentication fragments cannot be forwarded');
+      }
+      base.pathname += relative.pathname.slice(prefix.length).replace(/^\//, '');
+      base.search = relative.search;
+      base.hash = relative.hash;
+      return base.href;
     },
 
     /**
@@ -244,6 +278,16 @@
     resolveDestination(system, pageLeaf) {
       const appCode = system.appCode;
       const sanitizedEntry = this.sanitizePath(pageLeaf.entryPath);
+      const configuredAddress = this.resolveConfiguredAddress(system, sanitizedEntry);
+      if (configuredAddress) {
+        return {
+          status: 'CONFIGURED_APPLICATION_ENTRY',
+          badgeText: '已配置应用地址',
+          badgeClass: 'dest-badge',
+          entryPath: configuredAddress,
+          desc: '应用访问地址已从导航配置生成；目标应用的登录与权限仍由其后端校验。'
+        };
+      }
 
       if (appCode === 'IAM' || appCode === 'SYS') {
         return {
