@@ -35,10 +35,10 @@ public class TenantContextService {
         AuthModels.TenantView current = current(principal, session);
         AuthModels.TenantOption warehouse = current.warehouses().stream()
                 .filter(item -> item.code().equals(warehouseCode)).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("无权访问所选仓库"));
+                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("无权访问所选仓库"));
         AuthModels.TenantOption owner = current.owners().stream()
                 .filter(item -> item.code().equals(ownerCode)).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("无权访问所选货主"));
+                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("无权访问所选货主"));
         session.setAttribute(WAREHOUSE_ID, warehouse.id());
         session.setAttribute(OWNER_ID, owner.id());
         return new AuthModels.TenantView(principal.companyCode(), principal.companyName(), warehouse, owner,

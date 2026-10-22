@@ -32,12 +32,19 @@ public class SecurityConfiguration {
         http
                 .csrf(csrf -> csrf.csrfTokenRepository(csrfRepository)
                         .csrfTokenRequestHandler(csrfRequestHandler)
-                        .ignoringRequestMatchers("/open/qimen/**"))
+                        // 可信 SSO 是服务端到服务的票据交换，不使用浏览器 Cookie 会话，
+                        // 因此没有 CSRF 语义；其安全性由一次性票据 + 服务身份保证。
+                        .ignoringRequestMatchers("/open/qimen/**",
+                                "/api/v1/auth/sso/exchange",
+                                "/api/v1/auth/sso/revoke"))
                 .securityContext(context -> context.securityContextRepository(securityContextRepository)
                         .requireExplicitSave(true))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/health/**", "/api/v1/auth/csrf", "/api/v1/auth/login", "/open/qimen/**",
-                                "/", "/assets/**", "/index.html", "/favicon.svg").permitAll()
+                                "/", "/assets/**", "/index.html", "/favicon.svg",
+                                "/api/v1/auth/sso/exchange",
+                                "/api/v1/auth/sso/revoke",
+                                "/api/v1/auth/sso/health").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
                 .requestCache(cache -> cache.disable())
@@ -59,6 +66,12 @@ public class SecurityConfiguration {
                         }))
                 .sessionManagement(Customizer.withDefaults());
         http.addFilterBefore(new ActiveAccountFilter(authRepository,objectMapper),org.springframework.security.web.access.intercept.AuthorizationFilter.class);
+        http.addFilterBefore(new com.mt.wms.auth.sso.WmsReadOnlyFilter(objectMapper),org.springframework.security.web.access.intercept.AuthorizationFilter.class);
+        // 可信 SSO：在既有账号校验之前确认 IAM sid 未被撤销。
+        // 只影响通过 SSO 建立的会话，原生密码登录不受影响。
+        // 必须在认证解析之前执行：一旦 AuthorizationFilter 已放行，再拒绝就晚了。
+        http.addFilterBefore(new com.mt.wms.auth.sso.WmsSsoSessionGuardFilter(objectMapper),
+                org.springframework.security.web.context.SecurityContextHolderFilter.class);
         return http.build();
     }
 
