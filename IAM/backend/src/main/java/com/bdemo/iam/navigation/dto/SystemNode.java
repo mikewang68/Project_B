@@ -13,6 +13,7 @@ public class SystemNode {
   private String displayName;
   private int sortOrder;
   private String entryBasePath;
+  private String entryBaseUrl;
   private List<PageLeafNode> children = new ArrayList<>();
 
   public SystemNode() {}
@@ -56,6 +57,10 @@ public class SystemNode {
   public void setEntryBasePath(String entryBasePath) {
     this.entryBasePath = entryBasePath;
   }
+
+  /** Optional configured external entry; authentication remains the target application's responsibility. */
+  public String getEntryBaseUrl() { return entryBaseUrl; }
+  public void setEntryBaseUrl(String entryBaseUrl) { this.entryBaseUrl = entryBaseUrl; }
 
   public List<PageLeafNode> getChildren() {
     return children;

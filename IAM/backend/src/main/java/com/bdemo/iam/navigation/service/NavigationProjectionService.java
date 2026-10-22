@@ -10,6 +10,7 @@ import com.bdemo.iam.navigation.enums.AccessModeEnum;
 import com.bdemo.iam.navigation.enums.AppCodeEnum;
 import com.bdemo.iam.navigation.enums.EntryModeEnum;
 import com.bdemo.iam.navigation.model.NavigationMenuEntity;
+import com.bdemo.iam.navigation.model.NavigationAppEntity;
 import com.bdemo.iam.navigation.model.NavigationMenuPermEntity;
 import com.bdemo.iam.navigation.provider.DatabaseNavigationProvider;
 import com.bdemo.iam.navigation.provider.FixtureNavigationProvider;
@@ -64,6 +65,10 @@ public class NavigationProjectionService {
    */
   @Value("${iam.navigation.isolated-test-candidates:false}")
   private boolean isolatedTestCandidates = false;
+
+  /** Opt-in after address migration/configuration and target authentication checks. */
+  @Value("${iam.navigation.external-addresses-enabled:false}")
+  private boolean externalAddressesEnabled = false;
 
   // 供隔离测试动态注入或模拟已放行页面（用于验证 WMS 范围用户等离线单测）
   private static final ThreadLocal<Set<String>> SIMULATED_APPROVED_KEYS = new ThreadLocal<>();
@@ -147,6 +152,12 @@ public class NavigationProjectionService {
 
     List<NavigationMenuEntity> candidateMenus = provider.getNavEligibleMenus();
     List<NavigationMenuPermEntity> permRules = provider.getViewPermissionRules();
+    Map<String, NavigationAppEntity> addressApps = new LinkedHashMap<>();
+    if (externalAddressesEnabled) {
+      for (NavigationAppEntity configuredApp : provider.getActiveApps()) {
+        addressApps.put(configuredApp.getAppCode(), configuredApp);
+      }
+    }
 
     Map<String, NavigationMenuPermEntity> ruleByMenu = new LinkedHashMap<>();
     Map<String, String> requiredPermByMenu = new LinkedHashMap<>();
@@ -276,6 +287,18 @@ public class NavigationProjectionService {
         sysNode.setDisplayName(app.getDefaultDisplayName());
         sysNode.setSortOrder(app.getSortOrder());
         sysNode.setEntryBasePath(app.getEntryBasePath());
+        if (externalAddressesEnabled) {
+          NavigationAppEntity configuredApp = addressApps.get(app.name());
+          try {
+            sysNode.setEntryBaseUrl(NavigationAddressResolver.resolve(configuredApp));
+            if (configuredApp != null && configuredApp.getEntryBasePath() != null
+                && !configuredApp.getEntryBasePath().isBlank()) {
+              sysNode.setEntryBasePath(configuredApp.getEntryBasePath());
+            }
+          } catch (IllegalArgumentException e) {
+            throw new BizException(500, 50001, "导航访问地址配置无效: " + app.name());
+          }
+        }
         sysNode.setChildren(children);
         systems.add(sysNode);
       }
