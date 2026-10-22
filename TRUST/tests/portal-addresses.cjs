@@ -28,6 +28,16 @@ test('no configuration preserves existing SSO gateway', () => {
 test('configured address is not reported as verified SSO or automatic SPA routing', () => {
   assert.equal(adapter.resolveDestination(system, {entryPath: '/psms/'}).status, 'CONFIGURED_APPLICATION_ENTRY');
 });
+test('click guard permits only the exact configured destination', () => {
+  assert.equal(adapter.isAllowedNavigationTarget(system, {entryPath:'/psms/'}, 'https://dispatch.example.test/production-dispatch/'),true);
+  assert.equal(adapter.isAllowedNavigationTarget(system, {entryPath:'/psms/'}, 'https://evil.test/production-dispatch/'),false);
+  assert.equal(adapter.isAllowedNavigationTarget(system, {entryPath:'/psms/'}, 'https://dispatch.example.test/production-dispatch/?ticket=x'),false);
+  assert.equal(adapter.isAllowedNavigationTarget(null, {entryPath:'/psms/'}, '/psms/'),false);
+});
+test('click guard preserves validated same-origin paths', () => {
+  assert.equal(adapter.isAllowedNavigationTarget({...system,entryBaseUrl:null}, {entryPath:'/psms/'}, '/psms/'),true);
+  assert.equal(adapter.isAllowedNavigationTarget({...system,entryBaseUrl:null}, {entryPath:'/psms/'}, '//evil.test/'),false);
+});
 test('reject foreign application path', () => assert.throws(() => adapter.resolveConfiguredAddress(system, '/wms/')));
 test('reject credential parameters and fragments', () => {
   for (const value of ['/psms/?ticket=secret', '/psms/?access_token=secret', '/psms/?%74oken=secret', '/psms/#token=secret']) {
@@ -48,6 +58,7 @@ console.log(`${passed} groups passed`);
 // Optional private API response: exercise every real menu path without visiting target applications.
 if (process.argv[2]) {
   const response = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+  assert.equal(context.window.__NAVIGATION_CLIENT__.validateV3Contract(response).isError,false);
   let pages = 0;
   for (const app of response.data.systems) {
     assert.ok(app.entryBaseUrl, app.appCode);

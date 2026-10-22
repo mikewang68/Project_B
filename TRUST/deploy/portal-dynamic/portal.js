@@ -272,6 +272,15 @@
       return base.href;
     },
 
+    isAllowedNavigationTarget(system, pageLeaf, target) {
+      if (!system || !pageLeaf || typeof target !== 'string' || target === '#') return false;
+      try {
+        return this.resolveDestination(system, pageLeaf).entryPath === target;
+      } catch (error) {
+        return false;
+      }
+    },
+
     /**
      * 解析目标跳转联调状态与安全显示信息
      */
@@ -743,8 +752,11 @@
               body: JSON.stringify({ username, password })
             });
             const res = await resp.json();
-            if (resp.ok && res.code === 0 && res.data && res.data.token) {
-              const token = res.data.token;
+            const data = res.data;
+            const cookieSession = data && data.authenticated === true && data.user && typeof data.user === 'object';
+            const memoryToken = data && typeof data.token === 'string' && data.token.length > 0;
+            if (resp.ok && res.code === 0 && (cookieSession || memoryToken)) {
+              const token = memoryToken ? data.token : null;
               if (currentProvider && currentProvider.setAuthToken) {
                 currentProvider.setAuthToken(token);
               }
@@ -772,7 +784,7 @@
         btnNavigateEntry.addEventListener('click', e => {
           if (!activePageNode) return;
           const targetUrl = btnNavigateEntry.getAttribute('href');
-          if (targetUrl === '#' || !targetUrl.startsWith('/')) {
+          if (!RouteAdapter.isAllowedNavigationTarget(activeSystemNode, activePageNode, targetUrl)) {
             e.preventDefault();
             alert('目标服务实例未部署或网关尚未接通，无法跳转。');
           }
