@@ -278,4 +278,34 @@ class SimulatedIamBackendIntegrationTest {
     var session = login("no-permission", "fixture-noperm");
     mvc.perform(get("/api/v1/wallets").session(session)).andExpect(status().isForbidden());
   }
+
+  @Test
+  void historyPreservesOrganizationAndLivePermissionBoundaries() throws Exception {
+    String own = java.util.UUID.randomUUID().toString(),
+        other = java.util.UUID.randomUUID().toString();
+    for (var pair : List.of(Map.entry(own, "B-PROJECT"), Map.entry(other, "OTHER-PROJECT"))) {
+      db.update(
+          "INSERT INTO wallet_requests(id,org_id,action,payload,reason,proposed_by)"
+              + " VALUES(?,?,'REGISTER','{}','fixture','applicant')",
+          pair.getKey(),
+          pair.getValue());
+      db.update(
+          "UPDATE wallet_requests_read SET"
+              + " state='REJECTED',reviewed_by='reviewer',reviewed_at=CURRENT_TIMESTAMP,change_actor='reviewer',change_operation='REVIEW',change_reason='fixture'"
+              + " WHERE id=?",
+          pair.getKey());
+    }
+    var session = login("wallet-applicant", "fixture-applicant");
+    mvc.perform(get("/api/v1/wallets/requests/" + own + "/history").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items.length()").value(2))
+        .andExpect(jsonPath("$.items[0].state").value("REJECTED"))
+        .andExpect(jsonPath("$.items[1].state").value("PENDING"));
+    mvc.perform(get("/api/v1/wallets/requests/" + other + "/history").session(session))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items").isEmpty());
+    iam.updatePermissions("wallet-applicant", Set.of(), List.of("ORG-A"));
+    mvc.perform(get("/api/v1/wallets/requests/" + own + "/history").session(session))
+        .andExpect(status().isForbidden());
+  }
 }

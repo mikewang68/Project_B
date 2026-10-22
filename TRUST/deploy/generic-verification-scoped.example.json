@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 2,
+  "targets": {
+    "verification-example": {
+      "enabled": false,
+      "purpose": "scoped-isolated-verification",
+      "instance": {
+        "root": "/path/to/isolated/TRUST",
+        "databaseUrl": "jdbc:opengauss://127.0.0.1:25432/trust_iam_verify_test",
+        "appRole": "trust_iam_verify_app",
+        "migrationRole": "trust_iam_verify_migrate",
+        "channel": "trust-iam-verify",
+        "port": 28185,
+        "queryKeyRef": "query-example"
+      },
+      "ipfsUrl": "http://127.0.0.1:29501",
+      "fabricEndpoint": "127.0.0.1:29551",
+      "serverName": "peer.example.invalid",
+      "contract": "evidence",
+      "queryMsp": "ExampleMSP",
+      "queryFingerprint": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "scopes": {
+    "verification-example": [
+      {
+        "orgId": "EXAMPLE",
+        "sourceSystem": "SYNTHETIC_EXAMPLE",
+        "sourceId": "synthetic-example",
+        "eventId": "00000000-0000-0000-0000-000000000001",
+        "sourceEventId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "originalSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ]
+  }
+}

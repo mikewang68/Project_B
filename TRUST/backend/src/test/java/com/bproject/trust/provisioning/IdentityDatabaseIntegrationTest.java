@@ -60,16 +60,16 @@ class IdentityDatabaseIntegrationTest {
         t -> {
           for (var row :
               db.queryForList(
-                  "SELECT id,revision FROM fabric_identity WHERE issuer=? AND"
-                      + " tenant=? AND user_id=? FOR UPDATE",
+                  "SELECT id,revision FROM fabric_identity_read WHERE issuer=? AND tenant=? AND"
+                      + " user_id=? FOR UPDATE",
                   caller.issuer(),
                   caller.tenant(),
                   user)) {
             String id = (String) row.get("id");
             if (db.update(
-                    "UPDATE fabric_identity SET"
-                        + " status='QUARANTINED',last_error='TEST_RUN_COMPLETE'"
-                        + " WHERE id=? AND lease_token IS NULL",
+                    "UPDATE fabric_identity_read SET"
+                        + " status='QUARANTINED',last_error='TEST_RUN_COMPLETE' WHERE id=? AND"
+                        + " lease_token IS NULL",
                     id)
                 != 1) throw new IllegalStateException("Fixture lease remains active");
             service.audit(
@@ -106,7 +106,7 @@ class IdentityDatabaseIntegrationTest {
       assertEquals(
           1,
           db.queryForObject(
-              "SELECT COUNT(*) FROM fabric_identity WHERE issuer=? AND tenant=? AND" + " user_id=?",
+              "SELECT COUNT(*) FROM fabric_identity_read WHERE issuer=? AND tenant=? AND user_id=?",
               Integer.class,
               caller.issuer(),
               caller.tenant(),
@@ -172,7 +172,9 @@ class IdentityDatabaseIntegrationTest {
       assertEquals(
           1,
           db.queryForObject(
-              "SELECT COUNT(*) FROM fabric_certificate WHERE identity_id=?", Integer.class, id));
+              "SELECT COUNT(*) FROM fabric_certificate_read WHERE identity_id=?",
+              Integer.class,
+              id));
     } finally {
       release.countDown();
       executor.shutdownNow();
@@ -246,13 +248,13 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(
         "ISSUED",
         db.queryForObject(
-            "SELECT state FROM fabric_certificate WHERE identity_id=?", String.class, id));
+            "SELECT state FROM fabric_certificate_read WHERE identity_id=?", String.class, id));
     new IdentityWorker(db, tx, settings, ca, network, service).process(id);
     assertEquals("READY", service.get(caller, id).get("status"));
     assertEquals(
         1,
         db.queryForObject(
-            "SELECT COUNT(*) FROM fabric_certificate WHERE identity_id=?", Integer.class, id));
+            "SELECT COUNT(*) FROM fabric_certificate_read WHERE identity_id=?", Integer.class, id));
   }
 
   @Test
@@ -286,21 +288,21 @@ class IdentityDatabaseIntegrationTest {
             caller.tenant(),
             caller.orgs(),
             Set.of("read", "retry"));
-    var before = db.queryForMap("SELECT * FROM fabric_identity WHERE id=?", id);
+    var before = db.queryForMap("SELECT * FROM fabric_identity_read WHERE id=?", id);
     assertEquals(
         403,
         assertThrows(
                 ApiError.class,
                 () -> service.lifecycle(limited, id, "forbidden-" + UUID.randomUUID(), 1, "retry"))
             .status);
-    assertEquals(before, db.queryForMap("SELECT * FROM fabric_identity WHERE id=?", id));
+    assertEquals(before, db.queryForMap("SELECT * FROM fabric_identity_read WHERE id=?", id));
     String key = "retry-deleted-" + UUID.randomUUID();
     service.lifecycle(caller, id, key, 1, "retry");
     service.lifecycle(caller, id, key, 1, "retry");
     assertEquals(
         1,
         db.queryForObject(
-            "SELECT COUNT(*) FROM identity_audit WHERE identity_id=? AND" + " action='RETRY'",
+            "SELECT COUNT(*) FROM identity_audit WHERE identity_id=? AND action='RETRY'",
             Integer.class,
             id));
     assertEquals("DELETED", service.get(caller, id).get("desiredState"));
@@ -312,7 +314,7 @@ class IdentityDatabaseIntegrationTest {
                     service.lifecycle(
                         caller, id, "rotate-deleted-" + UUID.randomUUID(), 1, "rotate"))
             .status);
-    db.update("UPDATE fabric_identity SET status='CRL_PENDING' WHERE id=?", id);
+    db.update("UPDATE fabric_identity_read SET status='CRL_PENDING' WHERE id=?", id);
     assertEquals(
         409,
         assertThrows(
@@ -380,7 +382,7 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(
         "ISSUED",
         db.queryForObject(
-            "SELECT state FROM fabric_certificate WHERE identity_id=?", String.class, f.id()));
+            "SELECT state FROM fabric_certificate_read WHERE identity_id=?", String.class, f.id()));
     when(f.settings().read()).thenReturn(configuration);
     f.worker().process(f.id());
     assertEquals("READY", service.get(caller, f.id()).get("status"));
@@ -394,7 +396,7 @@ class IdentityDatabaseIntegrationTest {
     var first = new java.util.concurrent.atomic.AtomicBoolean(true);
     String oldEnrollment =
         db.queryForObject(
-            "SELECT enrollment_id FROM fabric_certificate WHERE identity_id=?",
+            "SELECT enrollment_id FROM fabric_certificate_read WHERE identity_id=?",
             String.class,
             f.id());
     doAnswer(
@@ -414,7 +416,7 @@ class IdentityDatabaseIntegrationTest {
       assertEquals(
           "REVOKING",
           db.queryForObject(
-              "SELECT crl_state FROM fabric_certificate WHERE identity_id=?",
+              "SELECT crl_state FROM fabric_certificate_read WHERE identity_id=?",
               String.class,
               f.id()));
       assertEquals(
@@ -424,8 +426,8 @@ class IdentityDatabaseIntegrationTest {
                   caller, "restore-race-" + UUID.randomUUID(), command(3, "ORG1", "ACTIVE", "SYNC"))
               .get("status"));
       db.update(
-          "UPDATE fabric_identity SET lease_until=CURRENT_TIMESTAMP-INTERVAL '1 second'"
-              + " WHERE id=?",
+          "UPDATE fabric_identity_read SET lease_until=CURRENT_TIMESTAMP-INTERVAL '1 second' WHERE"
+              + " id=?",
           f.id());
       f.worker().process(f.id());
       assertEquals("READY", service.get(caller, f.id()).get("status"));
@@ -435,13 +437,13 @@ class IdentityDatabaseIntegrationTest {
       assertEquals(
           "CA_REVOKED",
           db.queryForObject(
-              "SELECT state FROM fabric_certificate WHERE identity_id=? AND" + " version=1",
+              "SELECT state FROM fabric_certificate_read WHERE identity_id=? AND version=1",
               String.class,
               f.id()));
       assertEquals(
           "ISSUED",
           db.queryForObject(
-              "SELECT state FROM fabric_certificate WHERE identity_id=? AND" + " version=2",
+              "SELECT state FROM fabric_certificate_read WHERE identity_id=? AND version=2",
               String.class,
               f.id()));
       assertEquals("READY", service.get(caller, f.id()).get("status"));
@@ -449,8 +451,7 @@ class IdentityDatabaseIntegrationTest {
       assertEquals(
           1,
           db.queryForObject(
-              "SELECT COUNT(*) FROM identity_audit WHERE identity_id=? AND"
-                  + " action='CA_REVOKED'",
+              "SELECT COUNT(*) FROM identity_audit WHERE identity_id=? AND action='CA_REVOKED'",
               Integer.class,
               f.id()));
     } finally {
@@ -467,7 +468,7 @@ class IdentityDatabaseIntegrationTest {
             call -> {
               if (once.getAndSet(false))
                 db.update(
-                    "UPDATE fabric_identity SET"
+                    "UPDATE fabric_identity_read SET"
                         + " lease_token='replacement-lease',lease_until=CURRENT_TIMESTAMP-INTERVAL"
                         + " '1 second' WHERE id=?",
                     f.id());
@@ -479,11 +480,13 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(
         "ISSUED",
         db.queryForObject(
-            "SELECT state FROM fabric_certificate WHERE identity_id=?", String.class, f.id()));
+            "SELECT state FROM fabric_certificate_read WHERE identity_id=?", String.class, f.id()));
     assertEquals(
         "REVOKING",
         db.queryForObject(
-            "SELECT crl_state FROM fabric_certificate WHERE identity_id=?", String.class, f.id()));
+            "SELECT crl_state FROM fabric_certificate_read WHERE identity_id=?",
+            String.class,
+            f.id()));
     assertEquals(
         "PENDING",
         service
@@ -496,7 +499,7 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(
         1,
         db.queryForObject(
-            "SELECT COUNT(*) FROM identity_audit WHERE identity_id=? AND" + " action='CA_REVOKED'",
+            "SELECT COUNT(*) FROM identity_audit WHERE identity_id=? AND action='CA_REVOKED'",
             Integer.class,
             f.id()));
   }
@@ -516,11 +519,13 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(
         "CA_REVOKED",
         db.queryForObject(
-            "SELECT state FROM fabric_certificate WHERE identity_id=?", String.class, f.id()));
+            "SELECT state FROM fabric_certificate_read WHERE identity_id=?", String.class, f.id()));
     assertEquals(
         1,
         db.queryForObject(
-            "SELECT COUNT(*) FROM fabric_certificate WHERE identity_id=?", Integer.class, f.id()));
+            "SELECT COUNT(*) FROM fabric_certificate_read WHERE identity_id=?",
+            Integer.class,
+            f.id()));
     assertFalse(f.worker().due().stream().anyMatch(r -> f.id().equals(r.get("id"))));
   }
 
@@ -534,15 +539,14 @@ class IdentityDatabaseIntegrationTest {
         .thenAnswer(
             call -> {
               db.update(
-                  "UPDATE fabric_identity SET"
-                      + " lease_until=CURRENT_TIMESTAMP-INTERVAL '1 second' WHERE"
-                      + " id=?",
+                  "UPDATE fabric_identity_read SET lease_until=CURRENT_TIMESTAMP-INTERVAL '1"
+                      + " second' WHERE id=?",
                   f.id());
               return issued;
             });
     int before =
         db.queryForObject(
-            "SELECT COUNT(*) FROM identity_audit WHERE identity_id=? AND" + " action='CA_ISSUED'",
+            "SELECT COUNT(*) FROM identity_audit WHERE identity_id=? AND action='CA_ISSUED'",
             Integer.class,
             f.id());
     f.worker().process(f.id());
@@ -550,7 +554,7 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(
         before,
         db.queryForObject(
-            "SELECT COUNT(*) FROM identity_audit WHERE identity_id=? AND" + " action='CA_ISSUED'",
+            "SELECT COUNT(*) FROM identity_audit WHERE identity_id=? AND action='CA_ISSUED'",
             Integer.class,
             f.id()));
   }
@@ -558,11 +562,10 @@ class IdentityDatabaseIntegrationTest {
   @Test
   void queryNeverReportsRevokedOrUnverifiedCurrentCertificateAsReady() throws Exception {
     var f = issuedFixture();
-    db.update("UPDATE fabric_identity SET status='READY' WHERE id=?", f.id());
+    db.update("UPDATE fabric_identity_read SET status='READY' WHERE id=?", f.id());
     db.update(
-        "UPDATE fabric_certificate SET"
-            + " state='CA_REVOKED',network_state='REVOCATION_UNVERIFIED' WHERE"
-            + " identity_id=?",
+        "UPDATE fabric_certificate_read SET"
+            + " state='CA_REVOKED',network_state='REVOCATION_UNVERIFIED' WHERE identity_id=?",
         f.id());
     assertEquals("RETRY", service.get(caller, f.id()).get("status"));
     assertEquals("CERTIFICATE_NOT_USABLE", service.get(caller, f.id()).get("errorCode"));
@@ -591,7 +594,7 @@ class IdentityDatabaseIntegrationTest {
     var once = new java.util.concurrent.atomic.AtomicBoolean(true);
     String oldEnrollment =
         db.queryForObject(
-            "SELECT enrollment_id FROM fabric_certificate WHERE identity_id=?",
+            "SELECT enrollment_id FROM fabric_certificate_read WHERE identity_id=?",
             String.class,
             f.id());
     doAnswer(
@@ -608,7 +611,9 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(
         "REVOKING",
         db.queryForObject(
-            "SELECT crl_state FROM fabric_certificate WHERE identity_id=?", String.class, f.id()));
+            "SELECT crl_state FROM fabric_certificate_read WHERE identity_id=?",
+            String.class,
+            f.id()));
     assertEquals(
         "PENDING",
         service
@@ -623,7 +628,7 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(
         "CA_REVOKED",
         db.queryForObject(
-            "SELECT state FROM fabric_certificate WHERE identity_id=? AND version=1",
+            "SELECT state FROM fabric_certificate_read WHERE identity_id=? AND version=1",
             String.class,
             f.id()));
     verify(f.ca(), times(2)).revoke(any(), eq(oldEnrollment));
@@ -643,7 +648,7 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(1, CrlVerification.pendingVersions(db, f.id()).size());
     var newer =
         db.queryForMap(
-            "SELECT * FROM fabric_certificate WHERE identity_id=? AND version=2", f.id());
+            "SELECT * FROM fabric_certificate_read WHERE identity_id=? AND version=2", f.id());
     // Only persistence of a synthetic successful proof is tested here, not real peer
     // enforcement.
     CrlVerification.recordVerifiedVersions(
@@ -657,11 +662,11 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(
         newer,
         db.queryForMap(
-            "SELECT * FROM fabric_certificate WHERE identity_id=? AND version=2", f.id()));
+            "SELECT * FROM fabric_certificate_read WHERE identity_id=? AND version=2", f.id()));
     assertEquals(
         "VERIFIED",
         db.queryForObject(
-            "SELECT crl_state FROM fabric_certificate WHERE identity_id=? AND" + " version=1",
+            "SELECT crl_state FROM fabric_certificate_read WHERE identity_id=? AND version=1",
             String.class,
             f.id()));
     assertTrue(CrlVerification.pendingVersions(db, f.id()).isEmpty());
@@ -672,8 +677,7 @@ class IdentityDatabaseIntegrationTest {
     var f = issuedFixture();
     f.worker().process(f.id());
     var pending = CrlVerification.pendingVersions(db, f.id());
-    db.update(
-        "UPDATE fabric_certificate SET fingerprint=? WHERE identity_id=?", "c".repeat(64), f.id());
+    pending.get(0).put("fingerprint", "c".repeat(64));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -683,6 +687,8 @@ class IdentityDatabaseIntegrationTest {
     assertEquals(
         "PENDING",
         db.queryForObject(
-            "SELECT crl_state FROM fabric_certificate WHERE identity_id=?", String.class, f.id()));
+            "SELECT crl_state FROM fabric_certificate_read WHERE identity_id=?",
+            String.class,
+            f.id()));
   }
 }

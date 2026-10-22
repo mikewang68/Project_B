@@ -22,16 +22,25 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /** Real Fabric + IPFS; only the response after successful commit is deliberately lost. */
-@org.springframework.context.annotation.Import(com.bproject.trust.support.NoBackgroundScheduling.class)
+@org.springframework.context.annotation.Import(
+    com.bproject.trust.support.NoBackgroundScheduling.class)
 @SpringBootTest(properties = {"trust.isolation-enabled=false", "spring.liquibase.enabled=false"})
 @EnabledIfEnvironmentVariable(named = "TRUST_REAL_COMPONENTS", matches = "1")
 class ManagedRealComponentsTest {
   String fixtureEvent, fixtureOrg;
+
   @org.junit.jupiter.api.AfterEach
   void stopOnlyThisRunTask() {
     if (fixtureEvent != null)
-      db.update("UPDATE tasks SET state='FAILED',lease_token=NULL,lease_until=NULL,last_error='TEST_RUN_COMPLETE' WHERE event_id=? AND state IN ('READY','RUNNING') AND event_id IN (SELECT id FROM events WHERE org_id=?)", fixtureEvent, fixtureOrg);
+      db.update(
+          "UPDATE tasks_read SET"
+              + " state='FAILED',lease_token=NULL,lease_until=NULL,last_error='TEST_RUN_COMPLETE'"
+              + " WHERE event_id=? AND state IN ('READY','RUNNING') AND event_id IN (SELECT id FROM"
+              + " events WHERE org_id=?)",
+          fixtureEvent,
+          fixtureOrg);
   }
+
   @MockitoSpyBean FabricClient fabric;
   @Autowired WalletService wallets;
   @Autowired EventService events;
@@ -58,8 +67,12 @@ class ManagedRealComponentsTest {
     assertNotNull(wallet, "An existing approved test wallet/binding is required");
     var active = wallets.active(wallet, org);
     assertEquals("Org1MSP", active.get("msp_id"));
-    assertEquals(wallet, db.queryForObject(
-        "SELECT wallet_id FROM wallet_bindings WHERE org_id=? AND source_system='WMS'", String.class, org));
+    assertEquals(
+        wallet,
+        db.queryForObject(
+            "SELECT wallet_id FROM wallet_bindings_read WHERE org_id=? AND source_system='WMS'",
+            String.class,
+            org));
     AtomicBoolean lost = new AtomicBoolean();
     java.util.concurrent.atomic.AtomicInteger submits =
         new java.util.concurrent.atomic.AtomicInteger();
@@ -101,10 +114,10 @@ class ManagedRealComponentsTest {
                 "ownerCode",
                 "O01"));
     String id = (String) events.submit(input, org, "source:real-recovery-fixture", null).get("id");
-    fixtureEvent = id; fixtureOrg = org;
+    fixtureEvent = id;
+    fixtureOrg = org;
     long end = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(100);
-    while (System.nanoTime() < end && !"COMMITTED".equals(events.get(id, org).get("chain_state")))
-    {
+    while (System.nanoTime() < end && !"COMMITTED".equals(events.get(id, org).get("chain_state"))) {
       com.bproject.trust.archiving.FixtureArchiveRunner.run(archive, db, id, org);
       Thread.sleep(250);
     }
@@ -112,7 +125,7 @@ class ManagedRealComponentsTest {
     assertEquals("COMMITTED", row.get("chain_state"));
     assertTrue(lost.get());
     assertEquals(1, submits.get());
-    var attempts = db.queryForList("SELECT * FROM signing_attempts WHERE event_id=?", id);
+    var attempts = db.queryForList("SELECT * FROM signing_attempts_read WHERE event_id=?", id);
     assertEquals(1, attempts.size());
     assertEquals("COMMITTED", attempts.get(0).get("state"));
     assertTrue(attempts.get(0).get("last_error").toString().contains("response lost"));

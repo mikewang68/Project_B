@@ -13,6 +13,13 @@ import org.springframework.stereotype.Component;
 public class IntegrationSettings {
   private final Path file;
   private final boolean developmentLoginEnabled;
+  private String startupMode;
+
+  /** Fix the authentication boundary before accepting requests. Never infer development mode. */
+  @jakarta.annotation.PostConstruct
+  public void initialize() {
+    read();
+  }
 
   public IntegrationSettings(String root) {
     this(root, false);
@@ -64,9 +71,10 @@ public class IntegrationSettings {
     }
   }
 
-  public Settings read() {
+  public synchronized Settings read() {
     try {
-      if (!Files.exists(file)) return new Settings("", "development", false, Map.of(), List.of());
+      if (!Files.isRegularFile(file) || !Files.isReadable(file))
+        throw new IllegalStateException("身份接入配置缺失或不可读");
       var value = Json.MAPPER.readValue(Files.readString(file), Settings.class);
       if (value.iamMode() == null)
         value =
@@ -97,6 +105,9 @@ public class IntegrationSettings {
             || s.ownerCode() == null
             || s.ownerCode().isBlank()) throw new IllegalArgumentException("来源身份配置不完整或重复");
       }
+      if (startupMode != null && !startupMode.equals(value.iamMode()))
+        throw new IllegalStateException("认证模式不能在运行期间变更，请恢复配置");
+      startupMode = value.iamMode();
       return value;
     } catch (Exception e) {
       throw new IllegalStateException("身份接入配置不可用", e);

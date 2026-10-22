@@ -8,4 +8,5 @@
   <changeSet id="006-audit-log" author="b-project"><sqlFile path="006-audit-log.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
   <changeSet id="007-audit-optional-text" author="b-project"><sqlFile path="007-audit-optional-text.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
   <changeSet id="008-audit-ownership" author="b-project"><sqlFile path="008-audit-ownership.sql" relativeToChangelogFile="true" splitStatements="true"/></changeSet>
+  <changeSet id="009-retention" author="b-project"><sqlFile path="009-retention.sql" relativeToChangelogFile="true" splitStatements="true" endDelimiter=";;"/></changeSet>
 </databaseChangeLog>

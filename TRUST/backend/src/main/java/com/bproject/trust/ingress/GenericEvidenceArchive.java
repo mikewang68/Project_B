@@ -29,7 +29,7 @@ public class GenericEvidenceArchive {
 
   public Map<String, Object> local(Map<String, Object> row) {
     String id = (String) row.get("id");
-    var data = db.queryForMap("SELECT * FROM generic_event_data WHERE event_id=?", id);
+    var data = db.queryForMap("SELECT * FROM generic_event_data_read WHERE event_id=?", id);
     assertLocal(row, data);
     check(
         db.queryForObject("SELECT COUNT(*) FROM event_links WHERE event_id=?", Long.class, id)
@@ -117,16 +117,17 @@ public class GenericEvidenceArchive {
     if (data.get("original_cid") == null) {
       String cid = ipfs.add(((String) data.get("original_utf8")).getBytes(StandardCharsets.UTF_8));
       if (db.update(
-              "UPDATE generic_event_data SET original_cid=? WHERE event_id=? AND"
-                  + " original_cid IS NULL AND EXISTS(SELECT 1 FROM tasks WHERE"
+              "UPDATE generic_event_data_read SET expected_lease_token=?,original_cid=? WHERE"
+                  + " event_id=? AND original_cid IS NULL AND EXISTS(SELECT 1 FROM tasks_read WHERE"
                   + " event_id=? AND state='RUNNING' AND lease_token=? AND"
                   + " lease_until>CURRENT_TIMESTAMP)",
+              lease,
               cid,
               id,
               id,
               lease)
           == 0) return null;
-      data = db.queryForMap("SELECT * FROM generic_event_data WHERE event_id=?", id);
+      data = db.queryForMap("SELECT * FROM generic_event_data_read WHERE event_id=?", id);
     }
     originalBytes(data);
     return Json.write(

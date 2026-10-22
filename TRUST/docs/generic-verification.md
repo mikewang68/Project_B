@@ -45,4 +45,14 @@ java -Dloader.main=com.bproject.trust.ingress.GenericEvidenceVerify \
 
 `TARGET_NOT_APPROVED` 表示计划与允许名单不符；`TARGET_NOT_FOUND` 不区分不存在和范围不符；`TARGET_NOT_COMPLETE` 表示本地尚未达到可核验状态；`INTEGRITY_MISMATCH`、`LEDGER_RECORD_MISSING`、`LEDGER_MISMATCH` 分别表示材料不一致、未查到登记或登记不匹配。配置、路径、输出和查询身份也有独立拒绝码。失败时可在已经安全创建的输出目录保留摘要报告，但不会因哈希校验单独通过就保存原文或报告 VERIFIED。
 
+## 固定隔离实例的受限核验
+
+已有 schemaVersion=1 配置及其端口保护保持不变。固定隔离应用使用 [schemaVersion=2 模板](../deploy/generic-verification-scoped.example.json)，purpose 必须为 `scoped-isolated-verification`；仅应用端口可额外使用 28185，数据库、根目录、通道及 IPFS/Fabric 端点限制不放宽。示例默认关闭，不能把示例值作为运行环境事实。
+
+允许名单的 `scopes[instanceId]` 独立列出每条 `orgId/sourceSystem/sourceId/eventId/sourceEventId/originalSha256`，最多 20 条。单次计划同样使用 schemaVersion=2，target 与允许名单完全一致，并只选其中一个事件；不能在计划中添加授权。核验额外要求 OPERATION_LOG、原来源号码和请求字节摘要一致。允许名单外的范围返回 `SCOPE_NOT_APPROVED`，不连接数据库或归档服务。
+
+来源客户端使用 [受限客户端模板](../deploy/generic-client-scoped.example.json)。条目绑定实例、组织、来源、token 摘要、允许操作，以及 `events` 中固定 64 字符号码与原文字节摘要；得到内部 id 后由维护方核对并登记到对应条目，才能按 id 查询或 retry。凭据与允许名单的摘要必须匹配。查询回执核对来源命名、来源号码、原文摘要和已知内部 id；组织和稳定来源主体由服务端凭据配置保证，客户端不能凭回执中的缺失字段声称核实了组织。
+
+schemaVersion=2 仅支持批准的 OPERATION_LOG 快照，businessObjectId 等于来源号码，不接受更正关系。默认 dry-run 不读取凭据、不访问网络；`--send` 才访问，且先检查能力接口。版本数组只须包含整数 1，不要求整个数组等于 `[1]`。retry 先读取并核对原回执，仍以服务器实际权限为准。客户端本身不是 QPS 限流器，批量执行者应遵守测试发送预算。
+
 核验命令不会重试处理任务，也不会修正异常数据。发现问题后按[通用接入说明](generic-evidence.md)保留记录、查询回执并走已授权的显式 retry；真实资源未获准时只进行离线验证，不改外部授权来使工具通过。

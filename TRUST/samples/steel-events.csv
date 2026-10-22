@@ -1,4 +1,4 @@
-﻿sourceEventId,sourceSystem,eventType,businessObjectId,batchId,occurredAt,quantity,unit,location,bundleIds,relatedBatchIds,relatedEventRefs,evidenceIds,supplier,receiver,handoverId,details
+sourceEventId,sourceSystem,eventType,businessObjectId,batchId,occurredAt,quantity,unit,location,bundleIds,relatedBatchIds,relatedEventRefs,evidenceIds,supplier,receiver,handoverId,details
 STEEL-001,S2-WMS,ARRIVAL,STEEL-ORDER-001,STEEL-2026-001,2026-09-10T02:00:00Z,100,吨,开发验证货场,BUNDLE-001|BUNDLE-002,,,,模拟供应商甲,模拟接收单位乙,,"{""note"": ""到货（模拟数据）""}"
 STEEL-002,S2-WMS,ACCEPTANCE,STEEL-ORDER-001,STEEL-2026-001,2026-09-10T03:00:00Z,100,吨,开发验证货场,BUNDLE-001|BUNDLE-002,,S2-WMS:STEEL-001,,模拟供应商甲,模拟接收单位乙,,"{""note"": ""验收（模拟数据）""}"
 STEEL-003,S2-WMS,WEIGHING,STEEL-ORDER-001,STEEL-2026-001,2026-09-10T04:00:00Z,100,吨,开发验证货场,BUNDLE-001|BUNDLE-002,,S2-WMS:STEEL-002,,模拟供应商甲,模拟接收单位乙,,"{""note"": ""过磅（模拟数据）""}"

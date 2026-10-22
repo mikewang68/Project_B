@@ -59,7 +59,7 @@ public final class CrlVerification {
     var db = new JdbcTemplate(ds);
     var tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
     String id = args[0];
-    var original = db.queryForMap("SELECT * FROM fabric_identity WHERE id=?", id);
+    var original = db.queryForMap("SELECT * FROM fabric_identity_read WHERE id=?", id);
     long revision = ((Number) original.get("revision")).longValue();
     var certs = pendingVersions(db, id);
     if (certs.isEmpty() && !"CRL_PENDING".equals(original.get("status")))
@@ -202,7 +202,7 @@ public final class CrlVerification {
 
   static List<Map<String, Object>> pendingVersions(JdbcTemplate db, String id) {
     return db.queryForList(
-        "SELECT * FROM fabric_certificate WHERE identity_id=? AND state='CA_REVOKED' AND"
+        "SELECT * FROM fabric_certificate_read WHERE identity_id=? AND state='CA_REVOKED' AND"
             + " crl_state='PENDING' ORDER BY version",
         id);
   }
@@ -221,15 +221,13 @@ public final class CrlVerification {
     tx.executeWithoutResult(
         s -> {
           var locked =
-              db.queryForMap(
-                  "SELECT revision,status,desired_state FROM fabric_identity"
-                      + " WHERE id=? FOR UPDATE",
-                  id);
+              com.bproject.trust.shared.RetentionLock.row(db, "fabric_identity", "id=?", id);
           for (var snapshot : certs) {
             var current =
-                db.queryForMap(
-                    "SELECT * FROM fabric_certificate WHERE identity_id=? AND"
-                        + " version=? FOR UPDATE",
+                com.bproject.trust.shared.RetentionLock.row(
+                    db,
+                    "fabric_certificate",
+                    "identity_id=? AND version=?",
                     id,
                     snapshot.get("version"));
             if (!"CA_REVOKED".equals(current.get("state"))
@@ -240,24 +238,22 @@ public final class CrlVerification {
               throw new IllegalStateException(
                   "Certificate version changed during CRL verification");
             db.update(
-                "UPDATE fabric_certificate SET"
-                    + " crl_state='VERIFIED',network_state='REVOKED' WHERE"
-                    + " identity_id=? AND version=?",
+                "UPDATE fabric_certificate_read SET crl_state='VERIFIED',network_state='REVOKED'"
+                    + " WHERE identity_id=? AND version=?",
                 id,
                 snapshot.get("version"));
           }
           if ("CRL_PENDING".equals(locked.get("status"))
               && !"ACTIVE".equals(locked.get("desired_state"))
               && db.queryForObject(
-                      "SELECT COUNT(*) FROM fabric_certificate WHERE"
-                          + " identity_id=? AND (state<>'CA_REVOKED' OR"
-                          + " crl_state<>'VERIFIED')",
+                      "SELECT COUNT(*) FROM fabric_certificate_read WHERE identity_id=? AND"
+                          + " (state<>'CA_REVOKED' OR crl_state<>'VERIFIED')",
                       Integer.class,
                       id)
                   == 0)
             db.update(
-                "UPDATE fabric_identity SET"
-                    + " status='REVOKED',updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                "UPDATE fabric_identity_read SET status='REVOKED',updated_at=CURRENT_TIMESTAMP"
+                    + " WHERE id=?",
                 id);
           new FabricIdentityService(db, tx)
               .audit(
@@ -278,8 +274,8 @@ public final class CrlVerification {
       // A generic FAILED_PRECONDITION (contract, endorsement, availability, etc.)
       // must never count as proof of revocation.
       String expected =
-          "evaluate call to endorser returned error: error validating proposal:"
-              + " access denied: channel ["
+          "evaluate call to endorser returned error: error validating proposal: access denied:"
+              + " channel ["
               + channel
               + "] creator org ["
               + msp

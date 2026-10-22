@@ -1,3 +1,4 @@
+import { applicationPath } from "./basePath";
 // Bound both response headers and body reads; a lost write response is not a failed write.
 export async function request<T>(
   url: string,
@@ -18,9 +19,10 @@ export async function request<T>(
     (options.method || "GET").toUpperCase(),
   );
   try {
-    return await read(
-      await fetch(url, { ...options, signal: controller.signal }),
-    );
+    const response = await fetch(applicationPath(url), { ...options, signal: controller.signal });
+    if ([401, 403].includes(response.status) && !["/api/v1/me", "/api/v1/identity-mode", "/api/v1/csrf"].includes(url))
+      window.dispatchEvent(new Event("trust-access-changed"));
+    return await read(response);
   } catch (error) {
     if (timedOut)
       throw new Error(

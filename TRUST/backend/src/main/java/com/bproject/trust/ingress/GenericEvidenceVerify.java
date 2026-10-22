@@ -39,7 +39,20 @@ public final class GenericEvidenceVerify {
       String queryMsp,
       String queryFingerprint) {}
 
-  public record Allowlist(int schemaVersion, Map<String, Target> targets) {}
+  public record Scope(
+      String orgId,
+      String sourceSystem,
+      String sourceId,
+      String eventId,
+      String sourceEventId,
+      String originalSha256) {}
+
+  public record Allowlist(
+      int schemaVersion, Map<String, Target> targets, Map<String, List<Scope>> scopes) {
+    public Allowlist(int schemaVersion, Map<String, Target> targets) {
+      this(schemaVersion, targets, null);
+    }
+  }
 
   public record Plan(
       int schemaVersion,
@@ -133,8 +146,16 @@ public final class GenericEvidenceVerify {
       Map<String, Object> row;
       try (var resources = factory.open(plan.target(), credentials)) {
         row = scopedRow(resources.db(), plan);
+        Scope scope = approvedScope(allow, plan);
+        if (scope != null)
+          require(
+              "OPERATION_LOG".equals(row.get("event_type"))
+                  && scope.sourceEventId().equals(row.get("source_event_id")),
+              "TARGET_NOT_APPROVED");
         var archive = new GenericEvidenceArchive(resources.db(), resources.storage());
         original = archive.verify(row);
+        if (scope != null)
+          require(scope.originalSha256().equals(Json.sha(original)), "INTEGRITY_MISMATCH");
         report.put("hashVerification", "MATCH");
         report.put("originalSha256", Json.sha(original));
         report.put("eventSha256", row.get("event_sha256"));
@@ -148,8 +169,14 @@ public final class GenericEvidenceVerify {
         }
         report.put("ledgerRegistration", "MATCH");
         report.put("ledgerRecord", AttestationRecord.record(row));
-        report.put("originalCid", resources.db().queryForMap(
-            "SELECT original_cid FROM generic_event_data WHERE event_id=?", plan.eventId()).get("original_cid"));
+        report.put(
+            "originalCid",
+            resources
+                .db()
+                .queryForMap(
+                    "SELECT original_cid FROM generic_event_data_read WHERE event_id=?",
+                    plan.eventId())
+                .get("original_cid"));
         report.put("manifestCid", row.get("manifest_cid"));
       }
       // No raw output before all checks and resource closure have succeeded.
@@ -194,9 +221,9 @@ public final class GenericEvidenceVerify {
   static Map<String, Object> scopedRow(JdbcTemplate db, Plan p) {
     var rows =
         db.queryForList(
-            "SELECT e.*,t.state AS task_state FROM events e JOIN tasks t ON t.event_id=e.id WHERE"
-                + " e.record_kind='GENERIC_V1' AND e.org_id=? AND e.source_system=? AND"
-                + " e.submitted_by=? AND e.id=?",
+            "SELECT e.*,t.state AS task_state FROM events_read e JOIN tasks_read t ON"
+                + " t.event_id=e.id WHERE e.record_kind='GENERIC_V1' AND e.org_id=? AND"
+                + " e.source_system=? AND e.submitted_by=? AND e.id=?",
             p.orgId(),
             p.sourceSystem(),
             "source:" + p.sourceId(),
@@ -226,9 +253,9 @@ public final class GenericEvidenceVerify {
 
   static void validate(Allowlist allow, Plan plan) throws Exception {
     require(
-        allow.schemaVersion() == 1
+        (allow.schemaVersion() == 1 || allow.schemaVersion() == 2)
             && allow.targets() != null
-            && plan.schemaVersion() == 1
+            && plan.schemaVersion() == allow.schemaVersion()
             && id(plan.instanceId(), 80),
         "INVALID_PLAN");
     Target approved = allow.targets().get(plan.instanceId());
@@ -236,7 +263,9 @@ public final class GenericEvidenceVerify {
         approved != null
             && approved.enabled()
             && approved.equals(plan.target())
-            && "dedicated-generic-verification".equals(approved.purpose()),
+            && (allow.schemaVersion() == 1
+                ? "dedicated-generic-verification".equals(approved.purpose())
+                : "scoped-isolated-verification".equals(approved.purpose())),
         "TARGET_NOT_APPROVED");
     approved.instance().validate();
     safeExisting(absolute(approved.instance().root()));
@@ -246,6 +275,7 @@ public final class GenericEvidenceVerify {
             && id(plan.sourceId(), 70)
             && UUID.fromString(plan.eventId()).toString().equals(plan.eventId()),
         "INVALID_SCOPE");
+    approvedScope(allow, plan);
     URI ipfs = URI.create(approved.ipfsUrl());
     require(
         "http".equals(ipfs.getScheme())
@@ -264,8 +294,40 @@ public final class GenericEvidenceVerify {
             && id(approved.queryMsp(), 80)
             && approved.queryFingerprint() != null
             && approved.queryFingerprint().matches("[a-f0-9]{64}")
-            && port(approved.instance().port()),
+            && (port(approved.instance().port())
+                || (allow.schemaVersion() == 2 && approved.instance().port() == 28185)),
         "INVALID_ENDPOINT");
+  }
+
+  static Scope approvedScope(Allowlist allow, Plan plan) {
+    if (allow.schemaVersion() == 1) return null;
+    require(allow.scopes() != null, "SCOPE_NOT_APPROVED");
+    var scopes = allow.scopes().get(plan.instanceId());
+    require(scopes != null && !scopes.isEmpty() && scopes.size() <= 20, "SCOPE_NOT_APPROVED");
+    for (var scope : scopes)
+      require(
+          scope != null
+              && id(scope.orgId(), 80)
+              && id(scope.sourceSystem(), 80)
+              && id(scope.sourceId(), 70)
+              && scope.eventId() != null
+              && UUID.fromString(scope.eventId()).toString().equals(scope.eventId())
+              && scope.sourceEventId() != null
+              && scope.sourceEventId().matches("[a-f0-9]{64}")
+              && scope.originalSha256() != null
+              && scope.originalSha256().matches("[a-f0-9]{64}"),
+          "INVALID_SCOPE");
+    var matches =
+        scopes.stream()
+            .filter(
+                s ->
+                    s.orgId().equals(plan.orgId())
+                        && s.sourceSystem().equals(plan.sourceSystem())
+                        && s.sourceId().equals(plan.sourceId())
+                        && s.eventId().equals(plan.eventId()))
+            .toList();
+    require(matches.size() == 1, "SCOPE_NOT_APPROVED");
+    return matches.get(0);
   }
 
   private static boolean id(String s, int max) {

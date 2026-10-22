@@ -40,7 +40,12 @@ public class LogOperations {
 
   public record PageResult(String outcome, String summary) {}
 
-  public record Controls(Boolean archivePaused, Boolean chainPaused, String reason) {}
+  public record Controls(
+      Boolean archivePaused, Boolean chainPaused, String reason, Long expectedRevision) {
+    public Controls(Boolean archivePaused, Boolean chainPaused, String reason) {
+      this(archivePaused, chainPaused, reason, null);
+    }
+  }
 
   public record RetryDelivery(String reason) {}
 
@@ -60,7 +65,8 @@ public class LogOperations {
   public PlatformPrincipal pagePrincipal(Authentication a) {
     if (identitySettings == null || "real".equals(identitySettings.read().iamMode()))
       return verified(a);
-    if (a == null || !a.isAuthenticated()
+    if (a == null
+        || !a.isAuthenticated()
         || a instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)
       throw new IngressError(403, "AUTHENTICATION_REQUIRED", "需要已登录身份");
     if (a.getPrincipal() instanceof PlatformPrincipal p)
@@ -77,7 +83,7 @@ public class LogOperations {
   public void verifyPageAction(Authentication a, String id) {
     var p = pagePrincipal(a);
     UUID.fromString(id);
-    var rows = db.queryForList("SELECT * FROM audit_page_action WHERE id=?", id);
+    var rows = db.queryForList("SELECT * FROM audit_page_action_read WHERE id=?", id);
     if (rows.isEmpty()) throw LogEvidenceService.missing();
     pageOwner(rows.get(0), p);
   }
@@ -91,14 +97,16 @@ public class LogOperations {
       return tx.execute(
           s -> {
             var rows =
-                db.queryForList("SELECT * FROM audit_page_action WHERE id=?", input.requestId());
+                db.queryForList(
+                    "SELECT * FROM audit_page_action_read WHERE id=?", input.requestId());
             if (!rows.isEmpty()) {
               pageOwner(rows.get(0), p);
               if (!body.equals(rows.get(0).get("request_json"))) throw conflict();
               return recorded(input.requestId());
             }
             db.update(
-                "INSERT INTO audit_page_action(id,org_id,actor,request_json,identity_mode) VALUES(?,?,?,?,?)",
+                "INSERT INTO audit_page_action(id,org_id,actor,request_json,identity_mode)"
+                    + " VALUES(?,?,?,?,?)",
                 input.requestId(),
                 p.orgId(),
                 p.userId(),
@@ -119,7 +127,8 @@ public class LogOperations {
             return recorded(input.requestId());
           });
     } catch (DuplicateKeyException e) {
-      var row = db.queryForMap("SELECT * FROM audit_page_action WHERE id=?", input.requestId());
+      var row =
+          db.queryForMap("SELECT * FROM audit_page_action_read WHERE id=?", input.requestId());
       pageOwner(row, p);
       if (!body.equals(row.get("request_json"))) throw conflict();
       return recorded(input.requestId());
@@ -134,7 +143,8 @@ public class LogOperations {
     LogEvent.bounded(input.summary(), 512);
     return tx.execute(
         s -> {
-          var rows = db.queryForList("SELECT * FROM audit_page_action WHERE id=? FOR UPDATE", id);
+          var rows =
+              com.bproject.trust.shared.RetentionLock.rows(db, "audit_page_action", "id=?", id);
           if (rows.isEmpty()) throw LogEvidenceService.missing();
           var row = rows.get(0);
           pageOwner(row, p);
@@ -156,7 +166,14 @@ public class LogOperations {
               (String) request.get("path"),
               input.summary(),
               id);
-          db.update("UPDATE audit_page_action SET result_json=? WHERE id=?", text, id);
+          db.update(
+              "UPDATE audit_page_action_read SET"
+                  + " result_json=?,change_actor=?,change_operation='RESULT',change_reason=? WHERE"
+                  + " id=?",
+              text,
+              p.userId(),
+              input.summary(),
+              id);
           return recorded(id);
         });
   }
@@ -199,29 +216,34 @@ public class LogOperations {
 
   void pageOwner(Map<String, Object> row, PlatformPrincipal p) {
     if (!pageMode(p).equals(Objects.toString(row.get("identity_mode"), "real"))
-        || !p.orgId().equals(row.get("org_id")) || !p.userId().equals(row.get("actor")))
-      throw LogEvidenceService.missing();
+        || !p.orgId().equals(row.get("org_id"))
+        || !p.userId().equals(row.get("actor"))) throw LogEvidenceService.missing();
   }
 
   public Map<String, Object> controls(Authentication a) {
     var p = verified(a);
     var c = settings.read();
-    var row = db.queryForMap("SELECT * FROM audit_log_settings WHERE id=1");
+    var row = db.queryForMap("SELECT * FROM audit_log_settings_read WHERE id=1");
     var counts =
         db.queryForMap(
-            "SELECT COUNT(*) AS pending,MIN(created_at) AS oldest FROM audit_delivery WHERE"
+            "SELECT COUNT(*) AS pending,MIN(created_at) AS oldest FROM audit_delivery_read WHERE"
                 + " state<>'DELIVERED' AND org_id=?",
             p.orgId());
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("canManage", c.managerUserIds().contains(p.userId()));
+    result.put(
+        "canManage",
+        !com.bproject.trust.identity.ReadOnlyPolicy.restricted(a)
+            && c.managerUserIds().contains(p.userId()));
     result.put("archivePaused", row.get("archive_paused"));
+    result.put("revision", row.get("retention_revision"));
+    result.put("canReadHistory", c.managerUserIds().contains(p.userId()));
     result.put("chainPaused", row.get("chain_paused"));
     result.put("configured", c.enabled());
     result.put("collectionEnabled", true);
     long deliveryPending = ((Number) counts.get("pending")).longValue();
     long failures =
         db.queryForObject(
-            "SELECT COUNT(*) FROM audit_delivery WHERE last_error IS NOT NULL AND"
+            "SELECT COUNT(*) FROM audit_delivery_read WHERE last_error IS NOT NULL AND"
                 + " state<>'DELIVERED' AND org_id=?",
             Long.class,
             p.orgId());
@@ -242,9 +264,9 @@ public class LogOperations {
                 + " OR t.state<>'DONE' OR e.chain_state<>'COMMITTED') THEN 1 END) AS"
                 + " chain_pending,COUNT(CASE WHEN l.archive_state='FAILED' OR t.state='FAILED' THEN"
                 + " 1 END) AS failed,MIN(CASE WHEN t.state IS NULL OR t.state<>'DONE' OR"
-                + " e.chain_state<>'COMMITTED' THEN l.created_at END) AS oldest FROM audit_evidence"
-                + " l LEFT JOIN events e ON e.id=l.chain_event_id LEFT JOIN tasks t ON"
-                + " t.event_id=e.id WHERE "
+                + " e.chain_state<>'COMMITTED' THEN l.created_at END) AS oldest FROM"
+                + " audit_evidence_read l LEFT JOIN events_read e ON e.id=l.chain_event_id LEFT"
+                + " JOIN tasks_read t ON t.event_id=e.id WHERE "
                 + scope,
             args.toArray());
     long archivePending = ((Number) pipeline.get("archive_pending")).longValue(),
@@ -261,8 +283,8 @@ public class LogOperations {
     result.put("settingsUpdatedAt", row.get("updated_at"));
     var errors =
         db.queryForList(
-            "SELECT last_error FROM audit_delivery WHERE last_error IS NOT NULL AND org_id=? ORDER"
-                + " BY created_at DESC LIMIT 1",
+            "SELECT last_error FROM audit_delivery_read WHERE last_error IS NOT NULL AND org_id=?"
+                + " ORDER BY created_at DESC LIMIT 1",
             p.orgId());
     result.put(
         "lastError",
@@ -280,11 +302,16 @@ public class LogOperations {
     }
     if (input.archivePaused() == null || input.chainPaused() == null)
       throw new IllegalArgumentException();
+    if (input.expectedRevision() == null)
+      throw new IngressError(409, "VERSION_REQUIRED", "请刷新设置后再保存，修改须包含当前版本");
     String reason = LogEvent.bounded(input.reason(), 300);
     if (reason.isBlank()) throw new IllegalArgumentException();
     return tx.execute(
         t -> {
-          var previous = db.queryForMap("SELECT * FROM audit_log_settings WHERE id=1 FOR UPDATE");
+          var previous =
+              com.bproject.trust.shared.RetentionLock.row(db, "audit_log_settings", "id=1");
+          if (input.expectedRevision() != ((Number) previous.get("retention_revision")).longValue())
+            throw new IngressError(409, "VERSION_CONFLICT", "设置已变化，请刷新后再保存");
           String summary =
               "archivePaused="
                   + previous.get("archive_paused")
@@ -309,12 +336,21 @@ public class LogOperations {
               summary,
               correlation(p));
           db.update(
-              "UPDATE audit_log_settings SET"
-                  + " archive_paused=?,chain_paused=?,updated_at=CURRENT_TIMESTAMP WHERE id=1",
+              "UPDATE audit_log_settings_read SET"
+                  + " archive_paused=?,chain_paused=?,updated_at=CURRENT_TIMESTAMP,change_actor=?,change_operation='UPDATE',change_reason=?"
+                  + " WHERE id=1",
               input.archivePaused(),
-              input.chainPaused());
+              input.chainPaused(),
+              "iam:" + p.userId(),
+              reason);
           return controls(a);
         });
+  }
+
+  public void requireSettingsHistory(Authentication a) {
+    var p = verified(a);
+    if (!settings.read().managerUserIds().contains(p.userId()))
+      throw new IngressError(403, "LOG_MANAGER_REQUIRED", "无日志设置历史查看权限");
   }
 
   public void enqueue(
@@ -403,8 +439,8 @@ public class LogOperations {
     if (!settings.read().managerUserIds().contains(p.userId()))
       throw new IngressError(403, "LOG_MANAGER_REQUIRED", "无日志投递管理权限");
     return db.queryForList(
-        "SELECT id,action,outcome,state,attempts,last_error,created_at FROM audit_delivery WHERE"
-            + " state<>'DELIVERED' ORDER BY created_at LIMIT 200");
+        "SELECT id,action,outcome,state,attempts,last_error,created_at FROM audit_delivery_read"
+            + " WHERE state<>'DELIVERED' ORDER BY created_at LIMIT 200");
   }
 
   public Map<String, Object> retryDelivery(Authentication a, String id, RetryDelivery input) {
@@ -418,14 +454,16 @@ public class LogOperations {
     if (reason.isBlank()) throw new IllegalArgumentException();
     return tx.execute(
         t -> {
-          var rows = db.queryForList("SELECT state FROM audit_delivery WHERE id=? FOR UPDATE", id);
+          var rows = com.bproject.trust.shared.RetentionLock.rows(db, "audit_delivery", "id=?", id);
           if (rows.isEmpty()) throw LogEvidenceService.missing();
           boolean queued = "FAILED".equals(rows.get(0).get("state"));
           if (queued) {
             db.update(
-                "UPDATE audit_delivery SET"
-                    + " state='PENDING',attempts=0,last_error=NULL,next_at=CURRENT_TIMESTAMP WHERE"
-                    + " id=?",
+                "UPDATE audit_delivery_read SET"
+                    + " state='PENDING',attempts=0,last_error=NULL,next_at=CURRENT_TIMESTAMP,change_actor=?,change_operation='RETRY',change_reason=?"
+                    + " WHERE id=?",
+                "iam:" + p.userId(),
+                reason,
                 id);
             enqueue(
                 p.orgId(),
@@ -490,7 +528,7 @@ public class LogOperations {
     String id = request.getRequest().getHeader("X-TRUST-Page-Action-Id");
     if (principal == null || id == null) return "";
     UUID.fromString(id);
-    var rows = db.queryForList("SELECT * FROM audit_page_action WHERE id=?", id);
+    var rows = db.queryForList("SELECT * FROM audit_page_action_read WHERE id=?", id);
     if (rows.isEmpty()) throw LogEvidenceService.missing();
     pageOwner(rows.get(0), principal);
     return id;

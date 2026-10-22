@@ -1,6 +1,7 @@
 import contextlib
 import importlib.util
 import io
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -127,6 +128,51 @@ class GenericClientTest(unittest.TestCase):
             self.assertEqual(["POST", "GET"], [call.args[0] for call in instance.request.call_args_list])
             self.assertEqual("/by-source-event/synthetic-maintenance-001", instance.request.call_args_list[1].args[1])
             self.assertTrue(json.loads(output.getvalue())["requestOutcomeUnknown"])
+
+    def scoped(self):
+        self.sample = self.root / 'synthetic.json'
+        number = 'a' * 64
+        self.sample.write_text(json.dumps({'schemaVersion':1,'sourceEventId':number,'eventType':'OPERATION_LOG','businessObjectId':number,'occurredAt':'2026-10-21T00:00:00Z','payload':{'synthetic':True}}))
+        entry = self.config['targets']['test']
+        entry.update(purpose='scoped-isolated-generic',origin='http://127.0.0.1:28185',orgId='ORG',sourceId='synthetic',sourceSystem='SYNTHETIC',operations=['submit','status','wait'],tokenSha256=hashlib.sha256(b'synthetic-local-test-token-only').hexdigest(),events={number:{'originalSha256':hashlib.sha256(self.sample.read_bytes()).hexdigest()}})
+        self.config['schemaVersion'] = 2
+        self.save()
+        return number, entry
+
+    def test_scoped_fixed_target_dry_run_and_snapshot_denials(self):
+        number, entry = self.scoped()
+        with patch.object(client, 'Client') as network, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(0, client.main(['submit',*self.args,'--input',str(self.sample)]))
+            self.sample.write_bytes(self.sample.read_bytes()+b'\n')
+            self.assertEqual(1, client.main(['submit',*self.args,'--input',str(self.sample)]))
+            self.assertEqual(1, client.main(['status',*self.args,'--source-event','b'*64]))
+            self.assertEqual(1, client.main(['retry',*self.args,'--id','00000000-0000-0000-0000-000000000001']))
+            network.assert_not_called()
+        for port in [18080,28183,28184,28186,28187]:
+            entry['origin'] = f'http://127.0.0.1:{port}'
+            self.save()
+            with self.assertRaises(client.ClientError): client.target(self.target,'test')
+
+    def test_scoped_receipts_and_credential_must_match(self):
+        number, entry = self.scoped()
+        scope = client.scoped_target(self.target,'test','status',None,number,None)
+        receipt={'id':'00000000-0000-0000-0000-000000000001','sourceEventId':number,'sourceSystem':'SYNTHETIC','originalSha256':entry['events'][number]['originalSha256']}
+        client.check_receipt(scope,receipt)
+        for key in ['sourceSystem','sourceEventId','originalSha256','id']:
+            with self.assertRaises(client.ClientError): client.check_receipt(scope,{**receipt,key:'wrong'})
+        self.token.write_text(json.dumps({'token':'wrong-synthetic-token-for-another-source'}))
+        with patch.object(client.Client,'request') as requests, contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(1,client.main(['status',*self.args,'--source-event',number,'--credential-file',str(self.token),'--send']))
+            requests.assert_not_called()
+
+    def test_capabilities_accepts_supported_version_without_bool_coercion(self):
+        instance=client.Client('http://127.0.0.1:28185','synthetic',self.token)
+        for versions in [[1],[2,1]]:
+            with patch.object(instance,'request',return_value=(200,{'instanceId':'synthetic','isolationEnabled':True,'ingressSchemaVersions':versions})):
+                instance.check_instance()
+        for versions in [[True],[1.0],1,[],['1']]:
+            with patch.object(instance,'request',return_value=(200,{'instanceId':'synthetic','isolationEnabled':True,'ingressSchemaVersions':versions})):
+                with self.assertRaises(client.ClientError): instance.check_instance()
 
 
 if __name__ == "__main__":

@@ -34,6 +34,10 @@ public class ErrorHandler {
 
   @ExceptionHandler(DataAccessException.class)
   ResponseEntity<?> database(Exception e) {
+    for (Throwable cause = e; cause != null; cause = cause.getCause())
+      if (cause instanceof java.sql.SQLException sql && "40001".equals(sql.getSQLState()))
+        return ResponseEntity.status(409)
+            .body(Map.of("message", "记录版本或处理归属已变化，请读取最新状态后重试", "code", "VERSION_CONFLICT"));
     return ResponseEntity.status(503).body(Map.of("message", "记录未确认接收，数据库暂不可用或存在写入冲突，请保留原记录后重试"));
   }
 }

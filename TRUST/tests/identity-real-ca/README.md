@@ -2,7 +2,7 @@
 
 仅用于已批准的独立测试实例 `/srv/b-project-identity-test/TRUST`、`trust_iam_dev_test` 与 `trust-iam-dev-test`。驱动拒绝运行中的测试应用；开发应用及旧演示实例不参与。使用真实 openGauss、官方 Fabric CA client/server 和 Java Gateway；TLS 代理只注入通信故障，不替代 CA。
 
-四项场景：CA 返回 503；CA 已签发后扣住响应超过官方客户端超时；真实签发及密钥托管后临时撤回测试应用角色对证书表的 UPDATE；CA 提交后杀死 worker/CLI 并等待持久租约过期。每项断言恢复为 READY、只有一个证书版本和一次真实 CA 签发。数据库权限在 finally 恢复，代理在 finally 停止。异常中断时须由操作员确认 UPDATE 已恢复，保留审计与恢复材料。
+四项场景：CA 返回 503；CA 已签发后扣住响应超过官方客户端超时；真实签发及密钥托管后临时撤回测试应用角色对证书当前视图的列级 UPDATE；CA 提交后杀死 worker/CLI 并等待持久租约过期。每项断言恢复为 READY、只有一个证书版本和一次真实 CA 签发。数据库权限在 finally 恢复，代理在 finally 停止。异常中断时须由操作员确认视图列级 UPDATE 已恢复，且原表仍不可更新，保留审计与恢复材料。
 
 准备方式：
 

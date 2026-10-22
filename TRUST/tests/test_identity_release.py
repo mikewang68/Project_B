@@ -3,12 +3,31 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import zipfile
 
 spec = importlib.util.spec_from_file_location('release', Path(__file__).parents[1] / 'deploy/identity-release.py')
 release = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release)
 
 class ReleaseIntegrityTest(unittest.TestCase):
+    def test_retention_blocks_legacy_install_and_automatic_rollback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            legacy, current = root / 'old.jar', root / 'new.jar'
+            with zipfile.ZipFile(legacy, 'w') as jar:
+                jar.writestr('BOOT-INF/classes/db/008.sql', 'fixture')
+            with zipfile.ZipFile(current, 'w') as jar:
+                jar.writestr('BOOT-INF/classes/db/009-retention.sql', 'fixture')
+            self.assertTrue(release.check_retention_release('TRUST', 'install', legacy, current, root))
+            for action, source in [('install', legacy), ('rollback', legacy), ('rollback', current)]:
+                with self.assertRaises(ValueError):
+                    release.check_retention_release('TRUST', action, current, source, root)
+            self.assertTrue(release.check_retention_release('TRUST', 'install', current, current, root))
+            (root / 'retention-required').write_text('009\n')
+            with self.assertRaises(ValueError):
+                release.check_retention_release('TRUST', 'install', root / 'missing.jar', legacy, root)
+            self.assertFalse(release.check_retention_release('IAM', 'rollback', current, legacy, root))
+
     def test_legacy_roots_are_protected_without_personal_account_names(self):
         spec = importlib.util.spec_from_file_location('instance', Path(__file__).parents[1] / 'deploy/identity-instance.py')
         instance = importlib.util.module_from_spec(spec)

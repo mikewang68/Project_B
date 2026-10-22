@@ -3,11 +3,20 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const ts=require('node:module').createRequire(path.join(__dirname,'../frontend/package.json'))('typescript');
-const code=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../frontend/src/shared/http/request.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-const loaded=import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const temporary=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'trust-http-test-'));
+const program=ts.createProgram([path.join(__dirname,'../frontend/src/shared/http/request.ts')],{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,outDir:temporary,
+ rootDir:path.join(__dirname,'../frontend/src/shared/http'),skipLibCheck:true,types:[],
+});
+const result=program.emit();
+assert.equal(result.emitSkipped,false);
+const loaded=Promise.resolve(require(path.join(temporary,'request.js')));
+process.on('exit',()=>fs.rmSync(temporary,{recursive:true,force:true}));
 test('request deadline and uncertain write responses',async t=>{
  const {request}=await loaded;
  const original=global.fetch;
+ const originalLocation=global.location, originalWindow=global.window;
+ global.location={pathname:'/'};global.window=new EventTarget();
  const pending=signal=>new Promise((_,reject)=>{
   if(signal.aborted)reject(new DOMException('Aborted','AbortError'));
   else signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')),{once:true});
@@ -36,5 +45,17 @@ test('request deadline and uncertain write responses',async t=>{
    global.fetch=async(_,options)=>pending(options.signal);
    await assert.rejects(request('/read',{signal:controller.signal},r=>r.json()),{name:'AbortError'});
   });
- }finally{global.fetch=original}
+  await t.test('root and trust entry paths resolve the same API',async()=>{
+   for(const prefix of ['', '/trust']) {
+    global.location={pathname:prefix+'/'};
+    global.fetch=async url=>{assert.equal(url,prefix+'/api/v1/events');return new Response('{}')};
+    await request('/api/v1/events',{},r=>r.json());
+   }
+  });
+  await t.test('access failures notify the application',async()=>{
+   let changed=0;global.window.addEventListener('trust-access-changed',()=>changed++);
+   global.fetch=async()=>new Response('{}',{status:403});
+   await request('/api/v1/events',{},r=>r.json());assert.equal(changed,1);
+  });
+ }finally{global.fetch=original;global.location=originalLocation;global.window=originalWindow}
 });

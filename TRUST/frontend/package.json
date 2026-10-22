@@ -5,12 +5,14 @@
   "type": "module",
   "packageManager": "pnpm@10.34.5",
   "scripts": {
+    "test:unit": "node ../tests/http-request.test.cjs",
     "dev": "vite --host 127.0.0.1",
     "build": "vue-tsc --noEmit && vite build",
     "test:e2e": "node ../tests/browser-smoke.cjs",
     "test:e2e:write": "node ../tests/browser-workflow-real.cjs",
     "format": "prettier --write src",
-    "format:check": "prettier --check src"
+    "format:check": "prettier --check src",
+    "test:retention": "node ../tests/retention-ui.cjs"
   },
   "dependencies": {
     "vue": "3.5.42"

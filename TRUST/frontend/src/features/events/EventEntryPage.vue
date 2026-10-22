@@ -3,6 +3,8 @@ import { toRef } from "vue";
 import type { ApiRecord } from "../../shared/types";
 import { useEventEntry } from "./useEventEntry";
 import { typeLabels } from "./presentation";
+import { useAccess } from "../auth/access";
+const allowed = useAccess();
 const props = defineProps<{ canWrite: boolean; previous: ApiRecord | null }>();
 const emit = defineEmits<{ saved: [id: string]; cancel: [] }>();
 const {
@@ -25,7 +27,7 @@ const {
 
 <template>
   <p v-if="!canWrite" class="alert warning">
-    当前账号可以查询和核验，录入需要录入员或管理员权限。
+    当前操作尚未授权。新增和批量导入需要事件提交权限；追加更正请从已授权事件详情进入。
   </p>
   <div v-else class="create-layout">
     <form class="panel" @submit.prevent="submitEvent">
@@ -141,7 +143,7 @@ const {
           multiple
           accept=".pdf,.png,.jpg,.jpeg"
           @change="uploadFiles"
-          :disabled="busy"
+          :disabled="busy || !allowed('trust:evidence:upload')"
       /></label>
       <div v-for="(ev, i) in uploaded" :key="ev.id" class="file-row">
         <span>{{ ev.filename }}</span
@@ -161,7 +163,7 @@ const {
       </div>
       <button class="primary" :disabled="busy">提交事件</button>
     </form>
-    <article class="panel import-panel">
+    <article v-if="allowed('trust:event:submit')" class="panel import-panel">
       <h2>批量导入</h2>
       <p class="muted">
         导入 UTF-8 JSON 数组或 CSV。每次最多 200 条、1 MiB；每行单独返回结果。

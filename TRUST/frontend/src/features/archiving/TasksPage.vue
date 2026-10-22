@@ -5,6 +5,8 @@ import type { ApiRecord } from "../../shared/types";
 import { useFeedback } from "../../shared/composables/useFeedback";
 import { label, recoveryHint } from "../../shared/presentation";
 import { listTasks, retryTask } from "./api";
+import { useAccess } from "../auth/access";
+const allowed = useAccess();
 defineProps<{ canWrite: boolean }>();
 const emit = defineEmits<{ open: [id: string] }>();
 const tasks = ref<ApiRecord[]>([]);
@@ -84,7 +86,7 @@ usePageLoad(load, "tasks");
                 :disabled="busy || t.state === 'RUNNING'"
               >
                 补办</button
-              ><button class="text-button" @click="emit('open', t.event_id)">
+              ><button class="text-button" :disabled="!allowed('trust:event:read')" @click="emit('open', t.event_id)">
                 详情
               </button>
             </td>

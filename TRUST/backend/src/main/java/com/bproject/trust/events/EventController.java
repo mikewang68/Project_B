@@ -33,9 +33,10 @@ public class EventController {
       Authentication a,
       @RequestParam(defaultValue = "") String q,
       @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "30") int size) {
+      @RequestParam(defaultValue = "30") int size,
+      @RequestParam(defaultValue = "history") String view) {
     var scope = identity.org(a);
-    var result = events.list(scope, q, page, size);
+    var result = events.list(scope, q, page, size, view);
     audit.record(
         scope, a.getName(), "EVENT_QUERY", null, q.substring(0, Math.min(200, q.length())));
     return result;
@@ -58,11 +59,13 @@ public class EventController {
   @PostMapping("/events/{id}/corrections")
   @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
   public ResponseEntity<?> correct(
-      Authentication a, @PathVariable String id, @RequestBody com.fasterxml.jackson.databind.JsonNode body) {
+      Authentication a,
+      @PathVariable String id,
+      @RequestBody com.fasterxml.jackson.databind.JsonNode body) {
     events.correctionTarget(id, identity.org(a));
     var input = com.bproject.trust.shared.json.Json.MAPPER.convertValue(body, EventInput.class);
     if (input == null || !validator.validate(input).isEmpty())
-      throw new com.bproject.trust.shared.web.ApiError(400,"字段格式不正确");
+      throw new com.bproject.trust.shared.web.ApiError(400, "字段格式不正确");
     return ResponseEntity.accepted().body(events.submit(input, identity.org(a), a.getName(), id));
   }
 

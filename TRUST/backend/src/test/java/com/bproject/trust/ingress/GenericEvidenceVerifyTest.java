@@ -404,6 +404,38 @@ class GenericEvidenceVerifyTest {
   }
 
   @Test
+  void fixedPortRequiresIndependentExactEventScopeAndKeepsDependencyDenials() throws Exception {
+    var old = target.instance();
+    target = new GenericEvidenceVerify.Target(true, "scoped-isolated-verification",
+        new IdentityInstance(old.root(), old.databaseUrl(), old.appRole(), old.migrationRole(),
+            old.channel(), 28185, old.queryKeyRef()), target.ipfsUrl(), target.fabricEndpoint(),
+        target.serverName(), target.contract(), target.queryMsp(), target.queryFingerprint());
+    plan = new GenericEvidenceVerify.Plan(2, plan.instanceId(), target, plan.orgId(),
+        plan.sourceSystem(), plan.sourceId(), plan.eventId());
+    var scope = new GenericEvidenceVerify.Scope(plan.orgId(), plan.sourceSystem(), plan.sourceId(),
+        plan.eventId(), "a".repeat(64), Json.sha(original));
+    var allow = new GenericEvidenceVerify.Allowlist(2, Map.of(plan.instanceId(), target),
+        Map.of(plan.instanceId(), List.of(scope)));
+    assertDoesNotThrow(() -> GenericEvidenceVerify.validate(allow, plan));
+    var wrong = new GenericEvidenceVerify.Plan(2, plan.instanceId(), target, plan.orgId(),
+        "other-source", plan.sourceId(), plan.eventId());
+    assertThrows(GenericEvidenceVerify.Failure.class, () -> GenericEvidenceVerify.validate(allow, wrong));
+    Files.writeString(allowFile, Json.write(allow));
+    Files.writeString(planFile, Json.write(plan));
+    // A correctly scoped plan must still refuse a row outside the approved number/type.
+    assertEquals(1, run("wrong-number", "--execute"));
+    verifyNoInteractions(storage);
+    for (String endpoint : List.of("http://127.0.0.1:28185", "http://127.0.0.1:28184")) {
+      String a = Json.write(allow).replace(target.ipfsUrl(), endpoint);
+      String p = Json.write(plan).replace(target.ipfsUrl(), endpoint);
+      Files.writeString(allowFile, a);
+      Files.writeString(planFile, p);
+      assertEquals(1, run("protected-dependency", "--execute"));
+      assertTrue(stdout.contains("INVALID_ENDPOINT"));
+    }
+  }
+
+  @Test
   void snapshotIsReadOnlyRepeatableAndNeverCommits() throws Exception {
     var connection = mock(Connection.class);
     when(connection.isReadOnly()).thenReturn(true);

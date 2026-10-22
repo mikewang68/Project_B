@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import sys
 import tempfile
+import zipfile
 
 
 def digest(path):
@@ -39,6 +40,25 @@ def stopped(root):
 def protected_root(root):
     return ('trust-wallet-remediation' in root or root.startswith('/data/app/')
             or bool(re.match(r'^/home/[^/]+/projects/b-project-trust', root)))
+
+
+def retention_aware(path):
+    if not path.exists():
+        return False
+    with zipfile.ZipFile(path) as jar:
+        return 'BOOT-INF/classes/db/009-retention.sql' in jar.namelist()
+
+
+def check_retention_release(module, action, target, source, history):
+    if module != 'TRUST':
+        return False
+    incoming = retention_aware(source)
+    required = (history / 'retention-required').exists() or retention_aware(target)
+    if required and action == 'rollback':
+        raise ValueError('Retention schema requires a reviewed forward release; automatic JAR rollback is disabled')
+    if required and not incoming:
+        raise ValueError('Cannot install a pre-retention JAR after enabling retention')
+    return required or incoming
 
 
 def main():
@@ -73,13 +93,21 @@ def main():
         if not source.resolve().is_relative_to(history.resolve()) or digest(source) != receipt['sha256']:
             raise ValueError('Rollback artifact digest mismatch')
         sha, commit = receipt['sha256'], receipt['commit']
-    print(json.dumps({'action': args.action, 'root': str(root), 'target': str(target), 'sha256': sha, 'commit': commit, 'apply': args.apply}))
+    retention_required = check_retention_release(module, args.action, target, source, history)
+    print(json.dumps({'action': args.action, 'root': str(root), 'target': str(target), 'sha256': sha, 'commit': commit, 'apply': args.apply, 'retentionRequired': retention_required}))
     if not args.apply:
         return
     if os.name != 'posix' or not Path('/proc').is_dir():
         raise ValueError('Apply requires Linux instance ownership checks')
     stopped(root)
     history.mkdir(parents=True, exist_ok=True)
+    if retention_required:
+        # Persist before replacement, including a crash or an interrupted install.
+        # Removal is only part of an explicitly reviewed pre-write backup restore.
+        with (history / 'retention-required').open('w') as marker:
+            marker.write('009\n')
+            marker.flush()
+            os.fsync(marker.fileno())
     target.parent.mkdir(parents=True, exist_ok=True)
     if args.action == 'install' and target.exists():
         old_sha = digest(target)

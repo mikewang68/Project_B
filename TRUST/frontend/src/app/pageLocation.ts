@@ -17,9 +17,11 @@ export function readPage(url = new URL(location.href)) {
   };
 }
 
-export function writePage(page: string) {
+export function writePage(page: string, mode: "push" | "replace" = "replace") {
   const url = new URL(location.href);
   // Entry/import is intentionally not a direct read-only entry.
   url.searchParams.set("navTab", directPages.has(page) ? page : "events");
-  history.replaceState(null, "", url);
+  if (url.href === location.href) return;
+  if (mode === "push" && directPages.has(page)) history.pushState(null, "", url);
+  else history.replaceState(null, "", url);
 }

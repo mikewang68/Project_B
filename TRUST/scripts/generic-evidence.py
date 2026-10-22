@@ -53,20 +53,77 @@ def target(path, name):
     config = private_json(path)
     try:
         entry = config["targets"][name]
-        if config["schemaVersion"] != 1 or entry["enabled"] is not True:
+        version = config["schemaVersion"]
+        if type(version) is not int or version not in (1, 2) or entry["enabled"] is not True:
             raise ClientError("Target is not explicitly enabled")
         origin, instance = entry["origin"], entry["instanceId"]
         url = urlsplit(origin)
-        if (entry["purpose"] != "dedicated-generic-test" or url.scheme != "http"
+        fixed = version == 2 and entry["purpose"] == "scoped-isolated-generic"
+        if ((not fixed and entry["purpose"] != "dedicated-generic-test") or url.scheme != "http"
                 or url.hostname != "127.0.0.1" or url.username or url.password
                 or url.path or url.query or url.fragment or not url.port
-                or url.port < 1024 or url.port in PROTECTED_PORTS
+                or url.port < 1024 or (url.port in PROTECTED_PORTS and not (fixed and url.port == 28185))
                 or origin != f"http://127.0.0.1:{url.port}"
                 or not re.fullmatch(r"[A-Za-z0-9._-]{1,80}", instance)):
             raise ClientError("Only an explicit dedicated loopback target is allowed")
         return origin, instance
     except (KeyError, TypeError, ValueError) as error:
         raise ClientError("Invalid private target allowlist") from error
+
+
+def scoped_target(path, name, operation, raw, number, event_id):
+    config = private_json(path)
+    if config["schemaVersion"] == 1:
+        return None
+    entry = config["targets"][name]
+    try:
+        for key, maximum in (("orgId", 80), ("sourceId", 70), ("sourceSystem", 80)):
+            if not isinstance(entry[key], str) or not re.fullmatch(r"[A-Za-z0-9._-]{1," + str(maximum) + "}", entry[key]):
+                raise ClientError("Invalid approved source")
+        if (entry["purpose"] != "scoped-isolated-generic"
+                or not re.fullmatch(r"[a-f0-9]{64}", entry["tokenSha256"])
+                or not isinstance(entry["operations"], list)
+                or not set(entry["operations"]) <= {"submit", "status", "wait", "retry"}
+                or operation not in entry["operations"]):
+            raise ClientError("Operation not approved")
+        events = entry["events"]
+        if not isinstance(events, dict) or not 1 <= len(events) <= 20:
+            raise ClientError("Explicit event allowlist required")
+        for key, event in events.items():
+            if (not re.fullmatch(r"[a-f0-9]{64}", key)
+                    or not re.fullmatch(r"[a-f0-9]{64}", event["originalSha256"])
+                    or (event.get("id") is not None and not re.fullmatch(r"[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}", event["id"]))):
+                raise ClientError("Invalid approved event")
+        if event_id:
+            matches = [key for key, item in events.items() if item.get("id") == event_id]
+            if len(matches) != 1:
+                raise ClientError("Receipt ID not approved")
+            number = matches[0]
+        if number not in events:
+            raise ClientError("Source event not approved")
+        if raw is not None and operation == "submit":
+            value = decode(raw)
+            if (hashlib.sha256(raw).hexdigest() != events[number]["originalSha256"]
+                    or value["eventType"] != "OPERATION_LOG"
+                    or value["businessObjectId"] != number or "supersedesId" in value):
+                raise ClientError("Request does not match approved synthetic snapshot")
+        return {**entry, "selectedEvent": number}
+    except (KeyError, TypeError, ValueError) as error:
+        raise ClientError("Invalid scoped target") from error
+
+
+def check_receipt(scope, value):
+    if scope is None:
+        return
+    number = scope["selectedEvent"]
+    event = scope["events"][number]
+    if (not isinstance(value, dict) or value.get("sourceEventId") != number
+            or value.get("sourceSystem") != scope["sourceSystem"]
+            or value.get("originalSha256") != event["originalSha256"]
+            or not isinstance(value.get("id"), str)
+            or not re.fullmatch(r"[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}", value["id"])
+            or (event.get("id") is not None and value["id"] != event["id"])):
+        raise ClientError("Receipt does not match approved source and snapshot")
 
 
 def payload(path):
@@ -119,8 +176,8 @@ class Client:
                 return response.status, decode(body)
         except HTTPError as error:
             # Never echo bodies/headers from an unexpected service or a private exception.
-            if error.code == 503:
-                raise OutcomeUnknown("HTTP 503; persistence outcome is unknown") from None
+            if error.code >= 500:
+                raise OutcomeUnknown("HTTP 5xx; persistence outcome is unknown") from None
             raise ClientError(f"HTTP {error.code}; query by the original source event number before resubmitting") from None
         except (URLError, TimeoutError, OSError) as error:
             raise OutcomeUnknown("Network outcome unknown; query by the original source event number") from None
@@ -128,7 +185,9 @@ class Client:
     def check_instance(self):
         status, value = self.request("GET", "/capabilities")
         if (status != 200 or not isinstance(value, dict) or value.get("instanceId") != self.instance
-                or value.get("isolationEnabled") is not True or value.get("ingressSchemaVersions") != [1]):
+                or value.get("isolationEnabled") is not True
+                or not isinstance(value.get("ingressSchemaVersions"), list)
+                or not any(type(v) is int and v == 1 for v in value["ingressSchemaVersions"])):
             raise ClientError("Instance capabilities do not match the approved isolated target")
 
 
@@ -154,12 +213,13 @@ def main(argv=None):
     selection.add_argument("--id")
     selection.add_argument("--source-event")
     parser.add_argument("--timeout", type=int, default=60)
-    parser.add_argument("--interval", type=int, default=2)
+    parser.add_argument("--interval", type=int, default=5)
     parser.add_argument("--send", action="store_true", help="Required for every network request, including GET")
     args = parser.parse_args(argv)
     try:
         origin, instance = target(args.target_file, args.target)
         raw = None
+        number = args.source_event
         if args.operation == "submit":
             if not args.input or args.id or args.source_event:
                 raise ClientError("submit requires --input and no receipt selector")
@@ -179,6 +239,7 @@ def main(argv=None):
             if args.operation == "retry":
                 suffix += "/retry"
                 method, raw = "POST", b"{}"
+        scope = scoped_target(args.target_file, args.target, args.operation, raw, number, args.id)
         if not 1 <= args.timeout <= 600 or not 1 <= args.interval <= 30:
             raise ClientError("Polling limits: timeout 1..600 and interval 1..30 seconds")
         if not args.send:
@@ -189,7 +250,12 @@ def main(argv=None):
         if not args.credential_file:
             raise ClientError("--credential-file is required with --send")
         client = Client(origin, instance, args.credential_file)
+        if scope is not None and hashlib.sha256(client.token.encode("utf-8")).hexdigest() != scope["tokenSha256"]:
+            raise ClientError("Credential does not match approved source")
         client.check_instance()
+        if scope is not None and args.operation == "retry":
+            _, before = client.request("GET", "/" + args.id)
+            check_receipt(scope, before)
         deadline = time.monotonic() + args.timeout
         delay = args.interval
         while True:
@@ -200,10 +266,13 @@ def main(argv=None):
                     lookup = "/by-source-event/" + number if args.operation == "submit" else "/" + args.id
                     try:
                         found_status, found_value = client.request("GET", lookup)
+                        check_receipt(scope, found_value)
                         print(json.dumps({"requestOutcomeUnknown": True, "receipt": receipt_output(found_status, found_value)}, ensure_ascii=False))
                     except ClientError:
                         pass
                 raise
+            if args.operation != "retry":
+                check_receipt(scope, value)
             print(json.dumps(receipt_output(status, value), ensure_ascii=False))
             if args.operation != "wait":
                 return 0

@@ -15,8 +15,8 @@ public class LogChainGate {
   public boolean allows(String eventId) {
     var rows =
         db.queryForList(
-            "SELECT l.*,s.chain_paused FROM audit_evidence l CROSS JOIN audit_log_settings s WHERE"
-                + " l.chain_event_id=? AND s.id=1",
+            "SELECT l.*,s.chain_paused FROM audit_evidence_read l CROSS JOIN"
+                + " audit_log_settings_read s WHERE l.chain_event_id=? AND s.id=1",
             eventId);
     if (rows.isEmpty()) return true;
     var row = rows.get(0);

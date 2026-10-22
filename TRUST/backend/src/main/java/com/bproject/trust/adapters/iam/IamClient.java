@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -80,7 +81,19 @@ public class IamClient implements PlatformIdentity {
     user.path("orgCodes").forEach(v -> orgs.add(v.asText()));
     var permissions = new HashSet<String>();
     data.path("permissions").forEach(v -> permissions.add(v.asText()));
+    // Only the server-to-server identity response can establish this restriction.
+    var roles = data.path("roles");
+    if (!roles.isArray()) throw new ApiError(503, "IAM 未返回可信角色列表");
+    boolean readOnly = false;
+    for (var role : roles) {
+      if (!role.isObject() || !role.path("code").isTextual()
+          || role.path("code").asText().isBlank() || !role.path("status").isTextual()
+          || !Set.of("active", "inactive").contains(role.path("status").asText()))
+        throw new ApiError(503, "IAM 角色结构不符合契约");
+      if ("PLATFORM_AUDITOR_READONLY".equals(role.path("code").asText())
+          && "active".equals(role.path("status").asText())) readOnly = true;
+    }
     // No implicit super-administrator bypass for evidence or signing permissions.
-    return new User(user.get("id").asText(), user.path("username").asText(), orgs, permissions);
+    return new User(user.get("id").asText(), user.path("username").asText(), orgs, permissions, readOnly);
   }
 }

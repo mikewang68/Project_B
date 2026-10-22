@@ -13,7 +13,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class IdentityWorker {
   private final com.bproject.trust.shared.BoundedWork executor =
       new com.bproject.trust.shared.BoundedWork("trust-identity", 1);
+
   private record Claim(String token, long revision) {}
+
   private final java.util.concurrent.ConcurrentHashMap<String, Claim> active =
       new java.util.concurrent.ConcurrentHashMap<>();
   private final JdbcTemplate db;
@@ -39,20 +41,41 @@ public class IdentityWorker {
   }
 
   @Scheduled(fixedDelayString = "${trust.identity.poll-ms:2000}")
-  public void dispatch() { executor.batch(this::recover); }
+  public void dispatch() {
+    executor.batch(
+        () -> {
+          try {
+            recover();
+          } catch (Exception e) {
+            com.bproject.trust.shared.WorkerSignals.failure("IdentityWorker", "poll", e);
+          }
+        });
+  }
 
   @jakarta.annotation.PreDestroy
-  void close() { executor.close(); }
+  void close() {
+    executor.close();
+  }
 
   @Scheduled(fixedDelay = 15000, scheduler = "leaseScheduler")
   public void renew() {
-    active.forEach((id, claim) -> {
-      try {
-        db.update("UPDATE fabric_identity SET lease_until=CURRENT_TIMESTAMP+INTERVAL '120 seconds'"
-            + " WHERE id=? AND revision=? AND lease_token=? AND lease_until>clock_timestamp()",
-            id, claim.revision(), claim.token());
-      } catch (Exception unavailable) { /* Revision/lease fencing still rejects stale work. */ }
-    });
+    active.forEach(
+        (id, claim) -> {
+          try {
+            db.update(
+                "UPDATE fabric_identity_read SET lease_until=CURRENT_TIMESTAMP+INTERVAL '120"
+                    + " seconds' WHERE id=? AND revision=? AND lease_token=? AND"
+                    + " lease_until>clock_timestamp()",
+                id,
+                claim.revision(),
+                claim.token());
+          } catch (Exception unavailable) {
+            com.bproject.trust.shared.WorkerSignals.failure(
+                "IdentityWorker",
+                "renew",
+                unavailable); /* Revision/lease fencing still rejects stale work. */
+          }
+        });
   }
 
   public void recover() {
@@ -62,10 +85,10 @@ public class IdentityWorker {
 
   List<Map<String, Object>> due() {
     return db.queryForList(
-        "SELECT id FROM fabric_identity WHERE (status IN"
-            + " ('PENDING','ISSUED','NETWORK_PENDING','RETRY','READY','REVOCATION_PENDING')"
-            + " OR (status='DISABLED' AND EXISTS(SELECT 1 FROM fabric_certificate c WHERE"
-            + " c.identity_id=fabric_identity.id AND c.crl_state='REVOKING'))) AND"
+        "SELECT id FROM fabric_identity_read WHERE (status IN"
+            + " ('PENDING','ISSUED','NETWORK_PENDING','RETRY','READY','REVOCATION_PENDING') OR"
+            + " (status='DISABLED' AND EXISTS(SELECT 1 FROM fabric_certificate_read c WHERE"
+            + " c.identity_id=fabric_identity_read.id AND c.crl_state='REVOKING'))) AND"
             + " next_attempt<=CURRENT_TIMESTAMP AND (lease_until IS NULL OR"
             + " lease_until<CURRENT_TIMESTAMP) ORDER BY next_attempt LIMIT 8");
   }
@@ -79,15 +102,13 @@ public class IdentityWorker {
         tx.execute(
             s -> {
               if (db.update(
-                      "UPDATE fabric_identity SET"
-                          + " lease_token=?,lease_until=CURRENT_TIMESTAMP +"
-                          + " INTERVAL '120 seconds' WHERE id=? AND"
-                          + " (lease_until IS NULL OR"
+                      "UPDATE fabric_identity_read SET lease_token=?,lease_until=CURRENT_TIMESTAMP"
+                          + " + INTERVAL '120 seconds' WHERE id=? AND (lease_until IS NULL OR"
                           + " lease_until<CURRENT_TIMESTAMP)",
                       lease,
                       id)
                   != 1) return null;
-              return db.queryForMap("SELECT * FROM fabric_identity WHERE id=?", id);
+              return db.queryForMap("SELECT * FROM fabric_identity_read WHERE id=?", id);
             });
     if (identity == null) return;
     long revision = ((Number) identity.get("revision")).longValue();
@@ -101,7 +122,7 @@ public class IdentityWorker {
         return;
       }
       if (db.queryForObject(
-              "SELECT COUNT(*) FROM fabric_certificate WHERE identity_id=? AND"
+              "SELECT COUNT(*) FROM fabric_certificate_read WHERE identity_id=? AND"
                   + " crl_state='REVOKING'",
               Integer.class,
               id)
@@ -110,7 +131,7 @@ public class IdentityWorker {
         // before selecting a usable certificate or issuing a new enrollment version.
         revokeAll(id, revision, lease, cfg);
         if (db.queryForObject(
-                "SELECT COUNT(*) FROM fabric_certificate WHERE identity_id=? AND"
+                "SELECT COUNT(*) FROM fabric_certificate_read WHERE identity_id=? AND"
                     + " crl_state='REVOKING'",
                 Integer.class,
                 id)
@@ -121,14 +142,14 @@ public class IdentityWorker {
           tx.execute(
               s -> {
                 var current =
-                    db.queryForMap("SELECT * FROM fabric_identity WHERE id=? FOR" + " UPDATE", id);
+                    com.bproject.trust.shared.RetentionLock.row(db, "fabric_identity", "id=?", id);
                 if (((Number) current.get("revision")).longValue() != revision
                     || !lease.equals(current.get("lease_token"))
                     || !current(id, revision, lease)) return null;
                 var candidates =
                     db.queryForList(
-                        "SELECT * FROM fabric_certificate WHERE"
-                            + " identity_id=? ORDER BY version DESC",
+                        "SELECT * FROM fabric_certificate_read WHERE identity_id=? ORDER BY version"
+                            + " DESC",
                         id);
                 if (!candidates.isEmpty()) {
                   var last = candidates.get(0);
@@ -172,7 +193,7 @@ public class IdentityWorker {
                     "CERTIFICATE_ALLOCATED",
                     Json.write(Map.of("version", version)));
                 return db.queryForMap(
-                    "SELECT * FROM fabric_certificate WHERE identity_id=? AND" + " version=?",
+                    "SELECT * FROM fabric_certificate_read WHERE identity_id=? AND version=?",
                     id,
                     version);
               });
@@ -197,13 +218,12 @@ public class IdentityWorker {
               org, (String) cert.get("enrollment_id"), (String) cert.get("key_ref"), attributes);
       tx.executeWithoutResult(
           s -> {
-            db.queryForMap("SELECT id FROM fabric_identity WHERE id=? FOR UPDATE", id);
+            com.bproject.trust.shared.RetentionLock.row(db, "fabric_identity", "id=?", id);
             if (!current(id, revision, lease)) return;
             db.update(
-                "UPDATE fabric_certificate SET"
+                "UPDATE fabric_certificate_read SET"
                     + " state='ISSUED',fingerprint=?,certificate_pem=?,not_before=?,not_after=?"
-                    + " WHERE identity_id=? AND version=? AND state IN"
-                    + " ('PREPARING','ISSUED')",
+                    + " WHERE identity_id=? AND version=? AND state IN ('PREPARING','ISSUED')",
                 material.fingerprint(),
                 material.pem(),
                 new java.sql.Timestamp(material.certificate().getNotBefore().getTime()),
@@ -224,34 +244,30 @@ public class IdentityWorker {
       tx.executeWithoutResult(
           s -> {
             var locked =
-                db.queryForMap(
-                    "SELECT revision,lease_token,desired_state FROM"
-                        + " fabric_identity WHERE id=? FOR UPDATE",
-                    id);
+                com.bproject.trust.shared.RetentionLock.row(db, "fabric_identity", "id=?", id);
             if (((Number) locked.get("revision")).longValue() != revision
                 || !lease.equals(locked.get("lease_token"))
                 || !"ACTIVE".equals(locked.get("desired_state"))) return;
             if (!current(id, revision, lease)
                 || db.queryForObject(
-                        "SELECT COUNT(*) FROM fabric_certificate WHERE"
-                            + " identity_id=? AND crl_state='REVOKING'",
+                        "SELECT COUNT(*) FROM fabric_certificate_read WHERE identity_id=? AND"
+                            + " crl_state='REVOKING'",
                         Integer.class,
                         id)
                     > 0) return;
             db.update(
-                "UPDATE fabric_certificate SET state='RETIRED' WHERE identity_id=?"
-                    + " AND version<>? AND state='ISSUED'",
+                "UPDATE fabric_certificate_read SET state='RETIRED' WHERE identity_id=? AND"
+                    + " version<>? AND state='ISSUED'",
                 id,
                 version);
             db.update(
-                "UPDATE fabric_certificate SET"
-                    + " network_state='VERIFIED',network_receipt=? WHERE"
-                    + " identity_id=? AND version=?",
+                "UPDATE fabric_certificate_read SET network_state='VERIFIED',network_receipt=?"
+                    + " WHERE identity_id=? AND version=?",
                 Json.write(receipt),
                 id,
                 version);
             db.update(
-                "UPDATE fabric_identity SET"
+                "UPDATE fabric_identity_read SET"
                     + " certificate_version=?,status='READY',last_error=NULL,next_attempt=CURRENT_TIMESTAMP"
                     + " + INTERVAL '1 hour',updated_at=CURRENT_TIMESTAMP WHERE id=?",
                 version,
@@ -263,8 +279,8 @@ public class IdentityWorker {
       // A failed network probe cannot be reported as ready. Preserve durable issued cert for
       // retry.
       db.update(
-          "UPDATE fabric_identity SET status=CASE WHEN action='REVOKE' THEN 'REVOCATION_PENDING'"
-              + " ELSE 'RETRY'"
+          "UPDATE fabric_identity_read SET status=CASE WHEN action='REVOKE' THEN"
+              + " 'REVOCATION_PENDING' ELSE 'RETRY'"
               + " END,last_error='IDENTITY_COMPONENT_UNAVAILABLE',attempts=attempts+1,next_attempt=CURRENT_TIMESTAMP"
               + " + INTERVAL '30 seconds' WHERE id=? AND revision=? AND lease_token=? AND"
               + " lease_until>clock_timestamp()",
@@ -274,7 +290,7 @@ public class IdentityWorker {
     } finally {
       active.remove(id, claim);
       db.update(
-          "UPDATE fabric_identity SET lease_token=NULL,lease_until=NULL WHERE id=? AND"
+          "UPDATE fabric_identity_read SET lease_token=NULL,lease_until=NULL WHERE id=? AND"
               + " lease_token=?",
           id,
           lease);
@@ -284,9 +300,8 @@ public class IdentityWorker {
   private boolean current(String id, long revision, String lease) {
     if (executor.closing()) return false;
     return db.queryForObject(
-            "SELECT COUNT(*) FROM fabric_identity WHERE id=? AND revision=? AND"
-                + " lease_token=? AND desired_state='ACTIVE' AND"
-                + " lease_until>clock_timestamp()",
+            "SELECT COUNT(*) FROM fabric_identity_read WHERE id=? AND revision=? AND lease_token=?"
+                + " AND desired_state='ACTIVE' AND lease_until>clock_timestamp()",
             Integer.class,
             id,
             revision,
@@ -310,18 +325,16 @@ public class IdentityWorker {
                       (String) identity.get("action"), (String) identity.get("desired_state"));
               var certificates =
                   db.queryForList(
-                      "SELECT * FROM fabric_certificate WHERE identity_id=?"
-                          + " AND state<>'CA_REVOKED'"
+                      "SELECT * FROM fabric_certificate_read WHERE identity_id=? AND"
+                          + " state<>'CA_REVOKED'"
                           + (all ? "" : " AND crl_state='REVOKING'")
                           + " ORDER BY version",
                       id);
               int marked =
                   all
                       ? db.update(
-                          "UPDATE fabric_certificate SET"
-                              + " crl_state='REVOKING' WHERE"
-                              + " identity_id=? AND state<>'CA_REVOKED'"
-                              + " AND crl_state<>'REVOKING'",
+                          "UPDATE fabric_certificate_read SET crl_state='REVOKING' WHERE"
+                              + " identity_id=? AND state<>'CA_REVOKED' AND crl_state<>'REVOKING'",
                           id)
                       : 0;
               if (marked > 0)
@@ -378,7 +391,7 @@ public class IdentityWorker {
                 s -> {
                   if (revocationOwner(id, revision, lease) == null) return false;
                   db.update(
-                      "UPDATE fabric_certificate SET"
+                      "UPDATE fabric_certificate_read SET"
                           + " state='ISSUED',fingerprint=?,certificate_pem=?,not_before=?,not_after=?"
                           + " WHERE identity_id=? AND version=? AND state='PREPARING'",
                       material.fingerprint(),
@@ -397,7 +410,7 @@ public class IdentityWorker {
           s -> {
             if (revocationOwner(id, revision, lease) == null) return;
             db.update(
-                "UPDATE fabric_certificate SET"
+                "UPDATE fabric_certificate_read SET"
                     + " state='CA_REVOKED',crl_state='PENDING',network_state='REVOCATION_UNVERIFIED'"
                     + " WHERE identity_id=? AND version=?",
                 id,
@@ -417,13 +430,13 @@ public class IdentityWorker {
               || !FabricIdentityService.requiresRevocation(
                   (String) owner.get("action"), (String) owner.get("desired_state"))) return;
           if (db.queryForObject(
-                  "SELECT COUNT(*) FROM fabric_certificate WHERE identity_id=?"
-                      + " AND state<>'CA_REVOKED'",
+                  "SELECT COUNT(*) FROM fabric_certificate_read WHERE identity_id=? AND"
+                      + " state<>'CA_REVOKED'",
                   Integer.class,
                   id)
               != 0) return;
           db.update(
-              "UPDATE fabric_identity SET status='CRL_PENDING',last_error=NULL WHERE" + " id=?",
+              "UPDATE fabric_identity_read SET status='CRL_PENDING',last_error=NULL WHERE id=?",
               id);
         });
   }
@@ -434,8 +447,8 @@ public class IdentityWorker {
   private boolean revocationCurrent(String id, long revision, String lease) {
     if (executor.closing()) return false;
     return db.queryForObject(
-            "SELECT COUNT(*) FROM fabric_identity WHERE id=? AND revision=? AND"
-                + " lease_token=? AND lease_until>clock_timestamp()",
+            "SELECT COUNT(*) FROM fabric_identity_read WHERE id=? AND revision=? AND lease_token=?"
+                + " AND lease_until>clock_timestamp()",
             Integer.class,
             id,
             revision,
@@ -445,7 +458,7 @@ public class IdentityWorker {
 
   /** Must run inside a transaction; the returned lock also fences certificate writes. */
   private Map<String, Object> revocationOwner(String id, long revision, String lease) {
-    var rows = db.queryForList("SELECT * FROM fabric_identity WHERE id=? FOR UPDATE", id);
+    var rows = com.bproject.trust.shared.RetentionLock.rows(db, "fabric_identity", "id=?", id);
     if (rows.isEmpty() || !revocationCurrent(id, revision, lease)) return null;
     return rows.get(0);
   }

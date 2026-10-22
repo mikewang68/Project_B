@@ -12,22 +12,23 @@ const out = process.env.TRUST_TEST_RESULTS || path.join(__dirname, '../.local/fi
     for (const mode of ['real', 'simulated', 'local']) {
       const page = await browser.newPage();
       const errors = [], calls = [], actions = [];
-      let loggedIn = true, auditFails = false, csrfFails = false, loggedOut = false;
+      let loggedIn = true, auditFails = false, csrfFails = false, loggedOut = false, auditDelay = 0;
       page.on('pageerror', e => errors.push(e.message));
       await page.route('**/api/v1/**', async route => {
         const req = route.request(), p = new URL(req.url()).pathname.replace('/api/v1', '');
         calls.push({ p, method: req.method() });
         let status = 200, body = {};
-        if (p === '/me') { status = loggedIn ? 200 : 401; body = { username: 'synthetic-user', orgId: 'SYNTHETIC', identityProvider: mode === 'local' ? 'LOCAL' : 'IAM', simulated: mode === 'simulated', roles: ['ROLE_ADMIN', 'ROLE_EDITOR'] }; }
+        if (p === '/me') { status = loggedIn ? 200 : 401; body = { username: 'synthetic-user', orgId: 'SYNTHETIC', identityProvider: mode === 'local' ? 'LOCAL' : 'IAM', simulated: mode === 'simulated', roles: ['ROLE_ADMIN', 'ROLE_EDITOR', 'trust:event:read', 'trust:event:submit', 'trust:event:correct', 'trust:task:read', 'trust:task:retry', 'trust:operations:read', 'trust:audit:read', 'trust:wallet:read', 'trust:identity:read'] }; }
         else if (p === '/csrf') { status = csrfFails || loggedOut ? 503 : 200; body = { token: 'synthetic-csrf' }; }
         else if (p === '/identity-mode') body = { simulated: mode === 'simulated', iamRequired: mode !== 'local', localLoginEnabled: mode !== 'real' };
         else if (p === '/dev-login') body = { accounts: [] };
         else if (p === '/iam/login' || p === '/login') loggedIn = true;
         else if (p === '/logout') { loggedIn = false; loggedOut = true; }
-        else if (p === '/audit/page-actions') { actions.push(req.postDataJSON()); status = auditFails ? 503 : 201; body = { requestId: req.postDataJSON().requestId, state: 'RECORDED' }; }
+        else if (p === '/audit/page-actions') { actions.push(req.postDataJSON()); if (auditDelay) await new Promise(r => setTimeout(r, auditDelay)); status = auditFails ? 503 : 201; body = { requestId: req.postDataJSON().requestId, state: 'RECORDED' }; }
         else if (p.startsWith('/audit/page-actions/')) body = { requestId: p.split('/')[3], state: 'RECORDED' };
         else if (p === '/events' || p.startsWith('/identities')) body = { total: 0, items: [] };
-        else if (p === '/tasks' || p === '/audit' || p === '/wallets') body = [];
+        else if (p === '/tasks' || p === '/audit') body = [];
+        else if (p === '/wallets') body = { wallets: [], bindings: [], requests: [], signatures: [] };
         else if (p === '/status') body = { database: 'UP', fabric: 'UP', ipfs: { state: 'UP', repoBytes: 0 }, events: 0 };
         else if (p === '/audit/settings') body = { canManage: false, configured: true, pendingCount: 0, failedCount: 0 };
         await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
@@ -39,15 +40,55 @@ const out = process.env.TRUST_TEST_RESULTS || path.join(__dirname, '../.local/fi
         try { await page.locator('nav.workspace-nav').waitFor(); }
         catch (error) { console.error(errors, await page.locator('body').innerText()); throw error; }
         await page.waitForFunction(() => !document.querySelector('.progress'));
-        assert.equal(new URL(page.url()).searchParams.get('navTab'), target);
+        assert.equal(new URL(page.url()).searchParams.get('navTab'), mode === 'local' && ['wallets','identities'].includes(target) ? 'events' : target);
         assert.equal(actions[before].action, 'NAVIGATE');
-        assert.equal(actions[before].menuId, target);
+        assert.equal(actions[before].menuId, mode === 'local' && ['wallets','identities'].includes(target) ? 'events' : target);
         await page.reload();
         await page.locator('nav.workspace-nav').waitFor();
-        assert.equal(new URL(page.url()).searchParams.get('navTab'), target);
-        checks.push(`${mode}: ${target} direct entry and refresh`);
+        assert.equal(new URL(page.url()).searchParams.get('navTab'), mode === 'local' && ['wallets','identities'].includes(target) ? 'events' : target);
+        checks.push(`${mode}: ${target} direct entry and refresh (including permission fallback)`);
       }
       if (mode !== 'real') assert.equal(calls.some(c => c.p === '/audit/settings'), false);
+      // Menu navigation creates history; traversal must audit without creating more entries.
+      await page.goto(`${base}/?navTab=events`);
+      await page.locator('nav.workspace-nav').waitFor();
+      await page.waitForFunction(() => !document.querySelector('.progress'));
+      await page.locator('nav.workspace-nav button').filter({ hasText: '补办任务' }).click();
+      await page.waitForURL('**/?navTab=tasks');
+      await page.waitForFunction(() => !document.querySelector('.progress'));
+      const historyLength = await page.evaluate(() => history.length);
+      const auditBeforeBack = actions.length;
+      await page.goBack();
+      await page.waitForURL('**/?navTab=events');
+      await page.locator('nav.workspace-nav').waitFor();
+      await page.waitForFunction(() => !document.querySelector('.progress'));
+      assert.equal(actions[auditBeforeBack].menuId, 'events');
+      await page.goForward();
+      await page.waitForURL('**/?navTab=tasks');
+      await page.locator('nav.workspace-nav').waitFor();
+      await page.waitForFunction(() => !document.querySelector('.progress'));
+      assert.equal(await page.evaluate(() => history.length), historyLength);
+      checks.push(`${mode}: audited back/forward without history growth`);
+      auditFails = true;
+      const callsBeforeFailure = calls.length;
+      await page.goBack();
+      await page.getByRole('button', { name: '重试进入工作台' }).waitFor();
+      await page.getByRole('alert').filter({ hasText: '操作留痕暂不可用' }).waitFor();
+      assert.equal(calls.slice(callsBeforeFailure).some(c => ['/events','/tasks'].includes(c.p)), false);
+      auditFails = false;
+      await page.getByRole('button', { name: '重试进入工作台' }).click();
+      await page.locator('nav.workspace-nav').waitFor();
+      await page.waitForFunction(() => !document.querySelector('.progress'));
+      checks.push(`${mode}: history audit failure blocks reads and permits explicit retry`);
+      auditDelay = 200;
+      await page.goForward();
+      await page.goBack();
+      await page.locator('nav.workspace-nav').waitFor();
+      await page.waitForFunction(() => !document.querySelector('.progress'));
+      assert.equal(new URL(page.url()).searchParams.get('navTab'), 'events');
+      assert.equal(actions.at(-1).menuId, 'events');
+      auditDelay = 0;
+      checks.push(`${mode}: rapid traversal keeps latest target`);
       loggedIn = false;
       await page.goto(`${base}/?navTab=tasks`);
       await page.getByRole('heading', { name: '登录工作台' }).waitFor();

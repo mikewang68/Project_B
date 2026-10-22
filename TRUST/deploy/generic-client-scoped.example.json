@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 2,
+  "targets": {
+    "approved-example": {
+      "enabled": false,
+      "purpose": "scoped-isolated-generic",
+      "origin": "http://127.0.0.1:28185",
+      "instanceId": "approved-example",
+      "orgId": "EXAMPLE",
+      "sourceId": "synthetic-example",
+      "sourceSystem": "SYNTHETIC_EXAMPLE",
+      "tokenSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "operations": [
+        "submit",
+        "status",
+        "wait"
+      ],
+      "events": {
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+          "originalSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    }
+  }
+}

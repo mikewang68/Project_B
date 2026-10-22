@@ -10,6 +10,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"regexp"
 	"sort"
+	"strconv"
 )
 
 type SignerPolicy struct {
@@ -53,6 +54,83 @@ func policyKey(stub shim.ChaincodeStubInterface, org, source, fingerprint string
 	}
 	return stub.CreateCompositeKey("signer", []string{org, source, fingerprint})
 }
+
+// Legacy keys are frozen once a versioned head exists. External current reads keep their shape.
+func signerVersionKey(stub shim.ChaincodeStubInterface, org, source, fp string, revision int) (string, error) {
+	if _, err := policyKey(stub, org, source, fp); err != nil {
+		return "", err
+	}
+	if revision < 1 {
+		return "", fmt.Errorf("invalid policy revision")
+	}
+	return stub.CreateCompositeKey("signer-version", []string{org, source, fp, strconv.Itoa(revision)})
+}
+func signerHeadKey(stub shim.ChaincodeStubInterface, org, source, fp string) (string, error) {
+	if _, err := policyKey(stub, org, source, fp); err != nil {
+		return "", err
+	}
+	return stub.CreateCompositeKey("signer-head", []string{org, source, fp})
+}
+func currentSigner(stub shim.ChaincodeStubInterface, org, source, fp string) ([]byte, error) {
+	head, err := signerHeadKey(stub, org, source, fp)
+	if err != nil {
+		return nil, err
+	}
+	pointer, err := stub.GetState(head)
+	if err != nil {
+		return nil, err
+	}
+	if pointer == nil {
+		legacy, _ := policyKey(stub, org, source, fp)
+		return stub.GetState(legacy)
+	}
+	revision, err := strconv.Atoi(string(pointer))
+	if err != nil {
+		return nil, fmt.Errorf("invalid policy head")
+	}
+	key, err := signerVersionKey(stub, org, source, fp, revision)
+	if err != nil {
+		return nil, err
+	}
+	data, err := stub.GetState(key)
+	if err == nil && data == nil {
+		return nil, fmt.Errorf("missing policy version")
+	}
+	return data, err
+}
+func getSignerVersion(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
+	if len(args) != 4 {
+		return shim.Error("org, source, fingerprint and revision required")
+	}
+	revision, err := strconv.Atoi(args[3])
+	if err != nil {
+		return shim.Error("invalid policy revision")
+	}
+	key, err := signerVersionKey(stub, args[0], args[1], args[2], revision)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	data, err := stub.GetState(key)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	if data == nil {
+		legacy, _ := policyKey(stub, args[0], args[1], args[2])
+		raw, e := stub.GetState(legacy)
+		if e != nil {
+			return shim.Error(e.Error())
+		}
+		var old SignerPolicy
+		if raw != nil && json.Unmarshal(raw, &old) == nil && old.Revision == revision {
+			data = raw
+		}
+	}
+	if data == nil {
+		data = []byte("null")
+	}
+	return shim.Success(data)
+}
+
 func setSigner(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	msp, err := cid.GetMSPID(stub)
 	if err != nil || msp != "Org1MSP" {
@@ -73,11 +151,11 @@ func setSigner(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	k, err := policyKey(stub, p.OrgID, p.SourceSystem, p.Fingerprint)
+	_, err = policyKey(stub, p.OrgID, p.SourceSystem, p.Fingerprint)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	prev, err := stub.GetState(k)
+	prev, err := currentSigner(stub, p.OrgID, p.SourceSystem, p.Fingerprint)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -91,7 +169,30 @@ func setSigner(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 		return shim.Error("signer policy revision conflict")
 	}
 	data, _ := json.Marshal(p)
-	if err = stub.PutState(k, data); err != nil {
+	if prev != nil {
+		oldKey, e := signerVersionKey(stub, p.OrgID, p.SourceSystem, p.Fingerprint, old.Revision)
+		if e != nil {
+			return shim.Error(e.Error())
+		}
+		saved, e := stub.GetState(oldKey)
+		if e != nil {
+			return shim.Error(e.Error())
+		}
+		if saved == nil {
+			if e = stub.PutState(oldKey, prev); e != nil {
+				return shim.Error(e.Error())
+			}
+		}
+	}
+	versionKey, _ := signerVersionKey(stub, p.OrgID, p.SourceSystem, p.Fingerprint, p.Revision)
+	if existing, e := stub.GetState(versionKey); e != nil || existing != nil {
+		return shim.Error("policy version already exists or unavailable")
+	}
+	if err = stub.PutState(versionKey, data); err != nil {
+		return shim.Error(err.Error())
+	}
+	head, _ := signerHeadKey(stub, p.OrgID, p.SourceSystem, p.Fingerprint)
+	if err = stub.PutState(head, []byte(strconv.Itoa(p.Revision))); err != nil {
 		return shim.Error(err.Error())
 	}
 	if err = stub.SetEvent("SignerPolicyChanged", data); err != nil {
@@ -103,11 +204,11 @@ func getSigner(stub shim.ChaincodeStubInterface, args []string) *pb.Response {
 	if len(args) != 3 {
 		return shim.Error("org, source and fingerprint required")
 	}
-	k, err := policyKey(stub, args[0], args[1], args[2])
+	_, err := policyKey(stub, args[0], args[1], args[2])
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	data, err := stub.GetState(k)
+	data, err := currentSigner(stub, args[0], args[1], args[2])
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -154,11 +255,11 @@ func authorizeSigner(stub shim.ChaincodeStubInterface, r Record) error {
 	if r.SignerFingerprint != actual {
 		return fmt.Errorf("signer fingerprint mismatch")
 	}
-	k, err := policyKey(stub, r.OrgID, r.SourceSystem, actual)
+	_, err = policyKey(stub, r.OrgID, r.SourceSystem, actual)
 	if err != nil {
 		return err
 	}
-	raw, err := stub.GetState(k)
+	raw, err := currentSigner(stub, r.OrgID, r.SourceSystem, actual)
 	if err != nil {
 		return err
 	}

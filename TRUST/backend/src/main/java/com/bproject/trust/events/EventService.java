@@ -34,15 +34,18 @@ public class EventService {
     String request =
         Json.write(Map.of("event", input, "supersedesId", previous == null ? "" : previous));
     if (request.getBytes(StandardCharsets.UTF_8).length > 262144) throw new ApiError(413, "事件内容过大");
+    com.bproject.trust.ingress.EventSourceRoutes.prepare(db, org, input.sourceSystem());
     try {
       return tx.execute(
           status -> {
             // Serialize source ingestion so a parent and child arriving concurrently cannot
             // both pass their missing-counterpart checks with inconsistent snapshots.
-            com.bproject.trust.ingress.EventSourceRoutes.reserve(db, org, input.sourceSystem(), "LEGACY_V1", null);
+            com.bproject.trust.ingress.EventSourceRoutes.reserve(
+                db, org, input.sourceSystem(), "LEGACY_V1", null);
             var existing =
                 db.queryForList(
-                    "SELECT * FROM events WHERE org_id=? AND source_system=? AND source_event_id=?",
+                    "SELECT * FROM events_read WHERE org_id=? AND source_system=? AND"
+                        + " source_event_id=?",
                     org,
                     input.sourceSystem(),
                     input.sourceEventId());
@@ -52,11 +55,14 @@ public class EventService {
             int version = 1;
             if (previous != null) {
               var old = correctionTarget(previous, org);
-              db.queryForList("SELECT id FROM events WHERE id=? FOR UPDATE", old.get("root_id"));
+              com.bproject.trust.shared.RetentionLock.rows(
+                  db, "events", "id=?", old.get("root_id"));
               if (!old.get("source_system").equals(input.sourceSystem()))
                 throw new ApiError(409, "更正必须保持来源系统一致");
               if (db.queryForObject(
-                      "SELECT COUNT(*) FROM events WHERE supersedes_id=?", Long.class, previous)
+                      "SELECT COUNT(*) FROM events_read WHERE supersedes_id=?",
+                      Long.class,
+                      previous)
                   > 0) throw new ApiError(409, "原记录已有更正，请基于最新版本追加");
               root = (String) old.get("root_id");
               version = ((Number) old.get("version")).intValue() + 1;
@@ -65,7 +71,7 @@ public class EventService {
             for (String eid : input.evidenceIds()) {
               var rows =
                   db.queryForList(
-                      "SELECT id,filename,mime,size_bytes,sha256 FROM evidence WHERE id=? AND"
+                      "SELECT id,filename,mime,size_bytes,sha256 FROM evidence_read WHERE id=? AND"
                           + " org_id=?",
                       eid,
                       org);
@@ -86,8 +92,8 @@ public class EventService {
                 sha = Json.sha(json.getBytes(StandardCharsets.UTF_8));
             db.update(
                 "INSERT INTO"
-                    + " events(id,org_id,source_system,source_event_id,event_type,batch_id,object_id,occurred_at,submitted_by,request_json,canonical_json,event_sha256,root_id,version,supersedes_id)"
-                    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    + " events(id,org_id,source_system,source_event_id,event_type,batch_id,object_id,occurred_at,submitted_by,request_json,canonical_json,event_sha256,root_id,version,supersedes_id,signing_required)"
+                    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 id,
                 org,
                 input.sourceSystem(),
@@ -102,11 +108,10 @@ public class EventService {
                 sha,
                 root,
                 version,
-                previous);
+                previous,
+                actor.startsWith("iam:") || actor.startsWith("source:"));
             for (String eid : input.evidenceIds())
               db.update("INSERT INTO event_evidence VALUES(?,?)", id, eid);
-            if (actor.startsWith("iam:") || actor.startsWith("source:"))
-              db.update("UPDATE events SET signing_required=TRUE WHERE id=?", id);
             link(id, "BATCH", input.batchId());
             for (String b : input.relatedBatchIds())
               if (!b.equals(input.batchId())) link(id, "BATCH", b);
@@ -122,7 +127,7 @@ public class EventService {
     } catch (DuplicateKeyException e) {
       var existing =
           db.queryForList(
-              "SELECT * FROM events WHERE org_id=? AND source_system=? AND source_event_id=?",
+              "SELECT * FROM events_read WHERE org_id=? AND source_system=? AND source_event_id=?",
               org,
               input.sourceSystem(),
               input.sourceEventId());
@@ -142,7 +147,7 @@ public class EventService {
   }
 
   public Map<String, Object> get(String id, String org) {
-    return db.queryForList("SELECT * FROM events WHERE id=? AND org_id=?", id, org).stream()
+    return db.queryForList("SELECT * FROM events_read WHERE id=? AND org_id=?", id, org).stream()
         .findFirst()
         .orElseThrow(() -> new ApiError(404, "记录不存在或无权访问"));
   }
@@ -161,7 +166,8 @@ public class EventService {
   public Map<String, Object> correctionTarget(String id, String org) {
     var row = get(id, org);
     if (!"LEGACY_V1".equals(row.get("record_kind")))
-      throw new com.bproject.trust.ingress.IngressError(409,"EVENT_SCHEMA_MISMATCH","该记录须由原来源通过通用入口追加更正");
+      throw new com.bproject.trust.ingress.IngressError(
+          409, "EVENT_SCHEMA_MISMATCH", "该记录须由原来源通过通用入口追加更正");
     return row;
   }
 
@@ -170,28 +176,48 @@ public class EventService {
     row.put(
         "evidence",
         db.queryForList(
-            "SELECT v.* FROM evidence v JOIN event_evidence x ON x.evidence_id=v.id WHERE"
+            "SELECT v.* FROM evidence_read v JOIN event_evidence x ON x.evidence_id=v.id WHERE"
                 + " x.event_id=? AND v.org_id=? ORDER BY v.id",
             id,
             org));
     row.put(
         "versions",
         db.queryForList(
-            "SELECT id,version,supersedes_id,chain_state FROM events WHERE root_id=? AND org_id=?"
-                + " ORDER BY version",
+            "SELECT id,version,supersedes_id,chain_state FROM events_read WHERE root_id=? AND"
+                + " org_id=? ORDER BY version",
             row.get("root_id"),
             org));
     row.put("links", db.queryForList("SELECT kind,target FROM event_links WHERE event_id=?", id));
-    row.put("missingReferences", "LEGACY_V1".equals(row.get("record_kind")) ? relations.missing(row, org) : java.util.List.of());
+    row.put(
+        "currentVersionId",
+        db.queryForObject(
+            "SELECT current_id FROM event_heads WHERE root_id=? AND org_id=?",
+            String.class,
+            row.get("root_id"),
+            org));
+    row.put(
+        "missingReferences",
+        "LEGACY_V1".equals(row.get("record_kind"))
+            ? relations.missing(row, org)
+            : java.util.List.of());
     return row;
   }
 
   public Map<String, Object> list(String org, String query, int page, int size) {
+    return list(org, query, page, size, "history");
+  }
+
+  public Map<String, Object> list(String org, String query, int page, int size, String view) {
+    if (!java.util.Set.of("current", "history").contains(view)) throw new ApiError(400, "列表视图无效");
     if (page < 0 || size < 1 || size > 100) throw new ApiError(400, "分页参数超出范围");
     String q = "%" + (query == null ? "" : query) + "%";
     String where =
-        " FROM events WHERE record_kind='LEGACY_V1' AND org_id=? AND (batch_id LIKE ? OR source_event_id LIKE ? OR object_id"
-            + " LIKE ?)";
+        " FROM events_read WHERE record_kind='LEGACY_V1' AND org_id=? AND (batch_id LIKE ? OR"
+            + " source_event_id LIKE ? OR object_id LIKE ?)";
+    if ("current".equals(view))
+      where +=
+          " AND EXISTS(SELECT 1 FROM event_heads h WHERE h.current_id=events_read.id AND"
+              + " h.org_id=events_read.org_id)";
     return Map.of(
         "total",
         db.queryForObject("SELECT COUNT(*)" + where, Long.class, org, q, q, q),

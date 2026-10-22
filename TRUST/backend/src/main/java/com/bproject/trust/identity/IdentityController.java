@@ -44,6 +44,7 @@ public class IdentityController {
         "identityProvider",
         a.getPrincipal() instanceof PlatformPrincipal ? "IAM" : "LOCAL",
         "simulated",
-        a.getPrincipal() instanceof PlatformPrincipal && settings.read().simulated());
+        a.getPrincipal() instanceof PlatformPrincipal && settings.read().simulated(),
+        "readOnly", ReadOnlyPolicy.restricted(a));
   }
 }

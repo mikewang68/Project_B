@@ -89,3 +89,5 @@ SHA-256 根据固定 JSON 格式的 UTF-8 实际归档字节计算；对象键�
 ## 2026-09-28 IAM联合身份整改
 
 公用身份 API 与生命周期见 [身份集成说明](identity-delivery.md) 和 [identity-v1 OpenAPI](identity-openapi.json)。部署状态、验收报告和运行证据仅在本地保留；源码接口说明不代表实际环境已完成接入。
+
+业务版本、current/history 查询、设置预期版本与历史读取见 [数据版本留存](data-retention.md)。

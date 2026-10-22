@@ -49,6 +49,10 @@ class WalletDatabaseIntegrationTest {
   static void properties(DynamicPropertyRegistry p) throws Exception {
     Path root = Path.of(System.getenv("TRUST_ROOT"), "runtime/wallet-integration");
     Files.createDirectories(root);
+    Files.createDirectories(root.resolve("runtime/secrets"));
+    Files.writeString(
+        root.resolve("runtime/secrets/integration.json"),
+        "{\"iamUrl\":\"\",\"iamMode\":\"development\",\"orgMap\":{},\"services\":[]}");
     p.add("trust.root", () -> root.toString());
     String url = System.getenv("TRUST_TEST_DB_URL");
     com.bproject.trust.support.TestDatabase.require(url);
@@ -78,8 +82,8 @@ class WalletDatabaseIntegrationTest {
   @AfterEach
   void stopPendingFixtureTasks() {
     db.update(
-        "UPDATE tasks SET state='FAILED',lease_token=NULL,lease_until=NULL WHERE event_id"
-            + " IN(SELECT id FROM events WHERE org_id=?)",
+        "UPDATE tasks_read SET state='FAILED',lease_token=NULL,lease_until=NULL WHERE event_id"
+            + " IN(SELECT id FROM events_read WHERE org_id=?)",
         org);
   }
 
@@ -119,11 +123,12 @@ class WalletDatabaseIntegrationTest {
         assertThrows(ApiError.class, () -> wallets.review(org, "iam:bob", stale, true)).status);
     assertEquals(
         "PENDING",
-        db.queryForObject("SELECT state FROM wallet_requests WHERE id=?", String.class, stale));
+        db.queryForObject(
+            "SELECT state FROM wallet_requests_read WHERE id=?", String.class, stale));
     assertEquals(
         1,
         db.queryForObject(
-            "SELECT revision FROM wallet_bindings WHERE org_id=?", Integer.class, org));
+            "SELECT revision FROM wallet_bindings_read WHERE org_id=?", Integer.class, org));
     assertEquals(404, assertThrows(ApiError.class, () -> wallets.wallet(id, "OTHER")).status);
   }
 
@@ -177,10 +182,10 @@ class WalletDatabaseIntegrationTest {
     String id = (String) r.get("id");
     assertThrows(Exception.class, () -> wallets.review(org, "x".repeat(81), id, true));
     assertEquals(
-        0, db.queryForObject("SELECT COUNT(*) FROM wallets WHERE id=?", Integer.class, id));
+        0, db.queryForObject("SELECT COUNT(*) FROM wallets_read WHERE id=?", Integer.class, id));
     assertEquals(
         "PENDING",
-        db.queryForObject("SELECT state FROM wallet_requests WHERE id=?", String.class, id));
+        db.queryForObject("SELECT state FROM wallet_requests_read WHERE id=?", String.class, id));
   }
 
   @Test
@@ -235,7 +240,7 @@ class WalletDatabaseIntegrationTest {
     wallets.prepared(event, "first-" + event);
     String before =
         db.queryForObject(
-            "SELECT context_json FROM signing_attempts WHERE event_id=?", String.class, event);
+            "SELECT context_json FROM signing_attempts_read WHERE event_id=?", String.class, event);
     var context = Json.map(before);
     assertEquals(1, context.get("bindingRevision"));
     assertEquals("source:wms-test", context.get("submittedBy"));
@@ -250,12 +255,12 @@ class WalletDatabaseIntegrationTest {
     assertEquals(
         "UNKNOWN",
         db.queryForObject(
-            "SELECT state FROM signing_attempts WHERE event_id=?", String.class, event));
+            "SELECT state FROM signing_attempts_read WHERE event_id=?", String.class, event));
     wallets.prepared(event, "second-" + event);
     assertEquals(
         List.of(before, before),
         db.queryForList(
-            "SELECT context_json FROM signing_attempts WHERE event_id=? ORDER BY tx_id",
+            "SELECT context_json FROM signing_attempts_read WHERE event_id=? ORDER BY tx_id",
             String.class,
             event));
     tx.executeWithoutResult(
@@ -272,21 +277,25 @@ class WalletDatabaseIntegrationTest {
     assertEquals(
         "COMMITTED",
         db.queryForObject(
-            "SELECT state FROM signing_attempts WHERE tx_id=?", String.class, "first-" + event));
+            "SELECT state FROM signing_attempts_read WHERE tx_id=?",
+            String.class,
+            "first-" + event));
     assertEquals(
         "SUPERSEDED",
         db.queryForObject(
-            "SELECT state FROM signing_attempts WHERE tx_id=?", String.class, "second-" + event));
+            "SELECT state FROM signing_attempts_read WHERE tx_id=?",
+            String.class,
+            "second-" + event));
     assertEquals(
         42L,
         db.queryForObject(
-            "SELECT block_number FROM signing_attempts WHERE tx_id=?",
+            "SELECT block_number FROM signing_attempts_read WHERE tx_id=?",
             Long.class,
             "first-" + event));
     assertEquals(
         "commit timeout",
         db.queryForObject(
-            "SELECT last_error FROM signing_attempts WHERE tx_id=?",
+            "SELECT last_error FROM signing_attempts_read WHERE tx_id=?",
             String.class,
             "first-" + event));
   }
@@ -305,17 +314,19 @@ class WalletDatabaseIntegrationTest {
     assertEquals(
         "INVALID",
         db.queryForObject(
-            "SELECT state FROM signing_attempts WHERE tx_id=?", String.class, "invalid-" + event));
+            "SELECT state FROM signing_attempts_read WHERE tx_id=?",
+            String.class,
+            "invalid-" + event));
     assertEquals(
         "MVCC_READ_CONFLICT",
         db.queryForObject(
-            "SELECT last_error FROM signing_attempts WHERE tx_id=?",
+            "SELECT last_error FROM signing_attempts_read WHERE tx_id=?",
             String.class,
             "invalid-" + event));
     assertEquals(
         40L,
         db.queryForObject(
-            "SELECT block_number FROM signing_attempts WHERE tx_id=?",
+            "SELECT block_number FROM signing_attempts_read WHERE tx_id=?",
             Long.class,
             "invalid-" + event));
   }
@@ -337,11 +348,11 @@ class WalletDatabaseIntegrationTest {
     assertEquals(
         0,
         db.queryForObject(
-            "SELECT COUNT(*) FROM signing_attempts WHERE event_id=?", Integer.class, event));
+            "SELECT COUNT(*) FROM signing_attempts_read WHERE event_id=?", Integer.class, event));
     assertEquals(
         0,
         db.queryForObject(
-            "SELECT COUNT(*) FROM audit_log WHERE object_id=? AND" + " action='SIGN_PREPARED'",
+            "SELECT COUNT(*) FROM audit_log WHERE object_id=? AND action='SIGN_PREPARED'",
             Integer.class,
             event));
   }
@@ -372,22 +383,21 @@ class WalletDatabaseIntegrationTest {
       assertEquals(
           1,
           db.queryForObject(
-              "SELECT COUNT(*) FROM wallet_requests WHERE id IN (?,?) AND" + " state='APPROVED'",
+              "SELECT COUNT(*) FROM wallet_requests_read WHERE id IN (?,?) AND state='APPROVED'",
               Integer.class,
               a,
               b));
       assertEquals(
           1,
           db.queryForObject(
-              "SELECT COUNT(*) FROM wallet_requests WHERE id IN (?,?) AND" + " state='PENDING'",
+              "SELECT COUNT(*) FROM wallet_requests_read WHERE id IN (?,?) AND state='PENDING'",
               Integer.class,
               a,
               b));
       assertEquals(
           1,
           db.queryForObject(
-              "SELECT COUNT(*) FROM audit_log WHERE object_id IN (?,?) AND"
-                  + " action='WALLET_REVIEW'",
+              "SELECT COUNT(*) FROM audit_log WHERE object_id IN (?,?) AND action='WALLET_REVIEW'",
               Integer.class,
               a,
               b));
