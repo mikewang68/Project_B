@@ -53,7 +53,7 @@ public class UserService implements LoginUserLoader {
     LoginUser current = com.bdemo.iam.security.JwtAuthFilter.currentUser();
     String scopeZone = null;
     String scopeCompany = null;
-    if (current != null && !current.isSuperAdmin()) {
+    if (current != null && !hasGlobalUserRead(current)) {
       // 非全权管理员：只允许看到本人可信域内的用户；域缺失则 fail-closed 返回空集合
       scopeZone = current.getScopeZone();
       scopeCompany = current.getScopeCompany();
@@ -85,12 +85,26 @@ public class UserService implements LoginUserLoader {
       throw BizException.notFound("用户不存在");
     }
     LoginUser current = com.bdemo.iam.security.JwtAuthFilter.currentUser();
-    if (current != null && !current.isSuperAdmin() && !inCurrentScope(current, u)) {
+    if (current != null && !hasGlobalUserRead(current) && !inCurrentScope(current, u)) {
       // 与列表保持一致的 fail-closed：不能通过猜 ID 读取域外用户
       throw BizException.notFound("用户不存在");
     }
     hydrate(u);
     return u;
+  }
+
+  /** Self-profile restoration does not grant permission to list other users. */
+  public User currentProfile(LoginUser current) {
+    if (current == null || current.getUserId() == null) throw BizException.unauthorized("未登录或登录已过期");
+    User user = userMapper.selectById(current.getUserId());
+    if (user == null) throw BizException.notFound("用户不存在");
+    hydrate(user);
+    return user;
+  }
+
+  private boolean hasGlobalUserRead(LoginUser current) {
+    return current.isSuperAdmin() || current.isReadOnly() && current.getRoles().stream()
+        .anyMatch(role -> "platform_auditor_readonly".equalsIgnoreCase(role));
   }
 
   /** 判断目标用户是否落在当前登录主体的可信数据域内。 */

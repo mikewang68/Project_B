@@ -2795,7 +2795,10 @@
           "FLY_ASH",
           "STEEL",
           "CEMENT",
-          "GENERAL_CARGO"
+          "GENERAL_CARGO",
+          "COAL",
+          "IRON_ORE",
+          "CONTAINER"
         ]
       },
       "PlanStatus": {
@@ -3595,6 +3598,12 @@
           "arrivalDepartureTime": {
             "type": "string",
             "x-source-field": "arrival_departure_time"
+          },
+          "workArea": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Business plan work area; required by the live API adapter.",
+            "x-source-field": "work_area"
           },
           "trackNo": {
             "type": "string",

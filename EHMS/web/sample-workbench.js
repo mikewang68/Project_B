@@ -23,7 +23,7 @@
       $('#pageView').querySelectorAll('[aria-label]').forEach(el=>el.setAttribute('aria-label',el.getAttribute('aria-label').replace(/openGemini/g,'虚拟样本库')));
     }
   };
-  const oldPage=setPage;setPage=function(page){oldPage(page);if(page==='sample-workbench')reload();};
+  const oldPage=setPage;setPage=function(page,options){const result=oldPage(page,options);if(page==='sample-workbench')reload();return result;};
   const oldAction=handleAction;handleAction=function(event){const a=event.currentTarget.dataset.action;if(a==='sampleReload')return reload();
     if(a==='sampleInstall'||a==='sampleTick'){
       if(state.samples.busy)return;if(!window.EhmAuth.canWrite())return toast('仅超级管理员可管理样例');

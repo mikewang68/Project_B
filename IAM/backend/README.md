@@ -6,6 +6,12 @@
 
 ## 独立部署步骤
 
+动态导航的域名配置是独立的可选能力。部署带有地址字段的新版本前，对获准的导航库执行 `backend/db/isolated/023-navigation-addresses.sql`；该脚本可重复运行，启动程序不自动执行DDL。真实地址保存在私有配置和数据库，不放入源码模板。
+
+`iam_navigation_app` 的 `domain_name`、`public_scheme`、`public_port` 决定浏览器域名地址；`origin_scheme`、`origin_ip`、`origin_port` 描述回源并用于无域名时的IP备用地址。`module_path` 是目标应用的基础路径，`entry_base_path` 是已有同源网关前缀，两者应分别配置。公网端口为空时使用公网协议的默认端口，不能复制回源端口。域名非空但格式无效时拒绝配置，不自动退回IP；无域名时才生成IP地址，不依据网络失败自动切换。
+
+新能力默认关闭。设置 `iam.navigation.external-addresses-enabled=true` 后，已授权 `SystemNode` 可额外返回 `entryBaseUrl`；未配置地址时该字段为空并保留已有路由。Portal依据基础URL和该系统网关前缀转换页面路径，保留业务查询参数及锚点，拒绝认证参数、外部协议和路径穿越。该字段仅提供应用地址，不传递IAM令牌、Cookie或换票凭据，也不代表跨域SSO已经验证。上线前分别检查公开协议、重定向、应用路径、证书、目标权限及登录衔接。
+
 1. 由已获准的数据库维护操作创建独立 `iam_identity_dev` / `iam_identity_dev_test` 库，以及各自分离的 app/migrate 角色；不使用旧 `project_b` 库，不创建或授权 SYS 对象。资源允许名单见 [instances.example.json](../deploy/instances.example.json)。
 2. 按 [isolated.env.example](../deploy/isolated.env.example)、[identity.example.json](../deploy/identity.example.json) 和允许名单生成私有配置，放在实例 `runtime/secrets/`，不得提交真实文件。TRUST 地址指向独立真实身份 API，组织映射由服务端控制。
 3. 在当前后端目录执行 `mvn test package`，按联合交付说明验证发布包摘要并安装 `artifacts/iam-backend.jar`。应用运行角色不持有迁移密码。

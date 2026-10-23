@@ -10,7 +10,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { AuthSession, LoginRequest, LoginResponse, User, Role } from '@/iam/types'
 import { MENU_TREE, filterMenuByPerms, collectAllPerms, type MenuNode } from '@/iam/menu-tree'
-import { iamApi, TOKEN_KEY, type LoginResult, type MeResult } from '@/api/iam'
+import { iamApi, type LoginResult, type MeResult } from '@/api/iam'
 
 /** IAM 后台可导航页面及其进入所需权限（登录落地页按此顺序选第一个有权限的） */
 const LANDING_CANDIDATES = [
@@ -27,12 +27,14 @@ export const useAuthStore = defineStore('auth', () => {
   const permCodes = ref<Set<string>>(new Set())
   const menuTree = ref<MenuNode[]>([])
   /** 是否已完成 /auth/me 恢复（路由守卫等待） */
-  const hydrated = ref(!localStorage.getItem(TOKEN_KEY))
+  const hydrated = ref(false)
+  const readOnly = ref(false)
+  const fullAdmin = ref(false)
 
   // ---- getters ----
   const isLoggedIn = computed(() => !!session.value && !!currentUser.value)
   const isSuperAdmin = computed(() =>
-    userRoles.value.some((r) => r.code === 'super_admin' && r.status === 'active'),
+    fullAdmin.value && !readOnly.value,
   )
 
   /** 登录后默认落地页：取第一个有权限的 IAM 页面，都没有则去 403 */
@@ -43,15 +45,18 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ---- actions ----
   function hydrate(user: User, roles: Array<Pick<Role, 'id' | 'name' | 'code' | 'status'>>,
-                  permissions: string[], token: string) {
+                  permissions: string[], token: string, authorization?: { superAdmin: boolean; readOnly: boolean }) {
+    readOnly.value = authorization?.readOnly === true
+    fullAdmin.value = authorization?.superAdmin === true && !readOnly.value
     currentUser.value = user
     userRoles.value = roles as Role[]
     const codes = new Set(permissions)
     // 前端兜底：超管动态拥有静态菜单树全部权限（权限以服务端返回为准）
-    if (userRoles.value.some((r) => r.status === 'active' && r.code === 'super_admin')) {
+    if (fullAdmin.value) {
       for (const p of collectAllPerms()) codes.add(p.code)
     }
     permCodes.value = codes
+    if (readOnly.value) for (const p of codes) if (!/:(view|read|list|query|detail)$/.test(p)) codes.delete(p)
     menuTree.value = filterMenuByPerms(MENU_TREE, codes)
     session.value = {
       token,
@@ -65,6 +70,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function reset() {
+    readOnly.value = false
+    fullAdmin.value = false
     session.value = null
     currentUser.value = null
     userRoles.value = []
@@ -79,7 +86,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const result: LoginResult = await iamApi.login(req.username.trim(), req.password)
       iamApi.token.setToken(result.token)
-      hydrate(result.user, result.roles, result.permissions, result.token)
+      hydrate(result.user, result.roles, result.permissions, result.token, result)
       return {
         success: true,
         session: session.value || undefined,
@@ -93,21 +100,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** 登出（调用后端撤销会话并记录日志，无论成败都清空本地会话） */
   async function logout() {
-    try {
-      await iamApi.logout()
-    } catch {
-      // 忽略：即使后端不可达也要允许本地登出
-    }
+    await iamApi.logout()
     reset()
   }
 
   /** 刷新页面后凭 token 调用 /auth/me 恢复会话 */
   async function restoreFromSession() {
     const token = iamApi.token.getToken()
-    if (!token) {
-      reset()
-      return
-    }
     try {
       const me: MeResult = await iamApi.me()
       const user: User = {
@@ -121,7 +120,7 @@ export const useAuthStore = defineStore('auth', () => {
         updatedAt: '',
       }
       hydrate(user, me.roles.map((r) => ({ ...r, status: 'active', permCodes: [] })),
-        me.permissions, token)
+        me.permissions, token || '', me)
     } catch {
       reset()
     } finally {
@@ -132,10 +131,6 @@ export const useAuthStore = defineStore('auth', () => {
   /** 变更当前用户资料/角色后重新拉取身份与权限；用户失效则登出 */
   async function refreshCurrentUser() {
     const token = iamApi.token.getToken()
-    if (!token) {
-      reset()
-      return
-    }
     try {
       const me: MeResult = await iamApi.me()
       const user: User = {
@@ -149,7 +144,7 @@ export const useAuthStore = defineStore('auth', () => {
         updatedAt: '',
       }
       hydrate(user, me.roles.map((r) => ({ ...r, status: 'active', permCodes: [] })),
-        me.permissions, token)
+        me.permissions, token || '', me)
     } catch {
       reset()
     }
@@ -162,6 +157,7 @@ export const useAuthStore = defineStore('auth', () => {
     permCodes,
     menuTree,
     hydrated,
+    readOnly,
     isLoggedIn,
     isSuperAdmin,
     landingPath,

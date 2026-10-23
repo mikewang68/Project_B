@@ -1,9 +1,9 @@
 // Same-origin HttpOnly session; no password, role or session bearer is stored in localStorage.
 (function(){
   let release;const ready=new Promise(resolve=>release=resolve);const nativeFetch=window.fetch.bind(window);
-  const auth=window.EhmAuth={ready,enabled:true,mode:'local',user:null,csrf:'',canWrite:()=>auth.user?.role==='SUPER_ADMIN',
+  const auth=window.EhmAuth={ready,enabled:true,mode:'local',user:null,csrf:'',projectIds:[],projectId:'',canWrite:()=>auth.user?.role==='SUPER_ADMIN',
     lock(message=''){auth.user=null;auth.csrf='';document.body.classList.add('ehm-auth-locked');const overlay=document.getElementById('ehmLogin');if(overlay)overlay.hidden=false;const error=document.getElementById('authError');if(error)error.textContent=message;document.dispatchEvent(new CustomEvent('ehm-auth-change'));},
-    async refresh(){try{const response=await nativeFetch('/api/ehm/v1/auth/me',{credentials:'same-origin',cache:'no-store'});if(!response.ok){auth.lock(response.status===401?'':'登录服务暂不可用，请检查后端版本与连接');return false;}const data=await response.json();auth.enabled=data.enabled!==false;auth.mode=data.mode;auth.user=data.user||null;auth.csrf=data.csrfToken||'';auth.unlock();return true;}catch{auth.lock('无法连接登录服务，请检查服务或SSH连接');return false;}},
+    async refresh(){try{const response=await nativeFetch('/api/ehm/v1/auth/me',{credentials:'same-origin',cache:'no-store',headers:auth.projectId?{'X-Project-Id':auth.projectId}:{}});if(!response.ok){if(response.status===401&&response.headers.get('X-Platform-Login-Required')==='1'){const p=new URLSearchParams(location.search).get('page')||'dashboard';location.assign('/sso/start?page='+encodeURIComponent('EHMS:'+(p==='dashboard'?'cockpit':p)));return false;}auth.lock(response.status===401?'':'登录服务暂不可用，请检查后端版本与连接');return false;}const data=await response.json();auth.enabled=data.enabled!==false;auth.mode=data.mode;auth.user=data.user||null;auth.csrf=data.csrfToken||'';auth.projectIds=Array.isArray(data.projectIds)?data.projectIds:[];auth.projectId=data.projectId||'';auth.unlock();return true;}catch{auth.lock('无法连接登录服务，请检查服务或SSH连接');return false;}},
     unlock(){document.body.dataset.authMode=auth.mode;document.body.classList.remove('ehm-auth-locked');const overlay=document.getElementById('ehmLogin');if(overlay)overlay.hidden=true;release();document.dispatchEvent(new CustomEvent('ehm-auth-change'));},
     async logout(){const response=await window.fetch('/api/ehm/v1/auth/logout',{method:'POST'});if(!response.ok&&response.status!==401)throw Error('退出未完成，请重试');auth.lock('已退出登录');},
     async request(path,method='GET',body){const response=await window.fetch('/api/ehm/v1/auth'+path,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});let data=null;try{data=await response.json();}catch{}if(!response.ok)throw Error(data?.message||`HTTP ${response.status}`);return data;}
@@ -18,6 +18,7 @@
     const sessionApi=target.pathname.startsWith('/api/ehm/v1/auth/');
     if(!sessionApi&&!auth.user&&auth.enabled)await ready;
     const headers=new Headers(options.headers||(typeof input!=='string'?input.headers:undefined));
+    if(auth.projectId)headers.set('X-Project-Id',auth.projectId);
     const method=(options.method||(typeof input!=='string'?input.method:'GET')||'GET').toUpperCase();
     if(auth.mode==='local')headers.delete('Authorization');
     if(auth.csrf&&!['GET','HEAD','OPTIONS'].includes(method))headers.set('X-EHM-CSRF',auth.csrf);

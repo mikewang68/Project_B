@@ -101,6 +101,14 @@ public class NavigationApiMockMvcTest {
       activeSessions.values().removeIf(user -> user.equals(call.getArgument(0)));
       return null;
     }).when(sessions).revokeUser(anyString());
+    org.mockito.Mockito.when(sessions.revokeUserAndReturnIds(anyString())).thenAnswer(call -> {
+      var ids = activeSessions.entrySet().stream()
+          .filter(entry -> entry.getValue().equals(call.getArgument(0)))
+          .map(java.util.Map.Entry::getKey).toList();
+      ids.forEach(activeSessions::remove);
+      return ids;
+    });
+
 
     String hash = passwordEncoder.encode("Pass@123");
 

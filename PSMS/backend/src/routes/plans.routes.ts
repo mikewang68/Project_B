@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, optionalAuth } from '../middleware/auth.js';
+import { authenticate } from '../middleware/auth.js';
 import { auditOperation } from '../middleware/audit.js';
 import * as planService from '../services/plan.service.js';
 import * as workOrderService from '../services/workOrder.service.js';
@@ -7,16 +7,45 @@ import { Equipment } from '../db/tables.js';
 import { pathParam, q, qList, qNum } from '../lib/http.js';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { Plan } from '../db/tables.js';
+import { Plan, User, type UserDoc } from '../db/tables.js';
 
 const importedPlanSchema = z.object({
   planBatchNo: z.string().trim().min(1).max(100), trainNo: z.string().trim().min(1).max(100),
-  cargoType: z.enum(['FLY_ASH', 'STEEL', 'CEMENT', 'GENERAL_CARGO']), trackNo: z.string().trim().min(1).max(50),
+  cargoType: z.enum(['FLY_ASH', 'STEEL', 'CEMENT', 'GENERAL_CARGO', 'COAL', 'IRON_ORE', 'CONTAINER']), trackNo: z.string().trim().min(1).max(50),
   arrivalTime: z.iso.datetime({ offset: true }), departureTime: z.iso.datetime({ offset: true }),
   sourceStation: z.string().trim().min(1).max(100).default('手工导入'), workArea: z.enum(['AREA-A', 'AREA-B', 'AREA-C']).default('AREA-A'),
 }).strict().refine((plan) => Date.parse(plan.departureTime) > Date.parse(plan.arrivalTime), '离开时间必须晚于到达时间');
 
 export const plansRouter = Router();
+
+// Every plan endpoint uses current local roles/scopes, including reads and child resources.
+plansRouter.use(authenticate, async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user!.userId).lean<UserDoc>();
+    if (!user || !['super_admin', 'admin', 'scheduler', 'dispatcher', 'operator', 'viewer'].includes(user.roleCode)
+      || !Array.isArray(user.dataScope) || !user.dataScope.length) {
+      res.status(403).json({ ok: false, errorCode: 'NO_LOCAL_SCOPE' }); return;
+    }
+    req.user = { userId: user._id, actorId: user.actorId, roleCode: user.roleCode, dataScope: [...user.dataScope] };
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)
+      && !['super_admin', 'admin', 'scheduler', 'dispatcher'].includes(user.roleCode)) {
+      res.status(403).json({ ok: false, errorCode: 'READ_ONLY' }); return;
+    }
+    const all = user.dataScope.some((scope) => ['*', 'GLOBAL'].includes(scope));
+    const requested = q(req, 'workArea');
+    if (requested && !all && !user.dataScope.includes(requested)) {
+      res.status(403).json({ ok: false, errorCode: 'SCOPE_DENIED' }); return;
+    }
+    const first = req.path.split('/')[1];
+    if (first && first !== 'import') {
+      const plan = await planService.getPlanById(decodeURIComponent(first));
+      if (!all && !user.dataScope.includes(plan.workArea)) {
+        res.status(403).json({ ok: false, errorCode: 'SCOPE_DENIED' }); return;
+      }
+    }
+    next();
+  } catch (error) { next(error); }
+});
 
 // The browser parses CSV and submits validated rows; database checks remain authoritative.
 plansRouter.post('/import', authenticate, auditOperation('importPlans'), async (req, res, next) => {
@@ -45,10 +74,11 @@ plansRouter.post('/import', authenticate, auditOperation('importPlans'), async (
 });
 
 // API-001/API-002 计划台账查询
-plansRouter.get('/', optionalAuth, async (req, res, next) => {
+plansRouter.get('/', async (req, res, next) => {
   try {
     const result = await planService.listPlans({
       workArea: q(req, 'workArea'),
+      workAreas: req.user!.dataScope.some((scope) => ['*', 'GLOBAL'].includes(scope)) ? undefined : req.user!.dataScope,
       statuses: qList(req, 'statuses'),
       date: q(req, 'date'),
       planBatchNo: q(req, 'planBatchNo'),
@@ -74,7 +104,7 @@ plansRouter.get('/', optionalAuth, async (req, res, next) => {
 });
 
 // 计划详情
-plansRouter.get('/:id', optionalAuth, async (req, res, next) => {
+plansRouter.get('/:id', async (req, res, next) => {
   try {
     const plan = await planService.getPlanById(pathParam(req));
     res.json({ ok: true, data: { apiId: 'API-002', items: [plan] } });
@@ -158,7 +188,7 @@ plansRouter.post('/:id/tasks', authenticate, auditOperation('decomposeTasks'), a
 });
 
 // 读取某计划的任务列表
-plansRouter.get('/:id/tasks', optionalAuth, async (req, res, next) => {
+plansRouter.get('/:id/tasks', async (req, res, next) => {
   try {
     const tasks = await workOrderService.listTasks({ planId: pathParam(req) });
     res.json({ ok: true, data: { apiId: 'API-007', items: tasks } });

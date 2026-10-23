@@ -11,6 +11,8 @@ import org.apache.ibatis.annotations.*;
  */
 @Mapper
 public interface SsoSubjectMapper {
+  @Select("SELECT project_id FROM iam.sso_project_grant WHERE subject=#{subject} AND audience=#{audience} AND enabled=1 ORDER BY project_id")
+  java.util.List<String> projects(@Param("subject")String subject,@Param("audience")String audience);
 
   @Select(
       "SELECT subject, audience, local_subject, company_code, org_code, domain_code, zone_code, enabled"

@@ -41,6 +41,7 @@ public class AuthController {
                 "user", me,
                 "roles", roles,
                 "permissions", user.getPermissions().stream().sorted().toList(),
-                "superAdmin", user.isSuperAdmin()));
+                "superAdmin", user.isSuperAdmin(),
+                "readOnly", user.isReadOnly()));
     }
 }

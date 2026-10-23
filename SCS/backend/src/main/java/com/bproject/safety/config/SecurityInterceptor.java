@@ -8,10 +8,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.Base64;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -27,19 +27,23 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * 安全鉴权与权限拦截器（支持 API-Key、Bearer JWT、网关透传头与角色级 403 硬拦截）。
- * <p>
- * 核心安全特性：
- * 1. 边缘节点 / 机器凭据：{@code X-API-Key} 请求头；
- * 2. 用户 / 网关凭据：{@code Authorization: Bearer <token>} 请求头；
- * 3. 支持 JWT Claims 解码（提取 {@code sub}、{@code roles}、{@code permissions}、{@code aud}/{@code scope} 及过期时间校验）；
- * 4. 支持网关透传头（{@code X-User-Roles}、{@code X-User-Sub}、{@code X-Scope}）；
- * 5. 跨 Scope/Audience 隔离检查：非 safety/scs 目标受众直接 403 (FORBIDDEN_SCOPE_MISMATCH)；
- * 6. 只读审计角色（{@code PLATFORM_AUDITOR_READONLY}）：
- *    - 读操作（GET/HEAD/OPTIONS）正常放行（200 OK）；
- *    - 写操作与控制指令（POST/PUT/DELETE/PATCH）在进入 Controller 前服务端强力硬拦截，返回 403 (FORBIDDEN_READONLY_ROLE) 并输出脱敏 traceId；
- * 7. 匿名或非法凭证拦截并返回 401 UNAUTHORIZED。
- * </p>
+ * 安全鉴权与权限拦截器（API-Key、验签 JWT、IAM 服务端验票）。
+ *
+ * <p>安全边界（G4 修复后）：
+ *
+ * <ol>
+ *   <li>机器凭据：{@code X-API-Key} 常量时间比较，仅用于边缘节点上报。
+ *   <li>用户凭据：{@code Authorization: Bearer <JWT>} 必须通过 {@link JwtVerifier} 验签，
+ *       算法白名单 HS256/384/512，校验 {@code exp}/{@code nbf}、可选 {@code iss}/{@code aud}。
+ *       签名不通过、{@code alg=none}、过期、受众不符一律 401。
+ *   <li>SSO 票据：{@code X-SSO-Ticket} 交由 {@link ScsIamTicketValidator} 调 IAM 原子消费验票，
+ *       主体与范围由 IAM 返回，不再信任前端自述 claims。
+ *   <li>跨 Scope 隔离：主体受众必须落在 safety/scs，否则 403 FORBIDDEN_SCOPE_MISMATCH。
+ *   <li>只读审计角色 {@code PLATFORM_AUDITOR_READONLY}：读放行，写操作前置硬拦截 403。
+ * </ol>
+ *
+ * <p>已删除的生产后门：固定 {@code bearer-token} 直通、{@code "scs-readonly-token"} 固定只读票、
+ * {@code token.contains("readonly")} 子串判定、以及由请求头 {@code X-User-Roles} 提升权限。
  */
 @Component
 public class SecurityInterceptor implements HandlerInterceptor {
@@ -55,27 +59,61 @@ public class SecurityInterceptor implements HandlerInterceptor {
     private final String expectedApiKey;
     private final String expectedBearerToken;
     private final ObjectMapper objectMapper;
+    private final JwtVerifier jwtVerifier;
+    private final ScsIamTicketValidator ticketValidator;
+    private final boolean jwtSecretConfigured;
+    private final String jwtIssuerConfigured;
+    @org.springframework.beans.factory.annotation.Autowired private ScsLocalPolicy localPolicy;
 
     public SecurityInterceptor(
             @Value("${app.security.enabled:true}") boolean enabled,
             @Value("${app.security.api-key:}") String expectedApiKey,
             @Value("${app.security.bearer-token:}") String expectedBearerToken,
+            @Value("${app.security.jwt-secret:}") String jwtSecret,
+            @Value("${app.security.jwt-issuer:}") String jwtIssuer,
+            @Value("${app.security.jwt-clock-skew-seconds:60}") long clockSkewSeconds,
+            @Value("${app.security.iam-base-url:}") String iamBaseUrl,
+            @Value("${app.security.iam-service-token:}") String iamServiceToken,
+            @Value("${app.security.iam-audience:scs}") String iamAudience,
+            @Value("${app.security.iam-timeout-ms:3000}") long iamTimeoutMs,
             ObjectMapper objectMapper) {
         this.enabled = enabled;
         this.expectedApiKey = expectedApiKey != null ? expectedApiKey.trim() : "";
+        // 保留该配置项只为显式拒绝：任何静态令牌都不再被接受。
         this.expectedBearerToken = expectedBearerToken != null ? expectedBearerToken.trim() : "";
         this.objectMapper = objectMapper;
+        this.ticketValidator =
+                new ScsIamTicketValidator(iamBaseUrl, iamServiceToken, iamAudience, iamTimeoutMs, objectMapper);
+        // 受众（aud）不在此处硬校验：跨系统受众由 finish() 统一返回 403 FORBIDDEN_SCOPE_MISMATCH，
+        // 避免把"身份合法但受众不符"误报成签名失败。
+        // issuer 不允许选配：只要启用了 JWT 通道，就必须能校验签发方。
+        this.jwtSecretConfigured = jwtSecret != null && !jwtSecret.isBlank();
+        this.jwtIssuerConfigured = jwtIssuer == null ? "" : jwtIssuer.trim();
+        this.jwtVerifier =
+                jwtSecret == null || jwtSecret.isBlank()
+                        ? null
+                        : new JwtVerifier(jwtSecret, jwtIssuer, clockSkewSeconds, objectMapper);
     }
 
     @PostConstruct
     public void validateConfiguration() {
-        if (enabled) {
-            if (expectedApiKey.isBlank()) {
-                throw new IllegalStateException("Security is enabled (app.security.enabled=true) but app.security.api-key (APP_SECURITY_API_KEY) is not configured. Startup rejected.");
-            }
-            if (expectedBearerToken.isBlank()) {
-                throw new IllegalStateException("Security is enabled (app.security.enabled=true) but app.security.bearer-token (APP_SECURITY_BEARER_TOKEN) is not configured. Startup rejected.");
-            }
+        if (!enabled) {
+            return;
+        }
+        if (expectedApiKey.isBlank()) {
+            throw new IllegalStateException(
+                    "Security is enabled (app.security.enabled=true) but app.security.api-key (APP_SECURITY_API_KEY) is not configured. Startup rejected.");
+        }
+        if (jwtSecretConfigured && jwtIssuerConfigured.isBlank()) {
+            throw new IllegalStateException(
+                    "app.security.jwt-secret 已配置但 app.security.jwt-issuer 为空："
+                            + "拒绝在无法校验签发方的情况下启用 JWT 验签（fail-closed）。");
+        }
+        if (jwtVerifier == null && !ticketValidator.isUsable()) {
+            throw new IllegalStateException(
+                    "Security is enabled but neither app.security.jwt-secret nor the IAM ticket validator "
+                            + "(app.security.iam-base-url + iam-service-token + iam-audience) is configured. "
+                            + "Refusing to start without an authentication path (fail-closed).");
         }
     }
 
@@ -96,16 +134,44 @@ public class SecurityInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 3. 边缘节点机器凭证检查 (X-API-Key，常量时间等值比较)
+        // 2b. 本地会话（G6）：票据已一次性换成会话，后续请求不再要求携带票据。
+        //     撤销检查优先于一切：即使会话还在，IAM 侧注销后也必须拒绝。
+        HttpSession existing = request.getSession(false);
+        if (existing != null && Boolean.TRUE.equals(existing.getAttribute("SCS_SSO_ESTABLISHED"))) {
+            var binding=ScsSessionRegistry.get(existing.getId());
+            if(binding==null || ScsSessionRegistry.isSessionRevoked(existing.getId())){sendUnauthorized(request,response,"业务会话绑定缺失或已撤销");return false;}
+            try{
+                var actor=localPolicy.resolve(ticketValidator.current(binding.iamSubject(),binding.iamSid()));
+                if(!localPolicy.permits(actor,request.getMethod(),path)){
+                    sendForbidden(request,response,ErrorCodes.FORBIDDEN_READONLY_ROLE,"当前业务操作未获授权",Map.of());return false;
+                }
+                if(!Set.of("GET","HEAD","OPTIONS").contains(request.getMethod())){
+                    String csrf=request.getHeader("X-SCS-CSRF"),expected=(String)existing.getAttribute("SCS_CSRF");
+                    if(csrf==null||expected==null||!MessageDigest.isEqual(csrf.getBytes(StandardCharsets.UTF_8),expected.getBytes(StandardCharsets.UTF_8))){
+                        sendForbidden(request,response,ErrorCodes.FORBIDDEN_READONLY_ROLE,"CSRF校验失败",Map.of());return false;
+                    }
+                }
+                request.setAttribute("SCS_ACTOR",actor);
+                if (path.equals("/api/v1/auth/sso/logout")) {
+                    request.setAttribute(ATTR_USER_SUB, actor.subject());
+                    return true;
+                }
+                return finish(new AuthPrincipal(actor.subject(),actor.roles(),actor.permissions(),"scs",false,actor.readOnly()),request,response,path,"native SSO");
+            }catch(ScsIamTicketValidator.InvalidTicketException denied){sendUnauthorized(request,response,"统一身份或业务映射不可用");return false;}
+        }
+        // 3. 边缘节点机器凭据检查 (X-API-Key，常量时间等值比较)
         String apiKey = request.getHeader("X-API-Key");
         if (apiKey != null && !apiKey.isBlank() && !expectedApiKey.isBlank()
                 && MessageDigest.isEqual(apiKey.getBytes(StandardCharsets.UTF_8), expectedApiKey.getBytes(StandardCharsets.UTF_8))) {
+            if(!path.startsWith("/api/v1/ingest/") && !path.equals("/api/v1/ai-events/ingest")){
+                sendForbidden(request,response,ErrorCodes.FORBIDDEN_READONLY_ROLE,"机器凭据不用于业务操作",Map.of());return false;
+            }
             request.setAttribute(ATTR_USER_SUB, "edge-node");
             request.setAttribute(ATTR_USER_ROLES, Set.of("ROLE_EDGE"));
             return true;
         }
 
-        // 4. 用户 / 网关 Bearer Token 凭证检查
+        // 5. 用户 / 网关 Bearer Token 凭证检查
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             log.warn("拒绝未授权访问（缺失 Bearer Token）: path={}, method={}, remoteAddr={}", path, request.getMethod(), request.getRemoteAddr());
@@ -119,20 +185,49 @@ public class SecurityInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        AuthPrincipal principal = resolvePrincipal(rawToken, request);
-        if (principal == null) {
-            log.warn("拒绝未授权访问（凭据不匹配或解析失败）: path={}, method={}, remoteAddr={}", path, request.getMethod(), request.getRemoteAddr());
-            sendUnauthorized(request, response, "访问受限：凭据不匹配或签名解析失败");
+        // 静态 bearer-token 已废弃：配了就显式拒绝，避免部署方误以为仍可用。
+        if (!expectedBearerToken.isBlank()
+                && MessageDigest.isEqual(rawToken.getBytes(StandardCharsets.UTF_8), expectedBearerToken.getBytes(StandardCharsets.UTF_8))) {
+            log.warn("拒绝静态 bearer-token 使用（G4 已移除该通道）: path={}", path);
+            sendUnauthorized(request, response, "访问受限：静态口令通道已停用，请使用受签名的 JWT 或 SSO 票据");
             return false;
         }
 
+        AuthPrincipal principal;
+        try {
+            principal = resolvePrincipal(rawToken);
+        } catch (JwtVerifier.InvalidTokenException e) {
+            log.warn("拒绝未授权访问（验签失败）: path={}, reason={}", path, e.getMessage());
+            // 过期单独提示，便于前端触发重新登录；其余原因统一为签名不可信。
+            String message = e.getMessage() != null && e.getMessage().contains("过期")
+                    ? "访问受限：身份令牌已过期，请重新登录换发"
+                    : "访问受限：凭据不匹配或签名验证失败";
+            sendUnauthorized(request, response, message);
+            return false;
+        }
+        if (principal == null) {
+            log.warn("拒绝未授权访问（凭据不匹配或验签失败）: path={}, method={}, remoteAddr={}", path, request.getMethod(), request.getRemoteAddr());
+            sendUnauthorized(request, response, "访问受限：凭据不匹配或签名验证失败");
+            return false;
+        }
+
+        return finish(principal, request, response, path, "JWT");
+    }
+
+    /** 受众隔离 + 只读写拦截 + 主体属性下发。 */
+    private boolean finish(
+            AuthPrincipal principal,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            String path,
+            String credentialKind) throws IOException {
         if (principal.expired()) {
             log.warn("拒绝访问（Token 已过期）: path={}, user={}", path, principal.sub());
             sendUnauthorized(request, response, "访问受限：身份令牌已过期，请重新登录换发");
             return false;
         }
 
-        // 5. 跨 Scope / 受众隔离检查
+        // 跨 Scope / 受众隔离检查
         if (principal.scope() != null && !principal.scope().isBlank()) {
             String target = principal.scope().trim().toLowerCase();
             if (!isScopeMatched(target)) {
@@ -144,7 +239,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
             }
         }
 
-        // 6. 只读审计角色（PLATFORM_AUDITOR_READONLY）写操作硬否决检查
+        // 只读审计角色（PLATFORM_AUDITOR_READONLY）写操作硬否决检查
         if (principal.isReadOnly()) {
             boolean isWriteOperation = HttpMethod.POST.matches(request.getMethod())
                     || HttpMethod.PUT.matches(request.getMethod())
@@ -161,10 +256,10 @@ public class SecurityInterceptor implements HandlerInterceptor {
             }
         }
 
-        // 将主体信息写入请求属性供后续 Controller 审计使用
         request.setAttribute(ATTR_USER_SUB, principal.sub());
         request.setAttribute(ATTR_USER_ROLES, principal.roles());
         request.setAttribute(ATTR_USER_PERMISSIONS, principal.permissions());
+        log.debug("鉴权通过: user={}, kind={}, path={}, method={}", principal.sub(), credentialKind, path, request.getMethod());
         return true;
     }
 
@@ -175,99 +270,50 @@ public class SecurityInterceptor implements HandlerInterceptor {
         return targetScope.contains("safety") || targetScope.contains("scs");
     }
 
-    private AuthPrincipal resolvePrincipal(String token, HttpServletRequest request) {
-        // 模式 A: 检查是否为标准 JWT 格式 (包含 2 个点号)
-        if (token.contains(".")) {
-            String[] parts = token.split("\\.");
-            if (parts.length >= 2) {
-                try {
-                    byte[] payloadBytes = Base64.getUrlDecoder().decode(parts[1]);
-                    JsonNode node = objectMapper.readTree(payloadBytes);
+    /**
+     * 仅接受验签通过的 JWT。验签失败的 token 直接返回 null（调用方 401），
+     * 不再退回任何按前缀/子串匹配的静态口令。
+     */
+    private AuthPrincipal resolvePrincipal(String token) {
+        if (jwtVerifier == null) {
+            log.warn("收到 Bearer Token 但未配置 JWT 验签密钥，拒绝");
+            return null;
+        }
+        JsonNode claims = jwtVerifier.verify(token);
 
-                    // 检查过期时间
-                    boolean expired = false;
-                    if (node.has("exp") && !node.get("exp").isNull()) {
-                        long expSeconds = node.get("exp").asLong();
-                        if (expSeconds > 0 && (System.currentTimeMillis() / 1000) > expSeconds) {
-                            expired = true;
-                        }
-                    }
-
-                    String sub = node.path("sub").asText(node.path("userId").asText("user"));
-                    Set<String> roles = new HashSet<>();
-                    extractStringCollection(node, "roles", roles);
-                    extractStringCollection(node, "role", roles);
-                    extractStringCollection(node, "authorities", roles);
-
-                    Set<String> permissions = new HashSet<>();
-                    extractStringCollection(node, "permissions", permissions);
-
-                    String scope = node.path("aud").asText(node.path("scope").asText(""));
-
-                    // 网关头追加
-                    appendGatewayHeaders(request, roles, permissions);
-
-                    boolean isReadOnly = isReadOnlyRolePresent(roles);
-                    return new AuthPrincipal(sub, roles, permissions, scope, expired, isReadOnly);
-                } catch (Exception e) {
-                    log.debug("JWT 解码失败，退回常规凭据比对: {}", e.getMessage());
-                }
+        // 验签器已按 exp/nbf（含时钟偏移）拒绝，这里保留二次布尔判断作为防御性冗余。
+        boolean expired = false;
+        if (claims.hasNonNull("exp")) {
+            long expSeconds = claims.get("exp").asLong();
+            if (expSeconds > 0 && (System.currentTimeMillis() / 1000) > expSeconds) {
+                expired = true;
             }
         }
 
-        // 模式 B: 常规预共享 Token 或指定只读 Token 比对
-        boolean isMasterToken = !expectedBearerToken.isBlank()
-                && MessageDigest.isEqual(token.getBytes(StandardCharsets.UTF_8), expectedBearerToken.getBytes(StandardCharsets.UTF_8));
-
-        boolean isReadOnlyTestToken = "scs-readonly-token".equals(token)
-                || (!expectedBearerToken.isBlank() && (expectedBearerToken + "-readonly").equals(token))
-                || token.contains("readonly");
-
-        if (isMasterToken || isReadOnlyTestToken) {
-            String sub = isReadOnlyTestToken ? "auditor_readonly" : "system_admin";
-            Set<String> roles = new HashSet<>();
-            if (isReadOnlyTestToken) {
-                roles.add(ROLE_PLATFORM_AUDITOR_READONLY);
-            } else {
-                roles.add("ADMIN");
-            }
-            Set<String> permissions = new HashSet<>();
-            String scope = "";
-
-            // 读取网关可能透传的头 (例如由统一 API Gateway 解码后的标头)
-            appendGatewayHeaders(request, roles, permissions);
-            String headerScope = request.getHeader("X-Scope");
-            if (headerScope == null || headerScope.isBlank()) {
-                headerScope = request.getHeader("X-Audience");
-            }
-            if (headerScope != null && !headerScope.isBlank()) {
-                scope = headerScope.trim();
-            }
-
-            boolean isReadOnly = isReadOnlyRolePresent(roles);
-            return new AuthPrincipal(sub, roles, permissions, scope, false, isReadOnly);
+        String sub = claims.path("sub").asText(claims.path("userId").asText(""));
+        if (sub.isBlank()) {
+            log.warn("JWT 缺少 sub，拒绝");
+            return null;
         }
 
-        return null;
-    }
+        Set<String> roles = new HashSet<>();
+        extractStringCollection(claims.get("roles"), roles);
+        extractStringCollection(claims.get("role"), roles);
+        extractStringCollection(claims.get("authorities"), roles);
 
-    private void appendGatewayHeaders(HttpServletRequest request, Set<String> roles, Set<String> permissions) {
-        String rolesHeader = request.getHeader("X-User-Roles");
-        if (rolesHeader != null && !rolesHeader.isBlank()) {
-            for (String r : rolesHeader.split(",")) {
-                if (!r.trim().isEmpty()) {
-                    roles.add(r.trim());
-                }
-            }
+        Set<String> permissions = new HashSet<>();
+        extractStringCollection(claims.get("permissions"), permissions);
+
+        String scope = claims.path("aud").isArray()
+                ? (claims.path("aud").size() > 0 ? claims.path("aud").get(0).asText("") : "")
+                : claims.path("aud").asText(claims.path("scope").asText(""));
+        if (scope.isBlank()) {
+            // 没有受众就无法做跨系统隔离，按凭据不完整处理。
+            log.warn("JWT 缺少 aud/scope，拒绝: sub={}", sub);
+            return null;
         }
-        String permHeader = request.getHeader("X-User-Permissions");
-        if (permHeader != null && !permHeader.isBlank()) {
-            for (String p : permHeader.split(",")) {
-                if (!p.trim().isEmpty()) {
-                    permissions.add(p.trim());
-                }
-            }
-        }
+
+        return new AuthPrincipal(sub, roles, permissions, scope, expired, isReadOnlyRolePresent(roles));
     }
 
     private boolean isReadOnlyRolePresent(Set<String> roles) {
@@ -275,13 +321,11 @@ public class SecurityInterceptor implements HandlerInterceptor {
                 r.equalsIgnoreCase(ROLE_PLATFORM_AUDITOR_READONLY)
                         || r.equalsIgnoreCase("ROLE_READONLY")
                         || r.equalsIgnoreCase("READONLY")
-                        || r.toUpperCase().contains("READONLY")
                         || r.equalsIgnoreCase("PLATFORM_AUDITOR"));
     }
 
-    private void extractStringCollection(JsonNode node, String fieldName, Set<String> target) {
-        JsonNode field = node.get(fieldName);
-        if (field == null || field.isNull()) {
+    private void extractStringCollection(JsonNode field, Set<String> target) {
+        if (field == null || field.isNull() || field.isMissingNode()) {
             return;
         }
         if (field.isArray()) {
@@ -304,9 +348,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
                 || path.startsWith("/health")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/swagger-ui")
-                || path.startsWith("/api/v1/auth")
-                || path.startsWith("/api/v1/meta")
-                || path.startsWith("/api/v1/state")
+                || Set.of("/api/v1/auth/sso/exchange","/api/v1/auth/sso/revoke","/api/v1/auth/sso/health").contains(path)
                 || path.startsWith("/api/v1/health")
                 || path.equals("/error");
     }

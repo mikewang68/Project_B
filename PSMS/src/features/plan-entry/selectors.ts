@@ -38,7 +38,7 @@ function sessionAllowsArea(state: DemoRootState, workArea: string): boolean {
 }
 
 function queryAllowsPlans(state: DemoRootState, query: PlanEntryQuery): boolean {
-  return query.workArea === PLAN_WORK_AREA && sessionAllowsArea(state, PLAN_WORK_AREA);
+  return sessionAllowsArea(state, query.workArea);
 }
 
 function resolvedFieldsFor(
@@ -250,7 +250,8 @@ function projectPlan(
 function plansForQuery(state: DemoRootState, query: PlanEntryQuery): readonly Plan[] {
   if (!queryAllowsPlans(state, query)) return [];
   return state.plan.plans.filter(
-    ({ arrivalDepartureTime }) => arrivalDepartureTime.startsWith(query.date),
+    ({ arrivalDepartureTime, workArea }) => arrivalDepartureTime.startsWith(query.date)
+      && (workArea ?? PLAN_WORK_AREA) === query.workArea,
   );
 }
 
@@ -333,9 +334,7 @@ export function selectOverviewKpis(
     });
   }
 
-  const plans = state.plan.plans.filter(({ arrivalDepartureTime }) =>
-    arrivalDepartureTime.startsWith(query.date),
-  );
+  const plans = plansForQuery(state, query);
   const planIds = new Set(plans.map(({ id }) => id));
   const resources = state.resource.resources.filter(({ workArea }) => workArea === query.workArea);
   const availableResources = resources.filter(({ status }) => status === 'AVAILABLE').length;
@@ -578,7 +577,7 @@ export function selectPlanDetails(
   workflow: PlanEntryWorkflowState,
 ): PlanDetailsViewModel | undefined {
   if (!queryAllowsPlans(state, query)) return undefined;
-  const plan = state.plan.plans.find(({ id }) => id === planId);
+  const plan = plansForQuery(state, query).find(({ id }) => id === planId);
   if (!plan) return undefined;
   const row = projectPlan(state, plan, workflow);
   const errorCode = issueErrorCode(state);

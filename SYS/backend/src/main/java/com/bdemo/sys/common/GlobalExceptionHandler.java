@@ -49,6 +49,13 @@ public class GlobalExceptionHandler {
                 .body(R.fail(409, "数据已存在（唯一约束冲突），请检查编码/取值是否重复"));
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<R<Void>> handleStatus(org.springframework.web.server.ResponseStatusException ex) {
+        int status = ex.getStatusCode().value();
+        return ResponseEntity.status(status).body(R.fail(status,
+                status == 401 ? "登录会话已失效" : status == 403 ? "当前操作未获授权" : "请求无法完成"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<R<Void>> handleOther(Exception ex) {
         log.error("服务器内部错误", ex);

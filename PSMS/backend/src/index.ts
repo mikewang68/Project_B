@@ -12,6 +12,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { seedDatabase } from './seeds/seed-data.js';
 
 import { authRouter } from './routes/auth.routes.js';
+import { ssoRouter, ssoGuard } from './middleware/sso.js';
 import { plansRouter } from './routes/plans.routes.js';
 import { workOrdersRouter } from './routes/workOrders.routes.js';
 import { appointmentsRouter } from './routes/appointments.routes.js';
@@ -56,6 +57,8 @@ app.get('/api/health', async (_req, res) => {
   });
 });
 
+app.use('/api/auth/sso', ssoRouter);
+app.use(ssoGuard);
 app.use('/api/auth', authRouter);
 app.use('/api/plans', plansRouter);
 app.use('/api/work-orders', workOrdersRouter);
@@ -153,7 +156,7 @@ async function start(): Promise<void> {
   // 5. 空库自动播种
   await autoSeedIfEmpty();
 
-  const server = app.listen(env.PORT, () => {
+  const server = app.listen(env.PORT, env.HOST, () => {
     logger.info(
       { port: env.PORT, env: env.NODE_ENV, openGauss: env.OPENGAUSS_DSN },
       '🎉 PSMS 后端已启动（openGauss + openGemini）',

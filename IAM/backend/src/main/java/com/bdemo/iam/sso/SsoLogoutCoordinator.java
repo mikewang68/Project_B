@@ -50,6 +50,25 @@ public class SsoLogoutCoordinator {
     return v == null ? "" : String.valueOf(v);
   }
 
+  /** The IAM logout transaction revokes every local session; notify the same complete set. */
+  public Result logoutAll(LoginUser user, String currentSid, List<String> revokedSessions,
+                          HttpServletRequest request) {
+    java.util.Set<String> sessionIds = new java.util.LinkedHashSet<>(revokedSessions);
+    if (currentSid != null && !currentSid.isBlank()) sessionIds.add(currentSid);
+    java.util.Set<String> audiences = new java.util.LinkedHashSet<>();
+    java.util.Set<String> failed = new java.util.HashSet<>();
+    int revokedTickets = 0;
+    for (String sid : sessionIds) {
+      if (sid == null || sid.isBlank()) continue;
+      Result result = logout(user, sid, request);
+      revokedTickets += result.revokedTickets();
+      audiences.addAll(result.audiences());
+      result.audiences().stream().filter(a -> !result.deliveredAudiences().contains(a)).forEach(failed::add);
+    }
+    return new Result(currentSid, revokedTickets, List.copyOf(audiences),
+        audiences.stream().filter(a -> !failed.contains(a)).toList(), safeCountPending(), safeCountFailing());
+  }
+
   /**
    * 执行平台侧 SLO。
    *

@@ -21,7 +21,16 @@ app:
   security:
     enabled: ${APP_SECURITY_ENABLED:true}
     api-key: ${APP_SECURITY_API_KEY}
-    bearer-token: ${APP_SECURITY_BEARER_TOKEN}
+    # 静态令牌已停用，保留占位以便显式拒绝误配置
+    bearer-token: ${APP_SECURITY_BEARER_TOKEN:}
+    jwt-secret: ${APP_SECURITY_JWT_SECRET:}
+    jwt-issuer: ${APP_SECURITY_JWT_ISSUER:}
+    jwt-clock-skew-seconds: ${APP_SECURITY_JWT_CLOCK_SKEW_SECONDS:60}
+    iam-base-url: ${APP_SECURITY_IAM_BASE_URL:}
+    iam-service-token: ${APP_SECURITY_IAM_SERVICE_TOKEN:}
+    iam-audience: ${APP_SECURITY_IAM_AUDIENCE:scs}
+    sso-bindings-file: ${SCS_SSO_BINDINGS_FILE:}
+    iam-timeout-ms: ${APP_SECURITY_IAM_TIMEOUT_MS:3000}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
   rocketmq:

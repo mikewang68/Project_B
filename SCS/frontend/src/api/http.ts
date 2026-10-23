@@ -41,17 +41,17 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   headers.set('X-Trace-Id', requestTraceId)
-  if (!headers.has('Authorization')) {
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('scs_token') : null
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`)
-    }
+  if (init.method && !['GET','HEAD','OPTIONS'].includes(init.method.toUpperCase())) {
+    const sessionResponse = await fetch(`${API_BASE}/auth/me`, { credentials:'same-origin', cache:'no-store' })
+    if (!sessionResponse.ok) throw new Error('无法核验登录会话')
+    const session = await sessionResponse.json()
+    if (session.csrfToken) headers.set('X-SCS-CSRF', session.csrfToken)
   }
   if (init.body) headers.set('Content-Type', 'application/json; charset=utf-8')
   if (init.method && init.method !== 'GET' && !headers.has('Idempotency-Key')) headers.set('Idempotency-Key', traceId())
 
   try {
-    const response = await fetch(`${API_BASE}${path}`, { ...init, headers, signal: controller.signal })
+    const response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials:'same-origin', signal: controller.signal })
     if (!response.ok) throw await buildError(response, requestTraceId)
     return (await response.json()) as T
   } catch (error) {

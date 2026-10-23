@@ -5,6 +5,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class LoginUser {
+    private boolean readOnly;
+    public boolean isReadOnly(){return readOnly;}
+    public void setReadOnly(boolean value){readOnly=value;}
 
     private String userId;
     private String username;

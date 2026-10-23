@@ -51,6 +51,13 @@ public class ReadonlyHardVetoInterceptor implements HandlerInterceptor {
     String path = request.getRequestURI();
     String method = request.getMethod();
 
+    // A read-only user still needs an authenticated, explicitly mapped SSO session.
+    // Only ticket issuance is session maintenance; business POSTs remain forbidden.
+    String endpoint = path.substring(request.getContextPath().length());
+    if ("POST".equals(method) && "/auth/sso/ticket".equals(endpoint)) {
+      return true;
+    }
+
     // 白名单：登录与登出接口保持正常可用（必须支持会话维护与安全退出）
     if (path.endsWith("/auth/login") || path.endsWith("/auth/logout") || path.endsWith("/health")) {
       return true;

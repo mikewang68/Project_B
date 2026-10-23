@@ -47,6 +47,7 @@ public class StateController {
     private final AiEventRepository aiEventRepository;
     private final AlertRepository alertRepository;
     private final RuleRepository ruleRepository;
+    private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
 
     public StateController(
             Clock clock,
@@ -55,7 +56,8 @@ public class StateController {
             CollisionRepository collisionRepository,
             AiEventRepository aiEventRepository,
             AlertRepository alertRepository,
-            RuleRepository ruleRepository) {
+            RuleRepository ruleRepository,
+            com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
         this.clock = clock;
         this.personnelRepository = personnelRepository;
         this.fenceRepository = fenceRepository;
@@ -63,6 +65,7 @@ public class StateController {
         this.aiEventRepository = aiEventRepository;
         this.alertRepository = alertRepository;
         this.ruleRepository = ruleRepository;
+        this.demoGuard = demoGuard;
     }
 
     @GetMapping("/state")
@@ -89,7 +92,7 @@ public class StateController {
         List<Map<String, Object>> peopleList = new ArrayList<>();
         List<DemoPersonnel> persons = personnelRepository.findAll();
         if (persons.isEmpty()) {
-            peopleList.addAll(defaultPeople(now));
+            if(demoGuard.isSeedEnabled())peopleList.addAll(defaultPeople(now));
         } else {
             for (DemoPersonnel p : persons) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -114,7 +117,7 @@ public class StateController {
         List<Map<String, Object>> fencesList = new ArrayList<>();
         List<DemoFence> fences = fenceRepository.findAll();
         if (fences.isEmpty()) {
-            fencesList.addAll(defaultFences());
+            if(demoGuard.isSeedEnabled())fencesList.addAll(defaultFences());
         } else {
             for (DemoFence f : fences) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -141,7 +144,7 @@ public class StateController {
         List<Map<String, Object>> deviceList = new ArrayList<>();
         List<DemoCollisionDevice> devices = collisionRepository.findAll();
         if (devices.isEmpty()) {
-            deviceList.addAll(defaultDevices());
+            if(demoGuard.isSeedEnabled())deviceList.addAll(defaultDevices());
         } else {
             for (DemoCollisionDevice d : devices) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -167,7 +170,7 @@ public class StateController {
         List<Map<String, Object>> aiList = new ArrayList<>();
         List<DemoAiEvent> aiEvents = aiEventRepository.findAll();
         if (aiEvents.isEmpty()) {
-            aiList.addAll(defaultAiEvents(now));
+            if(demoGuard.isSeedEnabled())aiList.addAll(defaultAiEvents(now));
         } else {
             for (DemoAiEvent e : aiEvents) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -193,7 +196,7 @@ public class StateController {
         List<Map<String, Object>> alarmList = new ArrayList<>();
         List<DemoAlert> alerts = alertRepository.findAll();
         if (alerts.isEmpty()) {
-            alarmList.addAll(defaultAlarms(now));
+            if(demoGuard.isSeedEnabled())alarmList.addAll(defaultAlarms(now));
         } else {
             for (DemoAlert a : alerts) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -217,7 +220,7 @@ public class StateController {
         List<Map<String, Object>> ruleList = new ArrayList<>();
         List<DemoRule> rules = ruleRepository.findAll();
         if (rules.isEmpty()) {
-            ruleList.addAll(defaultRules());
+            if(demoGuard.isSeedEnabled())ruleList.addAll(defaultRules());
         } else {
             for (DemoRule r : rules) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -253,6 +256,13 @@ public class StateController {
                 )
         ));
 
+        if(!demoGuard.isSeedEnabled()){
+            snapshot.put("dataQuality","partial");
+            snapshot.put("workPlan",Map.of("id","","name","未接入生产计划","shift","","team","","area","","progress",0,"status","未接入"));
+            snapshot.put("scenarios",List.of());snapshot.put("auditLogs",List.of());
+            snapshot.put("system",Map.of("cloudConnected",false,"edgeVersion","未核验","cachedEvents",0,"availability",0,
+                "services",List.of(Map.of("name","设备与边缘状态","state","unknown","latencyMs",0,"detail","等待在线状态接入，未核验健康指标"))));
+        }
         return snapshot;
     }
 

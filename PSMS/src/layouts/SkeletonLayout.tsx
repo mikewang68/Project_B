@@ -96,6 +96,7 @@ export default function SkeletonLayout() {
       .filter((route) => route.group === group)
       .map((route) => ({
         key: route.id,
+        disabled: import.meta.env.VITE_PSMS_REAL_API === 'true' && !['UI-001','UI-002'].includes(route.id),
         // 折叠态（64px 窄栏）下 antd 只渲染 icon，故每个页面都带独立图标
         icon: navIcon(route.id),
         title: `${route.id} ${route.name}`,
@@ -110,6 +111,7 @@ export default function SkeletonLayout() {
   /** 顶部横向菜单：antd 的 horizontal 模式不支持分组，需扁平化 */
   const flatItems: MenuProps['items'] = visibleRoutes.map((route) => ({
     key: route.id,
+    disabled: import.meta.env.VITE_PSMS_REAL_API === 'true' && !['UI-001','UI-002'].includes(route.id),
     title: `${route.id} ${route.name}`,
     label: (
       <Link to={navigationPath(route)} aria-label={`${route.id} ${route.name}`}>
@@ -215,8 +217,8 @@ export default function SkeletonLayout() {
                 <BrushIcon />
               </Button>
             </Tooltip>
-            <Tag color="processing">静态演示</Tag>
-            <Typography.Text className="skeleton-version">演示版 0.1</Typography.Text>
+            <Tag color="processing">{import.meta.env.VITE_PSMS_REAL_API === 'true' ? '业务数据' : '静态演示'}</Tag>
+            <Typography.Text className="skeleton-version">{import.meta.env.VITE_PSMS_REAL_API === 'true' ? '服务端会话' : '演示版 0.1'}</Typography.Text>
           </Space>
         </Layout.Header>
         <Layout.Content className="skeleton-content">
