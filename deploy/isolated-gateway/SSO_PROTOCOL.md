@@ -92,6 +92,8 @@ SCS 的私有主体绑定包含 `enabled`、`localSubject`、`role`、`permissio
 
 SYS 必须配置私有 `sys.sso.bindings-file`，以 IAM 稳定主体为键登记 `{"enabled":true,"localUserId":"本地稳定用户ID"}`。两套数据库的用户 ID 可以不同；后端按显式本地 ID 加载角色及范围，并校验业务用户名与中央 `localSubject` 一致。缺少或停用映射直接拒绝，不能按同名管理员推导权限。撤销该映射会在下一次业务请求生效。
 
+WMS 只读角色仍按中央与本地权限的交集执行；`READONLY_AUDITOR` 不代替具体读取授权。`028-wms-native-read-permissions.sql` 登记原生读取编码并向独立全局只读角色授权，不授予导出或扩大本地租户范围。移除中央读取权限后，已有业务会话下一次请求也不能保留该项读取权限。
+
 EMCS 私有主体绑定除 `enabled`、`userId` 外，还使用与 SCS 相同结构的 `routes`。路由中的权限必须在当前业务权限与 IAM 授权的交集中；中央权限可使用原生编码或 `ems:` 加原生编码。例如 `GET /system/dict/type/list` 可登记 `system:dict:list`，对应 IAM `ems:system:dict:list`。本地 `admin` 角色不能代替当前中央授权。仅同时具备本地管理员和中央全权管理员资格时允许全权操作；账号查询、路由查询、CSRF 和退出属于会话维护。
 
 ## 发布与回滚

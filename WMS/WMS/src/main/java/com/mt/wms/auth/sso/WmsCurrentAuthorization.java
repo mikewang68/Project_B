@@ -13,10 +13,9 @@ public final class WmsCurrentAuthorization {
             throw new SecurityException("Missing current IAM grants");
         boolean readOnly=current.path("readOnly").asBoolean();
         boolean full=current.path("superAdmin").asBoolean(false)&&!readOnly;
-        boolean globalRead=readOnly&&"READONLY_AUDITOR".equals(current.path("accessMode").asText());
         Set<String> central=new HashSet<>();current.path("permissions").forEach(v->central.add(v.asText()));
         Set<String> permissions=new HashSet<>(local.permissions());
-        if (!full && !globalRead) permissions.removeIf(p->!central.contains(p)&&!central.contains("wms:"+p));
+        if (!full) permissions.removeIf(p->!central.contains(p)&&!central.contains("wms:"+p));
         if (readOnly) permissions.removeIf(p->!p.endsWith(":read")&&!p.endsWith(":view")&&!p.equals("tenant:all"));
         return new WmsPrincipal(local.userId(),local.companyId(),local.companyCode(),local.companyName(),
                 local.username(),local.displayName(),local.roles(),Set.copyOf(permissions),local.passwordChangeRequired());

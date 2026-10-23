@@ -14,8 +14,12 @@ class WmsCurrentAuthorizationTest {
         assertThat(result.permissions()).containsExactly("inventory:read");
     }
     @Test void readonlyVetoWinsOverFullAdminAndDoesNotGrantExport() throws Exception {
-        var result=WmsCurrentAuthorization.apply(local,json.readTree("{\"readOnly\":true,\"superAdmin\":true,\"accessMode\":\"READONLY_AUDITOR\",\"permissions\":[]}"));
-        assertThat(result.permissions()).containsExactlyInAnyOrder("inventory:read","tenant:all");
+        var result=WmsCurrentAuthorization.apply(local,json.readTree("{\"readOnly\":true,\"superAdmin\":true,\"accessMode\":\"READONLY_AUDITOR\",\"permissions\":[\"wms:inventory:read\",\"wms:master:write\"]}"));
+        assertThat(result.permissions()).containsExactly("inventory:read");
+    }
+    @Test void readonlyRoleDoesNotKeepAReadPermissionRemovedFromCentralAuthorization() throws Exception {
+        var result=WmsCurrentAuthorization.apply(local,json.readTree("{\"readOnly\":true,\"superAdmin\":false,\"accessMode\":\"READONLY_AUDITOR\",\"permissions\":[]}"));
+        assertThat(result.permissions()).isEmpty();
     }
     @Test void missingPolicyFailsClosed() throws Exception {
         assertThatThrownBy(()->WmsCurrentAuthorization.apply(local,json.readTree("{}"))).isInstanceOf(SecurityException.class);

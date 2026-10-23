@@ -29,6 +29,7 @@ WMS 前端构建目标是 `WMS/WMS/target/classes/static`，不能假定为 `fro
 2. IAM 功能状态：`024-feature-catalog.sql`。
 3. IAM 项目授权：`026-sso-project-grants.sql`。
 4. 独立全局只读角色：`027-platform-readonly-role.sql`。该迁移不为用户分配角色或项目范围。
+   WMS 原生读取编码继续执行 `028-wms-native-read-permissions.sql`；本地查看权限仍须显式配置，并与中央当前权限取交集。
 5. EHMS 聚合项目维度：`EHMS/sql/027_project_scope.sql`。历史数据先进入 `UNASSIGNED`，依据明确归属回填；迁移后旧版不带项目条件的后端不能继续写入。
 6. EMCS 令牌撤销：`EMCS/sql/026_token_revocations.sql`。撤销记录必须保留到令牌过期。
 7. WMS 显式主体映射：`WMS/WMS/db/sso/001-wms-sso-subject-map.sql`；已有映射须核对并保留。
@@ -36,6 +37,8 @@ WMS 前端构建目标是 `WMS/WMS/target/classes/static`，不能假定为 `fro
 EHMS 完整目录脚本 `deploy/isolated-gateway/sql/025-ehms-feature-catalog.sql` 依赖既有导航表。它添加目录与候选功能，不授予发布资格。`022-psms-read-permissions.sql` 同样只登记查看映射候选，不代替审核。
 
 `IAM/backend/db/isolated` 与 `deploy/isolated-gateway/sql` 中重名迁移是同一能力的两种分发位置，应按版本清单执行一次。不能因为目录含 isolated 就将测试数据库替换为共享业务数据库。
+
+迁移使用单独的数据库维护身份；运行身份不应为方便升级而取得 schema 创建权限。EHMS 使用非默认 schema 时，先依据已校验的配置渲染项目迁移中的 schema 标识及目录条件，再验证渲染结果。备份须在副本恢复后核对每个业务 schema、表、函数所有者和安全模式，不能只看导出命令退出码。
 
 ## 配置与灰度切换
 
