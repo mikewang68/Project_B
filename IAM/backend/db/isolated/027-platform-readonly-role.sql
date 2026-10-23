@@ -33,5 +33,6 @@ SELECT r.id,p.id FROM iam.iam_role r CROSS JOIN iam.iam_permission p
 WHERE lower(r.role_code)='platform_auditor_readonly' AND r.deleted=0 AND r.status='active'
  AND p.node_type='BUTTON' AND p.status='active'
  AND (p.permission_code LIKE '%:view' OR p.permission_code LIKE '%:read')
+ AND lower(p.permission_code) NOT LIKE '%export%'
  AND NOT EXISTS(SELECT 1 FROM iam.iam_role_permission rp WHERE rp.role_id=r.id AND rp.permission_id=p.id);
 COMMIT;
