@@ -6,7 +6,7 @@
         <b>单价版本</b>
         <small>历史版本只读；新增版本不会隐式重算</small>
       </div>
-      <el-button
+      <el-button v-sso-write
         v-if="access.tariff"
         v-hasRole="['energy_mgr', 'finance']"
         type="primary"
@@ -50,7 +50,7 @@
       </el-form>
       <template #footer>
         <el-button @click="visible=false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">保存版本</el-button>
+        <el-button v-sso-write type="primary" :loading="saving" @click="save">保存版本</el-button>
       </template>
     </el-dialog>
   </section>

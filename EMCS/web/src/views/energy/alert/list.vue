@@ -116,13 +116,13 @@
           <el-button v-if="detail.relatedSuggestionId" type="primary" @click="viewRelatedSuggestion">
             查看关联建议
           </el-button>
-          <el-button v-else-if="suggestionConversionEnabled" type="primary" :loading="converting" @click="convertToSuggestion">
+          <el-button v-sso-write v-else-if="suggestionConversionEnabled" type="primary" :loading="converting" @click="convertToSuggestion">
             转为节能建议
           </el-button>
           <span v-else class="suggestion-unavailable">当前告警无适用建议模板</span>
           <!-- REQ-056：成本现场完全消费后端 costDeepLink，不按 R10 在前端拼月份/区域。 -->
           <el-button v-if="detail.costDeepLink" type="primary" plain @click="goCostEvidence">查看成本证据</el-button>
-          <el-button v-for="action in availableActions" :key="action.value" @click="openTransition(action.value)">
+          <el-button v-sso-write v-for="action in availableActions" :key="action.value" @click="openTransition(action.value)">
             {{ action.label }}
           </el-button>
         </section>
@@ -206,7 +206,7 @@
       </el-form>
       <template #footer>
         <el-button @click="transitionVisible = false">取消</el-button>
-        <el-button type="primary" :loading="transitioning" @click="submitTransition">确认</el-button>
+        <el-button v-sso-write type="primary" :loading="transitioning" @click="submitTransition">确认</el-button>
       </template>
     </el-dialog>
   </div>

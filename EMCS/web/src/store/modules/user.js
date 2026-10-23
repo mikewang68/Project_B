@@ -15,7 +15,9 @@ const useUserStore = defineStore(
       nickName: '',
       avatar: '',
       roles: [],
-      permissions: []
+      permissions: [],
+      readOnly: false,
+      scopeArea: ''
     }),
     actions: {
       // 登录
@@ -34,10 +36,20 @@ const useUserStore = defineStore(
           })
         })
       },
+      acceptSso(session) {
+        setToken(session.token)
+        this.token = session.token
+        this.roles = []
+        this.permissions = []
+        this.readOnly = session.readOnly === true
+        this.scopeArea = session.scopeArea || ''
+      },
       // 获取用户信息
       getInfo() {
         return new Promise((resolve, reject) => {
           getInfo().then(res => {
+            this.readOnly = res.sso?.readOnly === true
+            this.scopeArea = res.sso?.scopeArea || ''
             const user = res.user
             let avatar = user.avatar || ""
             if (!isHttp(avatar)) {
@@ -72,18 +84,17 @@ const useUserStore = defineStore(
         })
       },
       // 退出系统
-      logOut() {
-        return new Promise((resolve, reject) => {
-          logout(this.token).then(() => {
+      async logOut() {
+        try {
+          await logout(this.token)
+        } finally {
             this.token = ''
             this.roles = []
             this.permissions = []
+            this.readOnly = false
+            this.scopeArea = ''
             removeToken()
-            resolve()
-          }).catch(error => {
-            reject(error)
-          })
-        })
+        }
       }
     }
   })

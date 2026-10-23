@@ -40,6 +40,7 @@ public class EquipmentProfileController {
                              @RequestParam(required = false) Long eventId,
                              Authentication authentication) {
         dataScope.checkEquipment(authentication, equipmentCode);
+        if(eventId!=null) dataScope.checkAlert(authentication,eventId);
         return AjaxResult.success(service.detail(equipmentCode, energyType, periodStart, periodEnd, eventId))
                 .add("msg", "equipment profile");
     }

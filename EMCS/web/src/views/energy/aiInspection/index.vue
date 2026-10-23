@@ -16,7 +16,7 @@
         <small>每日 07:00 自动巡检 · 覆盖数据质量 / 告警 / 能耗成本 / 设备画像四条链</small>
       </div>
       <div class="page-actions">
-        <el-button :loading="runLoading" :disabled="!access" type="primary" @click="onRunNow">
+        <el-button v-sso-write :loading="runLoading" :disabled="!access" type="primary" @click="onRunNow">
           立即巡检
         </el-button>
       </div>

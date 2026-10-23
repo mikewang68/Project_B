@@ -52,8 +52,8 @@
           placeholder="设备编号"
         />
         <el-button type="primary" :loading="loading" @click="preview">生成预览</el-button>
-        <el-button :disabled="!snapshot || formalBlocked" @click="exportExcel">导出 Excel</el-button>
-        <el-button :disabled="!snapshot || formalBlocked" @click="archive">冻结归档</el-button>
+        <el-button v-sso-write :disabled="!snapshot || formalBlocked" @click="exportExcel">导出 Excel</el-button>
+        <el-button v-sso-write :disabled="!snapshot || formalBlocked" @click="archive">冻结归档</el-button>
         <el-tooltip :content="subscription.label">
           <span><el-button :disabled="!subscription.enabled">{{ subscription.label || '报表订阅' }}</el-button></span>
         </el-tooltip>

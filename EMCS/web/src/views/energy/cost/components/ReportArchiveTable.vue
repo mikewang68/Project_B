@@ -23,7 +23,7 @@
       <el-table-column label="操作" width="180">
         <template #default="{row}">
           <el-button link type="primary" @click="open(row.archiveId)">冻结预览</el-button>
-          <el-button link @click="download(row.archiveId)">重下载</el-button>
+          <el-button v-sso-write link @click="download(row.archiveId)">重下载</el-button>
         </template>
       </el-table-column>
     </el-table>

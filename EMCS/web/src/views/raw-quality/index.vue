@@ -138,7 +138,7 @@
                 <span class="rc-delta">Δ +{{ h.diffSummary.deltaPct }}%</span>
               </div>
             </div>
-            <el-button
+            <el-button v-sso-write
               v-if="h.status === 'pending'"
               size="small"
               class="rc-btn"
@@ -199,7 +199,7 @@
               <div class="panel-sub">数据源 · 最近成功/失败 · 影响点位</div>
             </div>
             <div class="head-side">
-              <el-button
+              <el-button v-sso-write
                 v-if="canBackfill"
                 size="small"
                 type="primary"
@@ -306,7 +306,7 @@
       </div>
       <template #footer>
         <el-button @click="showBackfill = false">取消</el-button>
-        <el-button type="primary" :loading="backfilling" @click="doBackfill">确认补传</el-button>
+        <el-button v-sso-write type="primary" :loading="backfilling" @click="doBackfill">确认补传</el-button>
       </template>
     </el-dialog>
   </div>

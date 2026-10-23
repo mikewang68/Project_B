@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { readOnlyRequestAllowed } from '@/utils/ssoPolicy'
 import { ElNotification , ElMessageBox, ElMessage, ElLoading } from 'element-plus'
 import { getToken } from '@/utils/auth'
 import errorCode from '@/utils/errorCode'
@@ -37,6 +38,9 @@ const service = axios.create({
  */
 // request拦截器
 service.interceptors.request.use(async config => {
+  if (config.headers?.isToken !== false && useUserStore().readOnly && !readOnlyRequestAllowed(config.method, config.url)) {
+    return Promise.reject(createBusinessError('当前可信身份为只读', 403, 403))
+  }
   // 是否需要设置 token
   const isToken = (config.headers || {}).isToken === false
   // 是否需要防止数据重复提交
