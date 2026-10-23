@@ -65,9 +65,7 @@ public class OverviewService {
     }
 
     public OverviewSummary summary() {
-        long pendingAi = aiEventRepository.findAll().stream()
-                .filter(e -> AiReviewStatuses.PENDING.equals(e.statusCode) || AiReviewStatuses.UNCERTAIN.equals(e.statusCode))
-                .count();
+        long pendingAi = aiEventRepository.counts().pending();
         return new OverviewSummary(
                 SafetyProjectionService.DEMO_ON_DUTY,
                 SafetyProjectionService.DEMO_DEVICE_ONLINE,

@@ -90,6 +90,9 @@ public class AiEventService {
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
+    @org.springframework.beans.factory.annotation.Value("${app.demo.seed-enabled:false}")
+    private boolean demoMetrics;
+
     @org.springframework.beans.factory.annotation.Autowired
     public AiEventService(AiEventRepository repository, AlertService alertService,
                           IdempotencyService idempotency, AiChangeNotifier notifier,
@@ -132,25 +135,18 @@ public class AiEventService {
     }
 
     public AiMetrics metrics() {
-        List<DemoAiEvent> all = repository.findAll();
-        long simulated = repository.count() - AiDemoSeeder.SEED_COUNT;
-        int pending = (int) all.stream()
-                .filter(e -> AiReviewStatuses.PENDING.equals(e.statusCode) || AiReviewStatuses.UNCERTAIN.equals(e.statusCode))
-                .count();
-        int confirmed = AiDemoSeeder.BASE_CONFIRMED + (int) all.stream()
-                .filter(e -> AiReviewStatuses.isConfirmedChain(e.statusCode)).count();
-        int falsePositive = AiDemoSeeder.BASE_FALSE + (int) all.stream()
-                .filter(e -> AiReviewStatuses.FALSE_POSITIVE.equals(e.statusCode)).count();
-        int cameraFault = (int) all.stream().filter(e -> !"正常".equals(e.health)).count();
-        return new AiMetrics(AiDemoSeeder.BASE_TODAY + (int) Math.max(0, simulated),
-                pending, confirmed, falsePositive, cameraFault);
+        var counts = repository.counts();
+        var start=OffsetDateTime.now(clock.withZone(ZONE)).toLocalDate().atStartOfDay(ZONE).toOffsetDateTime();
+        long today=demoMetrics?AiDemoSeeder.BASE_TODAY+Math.max(0,counts.total()-AiDemoSeeder.SEED_COUNT)
+                :repository.countOccurredBetween(start,start.plusDays(1));
+        return new AiMetrics(Math.toIntExact(today),Math.toIntExact(counts.pending()),
+                Math.toIntExact(counts.confirmed()+(demoMetrics?AiDemoSeeder.BASE_CONFIRMED:0)),
+                Math.toIntExact(counts.falsePositive()+(demoMetrics?AiDemoSeeder.BASE_FALSE:0)),Math.toIntExact(counts.cameraFault()));
     }
 
     public AiFacets facets() {
-        List<DemoAiEvent> all = repository.findAll();
         return new AiFacets(
-                all.stream().map(e -> e.area).distinct().sorted().toList(),
-                all.stream().map(e -> e.camera).distinct().sorted().toList());
+                repository.distinctAreas(), repository.distinctCameras());
     }
 
     public DemoAiEvent get(String id) {

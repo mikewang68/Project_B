@@ -44,12 +44,12 @@ public class InMemoryAiEventRepository implements AiEventRepository, DemoClearab
 
     @Override
     public List<DemoAiEvent> findAll() {
-        return store.values().stream().map(DemoAiEvent::copy).sorted(TIME_DESC).toList();
+        return activeEvents().map(DemoAiEvent::copy).sorted(TIME_DESC).toList();
     }
 
     @Override
     public List<DemoAiEvent> filter(AiEventQuery q) {
-        return store.values().stream()
+        return activeEvents()
                 .map(DemoAiEvent::copy)
                 .filter(e -> matchKeyword(q.keyword(), e))
                 .filter(e -> q.type() == null || q.type().equals(e.type))
@@ -89,7 +89,27 @@ public class InMemoryAiEventRepository implements AiEventRepository, DemoClearab
 
     @Override
     public long count() {
-        return store.size();
+        return activeEvents().count();
+    }
+
+    private java.util.stream.Stream<DemoAiEvent> activeEvents() {
+        return store.values().stream().filter(e -> !"CANCELLED".equals(e.statusCode));
+    }
+    @Override public Counts counts() {
+        return new Counts(activeEvents().count(),
+            activeEvents().filter(e -> AiReviewStatuses.PENDING.equals(e.statusCode)||AiReviewStatuses.UNCERTAIN.equals(e.statusCode)).count(),
+            activeEvents().filter(e -> AiReviewStatuses.isConfirmedChain(e.statusCode)).count(),
+            activeEvents().filter(e -> AiReviewStatuses.FALSE_POSITIVE.equals(e.statusCode)).count(),
+            activeEvents().filter(e -> e.health==null||!java.util.Set.of("正常","NORMAL","HEALTHY","OK").contains(e.health)).count());
+    }
+    @Override public long countOccurredBetween(OffsetDateTime fromInclusive,OffsetDateTime untilExclusive) {
+        return activeEvents().filter(e -> e.occurredAt!=null&&!e.occurredAt.isBefore(fromInclusive)&&e.occurredAt.isBefore(untilExclusive)).count();
+    }
+    @Override public List<String> distinctAreas() {
+        return activeEvents().map(e -> e.area).filter(v -> v!=null&&!v.isBlank()).distinct().sorted().toList();
+    }
+    @Override public List<String> distinctCameras() {
+        return activeEvents().map(e -> e.camera).filter(v -> v!=null&&!v.isBlank()).distinct().sorted().toList();
     }
 
     /** 清空存储（DemoClearableStore，仅 Demo / 测试调用）。 */

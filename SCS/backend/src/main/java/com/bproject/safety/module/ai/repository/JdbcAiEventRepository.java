@@ -146,7 +146,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
             return new AiPageResult(query.page(), query.pageSize(), 0, Collections.emptyList());
         }
 
-        StringBuilder pageSql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE 1=1 ");
+        StringBuilder pageSql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE e.status_code <> 'CANCELLED' ");
         buildQueryConditions(query, pageSql, params);
         pageSql.append(" ORDER BY e.occurred_at DESC, e.id DESC ");
         pageSql.append(" LIMIT :limit OFFSET :offset ");
@@ -214,6 +214,37 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
     public long count() {
         Long c = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM safety.ai_event WHERE status_code <> 'CANCELLED'", Collections.emptyMap(), Long.class);
         return c != null ? c : 0L;
+    }
+
+    @Override
+    public Counts counts() {
+        return jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) AS total,
+                  COUNT(CASE WHEN status_code IN ('PENDING','UNCERTAIN') THEN 1 END) AS pending,
+                  COUNT(CASE WHEN status_code IN ('CONFIRMED','ASSIGNED','PROCESSING','CLOSED') THEN 1 END) AS confirmed,
+                  COUNT(CASE WHEN status_code='FALSE_POSITIVE' THEN 1 END) AS false_positive,
+                  COUNT(CASE WHEN camera_health_code IS NULL OR camera_health_code NOT IN ('正常','NORMAL','HEALTHY','OK') THEN 1 END) AS camera_fault
+                FROM safety.ai_event WHERE status_code <> 'CANCELLED'
+                """, Collections.emptyMap(), (rs,n) -> new Counts(rs.getLong("total"),
+                    rs.getLong("pending"),rs.getLong("confirmed"),rs.getLong("false_positive"),rs.getLong("camera_fault")));
+    }
+
+    @Override
+    public long countOccurredBetween(OffsetDateTime fromInclusive, OffsetDateTime untilExclusive) {
+        Long value=jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM safety.ai_event WHERE status_code <> 'CANCELLED'
+                  AND occurred_at >= :start AND occurred_at < :end
+                """,new MapSqlParameterSource().addValue("start",Timestamp.from(fromInclusive.toInstant()))
+                    .addValue("end",Timestamp.from(untilExclusive.toInstant())),Long.class);
+        return value==null?0:value;
+    }
+
+    @Override public List<String> distinctAreas() { return distinctFacet("area_code"); }
+    @Override public List<String> distinctCameras() { return distinctFacet("camera_code"); }
+    private List<String> distinctFacet(String column) {
+        // Column comes exclusively from the two fixed callers above.
+        return jdbcTemplate.queryForList("SELECT DISTINCT "+column+" FROM safety.ai_event WHERE status_code <> 'CANCELLED' AND "
+                +column+" IS NOT NULL AND length(trim("+column+")) > 0 ORDER BY "+column,Collections.emptyMap(),String.class);
     }
 
     @Override

@@ -168,7 +168,10 @@ public class StateController {
 
         // 5. aiEvents
         List<Map<String, Object>> aiList = new ArrayList<>();
-        List<DemoAiEvent> aiEvents = aiEventRepository.findAll();
+        List<DemoAiEvent> aiEvents = aiEventRepository.findRecent(50);
+        long aiTotal = aiEventRepository.count();
+        snapshot.put("aiEventWindow", Map.of("limit",50,"returned",aiEvents.size(),
+                "total",aiTotal,"truncated",aiTotal>aiEvents.size()));
         if (aiEvents.isEmpty()) {
             if(demoGuard.isSeedEnabled())aiList.addAll(defaultAiEvents(now));
         } else {
