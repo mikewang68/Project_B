@@ -15,7 +15,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 @DisplayName("G4 安全鉴权拦截器测试（验签 + 后门移除）")
 class SecurityInterceptorTest {
 
-    private static final String API_KEY = "scs-edge-key-2026";
+    private static final String API_KEY = "offline-unit-only-ingestion-key-never-deploy";
     /** 测试专用验签密钥，仅存在于单元测试，长度 > 32 字节。 */
     private static final String JWT_SECRET = "scs-unit-test-hs256-secret-0123456789abcdef";
     private static final String AUDIENCE = "safety";
@@ -97,7 +97,7 @@ class SecurityInterceptorTest {
     @Test
     @DisplayName("G4-1: 静态 bearer-token 即使配置也不再放行（后门已移除）")
     void staticBearerTokenRejected() throws Exception {
-        String legacy = "scs-token-2026";
+        String legacy = "offline-unit-legacy-placeholder";
         SecurityInterceptor interceptor = new SecurityInterceptor(
                 true, API_KEY, legacy, JWT_SECRET, "iam", 60,
                 "", "", AUDIENCE, 3000, objectMapper);
