@@ -34,9 +34,11 @@ PSMS 后端回归在 `PSMS` 执行 `pnpm exec vitest run --config vitest.backend
    WMS 原生读取编码继续执行 `028-wms-native-read-permissions.sql`；本地查看权限仍须显式配置，并与中央当前权限取交集。
    PSMS 已发布读取适配器执行 `029-psms-native-read-permissions.sql`，其他资源读取须另外登记，不能因本地账号有全局数据范围就自动开放。
    完整导航目录导入后执行 `030-core-feature-view-mappings.sql`，补齐五个核心入口的查看映射与独立只读授权。它不批准发布、不替换已有 VIEW 决策；升级为严格只读菜单检查时须先完成此步。
+   EMCS 原生管理查询执行 `031-emcs-native-read-permissions.sql`，登记明确的 list/query 编码，并清理默认只读角色中旧的派生导出授权；独立角色的授权不受影响。导出不能因为权限名称以 view 结尾而自动纳入默认只读角色。
 5. EHMS 聚合项目维度：`EHMS/sql/027_project_scope.sql`。历史数据先进入 `UNASSIGNED`，依据明确归属回填；迁移后旧版不带项目条件的后端不能继续写入。
 6. EMCS 令牌撤销：`EMCS/sql/026_token_revocations.sql`。撤销记录必须保留到令牌过期。
-7. WMS 显式主体映射：`WMS/WMS/db/sso/001-wms-sso-subject-map.sql`；已有映射须核对并保留。
+7. WMS 显式主体映射：`WMS/WMS/db/sso/001-wms-sso-subject-map.sql`，随后执行 `002-gauss-empty-zone.sql`；已有映射须核对并保留。Gauss A 模式把空字符串视为 NULL，未声明区域的字段必须允许 NULL，公司范围仍须非空且与本地用户一致。
+8. SCS 旧数据库兼容字段：`SCS/backend/src/main/resources/db/migration/001-legacy-runtime-columns.sql`。该脚本只补齐当前规范中已定义的围栏缓冲距离及主数据软删除字段；不能用完整建表草案覆盖现有业务库。
 
 EHMS 完整目录脚本 `deploy/isolated-gateway/sql/025-ehms-feature-catalog.sql` 依赖既有导航表。它添加目录与候选功能，不授予发布资格。`022-psms-read-permissions.sql` 同样只登记查看映射候选，不代替审核。
 
@@ -44,11 +46,15 @@ EHMS 完整目录脚本 `deploy/isolated-gateway/sql/025-ehms-feature-catalog.sq
 
 迁移使用单独的数据库维护身份；运行身份不应为方便升级而取得 schema 创建权限。EHMS 使用非默认 schema 时，先依据已校验的配置渲染项目迁移中的 schema 标识及目录条件，再验证渲染结果。备份须在副本恢复后核对每个业务 schema、表、函数所有者和安全模式，不能只看导出命令退出码。
 
+SCS 全局快照的 AI 事件为最多 50 条最新记录，`aiEventWindow` 返回总数、返回数量及是否截断；完整历史仍由分页接口查询。统计与筛选项在数据库聚合，不加载全部事件和时间线。可通过私有环境变量 `SCS_TEST_JDBC_URL`、`SCS_TEST_DB_USER`、`SCS_TEST_DB_PASSWORD`，在专用副本启用只读的历史查询与运行 schema 测试；这些测试不会自动补齐缺失字段。
+
 ## 配置与灰度切换
 
 接口、Cookie 与私有绑定格式见 [SSO 协议](SSO_PROTOCOL.md)。中心注册表、八个目标桥、服务身份、本地业务用户、IAM 主体绑定和数据范围必须逐项对应。不能用同名 `admin` 推导业务管理员权限。
 
 门户 HTTPS origin 对应登录网关及其 API；各业务域名的 `/sso/` 对应本系统目标桥，其余业务 API 对应同批后端。回调、原生接口上下文和 SPA 基础路径必须分别核对。EHMS 根路径进入 `/ehm/`，PSMS 与 EMCS 使用相对重定向，保留外部 HTTPS 与域名。
+
+`entry_base_path` 是菜单登记的逻辑前缀，`module_path` 是域名上的实际业务根，两者可以不同。例如登记目录 `/wms/` 可以映射到业务域名的 `/`；桥接时按已登记前缀转换。不能将逻辑前缀改为 `/` 来表示物理根目录，也不能放宽未登记路径检查来掩盖配置错误。
 
 先在独立端口和专用数据库验证，再备份目标 Nginx、服务配置、制品及迁移前数据。制品保存到按摘要命名的不可变路径；启动新进程并检查健康、登录、业务读取、写入与退出后，逐系统切换域名。不要覆盖运行中进程使用的 JAR 或混用旧前端与新后端。
 
