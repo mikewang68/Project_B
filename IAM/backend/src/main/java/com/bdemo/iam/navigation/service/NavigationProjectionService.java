@@ -231,7 +231,8 @@ public class NavigationProjectionService {
 
         // 权限点匹配核验
         String requiredPerm = requiredPermByMenu.get(menu.getStableMenuKey());
-        boolean hasPerm = checkViewPermission(user, accessMode, requiredPerm);
+        // Directories carry structure; their remaining authorized children decide visibility.
+        boolean hasPerm = isDirectoryNode || checkViewPermission(user, accessMode, requiredPerm);
         if (!hasPerm) {
           filteredOutCount++;
           continue;
@@ -278,10 +279,10 @@ public class NavigationProjectionService {
         }
       }
       // 去掉没有任何可见子页的空目录（目录权限来自子页）
-      children.removeIf(n -> n.isDirectory() && (n.getChildren() == null || n.getChildren().isEmpty()));
       for (PageLeafNode n : children) {
         if (n.isDirectory()) pruneEmptyDirs(n);
       }
+      children.removeIf(n -> n.isDirectory() && (n.getChildren() == null || n.getChildren().isEmpty()));
       children.sort((a, b) -> Integer.compare(
           orderMap.getOrDefault(a.getStableMenuKey(), Integer.MAX_VALUE),
           orderMap.getOrDefault(b.getStableMenuKey(), Integer.MAX_VALUE)));
@@ -373,10 +374,6 @@ public class NavigationProjectionService {
 
   private boolean checkViewPermission(LoginUser user, AccessModeEnum accessMode, String requiredPerm) {
     if (accessMode == AccessModeEnum.FULL_ADMIN) {
-      return true;
-    }
-    if (accessMode == AccessModeEnum.READONLY_AUDITOR) {
-      // 只读审计员对已放行的可读页面具备只读视图权限
       return true;
     }
     if (requiredPerm == null || requiredPerm.isBlank()) {

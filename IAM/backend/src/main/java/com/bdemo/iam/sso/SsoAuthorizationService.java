@@ -32,8 +32,8 @@ public class SsoAuthorizationService {
     LoginUser user = users.load(subject);
     if (user == null) throw new SsoTicketService.SsoTicketException("统一登录用户已停用");
     subjects.requireBound(subject, user.getUsername(), aud);
-    boolean global = user.isSuperAdmin() || "FULL_ADMIN".equals(user.getAccessMode())
-        || "READONLY_AUDITOR".equals(user.getAccessMode());
+    boolean readOnly = user.isReadOnly() || "READONLY_AUDITOR".equals(user.getAccessMode());
+    boolean global = !readOnly && (user.isSuperAdmin() || "FULL_ADMIN".equals(user.getAccessMode()));
     String permissionPrefix = com.bdemo.iam.navigation.enums.AppCodeEnum.fromString(aud).getIamSystemCode() + ":";
     if (!global && user.getScopedApps().stream().noneMatch(app -> app.equalsIgnoreCase(aud))
         && user.getPermissions().stream().noneMatch(p -> p.startsWith(permissionPrefix)))
@@ -45,7 +45,7 @@ public class SsoAuthorizationService {
     result.put("sessionId", sid);
     result.put("audience", aud);
     result.put("localSubject", subjects.localSubject(subject, aud));
-    result.put("readOnly", user.isReadOnly() || "READONLY_AUDITOR".equals(user.getAccessMode()));
+    result.put("readOnly", readOnly);
     result.put("superAdmin", user.isSuperAdmin() && !Boolean.TRUE.equals(result.get("readOnly")));
     result.put("accessMode", user.getAccessMode());
     result.put("roles", new TreeSet<>(user.getRoles()));

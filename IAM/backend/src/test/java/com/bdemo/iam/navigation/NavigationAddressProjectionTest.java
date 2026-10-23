@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import com.bdemo.iam.common.BizException;
 import com.bdemo.iam.navigation.model.NavigationAppEntity;
+import com.bdemo.iam.navigation.model.NavigationMenuEntity;
 import com.bdemo.iam.navigation.provider.DatabaseNavigationProvider;
 import com.bdemo.iam.navigation.provider.FixtureNavigationProvider;
 import com.bdemo.iam.navigation.service.NavigationDataLoader;
@@ -66,5 +67,39 @@ class NavigationAddressProjectionTest {
     ReflectionTestUtils.setField(service,"externalAddressesEnabled",true);
     login(new LoginUser("scoped-id","scoped","Scoped",false,Set.of("wms:inbound:view")));
     assertTrue(service.projectNavigationTree("IAM",false).getSystems().isEmpty());
+  }
+  @Test void readonlyModeDoesNotReplaceSpecificPageGrants() {
+    var user = new LoginUser("readonly-id", "reader", "Reader", false, Set.of());
+    user.setReadOnly(true); user.setAccessMode("READONLY_AUDITOR"); login(user);
+    assertTrue(service.projectNavigationTree("IAM", false).getSystems().isEmpty());
+    user.setPermissions(Set.of("iam:user:list:view"));
+    var systems = service.projectNavigationTree("IAM", false).getSystems();
+    assertEquals(1, systems.size());
+    assertEquals(1, systems.get(0).getChildren().size());
+    user.setPermissions(Set.of());
+    assertTrue(service.projectNavigationTree("IAM", false).getSystems().isEmpty());
+  }
+  @Test void nestedDirectoriesKeepAuthorizedPagesAndDisappearWhenThoseGrantsAreRemoved() {
+    ReflectionTestUtils.setField(service, "showFeatureCatalog", true);
+    var outer = directory("IAM:outer", "APP:IAM", 2);
+    var inner = directory("IAM:inner", "IAM:outer", 3);
+    var page = new NavigationDataLoader().getDefaultMenus().stream()
+        .filter(menu -> "IAM:users".equals(menu.getStableMenuKey())).findFirst().orElseThrow();
+    page.setParentStableMenuKey("IAM:inner"); page.setNormalizedLevel(4);
+    when(provider.getNavEligibleMenus()).thenReturn(List.of(outer, inner, page));
+    var user = new LoginUser("scoped-id", "scoped", "Scoped", false, Set.of("iam:user:list:view"));
+    login(user);
+    var directory = service.projectNavigationTree("IAM", false).getSystems().get(0).getChildren().get(0);
+    assertEquals("IAM:outer", directory.getStableMenuKey());
+    assertEquals("IAM:users", directory.getChildren().get(0).getChildren().get(0).getStableMenuKey());
+    user.setPermissions(Set.of("iam:entry:view"));
+    assertTrue(service.projectNavigationTree("IAM", false).getSystems().isEmpty());
+  }
+  private NavigationMenuEntity directory(String key, String parent, int level) {
+    var result = new NavigationMenuEntity();
+    result.setStableMenuKey(key); result.setParentStableMenuKey(parent); result.setNavigationAppCode("IAM");
+    result.setMenuKind("DIRECTORY"); result.setEntryMode("NONE"); result.setNormalizedLevel(level);
+    result.setValid(1); result.setVisible(1); result.setEnabled(1);
+    return result;
   }
 }

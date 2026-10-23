@@ -29,4 +29,12 @@ class SsoAuthorizationServiceTest {
     user.setReadOnly(true);var a=service.current("subject","sid","psms");
     assertEquals(true,a.get("readOnly"));assertEquals(false,a.get("superAdmin"));assertNotEquals(version,a.get("authorizationVersion"));
   }
+  @Test void readonlyModeCannotRetainAnUnauthorizedAudience(){
+    user.setReadOnly(true);user.setAccessMode("READONLY_AUDITOR");
+    assertEquals(true,service.current("subject","sid","psms").get("readOnly"));
+    user.setPermissions(Set.of("iam:user:list:view"));
+    assertThrows(SsoTicketService.SsoTicketException.class,()->service.current("subject","sid","psms"));
+    user.setSuperAdmin(true);
+    assertThrows(SsoTicketService.SsoTicketException.class,()->service.current("subject","sid","psms"));
+  }
 }
