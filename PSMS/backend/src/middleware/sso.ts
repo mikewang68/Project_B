@@ -4,6 +4,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod';
 import { User, type UserDoc } from '../db/tables.js';
 import { env } from '../config/env.js';
+import { mayReadBusinessRoute } from './sso-policy.js';
 
 const bindingsSchema = z.record(z.string().regex(/^(?:[a-f\d]{32}|[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12})$/i),
   z.object({ userId: z.string().min(1), enabled: z.boolean() }).strict());
@@ -139,24 +140,28 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
     if(result.code!==0||!assertion.success||assertion.data.subject!==session.subject||assertion.data.sessionId!==session.iamSid
         ||assertion.data.localSubject!==user.username){fail(res,401,'SSO_LOCAL_IDENTITY_REJECTED');return;}
     const current=assertion.data;
-    res.locals.platformAuthorization = {readOnly: current.readOnly || user.roleCode === 'viewer',
+    const effective = {readOnly: current.readOnly || user.roleCode === 'viewer',
       superAdmin: current.superAdmin && ['super_admin','admin'].includes(user.roleCode), permissions: current.permissions};
+    res.locals.platformAuthorization = effective;
     if([current.company,current.org,current.domain,current.zone].some(value=>value?.trim())){fail(res,403,'SSO_SCOPE_UNSUPPORTED');return;}
-    // Global business scopes can use all registered APIs. Restricted scopes remain
-    // limited to the plan adapter until each additional row-level adapter is ready.
+    // Scope limits form a ceiling; current business grants are still required below.
+    // Restricted scopes use only the plan adapter until other row-level adapters exist.
     const all=user.dataScope.some(scope=>['*','GLOBAL'].includes(scope));
     if (!all && req.path !== '/api/auth/me' && req.path !== '/api/plans' && !req.path.startsWith('/api/plans/')) {
       fail(res, 403, 'SSO_ROUTE_NOT_ADAPTED'); return;
     }
     req.user = { userId: user._id, actorId: user.actorId, roleCode: user.roleCode, dataScope: [...user.dataScope] };
+    if (['GET', 'HEAD'].includes(req.method) && !mayReadBusinessRoute(effective, req.path)) {
+      fail(res, 403, 'READ_PERMISSION_DENIED'); return;
+    }
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-      if (current.readOnly || user.roleCode === 'viewer') { fail(res, 403, 'READ_ONLY'); return; }
-      if(!current.superAdmin&&!current.permissions.some(permission=>permission===`pps:api:${req.path.replace(/^\/api\//,'').split('/')[0]}:write`)){
+      if (effective.readOnly) { fail(res, 403, 'READ_ONLY'); return; }
+      if(!effective.superAdmin&&!current.permissions.some(permission=>permission===`pps:api:${req.path.replace(/^\/api\//,'').split('/')[0]}:write`)){
         fail(res,403,'OPERATION_PERMISSION_DENIED');return;
       }
       if (req.header('X-PSMS-CSRF') !== session.csrf) { fail(res, 403, 'CSRF_REJECTED'); return; }
     }
-    if(req.path.includes('/export')&&!current.superAdmin&&!current.permissions.includes('pps:export')){fail(res,403,'EXPORT_PERMISSION_DENIED');return;}
+    if(req.path.includes('/export')&&!(effective.superAdmin&&!effective.readOnly)&&!current.permissions.includes('pps:export')){fail(res,403,'EXPORT_PERMISSION_DENIED');return;}
     next();
   } catch (error) { next(error); }
 }

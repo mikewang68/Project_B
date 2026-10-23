@@ -5,7 +5,7 @@ vi.mock('../src/config/env.js', () => ({ env: { JWT_SECRET: secret } }));
 import { authenticate, optionalAuth } from '../src/middleware/auth.js';
 
 describe('AI demo session isolation', () => {
-  const token = () => jwt.sign({ userId: 'AI-DEMO', dataScope: ['AREA-A'], purpose: 'ai-demo' }, secret);
+  const token = () => jwt.sign({ userId: 'AI-DEMO', actorId: 'AI-DEMO', roleCode: 'viewer', dataScope: ['AREA-A'], purpose: 'ai-demo' }, secret);
   it('allows its AI endpoint but rejects business endpoints', () => {
     for (const baseUrl of ['/api/ai', '/api/plans', '/api/auth']) {
       const req: any = { headers: { authorization: `Bearer ${token()}` }, baseUrl };

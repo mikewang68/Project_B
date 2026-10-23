@@ -21,6 +21,8 @@ WMS 前端构建目标是 `WMS/WMS/target/classes/static`，不能假定为 `fro
 
 网关检查在 `deploy/isolated-gateway` 执行 `python -m unittest test_cross_domain_sso test_gateway_routes`。Python 网关、门户静态资源、各目标桥及原生后端须使用同一版本。
 
+PSMS 后端回归在 `PSMS` 执行 `pnpm exec vitest run --config vitest.backend.config.ts`，覆盖原生会话的当前授权、计划范围、导入及外部投递状态。测试身份服务不能代替部署后的真实旧会话撤权与统一退出核验。
+
 ## 兼容迁移
 
 先备份目标数据库，核对现有迁移状态。升级已有系统时不运行初始化种子或覆盖共享数据。
@@ -30,6 +32,7 @@ WMS 前端构建目标是 `WMS/WMS/target/classes/static`，不能假定为 `fro
 3. IAM 项目授权：`026-sso-project-grants.sql`。
 4. 独立全局只读角色：`027-platform-readonly-role.sql`。该迁移不为用户分配角色或项目范围。
    WMS 原生读取编码继续执行 `028-wms-native-read-permissions.sql`；本地查看权限仍须显式配置，并与中央当前权限取交集。
+   PSMS 已发布读取适配器执行 `029-psms-native-read-permissions.sql`，其他资源读取须另外登记，不能因本地账号有全局数据范围就自动开放。
 5. EHMS 聚合项目维度：`EHMS/sql/027_project_scope.sql`。历史数据先进入 `UNASSIGNED`，依据明确归属回填；迁移后旧版不带项目条件的后端不能继续写入。
 6. EMCS 令牌撤销：`EMCS/sql/026_token_revocations.sql`。撤销记录必须保留到令牌过期。
 7. WMS 显式主体映射：`WMS/WMS/db/sso/001-wms-sso-subject-map.sql`；已有映射须核对并保留。
