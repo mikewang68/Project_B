@@ -110,11 +110,23 @@ echo "SCS OPENGAUSS INTEGRATION TESTS"
 echo "========================================"
 if [[ ${MVN_RC} -eq 0 ]]; then
     echo "RESULT: PASS"
-    echo "========================================"
-    exit 0
 else
     echo "RESULT: FAIL (maven exit ${MVN_RC})"
     echo "Refer to ${BACKEND_DIR}/target/surefire-reports"
     echo "========================================"
     exit ${MVN_RC}
 fi
+
+# 门禁自带尾清理：测试前缀行不滞留 b_project（幂等，可重复执行）
+CLEANUP_SQL="${SCS_ROOT}/deploy/scripts/cleanup-test-data.sql"
+if [[ -f "${CLEANUP_SQL}" ]] && command -v isula >/dev/null 2>&1; then
+    if sudo isula cp "${CLEANUP_SQL}" bpoc-opengauss:/tmp/scs-cleanup.sql 2>/dev/null \
+       && sudo isula exec bpoc-opengauss su - omm -c \
+            "gsql -d ${TEST_DATABASE} -q -t -A -f /tmp/scs-cleanup.sql" >/dev/null 2>&1; then
+        echo "[OK] Post-run test data cleanup executed"
+    else
+        echo "[WARN] Cleanup skipped (isula/sudo unavailable or non-node4 host) — run deploy/scripts/cleanup-test-data.sql manually"
+    fi
+fi
+echo "========================================"
+exit 0

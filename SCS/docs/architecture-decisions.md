@@ -34,12 +34,15 @@ findSelected 按编码稳定序取首个选中行兜底。
 全库触发器补挂属基础设施治理项，由 DBA 统一决策（见路线图 D-3）。
 **后果**：正式表存在被误 DELETE 的风险窗口；备份（每日 02:30，保留 14 天）是当前兜底。
 
-## ADR-005 已知测试顺序耦合（待修）
+## ADR-005 测试顺序耦合（已根治 2026-10-24）
 
 **背景**：`MasterDataConsistencyTest` 在 Linux 文件系统顺序下可能先于污染者执行而失败
-（`FenceService:195` 空 area 默认"自定义区域"进入共享种子）。本地 Windows 顺序下不触发。
-**决策**：发布期用本地全量结果 + node4 -DskipTests 打包规避；缺陷登记待修（修法：围栏种子
-显式 area，或一致性检查排除运行时新建围栏）。
+（共享 Spring 上下文中，先跑的测试类经 `FenceService:195` 自建围栏，其运行时默认
+"自定义区域"进入了仓储；一致性检查却断言**全部**围栏 area 落在字典内）。
+**根治**：`fenceSeedsUseCanonicalAreas` 断言前先 `fenceRepository.resetDemoData()`
+恢复纯种子再校验——运行时自建围栏的"自定义区域"本就是合法业务数据，不属于种子一致性范畴。
+**附带流程改进**：`run-opengauss-tests.sh` 门禁通过后自动执行 `cleanup-test-data.sql`
+尾清理，集成测试数据不再滞留 b_project。
 
 ## ADR-006 发布与回滚链约定
 
