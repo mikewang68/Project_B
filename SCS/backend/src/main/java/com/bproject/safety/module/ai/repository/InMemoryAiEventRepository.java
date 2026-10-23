@@ -92,6 +92,14 @@ public class InMemoryAiEventRepository implements AiEventRepository, DemoClearab
         return store.size();
     }
 
+    @Override
+    public long countPendingReview() {
+        return store.values().stream()
+                .filter(e -> com.bproject.safety.module.ai.model.AiReviewStatuses.PENDING.equals(e.statusCode)
+                        || com.bproject.safety.module.ai.model.AiReviewStatuses.UNCERTAIN.equals(e.statusCode))
+                .count();
+    }
+
     /** 清空存储（DemoClearableStore，仅 Demo / 测试调用）。 */
     @Override
     public void clearDemoData() {

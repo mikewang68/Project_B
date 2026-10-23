@@ -55,13 +55,9 @@ public class JdbcFenceRepository implements FenceRepository {
                    f.buffer_distance, f.is_deleted, f.created_at, f.updated_at,
                    v.risk_level_code, v.polygon, v.team_scope
             FROM safety.safety_fence f
-            LEFT JOIN LATERAL (
-                SELECT version_no, risk_level_code, polygon, team_scope
-                FROM safety.safety_fence_version
-                WHERE fence_id = f.id
-                ORDER BY id DESC
-                LIMIT 1
-            ) v ON true
+            LEFT JOIN safety.safety_fence_version v ON v.id = (
+                SELECT max(v2.id) FROM safety.safety_fence_version v2 WHERE v2.fence_id = f.id
+            )
             """;
 
     private static final String SELECT_ALL = BASE_SELECT + " WHERE f.is_deleted = false ORDER BY f.fence_code ASC";

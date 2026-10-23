@@ -261,6 +261,35 @@ public class JdbcAlertRepository implements AlertRepository {
         return val != null ? val : 0L;
     }
 
+    /** Step 8 / P0-4：态势计数口径下推为存储侧 GROUP BY，替代大屏/统计每次刷新的全量聚合加载。 */
+    @Override
+    public Map<String, Long> countByStatus() {
+        return countGrouping("SELECT status_code, count(*) FROM safety.safety_alert GROUP BY status_code");
+    }
+
+    @Override
+    public Map<String, Long> countOpenByRisk() {
+        return countGrouping(
+                "SELECT risk_level_code, count(*) FROM safety.safety_alert WHERE status_code <> 'CLOSED'"
+                        + " GROUP BY risk_level_code");
+    }
+
+    @Override
+    public Map<String, Long> countByEventType() {
+        // eventType 为空回退标题，与 riskDistribution 内存口径一致
+        return countGrouping(
+                "SELECT COALESCE(event_type, title) AS bucket, count(*) FROM safety.safety_alert"
+                        + " GROUP BY COALESCE(event_type, title)");
+    }
+
+    private Map<String, Long> countGrouping(String sql) {
+        Map<String, Long> out = new LinkedHashMap<>();
+        jdbcTemplate.query(sql, Collections.emptyMap(), rs -> {
+            out.put(rs.getString(1), rs.getLong(2));
+        });
+        return out;
+    }
+
     // ---------- 内部持久化辅助 ----------
 
     private void saveRootAlert(UUID rootUuid, String alertNo, DemoAlert a) {

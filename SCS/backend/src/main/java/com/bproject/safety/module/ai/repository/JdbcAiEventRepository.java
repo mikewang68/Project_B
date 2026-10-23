@@ -105,7 +105,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
 
     @Override
     public List<DemoAiEvent> findAll() {
-        String sql = BASE_SELECT_ROOT + " WHERE e.status_code <> 'CANCELLED' ORDER BY e.occurred_at DESC, e.id DESC";
+        String sql = BASE_SELECT_ROOT + " WHERE e.status_code <> 'CANCELLED' ORDER BY e.occurred_at DESC, e.id DESC LIMIT 100";
         Map<UUID, DemoAiEvent> map = new LinkedHashMap<>();
         jdbcTemplate.query(sql, Collections.emptyMap(), rs -> {
             UUID id = (UUID) rs.getObject("id");
@@ -213,6 +213,14 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
     @Override
     public long count() {
         Long c = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM safety.ai_event WHERE status_code <> 'CANCELLED'", Collections.emptyMap(), Long.class);
+        return c != null ? c : 0L;
+    }
+
+    @Override
+    public long countPendingReview() {
+        Long c = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM safety.ai_event WHERE status_code IN ('PENDING', 'UNCERTAIN')",
+                Collections.emptyMap(), Long.class);
         return c != null ? c : 0L;
     }
 

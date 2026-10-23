@@ -1,7 +1,10 @@
 package com.bproject.safety.support.phase1;
 
 import com.bproject.safety.module.ai.repository.AiEventRepository;
+import com.bproject.safety.module.ai.repository.AiModelRepository;
 import com.bproject.safety.module.ai.repository.InMemoryAiEventRepository;
+import com.bproject.safety.module.ai.repository.InMemoryAiModelRepository;
+import com.bproject.safety.module.ai.repository.JdbcAiModelRepository;
 import com.bproject.safety.module.alert.repository.AlertRepository;
 import com.bproject.safety.module.alert.repository.InMemoryAlertRepository;
 import com.bproject.safety.module.collision.repository.CollisionRepository;
@@ -15,7 +18,9 @@ import com.bproject.safety.module.ops.repository.EdgeNodeRepository;
 import com.bproject.safety.module.ops.repository.InMemoryEdgeEventQueueRepository;
 import com.bproject.safety.module.ops.repository.InMemoryEdgeNodeRepository;
 import com.bproject.safety.module.ops.repository.InMemoryOpsEventLogRepository;
+import com.bproject.safety.module.ops.repository.JdbcEdgeEventQueueRepository;
 import com.bproject.safety.module.ops.repository.JdbcEdgeNodeRepository;
+import com.bproject.safety.module.ops.repository.JdbcOpsEventLogRepository;
 import com.bproject.safety.module.ops.repository.OpsEventLogRepository;
 import com.bproject.safety.module.personnel.repository.InMemoryPersonnelRepository;
 import com.bproject.safety.module.personnel.repository.JdbcPersonnelRepository;
@@ -38,7 +43,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-@DisplayName("Phase 2: server profile 下 7 个 JDBC / 2 个 InMemory Bean 选择性装配测试")
+@DisplayName("Phase 2: server profile 下 10 个 JDBC Bean 选择性装配测试")
 class ServerProfileBeanSelectionTest {
 
     @Configuration(proxyBeanMethods = false)
@@ -77,19 +82,23 @@ class ServerProfileBeanSelectionTest {
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(
                     MockJdbcConfig.class,
-                    // 7 个目标 JDBC 仓储
+                    // 10 个目标 JDBC 仓储
                     JdbcCollisionRepository.class,
                     JdbcEdgeNodeRepository.class,
                     JdbcAlertRepository.class,
                     com.bproject.safety.module.ai.repository.JdbcAiEventRepository.class,
+                    JdbcAiModelRepository.class,
                     JdbcFenceRepository.class,
                     JdbcPersonnelRepository.class,
                     JdbcRuleRepository.class,
-                    // 9 个 InMemory 仓储
+                    JdbcEdgeEventQueueRepository.class,
+                    JdbcOpsEventLogRepository.class,
+                    // 10 个 InMemory 仓储
                     InMemoryCollisionRepository.class,
                     InMemoryEdgeNodeRepository.class,
                     InMemoryAlertRepository.class,
                     InMemoryAiEventRepository.class,
+                    InMemoryAiModelRepository.class,
                     InMemoryFenceRepository.class,
                     InMemoryPersonnelRepository.class,
                     InMemoryRuleRepository.class,
@@ -104,7 +113,7 @@ class ServerProfileBeanSelectionTest {
             );
 
     @Test
-    @DisplayName("server profile：严格激活 7 个 JDBC Repository，其余 2 个保持 InMemory")
+    @DisplayName("server profile：严格激活 10 个 JDBC Repository（Step 6/7 后队列、运维日志与 AI 模型全部落库）")
     void testServerProfileBeanSelection() {
         contextRunner
                 .withPropertyValues("spring.profiles.active=server")
@@ -150,12 +159,22 @@ class ServerProfileBeanSelectionTest {
                     assertThat(context.getBean(RuleRepository.class)).isInstanceOf(JdbcRuleRepository.class);
                     assertThat(context).doesNotHaveBean(InMemoryRuleRepository.class);
 
-                    // 8. 其余 2 个业务 Repository 保持 InMemory
+                    // 8. Step 6 新增：边缘队列与运维日志在 server profile 下同样由 JDBC 接管
                     assertThat(context).hasSingleBean(EdgeEventQueueRepository.class);
-                    assertThat(context.getBean(EdgeEventQueueRepository.class)).isInstanceOf(InMemoryEdgeEventQueueRepository.class);
+                    assertThat(context.getBean(EdgeEventQueueRepository.class))
+                            .isInstanceOf(JdbcEdgeEventQueueRepository.class);
+                    assertThat(context).doesNotHaveBean(InMemoryEdgeEventQueueRepository.class);
 
                     assertThat(context).hasSingleBean(OpsEventLogRepository.class);
-                    assertThat(context.getBean(OpsEventLogRepository.class)).isInstanceOf(InMemoryOpsEventLogRepository.class);
+                    assertThat(context.getBean(OpsEventLogRepository.class))
+                            .isInstanceOf(JdbcOpsEventLogRepository.class);
+                    assertThat(context).doesNotHaveBean(InMemoryOpsEventLogRepository.class);
+
+                    // 8.5 Step 7 新增：AI 模型配置在 server profile 下由 JDBC 接管
+                    assertThat(context).hasSingleBean(AiModelRepository.class);
+                    assertThat(context.getBean(AiModelRepository.class))
+                            .isInstanceOf(JdbcAiModelRepository.class);
+                    assertThat(context).doesNotHaveBean(InMemoryAiModelRepository.class);
 
                     // 9. AlertNumberGenerator -> JdbcAlertNumberGenerator
                     assertThat(context).hasSingleBean(com.bproject.safety.module.alert.service.AlertNumberGenerator.class);
@@ -213,6 +232,21 @@ class ServerProfileBeanSelectionTest {
                     assertThat(context.getBean(RuleRepository.class))
                             .isInstanceOf(InMemoryRuleRepository.class);
                     assertThat(context).doesNotHaveBean(JdbcRuleRepository.class);
+
+                    assertThat(context).hasSingleBean(EdgeEventQueueRepository.class);
+                    assertThat(context.getBean(EdgeEventQueueRepository.class))
+                            .isInstanceOf(InMemoryEdgeEventQueueRepository.class);
+                    assertThat(context).doesNotHaveBean(JdbcEdgeEventQueueRepository.class);
+
+                    assertThat(context).hasSingleBean(OpsEventLogRepository.class);
+                    assertThat(context.getBean(OpsEventLogRepository.class))
+                            .isInstanceOf(InMemoryOpsEventLogRepository.class);
+                    assertThat(context).doesNotHaveBean(JdbcOpsEventLogRepository.class);
+
+                    assertThat(context).hasSingleBean(AiModelRepository.class);
+                    assertThat(context.getBean(AiModelRepository.class))
+                            .isInstanceOf(InMemoryAiModelRepository.class);
+                    assertThat(context).doesNotHaveBean(JdbcAiModelRepository.class);
 
                     assertThat(context).hasSingleBean(com.bproject.safety.module.alert.service.AlertNumberGenerator.class);
                     assertThat(context.getBean(com.bproject.safety.module.alert.service.AlertNumberGenerator.class))

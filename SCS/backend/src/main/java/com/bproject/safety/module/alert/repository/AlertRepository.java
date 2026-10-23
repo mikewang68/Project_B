@@ -3,6 +3,7 @@ package com.bproject.safety.module.alert.repository;
 import com.bproject.safety.module.alert.model.AlertPageResult;
 import com.bproject.safety.module.alert.model.DemoAlert;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -36,4 +37,16 @@ public interface AlertRepository {
     DemoAlert save(DemoAlert alert);
 
     long count();
+
+    /**
+     * 按状态码计数（Step 8 / P0-4：大屏与统计的态势计数口径改为存储侧 GROUP BY 聚合，
+     * 消除每次刷新多次全量聚合加载）。键为状态机 code，值为其告警数。
+     */
+    Map<String, Long> countByStatus();
+
+    /** 未关闭（status &lt;&gt; CLOSED）告警按风险等级计数。 */
+    Map<String, Long> countOpenByRisk();
+
+    /** 按事件类型计数（eventType 为空时回退标题，与 riskDistribution 口径一致）。 */
+    Map<String, Long> countByEventType();
 }

@@ -86,6 +86,9 @@ public class AiEventService {
     private final Clock clock;
     private final AiEventNumberGenerator numberGenerator;
     private final LiveEventGate gate;
+    /** review-#6：事件级分段锁（替代 synchronized(id.intern())）。 */
+    private final com.bproject.safety.support.concurrency.KeyedLock keyedLock =
+            new com.bproject.safety.support.concurrency.KeyedLock();
     private final List<CameraInfo> cameras;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -504,7 +507,10 @@ public class AiEventService {
      */
     private DemoAiEvent mutate(String id, String idemKey, String op, List<String> allowed,
                                java.util.function.Consumer<DemoAiEvent> changer) {
-        synchronized (id.intern()) {
+        // review-#6：弃用 synchronized(id.intern())——字符串常量池对象做锁监视器全局共享且锁域不可控，
+        // 改用与 AlertService 同款 KeyedLock（引用计数分段锁，不同事件并行）
+        keyedLock.lock(id);
+        try {
             idempotency.process(idemKey, () -> {
                 gate.buffer(() -> {
                     DemoAiEvent event = repository.findById(id)
@@ -521,6 +527,8 @@ public class AiEventService {
                 return op + ":" + id;
             });
             return get(id);
+        } finally {
+            keyedLock.unlock(id);
         }
     }
 

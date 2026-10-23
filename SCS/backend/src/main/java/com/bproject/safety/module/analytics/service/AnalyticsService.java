@@ -8,6 +8,7 @@ import com.bproject.safety.module.alert.model.DemoAlert;
 import com.bproject.safety.module.alert.model.RiskLevels;
 import com.bproject.safety.module.alert.model.TimelineEvent;
 import com.bproject.safety.module.alert.demo.DemoAlertMaintenance;
+import com.bproject.safety.module.alert.repository.AlertQuery;
 import com.bproject.safety.module.alert.repository.AlertRepository;
 import com.bproject.safety.module.analytics.dto.AnalyticsDtos.AreaRisk;
 import com.bproject.safety.module.analytics.dto.AnalyticsDtos.Dataset;
@@ -255,7 +256,10 @@ public class AnalyticsService {
     }
 
     public Map<String, Object> deviceDetail(String id) {
-        List<DemoAlert> scope = alerts.findAll().stream()
+        // keyword 预过滤（跨列 ILIKE，含 target 快照）收敛扫描范围，再按 target 精确匹配；
+        // 上限 1000 条防失控，覆盖明细页展示规模
+        List<DemoAlert> scope = alerts.filter(new AlertQuery(id, null, null, null, null, null, null,
+                        null, null, null, 1, 1000)).stream()
                 .filter(a -> a.target != null && a.target.contains(id)).toList();
         HotDevice device = buildDevices(scope).stream().filter(d -> d.deviceId().equals(id)).findFirst()
                 .orElse(null);
@@ -267,7 +271,9 @@ public class AnalyticsService {
     }
 
     public Map<String, Object> personDetail(String id) {
-        List<DemoAlert> scope = alerts.findAll().stream()
+        // 同 deviceDetail：keyword 超集预过滤 + personIdOf 精确过滤
+        List<DemoAlert> scope = alerts.filter(new AlertQuery(id, null, null, null, null, null, null,
+                        null, null, null, 1, 1000)).stream()
                 .filter(a -> RiskClassifier.personIdOf(a.target) != null
                         && id.equals(RiskClassifier.personIdOf(a.target))).toList();
         RepeatPerson person = buildPersons(scope).stream().filter(p -> p.personId().equals(id)).findFirst()
@@ -367,16 +373,20 @@ public class AnalyticsService {
         if (to != null && !to.isBlank()) {
             end = OffsetDateTime.parse(to);
         }
-        final OffsetDateTime fs = start;
-        final OffsetDateTime fe = end;
-        return alerts.findAll().stream()
-                .filter(a -> a.occurredAt == null || (!a.occurredAt.isBefore(fs) && !a.occurredAt.isAfter(fe)))
-                .filter(a -> area == null || area.isBlank() || "全部".equals(area) || area.equals(a.area))
-                .filter(a -> level == null || level.isBlank() || "全部".equals(level)
-                        || RiskLevels.normalize(level).equals(a.riskCode))
-                .filter(a -> team == null || team.isBlank() || "全部".equals(team)
+
+        // Step 8 / P0-4：时间窗 / 区域 / 风险等级三个直接列条件下推存储侧（server profile 走 SQL WHERE，
+        // 不再全量拉取后内存过滤）；班组 / 统计类型 / 设备 / 人员为 Java 派生维度（RiskClassifier
+        // 解析 target 快照），保留在收敛后的结果集上内存过滤。语义变化：occurredAt 为空的行
+        // 不再进入窗口结果（与告警分页口径一致，库表 occurred_at 为 NOT NULL）。
+        String riskCode = level == null || level.isBlank() || AlertQuery.ALL.equals(level)
+                ? null : RiskLevels.normalize(level);
+        String areaFilter = area == null || area.isBlank() || AlertQuery.ALL.equals(area) ? null : area;
+        AlertQuery scopeQuery = new AlertQuery(null, riskCode, null, areaFilter, null, null, null,
+                null, start.toString(), end.toString(), 1, 1);
+        return alerts.filter(scopeQuery).stream()
+                .filter(a -> team == null || team.isBlank() || AlertQuery.ALL.equals(team)
                         || team.equals(RiskClassifier.teamOf(a)))
-                .filter(a -> type == null || type.isBlank() || "全部".equals(type)
+                .filter(a -> type == null || type.isBlank() || AlertQuery.ALL.equals(type)
                         || type.equals(RiskClassifier.analyticsType(a)))
                 .filter(a -> deviceId == null || deviceId.isBlank()
                         || deviceId.equals(RiskClassifier.deviceIdOf(a.target)))

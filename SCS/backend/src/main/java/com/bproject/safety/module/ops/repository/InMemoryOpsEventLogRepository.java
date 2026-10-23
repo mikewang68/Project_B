@@ -7,15 +7,18 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 /**
  * 进程内运维日志（append-only）：最多保留最近 300 条，按时间倒序返回。
  *
  * <p>Phase B：append 存独立副本（copy-on-write），查询返回副本；清空仅通过
- * {@link DemoClearableStore#clearDemoData()} 供 Demo / Test 使用。</p>
+ * {@link DemoClearableStore#clearDemoData()} 供 Demo / Test 使用。
+ * server profile 下由 {@link JdbcOpsEventLogRepository} 接管（ops_event_log 表持久化）。</p>
  */
 @Repository
+@Profile("!server")
 public class InMemoryOpsEventLogRepository implements OpsEventLogRepository, DemoClearableStore {
 
     private static final int MAX_KEEP = 300;

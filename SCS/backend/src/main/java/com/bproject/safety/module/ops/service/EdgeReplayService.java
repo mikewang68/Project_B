@@ -21,7 +21,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 离线事件幂等补传服务（任务书第二十二 ~ 二十六、三十五节）。
@@ -58,17 +63,48 @@ public class EdgeReplayService {
     private final OpsLiveNotifier notifier;
     private final Clock clock;
     private final LiveEventGate gate;
+    /**
+     * 单事件补传事务（REQUIRES_NEW）：review-#2 修复——正常补传的
+     * SYNCING→建告警→SYNCED→日志 4 连写必须原子，中途失败整笔回滚，
+     * 事件不再卡死在 SYNCING 态（SYNCING 不被重放捞起，卡死即永久丢失补传）。
+     * 逐条独立提交的语义不变（replayPending 逐事件推进，单条失败不影响已补传条目）。
+     * dev/test profile 无事务管理器时退化为直执行（与 AlertService 同款约定）。
+     */
+    private final TransactionTemplate replayTransactionTemplate;
 
+    @Autowired
     public EdgeReplayService(EdgeEventQueueRepository queueRepository,
                              OpsEventLogRepository logRepository,
                              AlertService alertService, OpsLiveNotifier notifier, Clock clock,
-                             LiveEventGate gate) {
+                             LiveEventGate gate, @Nullable PlatformTransactionManager transactionManager) {
         this.queueRepository = queueRepository;
         this.logRepository = logRepository;
         this.alertService = alertService;
         this.notifier = notifier;
         this.clock = clock;
         this.gate = gate;
+        if (transactionManager != null) {
+            TransactionTemplate template = new TransactionTemplate(transactionManager);
+            template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            this.replayTransactionTemplate = template;
+        } else {
+            this.replayTransactionTemplate = null;
+        }
+    }
+
+    /** 兼容历史测试直连的 6 参数构造器（无事务管理器，直执行）。 */
+    public EdgeReplayService(EdgeEventQueueRepository queueRepository,
+                             OpsEventLogRepository logRepository,
+                             AlertService alertService, OpsLiveNotifier notifier, Clock clock,
+                             LiveEventGate gate) {
+        this(queueRepository, logRepository, alertService, notifier, clock, gate, null);
+    }
+
+    private <T> T executeInReplayTransaction(java.util.function.Supplier<T> action) {
+        if (replayTransactionTemplate != null) {
+            return replayTransactionTemplate.execute(status -> action.get());
+        }
+        return action.get();
     }
 
     /** 补传结果。 */
@@ -103,7 +139,7 @@ public class EdgeReplayService {
 
         // 2) 首次失败模拟（不真正停掉 Spring Boot）
         if (event.failNextReplay) {
-            return gate.buffer(() -> {
+            return executeInReplayTransaction(() -> gate.buffer(() -> {
                 event.failNextReplay = false;
                 event.status = PendingEventStatuses.FAILED;
                 event.retryCount += 1;
@@ -116,11 +152,12 @@ public class EdgeReplayService {
                 log.info("边缘事件首次补传失败（模拟）event={} retry={}", eventId, event.retryCount);
                 return new ReplayResult(eventId, PendingEventStatuses.FAILED, null, false,
                         ERR_PLATFORM_UNAVAILABLE, null);
-            });
+            }));
         }
 
-        // 3) 正常补传：SYNCING → 建 Alert → SYNCED 回写；全部 save 成功后再统一广播。
-        return gate.buffer(() -> {
+        // 3) 正常补传：SYNCING → 建 Alert → SYNCED 回写；4 连写在单事件事务内原子提交，
+        //    全部成功后经 afterCommit 统一广播（review-#2）。
+        return executeInReplayTransaction(() -> gate.buffer(() -> {
             event.status = PendingEventStatuses.SYNCING;
             queueRepository.save(event);
 
@@ -143,7 +180,7 @@ public class EdgeReplayService {
             log.info("边缘事件补传成功 event={} alert={} delaySec={}", eventId, alert.id, event.syncDelaySec);
             return new ReplayResult(eventId, PendingEventStatuses.SYNCED, alert.id, false, null,
                     event.syncDelaySec);
-        });
+        }));
     }
 
     /** 对某节点队列中所有 PENDING / FAILED 事件按稳定顺序补传，返回逐条结果（逐条提交 / 广播）。 */

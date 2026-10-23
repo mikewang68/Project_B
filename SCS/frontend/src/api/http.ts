@@ -41,17 +41,23 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   headers.set('X-Trace-Id', requestTraceId)
-  if (!headers.has('Authorization')) {
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('scs_token') : null
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`)
-    }
-  }
   if (init.body) headers.set('Content-Type', 'application/json; charset=utf-8')
   if (init.method && init.method !== 'GET' && !headers.has('Idempotency-Key')) headers.set('Idempotency-Key', traceId())
 
   try {
-    const response = await fetch(`${API_BASE}${path}`, { ...init, headers, signal: controller.signal })
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers,
+      // 身份由同源 HttpOnly 会话 Cookie 承载（见 auth/session.ts），
+      // 不再从 localStorage 读取静态 token。credentials 必须为 include，
+      // 否则浏览器不会带上 JSESSIONID。
+      credentials: 'include',
+      signal: controller.signal,
+    })
+    if (response.status === 401) {
+      // 会话失效（含 IAM 侧注销联动），通知外壳切回未登录态
+      window.dispatchEvent(new CustomEvent('scs:unauthenticated'))
+    }
     if (!response.ok) throw await buildError(response, requestTraceId)
     return (await response.json()) as T
   } catch (error) {

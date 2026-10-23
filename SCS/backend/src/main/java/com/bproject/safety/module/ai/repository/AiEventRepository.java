@@ -29,4 +29,6 @@ public interface AiEventRepository {
     DemoAiEvent save(DemoAiEvent event);
 
     long count();
+
+    long countPendingReview();
 }

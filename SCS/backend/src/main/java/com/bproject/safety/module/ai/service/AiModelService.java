@@ -37,16 +37,36 @@ public class AiModelService {
     private final AlertService alertService;
     private final DomainLivePublisher livePublisher;
     private final Clock clock;
+    /** review-#5：热切换多模型 save 事务化后的广播门控。 */
+    private final com.bproject.safety.common.realtime.LiveEventGate gate;
 
-    @Autowired
+    /** 兼容历史测试直连（无广播门控，行为与旧版一致）。 */
     public AiModelService(AiModelRepository modelRepository,
                           AlertService alertService,
                           DomainLivePublisher livePublisher,
                           Clock clock) {
+        this(modelRepository, alertService, livePublisher, clock, null);
+    }
+
+    @Autowired
+    public AiModelService(AiModelRepository modelRepository,
+                          AlertService alertService,
+                          DomainLivePublisher livePublisher, Clock clock,
+                          @org.springframework.lang.Nullable com.bproject.safety.common.realtime.LiveEventGate gate) {
         this.modelRepository = modelRepository;
         this.alertService = alertService;
         this.livePublisher = livePublisher;
         this.clock = clock;
+        this.gate = gate;
+    }
+
+    /** 广播统一收口：有事务时延迟至 afterCommit。 */
+    private void broadcast(String type, java.util.Map<String, Object> data) {
+        if (gate != null) {
+            gate.buffer(() -> livePublisher.publish(type, data));
+        } else {
+            livePublisher.publish(type, data);
+        }
     }
 
     /** 查询所有 AI 模型 */
@@ -60,7 +80,8 @@ public class AiModelService {
                 .orElseThrow(() -> ApiException.notFound("AI 模型不存在: " + id));
     }
 
-    /** 选用指定模型为生效模型 */
+    /** 选用指定模型为生效模型。review-#5：循环多模型 save 纳入事务，中途失败不再出现双 ACTIVE。 */
+    @org.springframework.transaction.annotation.Transactional
     public AiModelInfo selectModel(String modelId) {
         AiModelInfo target = getModel(modelId);
         List<AiModelInfo> all = modelRepository.findAll();
@@ -76,7 +97,7 @@ public class AiModelService {
             }
         }
         AiModelInfo updated = getModel(modelId);
-        livePublisher.publish("ai.model_selected", Map.of(
+        broadcast("ai.model_selected", Map.of(
                 "modelId", updated.id,
                 "modelName", updated.name,
                 "taskType", updated.taskType,

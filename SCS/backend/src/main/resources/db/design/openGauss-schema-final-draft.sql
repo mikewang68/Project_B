@@ -22,10 +22,10 @@
 --      - B5-05: 业务编号正式多实例单调唯一由 openGauss 发号表/序列接管，表上加 UNIQUE 索引；离线补传队列加 payload_hash。
 --
 -- 物理设计统计与约束（SQL Parser 实际扫描核验）：
---   * Core Active Tables（核心业务活动表）：24 张。
---     (主数据 3 + 人员设备 4 + 告警聚合 6 + AI聚合 2 + 围栏聚合 3 + 规则聚合 4 + 边缘运维 2 = 24)
+--   * Core Active Tables（核心业务活动表）：25 张。
+--     (主数据 3 + 人员设备 4 + 告警聚合 6 + AI聚合 3 + 围栏聚合 3 + 规则聚合 4 + 边缘运维 2 = 25)
 --   * Platform Auxiliary Tables（平台发号辅助表）：1 张（sys_business_number）。
---   * Total CREATE TABLE Statements：25 张。
+--   * Total CREATE TABLE Statements：26 张。
 --   * Sequences（物理 BIGINT 主键序列）：21 个，全部通过 DEFAULT nextval(...) 1:1 绑定到对应主键列，无孤立序列。
 --   * UUID 聚合根主键：3 张表（safety_alert, ai_event, edge_pending_event）应用层生成，兼顾离线自治与多实例并发。
 --   * Deferred Tables（延期表：字典、HTTP幂等、附件、Outbox）：共 5 张，仅以注释记录，不进活动 DDL。
@@ -480,6 +480,32 @@ CREATE TABLE safety.ai_event_timeline (
 );
 COMMENT ON TABLE safety.ai_event_timeline IS 'AI 识别与复核流程审计时间线';
 
+-- 6.3 AI 工业模型配置表 ai_model（P0-3 / Step 7 新增）----------------------------
+-- 在线选用/热切换与置信度/IoU 参数调优的持久化台账；is_selected 排他性由应用层
+-- selectModel 循环保证（非原子多行 save），故不加硬唯一约束，仅软约束。
+CREATE TABLE safety.ai_model (
+    model_code           VARCHAR(64)  NOT NULL,            -- 应用层业务编号（如 MODEL-YOLO-PPE-01）
+    model_name           VARCHAR(128) NOT NULL,            -- 模型名称（如 YOLOv8-SafetyHelmet-v2.3）
+    task_type            VARCHAR(64)  NOT NULL,            -- 业务任务类型（PPE/越界/烟火/跌倒/吊钩防撞）
+    version_no           VARCHAR(24),                      -- 模型版本号
+    engine_type          VARCHAR(32),                      -- 推理引擎（TensorRT FP16/ONNX Runtime/Ascend CANN）
+    accuracy_map         NUMERIC(6,4),                     -- 检测精度 mAP@0.5（0.9460 = 94.6%）
+    latency_ms           NUMERIC(8,2),                     -- 平均推理时延（ms）
+    fps                  NUMERIC(6,2),                     -- 推理吞吐（帧/秒）
+    confidence_threshold NUMERIC(4,2) NOT NULL DEFAULT 0.70, -- 置信度判定阈值 0.20~0.95
+    iou_threshold        NUMERIC(4,2) NOT NULL DEFAULT 0.45, -- NMS IoU 重叠度阈值 0.20~0.80
+    is_selected          BOOLEAN      NOT NULL DEFAULT false, -- 当前任务选用生效（应用层保证至多一个）
+    status_code          VARCHAR(16)  NOT NULL DEFAULT 'READY', -- ACTIVE 运行中 / READY 已就绪 / INACTIVE 停用
+    weight_size          VARCHAR(32),                      -- 权重文件大小（如 43.5 MB）
+    supported_classes    JSONB        NOT NULL DEFAULT '[]',   -- 目标检测类别清单
+    description          TEXT,                             -- 适用场景与技术说明
+    is_deleted           BOOLEAN      NOT NULL DEFAULT false, -- 软删除标记
+    updated_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    created_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT pk_ai_model PRIMARY KEY (model_code)
+);
+COMMENT ON TABLE safety.ai_model IS 'AI 工业模型配置台账（在线选用热切换与参数调优持久化；软删除）';
+
 -- =============================================================================
 -- 7. 电子围栏聚合（Fence Aggregate Cluster，3 张表）—— [P0 / P1]
 --    全版本化管理：主表维持当前状态指针，历史版本存子表
@@ -841,6 +867,7 @@ CREATE TRIGGER trg_prevent_delete_safety_alert_linkage_step BEFORE DELETE ON saf
 -- AI 识别事件聚合群防删保护
 CREATE TRIGGER trg_prevent_delete_ai_event BEFORE DELETE ON safety.ai_event FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
 CREATE TRIGGER trg_prevent_delete_ai_event_timeline BEFORE DELETE ON safety.ai_event_timeline FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
+CREATE TRIGGER trg_prevent_delete_ai_model BEFORE DELETE ON safety.ai_model FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
 
 -- 电子围栏聚合群防删保护
 CREATE TRIGGER trg_prevent_delete_safety_fence BEFORE DELETE ON safety.safety_fence FOR EACH ROW EXECUTE PROCEDURE safety.fn_prevent_physical_delete();
@@ -894,4 +921,7 @@ CREATE OR REPLACE VIEW safety.v_safety_alert AS
 
 CREATE OR REPLACE VIEW safety.v_ai_event AS
     SELECT * FROM safety.ai_event WHERE status_code <> 'CANCELLED' AND status_code <> 'FALSE_POSITIVE';
+
+CREATE OR REPLACE VIEW safety.v_ai_model AS
+    SELECT * FROM safety.ai_model WHERE is_deleted = false;
 

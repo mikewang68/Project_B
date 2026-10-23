@@ -112,6 +112,30 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
         return store.size();
     }
 
+    @Override
+    public java.util.Map<String, Long> countByStatus() {
+        java.util.Map<String, Long> out = new java.util.LinkedHashMap<>();
+        store.values().forEach(a -> out.merge(a.statusCode, 1L, Long::sum));
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, Long> countOpenByRisk() {
+        java.util.Map<String, Long> out = new java.util.LinkedHashMap<>();
+        store.values().stream()
+                .filter(a -> !AlertStatuses.CLOSED.equals(a.statusCode))
+                .forEach(a -> out.merge(a.riskCode, 1L, Long::sum));
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, Long> countByEventType() {
+        java.util.Map<String, Long> out = new java.util.LinkedHashMap<>();
+        store.values().forEach(a ->
+                out.merge(a.eventType == null ? a.title : a.eventType, 1L, Long::sum));
+        return out;
+    }
+
     /** 清空存储（DemoClearableStore，仅 Demo 场景维护 / 测试调用）。 */
     @Override
     public void clearDemoData() {

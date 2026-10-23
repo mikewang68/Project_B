@@ -31,13 +31,33 @@ public class FenceService {
     private final DomainLivePublisher publisher;
     private final Clock clock;
     private final FenceNumberGenerator numberGenerator;
+    /** review-#10：广播经 gate 延迟到 afterCommit（与其余模块收口一致）。 */
+    private final com.bproject.safety.common.realtime.LiveEventGate gate;
 
+    /** 兼容历史测试直连（无广播门控，行为与旧版一致）。 */
     public FenceService(FenceRepository repository, DomainLivePublisher publisher, Clock clock,
                         FenceNumberGenerator numberGenerator) {
+        this(repository, publisher, clock, numberGenerator, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public FenceService(FenceRepository repository, DomainLivePublisher publisher, Clock clock,
+                        FenceNumberGenerator numberGenerator,
+                        @org.springframework.lang.Nullable com.bproject.safety.common.realtime.LiveEventGate gate) {
         this.repository = repository;
         this.publisher = publisher;
         this.clock = clock;
         this.numberGenerator = numberGenerator;
+        this.gate = gate;
+    }
+
+    /** 广播统一收口：有事务时延迟至 afterCommit。 */
+    private void broadcast(String type, java.util.Map<String, Object> data) {
+        if (gate != null) {
+            gate.buffer(() -> publisher.publish(type, data));
+        } else {
+            publisher.publish(type, data);
+        }
     }
 
     public List<DemoFence> list(String keyword, String status, String kind) {
@@ -257,6 +277,6 @@ public class FenceService {
         data.put("edgeSynced", f.edgeSynced);
         data.put("edgeTotal", f.edgeTotal);
         data.put("changeType", op);
-        publisher.publish(LiveEventTypes.FENCE_CHANGED, data);
+        broadcast(LiveEventTypes.FENCE_CHANGED, data);
     }
 }

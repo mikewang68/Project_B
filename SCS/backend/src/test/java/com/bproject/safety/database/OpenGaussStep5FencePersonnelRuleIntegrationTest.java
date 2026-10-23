@@ -227,7 +227,8 @@ public class OpenGaussStep5FencePersonnelRuleIntegrationTest extends OpenGaussSp
         DemoRule saved = ruleRepository.save(rule);
         assertThat(saved).isNotNull();
 
-        RuleQuery query = new RuleQuery("人员防护", "已生效", "严重", "实机作业");
+        // RuleQuery 字段序为 (keyword, category, status, risk)
+        RuleQuery query = new RuleQuery("实机作业", "人员防护", "已生效", "严重");
         List<DemoRule> filtered = ruleRepository.filter(query);
         assertThat(filtered.stream().anyMatch(r -> TEST_RULE_CODE.equals(r.id))).isTrue();
 

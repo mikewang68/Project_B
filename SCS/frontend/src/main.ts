@@ -16,6 +16,11 @@ import '@/styles/screen.scss'
 import '@/styles/mobile.scss'
 import App from './App.vue'
 import router from './router'
+import { bootstrapSession } from '@/api/auth/session'
+
+// 身份链路：若地址带 sso_ticket 则交换成本地会话；否则沿用已有 Cookie。
+// 失败不阻塞挂载——未登录态由页面自身的 401 处理呈现。
+void bootstrapSession()
 
 const app = createApp(App)
 app.use(createPinia()).use(router)
