@@ -9,7 +9,7 @@ export function mayReadBusinessRoute(current: CurrentAuthorization, path: string
   // A plan grant covers the ledger and its details, not nested business resources.
   if (resource === 'plans' && !/^\/api\/plans(?:\/[^/]+)?\/?$/.test(path)) return false;
   const alternatives = resource === 'plans'
-    ? ['pps:api:plans:read', 'plan:view', 'pps:plan:list:view']
+    ? ['pps:api:plans:read', 'plan:view', 'pps:plan:view', 'pps:plan:list:view']
     : resource === 'overview'
       ? ['pps:api:overview:read', 'overview:view', 'pps:overview:view']
       : [`pps:api:${resource}:read`];

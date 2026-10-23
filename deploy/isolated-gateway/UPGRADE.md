@@ -33,6 +33,7 @@ PSMS 后端回归在 `PSMS` 执行 `pnpm exec vitest run --config vitest.backend
 4. 独立全局只读角色：`027-platform-readonly-role.sql`。该迁移不为用户分配角色或项目范围。
    WMS 原生读取编码继续执行 `028-wms-native-read-permissions.sql`；本地查看权限仍须显式配置，并与中央当前权限取交集。
    PSMS 已发布读取适配器执行 `029-psms-native-read-permissions.sql`，其他资源读取须另外登记，不能因本地账号有全局数据范围就自动开放。
+   完整导航目录导入后执行 `030-core-feature-view-mappings.sql`，补齐五个核心入口的查看映射与独立只读授权。它不批准发布、不替换已有 VIEW 决策；升级为严格只读菜单检查时须先完成此步。
 5. EHMS 聚合项目维度：`EHMS/sql/027_project_scope.sql`。历史数据先进入 `UNASSIGNED`，依据明确归属回填；迁移后旧版不带项目条件的后端不能继续写入。
 6. EMCS 令牌撤销：`EMCS/sql/026_token_revocations.sql`。撤销记录必须保留到令牌过期。
 7. WMS 显式主体映射：`WMS/WMS/db/sso/001-wms-sso-subject-map.sql`；已有映射须核对并保留。

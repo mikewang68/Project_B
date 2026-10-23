@@ -7,7 +7,7 @@ describe('current SSO business read grants', () => {
     expect(mayReadBusinessRoute(limited([]), '/api/plans')).toBe(false);
     expect(mayReadBusinessRoute(limited(['pps:entry:view']), '/api/plans/PLAN-1')).toBe(false);
   });
-  it.each(['pps:api:plans:read', 'plan:view', 'pps:plan:list:view'])('accepts the explicit plan grant %s', permission => {
+  it.each(['pps:api:plans:read', 'plan:view', 'pps:plan:view', 'pps:plan:list:view'])('accepts the explicit plan grant %s', permission => {
     expect(mayReadBusinessRoute(limited([permission]), '/api/plans')).toBe(true);
     expect(mayReadBusinessRoute(limited([permission]), '/api/plans/PLAN-1')).toBe(true);
     expect(mayReadBusinessRoute(limited([permission]), '/api/reports')).toBe(false);
