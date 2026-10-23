@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS wms_sso_subject_map (
     audience        VARCHAR(16)  NOT NULL DEFAULT 'wms',
     local_user_id   BIGINT       NOT NULL,
     company_code    VARCHAR(64)  NOT NULL DEFAULT '',
-    zone_code       VARCHAR(64)  NOT NULL DEFAULT '',
+    -- A-compatible Gauss treats empty strings as NULL. NULL denotes no zone claim;
+    -- any nonblank zone remains unsupported and is rejected by the exchange service.
+    zone_code       VARCHAR(64)  DEFAULT NULL,
     enabled         SMALLINT     NOT NULL DEFAULT 1,
     updated_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (iam_subject, audience)

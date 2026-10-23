@@ -49,9 +49,11 @@ public class WmsSsoSubjectRepository {
                AND m.enabled = 1
                AND u.status = 'ENABLED'
                AND u.login_enabled = TRUE
+               AND u.deleted_at IS NULL
                AND c.status = 'ENABLED'
                AND m.company_code = c.code
-               AND m.company_code <> ''
+               AND m.company_code IS NOT NULL
+               AND length(trim(m.company_code)) > 0
              LIMIT 1
             """)
         .param("subject", iamSubject)

@@ -11,7 +11,18 @@ or administrator fallback. Nonempty unsupported zone, org or domain scope is den
 
 Use Java 17, Maven 3.9+, and the versions of Node/pnpm pinned by the frontend.
 Run the existing WMS database migrations in their documented order, then execute
-`db/sso/001-wms-sso-subject-map.sql` against the WMS database's application schema.
+`db/sso/001-wms-sso-subject-map.sql` against the WMS database's application schema,
+then apply `db/sso/002-gauss-empty-zone.sql`. The second migration also upgrades
+existing mapping tables. Gauss A compatibility converts empty strings to NULL;
+an absent zone claim is therefore nullable. Nonblank zones remain rejected until
+the business data model can enforce them. Company scope must still be nonblank,
+match the local account's active company, and include warehouse and owner access.
+
+The optional `WmsSsoSubjectDatabaseTest` uses connection-local temporary tables.
+Set `WMS_TEST_JDBC_URL`, `WMS_TEST_DB_USER`, and `WMS_TEST_DB_PASSWORD` for an owned
+integration database to exercise the upgrade and mapping query on real Gauss.
+It refuses databases outside the integration naming prefixes and rolls back its
+temporary fixture. No shared accounts or mappings are updated by this test.
 This additional script creates tables only; it does not seed users or mappings.
 Do not run IAM's `010-sso-ticket.sql` or gateway `011-sso-bindings.sql` on WMS.
 Those are IAM-side migrations. Provision explicit IAM and WMS mappings using the
