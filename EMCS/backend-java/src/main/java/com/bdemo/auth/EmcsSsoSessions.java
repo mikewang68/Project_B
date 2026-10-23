@@ -57,7 +57,8 @@ public class EmcsSsoSessions {
   }
   public Current current(Binding binding){return resolve(binding,call("session/introspect",Map.of("subject",binding.subject(),"sessionId",binding.sid(),"audience","emcs")));}
   public boolean permits(Binding binding,Current current,String method,String path){
-    if(Set.of("GET","HEAD").contains(method)&&Set.of("/getInfo","/getRouters","/auth/sso/csrf").contains(path))return true;
+    if(Set.of("GET","HEAD").contains(method)&&Set.of("/getInfo","/getRouters","/auth/sso/csrf",
+        "/transport/crypto/frontend-config","/transport/crypto/public-key").contains(path))return true;
     if(method.equals("POST")&&path.equals("/logout"))return true;
     if(current.permissions().contains("*:*:*")&&!current.readOnly())return true;
     try{
@@ -73,7 +74,7 @@ public class EmcsSsoSessions {
         ||!a.path("readOnly").isBoolean())throw new ResponseStatusException(HttpStatus.FORBIDDEN);
     for(String scope:List.of("company","org","domain","zone"))if(!a.path(scope).asText().isBlank())throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Unsupported data scope");
     boolean readOnly=a.path("readOnly").asBoolean();Set<String> roles=new HashSet<>(users.findRoleKeys(b.userId()));
-    if(readOnly)roles.add("PLATFORM_AUDITOR_READONLY");
+    if(readOnly){roles.remove("admin");roles.add("PLATFORM_AUDITOR_READONLY");}
     Set<String> permissions=new HashSet<>(users.findPermissions(b.userId()));
     boolean full=roles.contains("admin")&&a.path("superAdmin").asBoolean(false)&&!readOnly;
     Set<String> central=new HashSet<>();a.path("permissions").forEach(v->central.add(v.asText()));

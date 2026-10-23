@@ -104,7 +104,7 @@ public class EhmSsoSessions {
         Set<String> localProjects=new HashSet<>();binding.path("projectIds").forEach(v->localProjects.add(ProjectContext.validate(v.asText())));
         granted.retainAll(localProjects);if(granted.isEmpty())throw fail(403,"SSO_PROJECT_NOT_GRANTED");
         boolean readOnly=data.path("readOnly").asBoolean()||role.equals("USER");
-        if(role.equals("SUPER_ADMIN")&&!data.path("superAdmin").asBoolean(false)){
+        if(role.equals("SUPER_ADMIN")&&!readOnly&&!data.path("superAdmin").asBoolean(false)){
             boolean allowed=false;for(var p:data.path("permissions"))if(p.asText().equals("ehealth:admin"))allowed=true;
             if(!allowed)throw fail(403,"SSO_ADMIN_NOT_GRANTED");
         }

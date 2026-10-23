@@ -3,13 +3,33 @@ package com.bdemo.auth;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import com.bdemo.system.SystemUserMapper;
+import com.bdemo.system.UserAccount;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.*;
-import java.util.Set;
+import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class EmcsSsoPermissionTest {
   @TempDir Path directory;
+  @Test
+  void readonlyAdminCannotExposeAdminControlsButKeepsDispatchDataScope() throws Exception {
+    var users=mock(SystemUserMapper.class);
+    when(users.findById(42)).thenReturn(Optional.of(new UserAccount(42,7L,"operator","Operator","","", "0","0")));
+    when(users.findRoleKeys(42)).thenReturn(List.of("admin","dispatch"));
+    when(users.findPermissions(42)).thenReturn(List.of("energy:alert:list","energy:alert:edit"));
+    var service=new EmcsSsoSessions(users,"http://127.0.0.1:1","test-service-identity-at-least-32-characters","unused",true);
+    var assertion=new ObjectMapper().readTree("""
+        {"subject":"subject-a","sessionId":"sid-a","localSubject":"operator","audience":"emcs",
+         "readOnly":true,"superAdmin":true,"permissions":["ems:energy:alert:list","ems:energy:alert:edit"]}
+        """);
+    var resolve=EmcsSsoSessions.class.getDeclaredMethod("resolve",EmcsSsoSessions.Binding.class,com.fasterxml.jackson.databind.JsonNode.class);
+    resolve.setAccessible(true);
+    var current=(EmcsSsoSessions.Current)resolve.invoke(service,new EmcsSsoSessions.Binding("subject-a","sid-a",42,"operator"),assertion);
+    assertTrue(current.readOnly());
+    assertEquals(Set.of("dispatch","PLATFORM_AUDITOR_READONLY"),current.roles());
+    assertEquals(Set.of("energy:alert:list"),current.permissions());
+  }
   @Test
   void nativeAdminRoleDoesNotBypassCurrentCentralPermissionIntersection() throws Exception {
     var path=directory.resolve("bindings.json");
@@ -23,5 +43,9 @@ class EmcsSsoPermissionTest {
     assertTrue(service.permits(binding,granted,"GET","/system/dict/type/list"));
     assertFalse(service.permits(binding,granted,"DELETE","/system/dict/type/42"));
     assertTrue(service.permits(binding,denied,"POST","/logout"));
+    assertTrue(service.permits(binding,denied,"GET","/transport/crypto/frontend-config"));
+    assertTrue(service.permits(binding,denied,"GET","/transport/crypto/public-key"));
+    assertFalse(service.permits(binding,denied,"POST","/transport/crypto/frontend-config"));
+    assertFalse(service.permits(binding,denied,"GET","/transport/crypto/private-key"));
   }
 }

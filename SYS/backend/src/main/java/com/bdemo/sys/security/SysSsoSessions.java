@@ -17,21 +17,22 @@ import org.springframework.http.HttpStatus;
 @Service
 public class SysSsoSessions {
   public record Binding(String subject,String sid,String local)implements java.io.Serializable{}
-  private final String base,credential;private final boolean enabled;private final LoginUserLoader users;
+  private final String base,credential,file;private final boolean enabled;private final LoginUserLoader users;
   private final ObjectMapper json=new ObjectMapper();
   private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
   private final Map<String,HttpSession> sessions=new ConcurrentHashMap<>();
   public SysSsoSessions(LoginUserLoader users,@Value("${sys.sso.iam-base-url:}")String base,
-      @Value("${sys.sso.service-token:}")String credential,@Value("${sys.sso.enabled:false}")boolean enabled){
-    this.users=users;this.base=base.replaceAll("/$","");this.credential=credential;this.enabled=enabled;
+      @Value("${sys.sso.service-token:}")String credential,@Value("${sys.sso.enabled:false}")boolean enabled,
+      @Value("${sys.sso.bindings-file:}")String file){
+    this.users=users;this.base=base.replaceAll("/$","");this.credential=credential;this.enabled=enabled;this.file=file;
   }
   public void authorizeService(String actual){
-    if(!enabled||base.isBlank()||credential.length()<32)throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
+    if(!enabled||base.isBlank()||credential.length()<32||file.isBlank())throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
     if(actual==null||!MessageDigest.isEqual(credential.getBytes(StandardCharsets.UTF_8),actual.getBytes(StandardCharsets.UTF_8)))
       throw new ResponseStatusException(HttpStatus.FORBIDDEN);
   }
   private JsonNode call(String path,Object body){
-    if(!enabled||base.isBlank()||credential.length()<32)throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
+    if(!enabled||base.isBlank()||credential.length()<32||file.isBlank())throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
     try{
       var request=HttpRequest.newBuilder(URI.create(base+"/auth/sso/"+path)).timeout(Duration.ofSeconds(5))
           .header("Content-Type","application/json").header("X-SSO-Service-Token",credential)
@@ -56,7 +57,13 @@ public class SysSsoSessions {
   }
   public LoginUser current(Binding b){return resolve(b,call("session/introspect",Map.of("subject",b.subject(),"sessionId",b.sid(),"audience","sys")));}
   private LoginUser resolve(Binding b,JsonNode a){
-    var user=users.load(b.subject());
+    String localUserId;
+    try{
+      var mapping=json.readTree(java.nio.file.Files.readString(java.nio.file.Path.of(file))).path(b.subject());
+      if(!mapping.path("enabled").asBoolean(false)||mapping.path("localUserId").asText().isBlank())throw new IllegalArgumentException();
+      localUserId=mapping.path("localUserId").asText();
+    }catch(Exception e){throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Explicit SYS subject mapping required");}
+    var user=users.load(localUserId);
     if(user==null||b.sid().isBlank()||!"sys".equals(a.path("audience").asText())||!b.subject().equals(a.path("subject").asText())
         ||!b.local().equals(user.getUsername())||!b.local().equals(a.path("localSubject").asText())
         ||!a.path("readOnly").isBoolean()||!a.path("permissions").isArray())throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
