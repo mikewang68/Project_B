@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { createLatestGuard } from '@/composables/useLatestGuard'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import AIOverview from '@/components/ai/AIOverview.vue'
@@ -37,7 +38,10 @@ const filterTime = ref('全部时段')
 
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 
+const listGuard = createLatestGuard()
+
 async function loadList(): Promise<void> {
+  const token = listGuard.next()
   loading.value = true
   loadError.value = ''
   try {
@@ -53,6 +57,7 @@ async function loadList(): Promise<void> {
       page: 1,
       pageSize: 100,
     })
+    if (!listGuard.isLatest(token)) return
     events.value = page.list
     total.value = page.total
     metrics.value = page.metrics

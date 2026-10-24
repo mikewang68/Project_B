@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import { ElDialog } from 'element-plus'
 import { CircleCheckFilled, Loading } from '@element-plus/icons-vue'
 import type { OpsDevice } from '@/types/operations'
@@ -13,6 +13,11 @@ const emit = defineEmits<{
 
 const phase = ref<'idle' | 'running' | 'done'>('idle')
 const checks = ref<{ label: string; state: 'wait' | 'running' | 'done'; text: string }[]>([])
+
+let diagTimers: ReturnType<typeof setTimeout>[] = []
+function clearDiagTimers(): void {
+  diagTimers.splice(0).forEach(clearTimeout)
+}
 
 watch(
   () => props.modelValue,
@@ -42,6 +47,7 @@ function reconnect(): void {
   if (props.device) emit('reconnect', props.device)
   emit('update:modelValue', false)
 }
+onUnmounted(clearDiagTimers)
 </script>
 
 <template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { createLatestGuard } from '@/composables/useLatestGuard'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import RuleOverview, { type RuleKpi } from '@/components/rules/RuleOverview.vue'
@@ -43,7 +44,10 @@ const kpis = computed<RuleKpi[]>(() => [
 ])
 
 let reloadTimer: ReturnType<typeof setTimeout> | undefined
+const reloadGuard = createLatestGuard()
+
 async function reload(): Promise<void> {
+  const token = reloadGuard.next()
   loading.value = true
   try {
     const [list, m] = await Promise.all([
@@ -55,6 +59,7 @@ async function reload(): Promise<void> {
       }),
       ruleApi.metrics(),
     ])
+    if (!reloadGuard.isLatest(token)) return
     rules.value = list
     metrics.value = m
     if (current.value) {
@@ -261,6 +266,9 @@ const rollbackOpen = ref(false)
 const rollbackRule = ref<SafetyRule>()
 
 // ---------- WebSocket：规则变化后防抖刷新 ----------
+let detailTimer: ReturnType<typeof setTimeout> | undefined
+onUnmounted(() => { if (detailTimer) clearTimeout(detailTimer) })
+
 const offMessage = sharedLiveSocket.onMessage((raw) => {
   if (isDomainLiveEvent(raw) && String(raw.type).startsWith('rule.')) scheduleReload()
 })
@@ -274,7 +282,7 @@ onMounted(async () => {
     try {
       const target = await ruleApi.detail(q)
       upsert(target)
-      setTimeout(() => openDetail(target), 300)
+      detailTimer = setTimeout(() => openDetail(target), 300)
       // 消费完查询参数后静默清理 URL query，避免刷新重复打开详情，且绝不阻塞路由离开
       router.replace({ path: route.path, query: {} })
     } catch {

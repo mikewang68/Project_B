@@ -24,6 +24,9 @@ export interface AlertListParams {
 
 export interface AssignPayload {
   assignee: string
+  /** 复查-P3：USR-* 权威 ID（后端以此为准，assignee 姓名为兼容兜底） */
+  assigneeId?: string | undefined
+  assigneeName?: string | undefined
   priority: '普通' | '紧急'
   limitMin: number
   note?: string | undefined
@@ -44,6 +47,7 @@ export interface ReviewPayload {
 
 export interface TransferPayload {
   assignee: string
+  assigneeId?: string | undefined
   note?: string | undefined
 }
 

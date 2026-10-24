@@ -156,7 +156,7 @@ defineEmits<{
         <button type="button" @click="$emit('edit')">
           <el-icon><Edit /></el-icon>编辑围栏
         </button>
-        <button type="button" @click="$emit('fail')">模拟下发失败</button>
+        <button v-if="fence.status === '已生效'" type="button" @click="$emit('fail')">模拟下发失败</button>
         <button v-if="fence.status === '草稿'" type="button" class="primary" @click="$emit('review')">
           <el-icon><Check /></el-icon>提交评审
         </button>

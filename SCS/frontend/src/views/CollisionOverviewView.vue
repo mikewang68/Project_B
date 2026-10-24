@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { createLatestGuard } from '@/composables/useLatestGuard'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Connection, Cpu, DataLine, RefreshRight, VideoPause, WarningFilled } from '@element-plus/icons-vue'
 import EquipmentRelationMap from '@/components/collision/EquipmentRelationMap.vue'
@@ -77,9 +78,22 @@ function upsertDevice(device: CollisionEquipment): void {
   if (idx >= 0) devices.value.splice(idx, 1, device)
 }
 
+// 复查-P1：WS 事件 250ms 合并 + 设备/配对各自 latest-wins 守卫
+let collisionReloadTimer: ReturnType<typeof setTimeout> | undefined
+function scheduleCollisionReload(): void {
+  if (collisionReloadTimer) clearTimeout(collisionReloadTimer)
+  collisionReloadTimer = setTimeout(() => { void loadDevices().then(loadPair).then(loadTrend) }, 250)
+}
+
+const devicesGuard = createLatestGuard()
+const pairGuard = createLatestGuard()
+
 async function loadDevices(): Promise<void> {
+  const token = devicesGuard.next()
   try {
-    devices.value = await collisionApi.devices()
+    const data = await collisionApi.devices()
+    if (!devicesGuard.isLatest(token)) return
+    devices.value = data
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '设备数据加载失败')
   }
@@ -88,12 +102,15 @@ async function loadTrend(): Promise<void> {
   try {
     trendPoints.value = await collisionApi.trend(selectedCurrentId.value)
   } catch {
+    // 复查-E：留痕便于排障
     trendPoints.value = []
   }
 }
 async function loadPair(): Promise<void> {
+  const token = pairGuard.next()
   try {
     const pair = await collisionApi.pair(selectedCurrentId.value, selectedRelatedId.value)
+    if (!pairGuard.isLatest(token)) return
     distance.value = pair.distance
     risk.value = pair.risk
     radarDown.value = pair.radarDown
@@ -237,7 +254,7 @@ onMounted(() => {
   sharedLiveSocket.connect()
   disposeLive = sharedLiveSocket.onMessage((raw) => {
     if (isDomainLiveEvent(raw) && String(raw.type).startsWith('collision.')) {
-      void loadPair(); void loadDevices()
+      scheduleCollisionReload()
     }
   })
 })

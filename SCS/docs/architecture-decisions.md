@@ -62,3 +62,28 @@ findSelected 按编码稳定序取首个选中行兜底。
 **决策**：后端只承诺 `/actuator/prometheus`（含 scs_* 业务指标）这一标准出口；
 抓取与告警由平台既有体系（Nightingale/categraf 或 Prometheus）接入，SCS 不自建 Grafana。
 看板 JSON 与告警规则作为资产随仓库交付（deploy/monitoring/），不绑定特定实例。
+
+## ADR-008 八项设计决策的最优实现（2026-10-24 全部落地）
+
+第二轮复查上报的 8 项设计决策，经拍板"按最优设计实现"后全部交付：
+
+1. **围栏草稿/生效双表示（D1，最重）**：B5-04 版本保护在围栏域完整落地——
+   EFFECTIVE/MISMATCH 围栏编辑进入 TO_REVIEW 时，JDBC `active_version` 保持指向生效版本
+   （新几何仅写草稿版本行），读路径 join 改为 `version_no = active_version`；
+   发布时根表单条 UPDATE 原子切换指针+状态。InMemory 以双仓（store/draftStore）镜像同一机制。
+   编辑器视图（get/list/require）叠加草稿 overlay 保证编辑连续性，运行时读数不受影响。
+2. **closedAt 全链路（D2）**：DemoAlert 增加 closedAt 字段；库表 closed_at 列本就存在，
+   此前无读侧映射。写侧优先沿用读回值（跨天生命周期多次保存不漂移），首次关闭才现取；
+   处置时长可由 closedAt - occurredAt 派生，durationSec 保持"检测持续时长"语义不变。
+3. **时间线 state_code 收敛（D3）**：append-only 语义收窄为"message/occurred_at 只读"，
+   state_code 随内存快照同步回写（active→done 收敛不再重启丢失/持续累积）。
+4. **关联抢占原子化（D4）**：ai_event.linked_alert_id 以条件 UPDATE（CAS）抢占——
+   多实例并发确认同一 AI 事件只有一个告警抢占成功，败方重复告警转 CANCELLED（状态流转，
+   防删护栏友好），双建风险消除。
+5. **AI 跨聚合去重（决策：维持现状）**：不同 AI 事件的同一违规各自建单是有意设计
+   （源头已由载荷摘要幂等去重），无代码改动。
+6. **告警关闭镜像同步（D6）**：AlertClosureListener 监听器接口 + ObjectProvider 惰性注入
+   （解 Alert→AI 循环依赖）；review/demoRisk 关闭路径触发，AI 事件镜像闭环（幂等）。
+7. **WS 慢客户端防护（D7）**：会话注册表统一以 ConcurrentWebSocketSessionDecorator 包装
+   （发送 2s 超时 / 256KB 缓冲上限），慢客户端被断开而非拖住业务提交线程。
+8. **upgradeRisk 拦 CLOSED（D8）**：已关闭告警不可升级风险等级（与 escalate 状态门禁对齐）。

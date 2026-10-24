@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { createLatestGuard } from '@/composables/useLatestGuard'
 import { ElMessage } from 'element-plus'
 import AnalyticsOverview from '@/components/analytics/AnalyticsOverview.vue'
 import AnalyticsFilters, { type AnalyticsFilterState } from '@/components/analytics/AnalyticsFilters.vue'
@@ -89,10 +90,16 @@ function baseQuery(): AnalyticsQuery {
   }
 }
 
+const datasetGuard = createLatestGuard()
+const eventsGuard = createLatestGuard()
+
 async function loadDataset(): Promise<void> {
+  const token = datasetGuard.next()
   loading.value = true
   try {
-    dataset.value = await analyticsApi.dataset(baseQuery())
+    const data = await analyticsApi.dataset(baseQuery())
+    if (!datasetGuard.isLatest(token)) return
+    dataset.value = data
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : '统计数据加载失败')
   } finally {
@@ -101,6 +108,7 @@ async function loadDataset(): Promise<void> {
 }
 
 async function loadEvents(): Promise<void> {
+  const token = eventsGuard.next()
   try {
     const q: AnalyticsQuery = {
       period: filters.period,
@@ -113,7 +121,9 @@ async function loadEvents(): Promise<void> {
       page: 1,
       pageSize: 200,
     }
-    events.value = (await analyticsApi.events(q)).list
+    const page = await analyticsApi.events(q)
+    if (!eventsGuard.isLatest(token)) return
+    events.value = page.list
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : '事件明细加载失败')
   }

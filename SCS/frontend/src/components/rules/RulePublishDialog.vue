@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import { ElDialog } from 'element-plus'
 import { Check, Loading, WarningFilled, CircleCheckFilled } from '@element-plus/icons-vue'
 import type { EdgeNodeState, SafetyRule } from '@/types/rule'
@@ -41,6 +41,10 @@ function finish(): void {
   if (props.rule) emit('done', props.rule)
   emit('update:modelValue', false)
 }
+onUnmounted(() => {
+  timers.forEach((t) => clearTimeout(t as unknown as number))
+  timers = []
+})
 </script>
 
 <template>

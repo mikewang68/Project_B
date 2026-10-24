@@ -141,7 +141,7 @@ export function ruleActionsOf(status: RuleStatus): string[] {
     case '发布中': return []
     case '已生效': return ['新建版本', '回滚', '停用']
     case '版本异常': return ['重新下发']
-    case '已停用': return ['提交评审']
+    case '已停用': return [] // 交互复查-P1：停用规则提交评审会被后端 409，动作清空
     default: return []
   }
 }

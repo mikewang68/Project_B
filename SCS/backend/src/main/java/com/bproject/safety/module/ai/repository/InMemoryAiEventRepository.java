@@ -140,6 +140,31 @@ public class InMemoryAiEventRepository implements AiEventRepository, DemoClearab
     }
 
     @Override
+    public boolean claimLinkedAlert(String eventId, String alertId) {
+        DemoAiEvent e = store.get(eventId);
+        if (e == null) {
+            return false;
+        }
+        // 单 JVM 下 confirm 已由 KeyedLock 串行化，此处 CAS 为契约完备性
+        if (e.linkedAlertId == null || e.linkedAlertId.isBlank()) {
+            e.linkedAlertId = alertId;
+            return true;
+        }
+        return e.linkedAlertId.equals(alertId);
+    }
+
+    @Override
+    public List<DemoAiEvent> findByLinkedAlertId(String alertId) {
+        if (alertId == null || alertId.isBlank()) {
+            return List.of();
+        }
+        return store.values().stream()
+                .filter(e -> alertId.equals(e.linkedAlertId))
+                .map(DemoAiEvent::copy)
+                .toList();
+    }
+
+    @Override
     public long countPendingReview() {
         return store.values().stream()
                 .filter(e -> com.bproject.safety.module.ai.model.AiReviewStatuses.PENDING.equals(e.statusCode)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { onUnmounted, reactive, ref, watch } from 'vue'
 import { ElDialog } from 'element-plus'
 import { VideoPlay, Loading } from '@element-plus/icons-vue'
 import { ruleApi } from '@/api/rules'
@@ -57,6 +57,10 @@ function levelTone(): string {
     default: return 'success'
   }
 }
+onUnmounted(() => {
+  timer.forEach(clearTimeout)
+  timer = []
+})
 </script>
 
 <template>
