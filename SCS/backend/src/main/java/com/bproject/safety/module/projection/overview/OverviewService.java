@@ -66,17 +66,28 @@ public class OverviewService {
 
     public OverviewSummary summary() {
         long pendingAi = aiEventRepository.countPendingReview();
+        // 复查②：在岗/设备台账改库内聚合（0 台账时后端自动回退演示口径并置 demo 标志）
+        long onDuty = projection.onDutyCount();
+        boolean onDutyDemo = projection.onDutyIsDemo();
+        var health = projection.deviceHealth();
+        int deviceOnline = health.stream().mapToInt(h -> h.online()).sum();
+        int deviceTotal = health.stream().mapToInt(h -> h.total()).sum();
+        boolean deviceDemo = health.stream().anyMatch(h -> h.demo());
+        long risky = collisionRepository.findAll().stream()
+                .filter(d -> !d.isDeleted && !"NORMAL".equals(d.healthCode)).count();
+        boolean riskyDemo = risky == 0;
+        if (riskyDemo) risky = SafetyProjectionService.DEMO_RISKY_DEVICES;
         return new OverviewSummary(
-                SafetyProjectionService.DEMO_ON_DUTY,
-                SafetyProjectionService.DEMO_DEVICE_ONLINE,
-                SafetyProjectionService.DEMO_DEVICE_TOTAL,
+                (int) onDuty,
+                deviceOnline,
+                deviceTotal,
                 projection.activeCount(),
                 projection.processingCount(),
                 projection.countByRiskOpen("紧急"),
                 projection.countByRiskOpen("严重"),
                 pendingAi,
-                SafetyProjectionService.DEMO_RISKY_DEVICES,
-                true, true, true);
+                (int) risky,
+                onDutyDemo, deviceDemo, riskyDemo);
     }
 
     /** 首页态势地图：Demo 底图 + 真实未关闭高风险 Alert 风险覆盖。 */

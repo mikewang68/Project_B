@@ -166,5 +166,15 @@ class AiConfirmEventOrderTest {
                 AlertQuery query) {
             return delegate.summarize(query);
         }
+
+        @Override
+        public java.util.List<com.bproject.safety.module.alert.repository.AlertTrendBucket> trendByHour(int hours) {
+            return delegate.trendByHour(hours);
+        }
+
+        @Override
+        public java.util.List<com.bproject.safety.module.alert.repository.AlertTrendBucket> trendByDay(int days) {
+            return delegate.trendByDay(days);
+        }
     }
 }

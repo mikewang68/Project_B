@@ -176,6 +176,50 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
                 avgSecondsTo(scope, java.util.Set.of(com.bproject.safety.module.alert.model.AlertTimelineEventTypes.CLOSED)));
     }
 
+    // ---------- 复查②：趋势桶（内存流式分组，口径与 JDBC 一致） ----------
+
+    private static final java.time.ZoneId TREND_ZONE = java.time.ZoneId.of("Asia/Shanghai");
+
+    @Override
+    public java.util.List<com.bproject.safety.module.alert.repository.AlertTrendBucket> trendByHour(int hours) {
+        java.time.OffsetDateTime since = java.time.OffsetDateTime.now(clock).minusHours(hours);
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("HH");
+        java.util.Map<String, long[]> buckets = new java.util.LinkedHashMap<>();
+        store.values().stream()
+                .filter(a -> a.occurredAt != null && a.occurredAt.isAfter(since))
+                .forEach(a -> {
+                    String label = a.occurredAt.atZoneSameInstant(TREND_ZONE).format(fmt) + ":00";
+                    long[] arr = buckets.computeIfAbsent(label, k -> new long[2]);
+                    arr[0]++;
+                    if (com.bproject.safety.module.alert.model.RiskLevels.isHigh(a.riskCode)) {
+                        arr[1]++;
+                    }
+                });
+        return buckets.entrySet().stream()
+                .map(e -> new com.bproject.safety.module.alert.repository.AlertTrendBucket(e.getKey(), e.getValue()[0], e.getValue()[1]))
+                .toList();
+    }
+
+    @Override
+    public java.util.List<com.bproject.safety.module.alert.repository.AlertTrendBucket> trendByDay(int days) {
+        java.time.OffsetDateTime since = java.time.OffsetDateTime.now(clock).minusDays(days);
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("MM/dd");
+        java.util.Map<String, long[]> buckets = new java.util.LinkedHashMap<>();
+        store.values().stream()
+                .filter(a -> a.occurredAt != null && a.occurredAt.isAfter(since))
+                .forEach(a -> {
+                    String label = a.occurredAt.atZoneSameInstant(TREND_ZONE).format(fmt);
+                    long[] arr = buckets.computeIfAbsent(label, k -> new long[2]);
+                    arr[0]++;
+                    if (com.bproject.safety.module.alert.model.RiskLevels.isHigh(a.riskCode)) {
+                        arr[1]++;
+                    }
+                });
+        return buckets.entrySet().stream()
+                .map(e -> new com.bproject.safety.module.alert.repository.AlertTrendBucket(e.getKey(), e.getValue()[0], e.getValue()[1]))
+                .toList();
+    }
+
     private Long avgSecondsTo(List<DemoAlert> scope, java.util.Set<String> eventTypes) {
         List<Long> values = scope.stream()
                 .map(a -> secondsToFirst(a, eventTypes))

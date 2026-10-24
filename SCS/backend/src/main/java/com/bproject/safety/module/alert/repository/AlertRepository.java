@@ -58,6 +58,15 @@ public interface AlertRepository {
     AlertScopeSummary summarize(AlertQuery query);
 
     /**
+     * 复查②：按小时桶聚合近 {@code hours} 小时告警（label="HH:00"，Asia/Shanghai）。
+     * 仅供态势趋势曲线；空桶由调用方补齐。
+     */
+    java.util.List<AlertTrendBucket> trendByHour(int hours);
+
+    /** 复查②：按日桶聚合近 {@code days} 天告警（label="MM/dd"）。空桶由调用方补齐。 */
+    java.util.List<AlertTrendBucket> trendByDay(int days);
+
+    /**
      * 有界最近行：按发生时间倒序取至多 limit 条，行内容与 {@link #filter(AlertQuery)} 等价
      * （含聚合子数据）。供分组榜单（设备 / 人员 / 班组 / 趋势）等只需有限样本的路径使用；
      * 作用域 ≤limit 时与全量 filter 结果一致。缺省实现回退 filter 后截断。

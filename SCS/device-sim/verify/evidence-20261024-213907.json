@@ -1,0 +1,199 @@
+{
+  "ts": "2026-10-24T21:39:07.298921+08:00",
+  "total": 20,
+  "passed": 20,
+  "failed": 0,
+  "results": [
+    {
+      "check": "tag 帧流（≥8 条、含坐标/精度/电量）",
+      "pass": true,
+      "detail": {
+        "count": 31,
+        "sample": {
+          "type": "tag",
+          "ts": "2026-10-24T21:38:52.136+08:00",
+          "tagId": "WB-1001",
+          "personId": "P-1001",
+          "x_m": 22.5,
+          "y_m": 41.0,
+          "z_m": 1.2,
+          "accuracy_m": 0.18,
+          "battery_pct": 92,
+          "sos": false,
+          "tamper": false,
+          "station_ids": [
+            "BS-01",
+            "BS-02",
+            "BS-03"
+          ],
+          "backfilled": false,
+          "seq": 1
+        }
+      }
+    },
+    {
+      "check": "坐标随时间移动（轨迹非恒定）",
+      "pass": true,
+      "detail": {
+        "wb1003_points": [
+          [
+            61.0,
+            33.5
+          ],
+          [
+            61.105,
+            33.437
+          ],
+          [
+            61.209,
+            33.375
+          ],
+          [
+            61.313,
+            33.312
+          ]
+        ]
+      }
+    },
+    {
+      "check": "基站 1Hz 状态帧",
+      "pass": true,
+      "detail": {
+        "count": 9
+      }
+    },
+    {
+      "check": "seq 单调递增（幂等键成分）",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "check": "手环下行注入回执（构造帧）",
+      "pass": true,
+      "detail": {
+        "frame": "aa55020757422d3130303301000a1f"
+      }
+    },
+    {
+      "check": "FC03 读距离（cm→m，量程合理）",
+      "pass": true,
+      "detail": {
+        "d1": 19.54,
+        "d2": 19.04
+      }
+    },
+    {
+      "check": "接近场景距离递减 + 速度为正（cm/s→m/s）",
+      "pass": true,
+      "detail": {
+        "d1": 19.54,
+        "d2": 19.04,
+        "speed_m_s": 0.5
+      }
+    },
+    {
+      "check": "强度与健康码（NORMAL=0）",
+      "pass": true,
+      "detail": {
+        "strength": 300,
+        "health": 0
+      }
+    },
+    {
+      "check": "配对设备编码（ASCII 寄存器）",
+      "pass": true,
+      "detail": {
+        "code": "VEH-07"
+      }
+    },
+    {
+      "check": "场景切换 blind（强度<40 + DEGRADED）",
+      "pass": true,
+      "detail": {
+        "strength": 35,
+        "health": 1
+      }
+    },
+    {
+      "check": "webhook 收到 ≥6 条事件",
+      "pass": true,
+      "detail": {
+        "count": 6
+      }
+    },
+    {
+      "check": "违规类型覆盖三类 + 字段齐备",
+      "pass": true,
+      "detail": {
+        "types": [
+          "NO-HELMET",
+          "NO-VEST",
+          "ZONE-INTRUSION"
+        ]
+      }
+    },
+    {
+      "check": "含低置信度事件（<0.85）",
+      "pass": true,
+      "detail": {
+        "lows": [
+          0.62,
+          0.62,
+          0.62
+        ]
+      }
+    },
+    {
+      "check": "duplicate-at 重发同 UUID（幂等）",
+      "pass": true,
+      "detail": {
+        "dup": 1
+      }
+    },
+    {
+      "check": "快照图可下载且为 JPEG",
+      "pass": true,
+      "detail": {
+        "bytes": 6282,
+        "url": "http://127.0.0.1:15030/snapshots/0f4d0f57-f305-4985-b85d-d053ffcfb2f9.jpg"
+      }
+    },
+    {
+      "check": "触发橙灯（FC16 批写 + 回执颜色/时长）",
+      "pass": true,
+      "detail": {
+        "color": 2,
+        "remain": 10,
+        "seq": 1
+      }
+    },
+    {
+      "check": "防抖合并（序号不变、计数+1）",
+      "pass": true,
+      "detail": {
+        "seq": 1,
+        "merged": 1
+      }
+    },
+    {
+      "check": "窗口外触发红生效（序号+1）",
+      "pass": true,
+      "detail": {
+        "color": 3,
+        "seq": 2
+      }
+    },
+    {
+      "check": "非法 pattern 返回异常码",
+      "pass": true,
+      "detail": {
+        "exc": "modbus exception write code=3"
+      }
+    },
+    {
+      "check": "清除指令熄灭",
+      "pass": true,
+      "detail": {}
+    }
+  ]
+}

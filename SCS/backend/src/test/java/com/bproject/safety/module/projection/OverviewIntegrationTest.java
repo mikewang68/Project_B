@@ -80,9 +80,9 @@ class OverviewIntegrationTest {
     void summary() throws Exception {
         mvc.perform(get("/api/v1/overview/summary"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.onDuty", is(128)))
-                .andExpect(jsonPath("$.onDutyDemo", is(true)))
-                .andExpect(jsonPath("$.deviceDemo", is(true)))
+                .andExpect(jsonPath("$.onDuty", is(6)))
+                .andExpect(jsonPath("$.onDutyDemo", is(false)))
+                .andExpect(jsonPath("$.deviceDemo", is(false)))
                 .andExpect(jsonPath("$.activeAlerts", is(9)))
                 .andExpect(jsonPath("$.urgentAlerts", is(1)))
                 .andExpect(jsonPath("$.severeAlerts", is(4)))

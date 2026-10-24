@@ -45,11 +45,17 @@ public class ScreenService {
                 .map(t -> new TrendPoint(t.label(), t.total(), t.highRisk(), t.demo()))
                 .toList();
 
+        // 复查②：在岗/设备台账库内聚合（demo 标志如实）
+        long onDuty = projection.onDutyCount();
+        boolean onDutyDemo = projection.onDutyIsDemo();
         return new ScreenOverview(
-                SafetyProjectionService.DEMO_ON_DUTY, SafetyProjectionService.DEMO_DEVICE_ONLINE,
-                SafetyProjectionService.DEMO_DEVICE_TOTAL,
+                (int) onDuty,
+                health.stream().mapToInt(DeviceHealthItem::online).sum(),
+                health.stream().mapToInt(DeviceHealthItem::total).sum(),
                 all.size(), processing, urgent, severe,
-                true, true, health, distribution, trend);
+                onDutyDemo,
+                health.stream().anyMatch(DeviceHealthItem::demo),
+                health, distribution, trend);
     }
 
     /** 最近事件流（默认 12 条），按发生时间倒序。 */
