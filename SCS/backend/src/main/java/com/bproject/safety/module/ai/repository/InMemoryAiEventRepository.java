@@ -55,8 +55,10 @@ public class InMemoryAiEventRepository implements AiEventRepository, DemoClearab
                 .filter(e -> q.type() == null || q.type().equals(e.type))
                 .filter(e -> q.area() == null || q.area().equals(e.area))
                 .filter(e -> q.camera() == null || q.camera().equals(e.camera))
-                .filter(e -> q.status() == null || AiReviewStatuses.normalize(q.status()).equals(e.statusCode))
-                .filter(e -> q.risk() == null || AiRiskLevels.normalize(q.risk()).equals(e.riskCode))
+                .filter(e -> q.status() == null || (AiReviewStatuses.normalize(q.status()) != null
+                        && AiReviewStatuses.normalize(q.status()).equals(e.statusCode)))
+                .filter(e -> q.risk() == null || (AiRiskLevels.normalize(q.risk()) != null
+                        && AiRiskLevels.normalize(q.risk()).equals(e.riskCode)))
                 .filter(e -> matchConfidence(q.confidence(), e))
                 .filter(e -> matchTimeBucket(q.timeBucket(), e))
                 .sorted(TIME_DESC)

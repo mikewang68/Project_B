@@ -145,11 +145,15 @@ public class AlertService {
         String operator = pickOperator(req == null ? null : req.operator());
         return mutate(id, idemKey, "confirm",
                 List.of(AlertStatuses.PENDING_CONFIRM, AlertStatuses.CONFIRMED), alert -> {
+                    // 复查-1.3：兼容"重复确认"只前推状态，不重写确认人/不追加第二条 CONFIRMED 时间线
+                    boolean firstConfirm = AlertStatuses.PENDING_CONFIRM.equals(alert.statusCode);
                     alert.statusCode = AlertStatuses.PENDING_ASSIGNMENT;
-                    alert.confirmUser = operator;
-                    alert.confirmTime = nowHms();
-                    addEvent(alert, AlertTimelineEventTypes.CONFIRMED, "active",
-                            operator + " 确认事件，等待派单");
+                    if (firstConfirm) {
+                        alert.confirmUser = operator;
+                        alert.confirmTime = nowHms();
+                        addEvent(alert, AlertTimelineEventTypes.CONFIRMED, "active",
+                                operator + " 确认事件，等待派单");
+                    }
                     return alert;
                 });
     }
@@ -168,6 +172,10 @@ public class AlertService {
             int limitMin = req != null && req.limitMin() != null ? req.limitMin()
                     : req != null && req.slaLimitMin() != null ? req.slaLimitMin()
                     : alert.slaLimitMin != null ? alert.slaLimitMin : 15;
+            // 复查-1.4：非正数时限会直接生成已过期的 slaDeadline，拒绝
+            if (limitMin <= 0) {
+                throw ApiException.unprocessable("SLA 时限必须为正数分钟: " + limitMin);
+            }
             alert.assigneeUserCode = user.id();
             alert.assignee = user.name();
             alert.priority = priority;
@@ -257,6 +265,8 @@ public class AlertService {
         String reviewer = pickOperator(req == null ? null : firstNonBlank(req.reviewer(), req.operator()));
         return mutate(id, idemKey, "review", List.of(AlertStatuses.PENDING_REVIEW), alert -> {
             alert.statusCode = AlertStatuses.CLOSED;
+            // 复查-1.2：关闭后移动端工作流缓存不再有意义，清空防残留显示"处理中"
+            alert.mobileStage = null;
             alert.reviewUser = reviewer;
             alert.reviewTime = nowHms();
             alert.reviewNote = req == null ? null : firstNonBlank(req.note(), req.reviewNote());
@@ -325,12 +335,16 @@ public class AlertService {
                     } else {
                         target = RiskLevels.URGENT;
                     }
-                    if (RiskLevels.URGENT.equals(oldCode) || target.equals(oldCode)) {
-                        throw ApiException.conflict("告警已处于最高风险等级或目标等级未升高: " + RiskLevels.label(oldCode));
+                    // 复查-1.1：严格升级校验（rank 比较），杜绝 SEVERE→WARNING 以"升级"名义降级
+                    if (RiskLevels.rank(target) <= RiskLevels.rank(oldCode)) {
+                        throw ApiException.conflict("升级目标等级必须高于当前等级（当前: "
+                                + RiskLevels.label(oldCode) + "，目标: " + RiskLevels.label(target) + "）");
                     }
                     alert.upgradedFromCode = oldCode;
                     alert.previousRiskLevelCode = oldCode;
                     alert.riskCode = target;
+                    // 复查-1.5：与 upgradeRisk 同口径——升级为高风险后联动可用
+                    alert.linkageAvailable = RiskLevels.isHigh(target);
                     // B5-01: 升级是风险等级变化，主生命周期 statusCode 保持原值，不进入 ESCALATED 状态
                     if (AlertStatuses.ESCALATED.equals(alert.statusCode)) {
                         alert.statusCode = AlertStatuses.PROCESSING;
@@ -618,6 +632,18 @@ public class AlertService {
                 a.source = "人员安全";
                 a.statusCode = AlertStatuses.PENDING_CONFIRM;
                 a.assignee = UNASSIGNED;
+                // 复查-1.6：复用旧对象重开演示时清上一轮处置/复核残留
+                a.assigneeUserCode = null;
+                a.confirmUser = null;
+                a.confirmTime = null;
+                a.reviewUser = null;
+                a.reviewTime = null;
+                a.reviewNote = null;
+                a.treatment = null;
+                a.mobileStage = null;
+                a.slaLimitMin = null;
+                a.slaDeadline = null;
+                a.slaRemainingSec = null;
                 // 演示开关语义为“规则引擎判定”，provenance 标记为 RULE。
                 applyProvenance(a, "RULE-PER-001", "v3.3", DecisionSources.RULE, "RULE-PER-001", "v3.3");
                 a.durationSec = 0;

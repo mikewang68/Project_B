@@ -80,6 +80,13 @@ public class InMemoryEdgeEventQueueRepository implements EdgeEventQueueRepositor
     }
 
     @Override
+    public int pendingCountAll() {
+        return (int) store.values().stream()
+                .filter(e -> PendingEventStatuses.pendingLike(e.status))
+                .count();
+    }
+
+    @Override
     public long count() {
         return store.size();
     }

@@ -224,6 +224,15 @@ public class JdbcEdgeEventQueueRepository implements EdgeEventQueueRepository {
     }
 
     @Override
+    public int pendingCountAll() {
+        Integer val = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM safety.edge_pending_event"
+                        + " WHERE status_code IN ('PENDING', 'SYNCING', 'FAILED')",
+                Collections.emptyMap(), Integer.class);
+        return val != null ? val : 0;
+    }
+
+    @Override
     public long count() {
         Long val = jdbcTemplate.queryForObject(COUNT_ALL, Collections.emptyMap(), Long.class);
         return val != null ? val : 0L;

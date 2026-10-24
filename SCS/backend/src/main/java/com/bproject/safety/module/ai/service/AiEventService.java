@@ -252,23 +252,40 @@ public class AiEventService {
                     if (List.of(AlertStatuses.PENDING_CONFIRM, AlertStatuses.CONFIRMED)
                             .contains(current.statusCode)) {
                         alertService.confirm(alertId, new ConfirmRequest(reviewer), null);
+                        current = alertService.get(alertId);
                     }
-                    AssignRequest req = new AssignRequest(user.name(), user.id(), user.name(),
-                            priority, 15, null, null, note);
-                    alertService.assign(alertId, req, null);
-
                     if (event.reviewer == null) {
                         event.reviewer = reviewer;
                         event.reviewTime = nowHms();
                     }
-                    event.statusCode = AiReviewStatuses.ASSIGNED;
-                    event.assigneeUserCode = user.id();
-                    event.assignee = user.name();
-                    event.assignmentPriority = priority;
-                    event.assignmentNote = note;
-                    event.processStatus = AlertStatuses.label(AlertStatuses.PENDING_PROCESS);
-                    appendTimeline(event, "已派单至" + user.name() + "（" + priority + "优先级）", "active",
-                            AiTimelineEventTypes.ASSIGNED);
+                    if (AlertStatuses.PENDING_ASSIGNMENT.equals(current.statusCode)) {
+                        AssignRequest req = new AssignRequest(user.name(), user.id(), user.name(),
+                                priority, 15, null, null, note);
+                        alertService.assign(alertId, req, null);
+                        event.statusCode = AiReviewStatuses.ASSIGNED;
+                        event.assigneeUserCode = user.id();
+                        event.assignee = user.name();
+                        event.assignmentPriority = priority;
+                        event.assignmentNote = note;
+                        event.processStatus = AlertStatuses.label(AlertStatuses.PENDING_PROCESS);
+                        appendTimeline(event, "已派单至" + user.name() + "（" + priority + "优先级）", "active",
+                                AiTimelineEventTypes.ASSIGNED);
+                    } else {
+                        // 复查-2.4：主链已被告警页/移动端直接推进，AI 侧同步对齐而非 409 卡死
+                        // （旧逻辑 assign 409 后事件永久停在 CONFIRMED，process/close 均不可达）
+                        String aiStage = switch (current.statusCode) {
+                            case AlertStatuses.PENDING_PROCESS -> AiReviewStatuses.ASSIGNED;
+                            case AlertStatuses.CLOSED -> AiReviewStatuses.CLOSED;
+                            default -> AiReviewStatuses.PROCESSING;
+                        };
+                        event.statusCode = aiStage;
+                        event.assigneeUserCode = current.assigneeUserCode;
+                        event.assignee = current.assignee;
+                        event.processStatus = AlertStatuses.label(current.statusCode);
+                        appendTimeline(event, "关联告警已由主链推进至"
+                                + AlertStatuses.label(current.statusCode) + "，AI 事件同步对齐",
+                                "active", AiTimelineEventTypes.NOTE);
+                    }
                 });
     }
 
@@ -318,7 +335,7 @@ public class AiEventService {
         String effectiveIdemKey = (idemKey != null && !idemKey.isBlank())
                 ? idemKey
                 : "EDGE-AI:" + (body.cameraCode() != null ? body.cameraCode().trim() : "CAM-01")
-                  + ":" + type + ":" + (System.currentTimeMillis() / 10000);
+                  + ":" + type + ":" + payloadDigest(body);
 
         String eventId = idempotency.process(effectiveIdemKey, () -> gate.buffer(() -> {
             DemoAiEvent event = new DemoAiEvent();
@@ -686,9 +703,26 @@ public class AiEventService {
         return Map.of("status", "error", "running", false, "message", "边缘 AI 推流控制失败");
     }
 
+    /**
+     * 复查-2.5：兜底幂等键的载荷摘要。旧实现按 10 秒时间桶——同摄像头同类型的第二条
+     * 真实上报会被静默去重丢弃；改为对完整载荷取哈希，同载荷重试仍收敛为一次建单，
+     * 不同内容各自成立。
+     */
+    private String payloadDigest(AiIngestRequest body) {
+        try {
+            byte[] bytes = objectMapper.writeValueAsBytes(body);
+            return java.util.HexFormat.of().formatHex(
+                    java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (Exception ex) {
+            return String.valueOf(java.util.Objects.hashCode(body));
+        }
+    }
+
     /** 获取边缘抓拍图片字节流（代理转发至 edge-ai /snapshots/ 静态端点）。 */
     public ResponseEntity<byte[]> getSnapshot(String edgeUrl, String filename) {
-        if (filename == null || filename.isBlank() || filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+        if (filename == null || filename.isBlank() || filename.contains("..") || filename.contains("/")
+                || filename.contains("\\") || filename.contains(":")) {
+            // 复查-6.4：冒号拦截 Windows 盘符相对路径（C:x）逃逸
             return ResponseEntity.badRequest().build();
         }
         String base = (edgeUrl != null && !edgeUrl.isBlank()) ? edgeUrl : "http://127.0.0.1:18090";

@@ -57,8 +57,8 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
         return store.values().stream()
                 .map(DemoAlert::copy)
                 .filter(a -> matchKeyword(q.keyword(), a))
-                .filter(a -> q.risk() == null || RiskLevels.normalize(q.risk()).equals(a.riskCode))
-                .filter(a -> q.status() == null || AlertStatuses.normalize(q.status()).equals(a.statusCode))
+                .filter(a -> noMatchIfInvalid(q.risk(), RiskLevels.normalize(q.risk()), a.riskCode))
+                .filter(a -> noMatchIfInvalid(q.status(), AlertStatuses.normalize(q.status()), a.statusCode))
                 .filter(a -> q.area() == null || q.area().equals(a.area))
                 .filter(a -> q.eventType() == null || q.eventType().equals(a.eventType))
                 .filter(a -> q.source() == null || q.source().equals(a.source))
@@ -217,6 +217,14 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
         return store.remove(id) != null;
     }
 
+    /** 复查-5.1：非法枚举入参（normalize 为 null）不匹配任何行，与 JDBC 路径行为一致，且不 NPE。 */
+    private static boolean noMatchIfInvalid(String raw, String normalized, String actual) {
+        if (raw == null) {
+            return true;
+        }
+        return normalized != null && normalized.equals(actual);
+    }
+
     private boolean matchKeyword(String kw, DemoAlert a) {
         if (kw == null) {
             return true;
@@ -232,14 +240,23 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
     /**
      * 轻量时间范围筛选：支持 ISO 起止时间（from/to）以及前端现有的"近2小时/今日"口径。
      */
+    private static OffsetDateTime parseBoundaryOrThrow(String iso) {
+        try {
+            return OffsetDateTime.parse(iso.trim());
+        } catch (RuntimeException ex) {
+            throw com.bproject.safety.common.error.ApiException.badRequest(
+                    "时间参数格式非法（要求 ISO-8601 OffsetDateTime）: " + iso);
+        }
+    }
+
     private boolean matchTimeRange(AlertQuery q, DemoAlert a) {
         if (a.occurredAt == null) {
             return q.from() == null && q.to() == null;
         }
-        if (q.from() != null && a.occurredAt.isBefore(OffsetDateTime.parse(q.from()))) {
+        if (q.from() != null && a.occurredAt.isBefore(parseBoundaryOrThrow(q.from()))) {
             return false;
         }
-        if (q.to() != null && a.occurredAt.isAfter(OffsetDateTime.parse(q.to()))) {
+        if (q.to() != null && a.occurredAt.isAfter(parseBoundaryOrThrow(q.to()))) {
             return false;
         }
         return true;

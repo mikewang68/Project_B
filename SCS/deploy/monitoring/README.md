@@ -9,7 +9,7 @@
 | `scs_alerts_open` | 未关闭告警数 | 持续 >0 观察；突增结合业务判断 |
 | `scs_alerts_processing` | 处置中告警数 | 长期高位=处置力量不足 |
 | `scs_alerts_closed` | 已关闭告警数 | 趋势观测 |
-| `scs_edge_pending_events` | 边缘断网补传队列深度 | **持续增长 = 补传链路异常**（核心信号） |
+| `scs_edge_pending_events` | 补传队列未完成深度（PENDING/SYNCING/FAILED，不含已补传） | **持续增长 = 补传链路异常**（核心信号） |
 
 ## 方式一：Prometheus 抓取
 

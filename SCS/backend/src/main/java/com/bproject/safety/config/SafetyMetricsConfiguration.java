@@ -42,8 +42,8 @@ public class SafetyMetricsConfiguration {
                 .description("已关闭告警数")
                 .tag("state", AlertStatuses.CLOSED)
                 .register(registry);
-        Gauge.builder("scs.edge.pending.events", edgeQueue, EdgeEventQueueRepository::count)
-                .description("边缘断网补传队列总深度（持续增长=补传链路异常）")
+        Gauge.builder("scs.edge.pending.events", edgeQueue, EdgeEventQueueRepository::pendingCountAll)
+                .description("边缘断网补传队列未完成深度（PENDING/SYNCING/FAILED；持续增长=补传链路异常）")
                 .register(registry);
     }
 }

@@ -310,7 +310,8 @@ public class AnalyticsService {
     public EventPage events(String period, String from, String to, String area, String team, String type,
                             String level, String deviceId, String person, int page, int pageSize) {
         int p = Math.max(1, page);
-        int size = pageSize <= 0 ? 10 : pageSize;
+        // 复查修正：直连构造绕过了 AlertQuery.of 的 200 上限，这里显式钳制防 LIMIT 被撑爆
+        int size = pageSize <= 0 ? 10 : Math.min(pageSize, 200);
         // 设了 Java 派生过滤（班组/类型/设备/人员）时回退全量行内存分页（语义与旧版一致）
         boolean hasDerivedFilters = isFilterValue(team) || isFilterValue(type)
                 || isFilterValue(deviceId) || isFilterValue(person);
@@ -436,7 +437,7 @@ public class AnalyticsService {
         OffsetDateTime start;
         OffsetDateTime end = now.plusMinutes(1);
         if (from != null && !from.isBlank()) {
-            start = OffsetDateTime.parse(from);
+            start = parseBoundaryOrThrow(from);
         } else {
             int back = switch (nz(period)) {
                 case "今日" -> 48; // DEMO 窗口：种子固定 2026-09-04，今日放宽到 48h 保证演示数据可见
@@ -446,7 +447,7 @@ public class AnalyticsService {
             start = now.minusHours(back);
         }
         if (to != null && !to.isBlank()) {
-            end = OffsetDateTime.parse(to);
+            end = parseBoundaryOrThrow(to);
         }
         // Step 8 / P0-4：列条件下推；occurredAt 为空的行不进入窗口结果（库表 occurred_at 为 NOT NULL）
         String riskCode = level == null || level.isBlank() || AlertQuery.ALL.equals(level)
@@ -454,6 +455,15 @@ public class AnalyticsService {
         String areaFilter = area == null || area.isBlank() || AlertQuery.ALL.equals(area) ? null : area;
         return new AlertQuery(null, riskCode, null, areaFilter, null, null, null,
                 null, start.toString(), end.toString(), 1, 1);
+    }
+
+    private static OffsetDateTime parseBoundaryOrThrow(String iso) {
+        try {
+            return OffsetDateTime.parse(iso.trim());
+        } catch (RuntimeException ex) {
+            throw com.bproject.safety.common.error.ApiException.badRequest(
+                    "时间参数格式非法（要求 ISO-8601 OffsetDateTime）: " + iso);
+        }
     }
 
     private static boolean isFilterValue(String v) {

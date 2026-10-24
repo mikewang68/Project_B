@@ -320,16 +320,18 @@ public class JdbcAlertRepository implements AlertRepository {
                 "risk_level_code IN ('SEVERE','URGENT')");
 
         // Q7 平均响应/关闭时长：CTE 限定作用域后与时间线首次节点做 join（秒）
+        // 复查-4.1：与内存 secondsToFirst 口径严格一致——先按 >=occurred_at 过滤时间线节点，
+        // 再逐告警取首个事件（旧写法先全局 min 再过滤，会把含早期节点的告警整体剔除）
         String avgSql = """
-                WITH scope AS (SELECT id, occurred_at FROM safety.safety_alert%W)
-                SELECT
-                  avg(extract(epoch FROM (t.first_at - s.occurred_at))) AS avg_seconds
-                FROM scope s
-                JOIN (SELECT alert_id, min(occurred_at) AS first_at
-                      FROM safety.safety_alert_timeline
-                      WHERE event_type = :aggEventType
-                      GROUP BY alert_id) t
-                  ON t.alert_id = s.id AND t.first_at >= s.occurred_at
+                WITH scope AS (SELECT id, occurred_at FROM safety.safety_alert%W),
+                hits AS (
+                  SELECT s.id AS alert_id, s.occurred_at, min(tl.occurred_at) AS first_at
+                  FROM scope s
+                  JOIN safety.safety_alert_timeline tl
+                    ON tl.alert_id = s.id AND tl.event_type = :aggEventType
+                   AND tl.occurred_at >= s.occurred_at
+                  GROUP BY s.id, s.occurred_at)
+                SELECT avg(extract(epoch FROM (first_at - occurred_at))) AS avg_seconds FROM hits
                 """.replace("%W", where.toString());
         MapSqlParameterSource confirmParams = new MapSqlParameterSource(params.getValues())
                 .addValue("aggEventType", com.bproject.safety.module.alert.model.AlertTimelineEventTypes.CONFIRMED);
@@ -924,6 +926,16 @@ public class JdbcAlertRepository implements AlertRepository {
 
     // ---------- 查询条件与映射辅助 ----------
 
+    /** 复查-5.3：时间边界非法时统一 400（此前 JDBC 静默忽略、内存路径 500，三处行为不一）。 */
+    private static OffsetDateTime parseBoundaryOrThrow(String iso) {
+        try {
+            return OffsetDateTime.parse(iso.trim());
+        } catch (RuntimeException ex) {
+            throw com.bproject.safety.common.error.ApiException.badRequest(
+                    "时间参数格式非法（要求 ISO-8601 OffsetDateTime）: " + iso);
+        }
+    }
+
     private void buildQueryConditions(AlertQuery q, StringBuilder sql, MapSqlParameterSource params) {
         if (q.keyword() != null && !q.keyword().isBlank()) {
             String pattern = "%" + q.keyword().trim() + "%";
@@ -963,20 +975,14 @@ public class JdbcAlertRepository implements AlertRepository {
             params.addValue("assigneePattern", "%" + q.assignee().trim() + "%");
         }
         if (q.from() != null && !q.from().isBlank()) {
-            try {
-                OffsetDateTime fromOdt = OffsetDateTime.parse(q.from());
-                sql.append(" AND occurred_at >= :fromTs ");
-                params.addValue("fromTs", Timestamp.from(fromOdt.toInstant()));
-            } catch (Exception ignored) {
-            }
+            OffsetDateTime fromOdt = parseBoundaryOrThrow(q.from());
+            sql.append(" AND occurred_at >= :fromTs ");
+            params.addValue("fromTs", Timestamp.from(fromOdt.toInstant()));
         }
         if (q.to() != null && !q.to().isBlank()) {
-            try {
-                OffsetDateTime toOdt = OffsetDateTime.parse(q.to());
-                sql.append(" AND occurred_at <= :toTs ");
-                params.addValue("toTs", Timestamp.from(toOdt.toInstant()));
-            } catch (Exception ignored) {
-            }
+            OffsetDateTime toOdt = parseBoundaryOrThrow(q.to());
+            sql.append(" AND occurred_at <= :toTs ");
+            params.addValue("toTs", Timestamp.from(toOdt.toInstant()));
         }
     }
 

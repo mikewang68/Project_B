@@ -124,7 +124,7 @@ class AlertEscalationWorkflowTest {
 
         assertThatThrownBy(() -> service.escalate("ALM-20260904-002", new EscalateRequest("二次升级", "紧急", null, null), null))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("告警已处于最高风险等级或目标等级未升高");
+                .hasMessageContaining("目标等级必须高于当前等级");
     }
 
     @Test
