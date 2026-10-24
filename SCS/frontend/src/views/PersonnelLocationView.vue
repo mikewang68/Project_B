@@ -68,6 +68,7 @@ async function loadFences(): Promise<void> {
   try {
     fences.value = (await fenceApi.list()).filter((f) => f.status !== '已停用')
   } catch {
+    // 复查-E：留痕便于排障
     fences.value = []
   }
 }
@@ -177,7 +178,7 @@ async function showAlerts(): Promise<void> {
     if (!list.length) ElMessage.info('该人员当前没有相关告警')
     else ElMessage.info(`${selectedPerson.value?.name ?? ''} 相关告警 ${list.length} 条，可在告警中心查看处理`)
   } catch {
-    ElMessage.info('告警数据暂不可用')
+    ElMessage.warning('告警数据暂不可用')
   }
 }
 

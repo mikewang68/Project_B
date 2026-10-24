@@ -10,6 +10,7 @@ import AlertAssignDialog from '@/components/alerts/AlertAssignDialog.vue'
 import TreatmentDialog from '@/components/alerts/TreatmentDialog.vue'
 import AlertReviewDialog from '@/components/alerts/AlertReviewDialog.vue'
 import { alertApi, type AssignPayload, type TreatmentPayload } from '@/api/alerts'
+import { createLatestGuard } from '@/composables/useLatestGuard'
 import { mapAlertMetricsDto, mapAlertPage, mapAlertEvent, nextRiskLevel } from '@/adapters/alert'
 import { ALERT_METRIC_BASE, createInitialAlerts } from '@/mock/alertEvents'
 import { useLiveStore } from '@/stores/live'
@@ -78,10 +79,16 @@ function buildListParams() {
   }
 }
 
+const listGuard = createLatestGuard()
+const metricsGuard = createLatestGuard()
+
 async function loadMetrics(): Promise<void> {
+  const token = metricsGuard.next()
   metricsLoading.value = true
   try {
-    metrics.value = mapAlertMetricsDto(await alertApi.getAlertMetrics())
+    const dto = await alertApi.getAlertMetrics()
+    if (!metricsGuard.isLatest(token)) return
+    metrics.value = mapAlertMetricsDto(dto)
   } catch (cause) {
     if (MOCK_FALLBACK_ENABLED) {
       metrics.value = { ...EMPTY_METRICS, ...ALERT_METRIC_BASE }
@@ -112,10 +119,12 @@ function mockPage() {
 }
 
 async function loadList(): Promise<void> {
+  const token = listGuard.next()
   listLoading.value = true
   listError.value = ''
   try {
     const result = mapAlertPage(await alertApi.getAlerts(buildListParams()))
+    if (!listGuard.isLatest(token)) return
     alerts.value = result.list
     total.value = result.total
     page.value = result.page

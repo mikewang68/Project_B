@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, markRaw, onMounted, onUnmounted, ref } from 'vue'
+import { createLatestGuard } from '@/composables/useLatestGuard'
 import { Bell, Clock, Connection, User, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import AlertDrawer from './AlertDrawer.vue'
@@ -61,12 +62,23 @@ async function loadDistribution(): Promise<void> {
   distribution.value = await overviewApi.getDistribution()
 }
 
+// 复查-P1：overviewGuard 保证旧一批响应不覆盖新一批；WS 事件经 300ms 合并防请求风暴
+const overviewGuard = createLatestGuard()
+
 async function refreshAll(): Promise<void> {
+  const token = overviewGuard.next()
   try {
     await Promise.all([loadSummary(), loadMap(), loadFeed(), loadTrend(), loadDistribution()])
+    if (!overviewGuard.isLatest(token)) return
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '安全态势数据加载失败')
   }
+}
+
+let refreshTimer: ReturnType<typeof setTimeout> | undefined
+function scheduleRefresh(): void {
+  if (refreshTimer) clearTimeout(refreshTimer)
+  refreshTimer = setTimeout(() => { void refreshAll() }, 300)
 }
 
 /** 风险演示开关：由后端创建/关闭固定演示告警，五端经 WS 同步 */
@@ -119,10 +131,11 @@ onMounted(() => {
   void refreshAll()
   disposeLive = liveStore.onAlertEvent((event) => {
     if (event.type.startsWith('alert.') || event.type.startsWith('ai.')) {
-      void Promise.all([loadSummary(), loadMap(), loadFeed(), loadDistribution()])
+      scheduleRefresh()
     }
   })
   disposeReconnect = liveStore.onReconnected(() => void refreshAll())
+  onUnmounted(() => { if (refreshTimer) clearTimeout(refreshTimer) })
 })
 
 onUnmounted(() => {

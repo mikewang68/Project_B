@@ -156,7 +156,10 @@ export class SafetyLiveClient {
   connect(): void {
     this.disposers.push(
       sharedLiveSocket.onMessage((raw) => {
-        if ('schemaVersion' in raw) this.onSnapshot(raw as unknown as SafetySnapshot)
+        // 复查-F：最小结构校验后再断言，避免任意带 schemaVersion 键的负载被当快照整包消费
+        if (raw && typeof raw === 'object' && typeof (raw as { schemaVersion?: unknown }).schemaVersion === 'string') {
+          this.onSnapshot(raw as unknown as SafetySnapshot)
+        }
       }),
     )
     this.disposers.push(

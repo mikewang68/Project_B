@@ -5,6 +5,7 @@ import { init, type EChartsCoreOption, type EChartsType } from 'echarts/core'
 export function useEChart(source: Ref<EChartsCoreOption>, deep = false) {
   const el = ref<HTMLDivElement>()
   const chart = shallowRef<EChartsType>()
+  let resizeObserver: ResizeObserver | undefined
 
   function render(option: EChartsCoreOption): void {
     if (!chart.value) return
@@ -18,12 +19,16 @@ export function useEChart(source: Ref<EChartsCoreOption>, deep = false) {
     chart.value = init(el.value)
     render(source.value)
     window.addEventListener('resize', resize)
+    // 复查-G：侧栏折叠等容器尺寸变化不触发 window resize，补 ResizeObserver
+    resizeObserver = new ResizeObserver(() => resize())
+    resizeObserver.observe(el.value)
   })
 
   watch(source, (v) => render(v), { deep })
 
   onBeforeUnmount(() => {
     window.removeEventListener('resize', resize)
+    resizeObserver?.disconnect()
     chart.value?.dispose()
   })
 
