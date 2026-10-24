@@ -1,10 +1,12 @@
 -- =============================================================================
--- SCS D-3: 清理 b_project 中集成测试遗留数据（OpenGaussStep* 系列前缀行）
+-- SCS: 清理集成测试遗留数据（OpenGaussStep* 系列前缀行）
+-- ⚠️ 目标库 = scs_test（门禁专用可弃库，无防删护栏）。
+--    生产库 b_project 的 safety 26 表已全量挂防删触发器（install-delete-guards.sql），
+--    对其执行本脚本会被 ERROR 硬拦截——这是预期保护行为，不要为绕过它关闭触发器。
 -- 安全边界：
 --   1. 只删除带 scs_step 测试前缀的行（幂等键/编号/节点列 LIKE 匹配），不触碰业务数据
---   2. 按外键依赖子表先删；ai_model 挂有防删触发器，仅能软删除
---   3. 事务执行，结尾输出各表清理行数
--- 用法：isula exec bpoc-opengauss su - omm -c "gsql -d b_project -f /tmp/cleanup-test-data.sql"
+--   2. 按外键依赖子表先删；事务执行，结尾输出各表清理行数
+-- 用法：isula exec bpoc-opengauss su - omm -c "gsql -d scs_test -f /tmp/cleanup-test-data.sql"
 -- =============================================================================
 \set ON_ERROR_STOP on
 BEGIN;
