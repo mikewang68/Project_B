@@ -222,7 +222,11 @@ async function onAssignConfirm(payload: AssignPayload | { assignee: string; prio
   const id = current.value.id
   if (assignMode.value === '转派') {
     await runAction(
-      () => alertApi.transferAlert(id, { assignee: payload.assignee, note: payload.note }),
+      () => alertApi.transferAlert(id, {
+        assignee: payload.assignee,
+        assigneeId: (payload as { assigneeId?: string }).assigneeId,
+        note: payload.note,
+      }),
       `已转派给${payload.assignee}`,
     )
   } else {

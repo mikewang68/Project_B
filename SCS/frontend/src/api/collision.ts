@@ -33,7 +33,7 @@ export const collisionApi = {
     ),
 
   releaseRequest: async (deviceId: string, operator: string, checks: string[]) =>
-    postJson<{ requestId: string; status: string; createdAt: string }>(
+    postJson<{ requestId: string; status: string; time: string }>(
       `/collision/release-request`,
       { deviceId, operator, checks },
     ),

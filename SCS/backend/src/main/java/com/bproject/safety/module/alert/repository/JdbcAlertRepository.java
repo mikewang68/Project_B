@@ -940,6 +940,18 @@ public class JdbcAlertRepository implements AlertRepository {
 
     // ---------- 查询条件与映射辅助 ----------
 
+    /** 复查-P2-4：timeRange 口径（近2小时/近4小时）→ occurred_at 下界；未知标签忽略。 */
+    private OffsetDateTime timeRangeStart(String timeRange) {
+        if (timeRange == null || timeRange.isBlank()) {
+            return null;
+        }
+        return switch (timeRange) {
+            case "近2小时" -> OffsetDateTime.now(clock).minusHours(2);
+            case "近4小时" -> OffsetDateTime.now(clock).minusHours(4);
+            default -> null;
+        };
+    }
+
     /** 复查-5.3：时间边界非法时统一 400（此前 JDBC 静默忽略、内存路径 500，三处行为不一）。 */
     private static OffsetDateTime parseBoundaryOrThrow(String iso) {
         try {
@@ -974,6 +986,11 @@ public class JdbcAlertRepository implements AlertRepository {
         if (q.area() != null && !q.area().isBlank()) {
             sql.append(" AND (area_code = :area OR area_name_snapshot = :area) ");
             params.addValue("area", q.area().trim());
+        }
+        OffsetDateTime trStart = timeRangeStart(q.timeRange());
+        if (trStart != null) {
+            sql.append(" AND occurred_at >= :trStart ");
+            params.addValue("trStart", Timestamp.from(trStart.toInstant()));
         }
         if (q.eventType() != null && !q.eventType().isBlank()) {
             sql.append(" AND event_type = :eventType ");

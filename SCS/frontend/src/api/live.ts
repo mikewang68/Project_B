@@ -124,7 +124,8 @@ export function isLiveEvent(raw: unknown): raw is LiveEvent {
     type.startsWith('person.') ||
     type.startsWith('fence.') ||
     type.startsWith('collision.') ||
-    type.startsWith('rule.')
+    type.startsWith('rule.') ||
+    type.startsWith('ops.')
   )
 }
 

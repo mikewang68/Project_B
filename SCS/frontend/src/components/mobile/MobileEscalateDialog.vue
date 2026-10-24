@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ElDialog, ElMessage } from 'element-plus'
 import { ESCALATE_REASONS } from '@/types/incident'
 import type { AlertRisk } from '@/types/alert'
@@ -10,6 +10,13 @@ const emit = defineEmits<{
   confirm: [payload: { reason: string; level: AlertRisk; targets: string }]
 }>()
 
+// 交互复查-P1：只提供比当前等级高的选项（同级/降级会被后端 409 拒绝）
+const RISK_ORDER: AlertRisk[] = ['一般', '预警', '严重', '紧急']
+const higherLevels = computed<AlertRisk[]>(() => {
+  const idx = RISK_ORDER.indexOf(props.currentRisk)
+  return idx < 0 ? [] : RISK_ORDER.slice(idx + 1)
+})
+
 const reason = ref('')
 const level = ref<AlertRisk>('紧急')
 const targets = ref<string[]>(['调度员', '管理人员'])
@@ -17,7 +24,7 @@ const targets = ref<string[]>(['调度员', '管理人员'])
 watch(() => props.modelValue, (v) => {
   if (v) {
     reason.value = ''
-    level.value = '紧急'
+    level.value = higherLevels.value[0] ?? '紧急'
     targets.value = ['调度员', '管理人员']
   }
 })
@@ -32,6 +39,10 @@ function close(): void { emit('update:modelValue', false) }
 function confirm(): void {
   if (!reason.value) {
     ElMessage.warning('请选择升级原因')
+    return
+  }
+  if (higherLevels.value.length === 0 || !higherLevels.value.includes(level.value)) {
+    ElMessage.warning('当前已是最高风险等级，无需升级')
     return
   }
   if (targets.value.length === 0) {
@@ -66,10 +77,9 @@ function confirm(): void {
       </div>
     </div>
     <div class="m-field">
-      <label>升级等级（当前：{{ props.currentRisk }}）</label>
-      <div class="m-segmented m-segmented--mini">
-        <button type="button" :data-active="level === '严重'" @click="level = '严重'">严重</button>
-        <button type="button" :data-active="level === '紧急'" @click="level = '紧急'">紧急</button>
+      <label>升级等级（当前：{{ props.currentRisk }}{{ higherLevels.length === 0 ? '，已是最高' : '' }}）</label>
+      <div v-if="higherLevels.length > 0" class="m-segmented m-segmented--mini">
+        <button v-for="lv in higherLevels" :key="lv" type="button" :data-active="level === lv" @click="level = lv">{{ lv }}</button>
       </div>
     </div>
     <div class="m-field">

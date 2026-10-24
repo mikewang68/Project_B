@@ -249,11 +249,27 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
         }
     }
 
+    /** 复查-P2-4：timeRange 口径落实现（近2小时/近4小时），此前两侧均未消费、筛选静默失效。 */
+    private OffsetDateTime timeRangeStart(AlertQuery q) {
+        if (q.timeRange() == null) {
+            return null;
+        }
+        return switch (q.timeRange()) {
+            case "近2小时" -> OffsetDateTime.now(clock).minusHours(2);
+            case "近4小时" -> OffsetDateTime.now(clock).minusHours(4);
+            default -> null;
+        };
+    }
+
     private boolean matchTimeRange(AlertQuery q, DemoAlert a) {
+        OffsetDateTime rangeStart = timeRangeStart(q);
         if (a.occurredAt == null) {
-            return q.from() == null && q.to() == null;
+            return q.from() == null && rangeStart == null && q.to() == null;
         }
         if (q.from() != null && a.occurredAt.isBefore(parseBoundaryOrThrow(q.from()))) {
+            return false;
+        }
+        if (rangeStart != null && a.occurredAt.isBefore(rangeStart)) {
             return false;
         }
         if (q.to() != null && a.occurredAt.isAfter(parseBoundaryOrThrow(q.to()))) {
