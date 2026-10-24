@@ -8,8 +8,11 @@ INSERT INTO iam_navigation_menu(
  visible,enabled,valid,implementation_status,source_reference,content_sha256,last_batch_id,
  feature_status,unavailable_reason,nav_eligible)
 SELECT 'SCS:safety-screen','SCS','SCS','safety-screen','SCS:dir-display','SCS:dir-display',
- 'SCS.DISPLAY.SCREEN',3,3,10,'安全大屏','安全大屏','PAGE','SPA_ROUTE',
- '/safety-screen','/safety-screen','safety-screen',1,1,1,'UNKNOWN',
+ 'SCS.DISPLAY.SCREEN',3,3,
+ (SELECT COALESCE(MAX(sibling_sort_order),0)+10 FROM iam_navigation_menu
+  WHERE navigation_app_code='SCS' AND parent_stable_menu_key='SCS:dir-display' AND normalized_level=3),
+ '安全大屏','安全大屏','PAGE','SPA_ROUTE',
+ '/safety-screen','/safety/safety-screen','safety-screen',1,1,1,'UNKNOWN',
  'SCS/frontend/src/router/index.ts',repeat('0',64),'SCS_FEATURE_ROUTES_V1',
  'PENDING_VERIFICATION','等待页面、接口及权限核验',0
 WHERE NOT EXISTS(SELECT 1 FROM iam_navigation_menu WHERE stable_menu_key='SCS:safety-screen');
