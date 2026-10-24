@@ -31,4 +31,14 @@ public interface AiEventRepository {
     long count();
 
     long countPendingReview();
+
+    /**
+     * 复查-D4：关联告警原子抢占（CAS 语义）——仅当 linked_alert_id 为空或等于目标值时写入。
+     * 多实例并发确认同一 AI 事件时，只有一个告警能抢占成功，其余侧收到 false 并把自己的
+     * 重复告警转为 CANCELLED，杜绝双建。
+     */
+    boolean claimLinkedAlert(String eventId, String alertId);
+
+    /** 复查-D6：按关联告警反查 AI 事件（关闭镜像同步用），通常 0~1 条。 */
+    List<DemoAiEvent> findByLinkedAlertId(String alertId);
 }

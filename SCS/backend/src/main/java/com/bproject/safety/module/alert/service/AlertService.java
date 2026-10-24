@@ -78,13 +78,27 @@ public class AlertService {
     private final AlertNumberGenerator numberGenerator;
     private final TransactionTemplate transactionTemplate;
     private final KeyedLock keyedLock;
+    /** 复查-D6：告警闭环监听器（AI 事件镜像同步等）；ObjectProvider 惰性解析避免构造期循环依赖。 */
+    private final org.springframework.beans.factory.ObjectProvider<AlertClosureListener> closureListeners;
 
-    @Autowired
+    /** 兼容历史测试直连的 9 参构造（无闭环监听器）。 */
     public AlertService(AlertRepository repository, IdempotencyService idempotency,
                         DemoUserProperties demoUser, DemoMasterData masterData, Clock clock,
                         AlertChangeNotifier notifier, AlertNumberGenerator numberGenerator,
                         @Nullable PlatformTransactionManager transactionManager,
                         @Nullable KeyedLock keyedLock) {
+        this(repository, idempotency, demoUser, masterData, clock, notifier, numberGenerator,
+                transactionManager, keyedLock, null);
+    }
+
+    /** 复查-D6：全参构造（Spring 使用，注入闭环监听器）。 */
+    @Autowired
+    public AlertService(AlertRepository repository, IdempotencyService idempotency,
+                        DemoUserProperties demoUser, DemoMasterData masterData, Clock clock,
+                        AlertChangeNotifier notifier, AlertNumberGenerator numberGenerator,
+                        @Nullable PlatformTransactionManager transactionManager,
+                        @Nullable KeyedLock keyedLock,
+                        @Nullable org.springframework.beans.factory.ObjectProvider<AlertClosureListener> closureListeners) {
         this.repository = repository;
         this.idempotency = idempotency;
         this.demoUser = demoUser;
@@ -94,6 +108,7 @@ public class AlertService {
         this.numberGenerator = numberGenerator;
         this.transactionTemplate = transactionManager != null ? new TransactionTemplate(transactionManager) : null;
         this.keyedLock = keyedLock != null ? keyedLock : new KeyedLock();
+        this.closureListeners = closureListeners;
     }
 
     /** 兼容历史测试直接初始化的 7 参数构造函数 */
@@ -138,6 +153,24 @@ public class AlertService {
     }
 
     // ---------- 写操作 ----------
+
+    /** 复查-D4：并发双建去重兜底——重复告警转 CANCELLED（状态流转，兼容防删护栏）。 */
+    @Transactional
+    public DemoAlert cancelDuplicateAlert(String id, String reason) {
+        return mutate(id, null, "cancel-duplicate",
+                List.of(AlertStatuses.PENDING_CONFIRM, AlertStatuses.CONFIRMED, AlertStatuses.PENDING_ASSIGNMENT,
+                        AlertStatuses.PENDING_PROCESS, AlertStatuses.PROCESSING, AlertStatuses.PENDING_REVIEW),
+                alert -> {
+                    alert.statusCode = AlertStatuses.CANCELLED;
+                    alert.mobileStage = null;
+                    alert.slaDeadline = null;
+                    alert.slaRemainingSec = null;
+                    alert.closedAt = OffsetDateTime.now(clock);
+                    addEvent(alert, AlertTimelineEventTypes.CLOSED, "done",
+                            "重复告警已取消：" + (reason == null ? "并发去重" : reason));
+                    return alert;
+                });
+    }
 
     /** 确认事件：待确认（兼容已确认）→ 待派单。 */
     @Transactional
@@ -263,10 +296,12 @@ public class AlertService {
     @Transactional
     public DemoAlert review(String id, ReviewRequest req, String idemKey) {
         String reviewer = pickOperator(req == null ? null : firstNonBlank(req.reviewer(), req.operator()));
-        return mutate(id, idemKey, "review", List.of(AlertStatuses.PENDING_REVIEW), alert -> {
+        DemoAlert closed = mutate(id, idemKey, "review", List.of(AlertStatuses.PENDING_REVIEW), alert -> {
             alert.statusCode = AlertStatuses.CLOSED;
             // 复查-1.2：关闭后移动端工作流缓存不再有意义，清空防残留显示"处理中"
             alert.mobileStage = null;
+            // 复查-D2：闭环事实时间戳（处置时长可由 closedAt - occurredAt 派生）
+            alert.closedAt = OffsetDateTime.now(clock);
             alert.reviewUser = reviewer;
             alert.reviewTime = nowHms();
             alert.reviewNote = req == null ? null : firstNonBlank(req.note(), req.reviewNote());
@@ -274,6 +309,24 @@ public class AlertService {
             alert.slaRemainingSec = null;
             addEvent(alert, AlertTimelineEventTypes.CLOSED, "done", "复核完成，事件关闭");
             return alert;
+        });
+        fireClosed(closed);
+        return closed;
+    }
+
+    /** 复查-D6：闭环监听器逐个通知（惰性解析）；单监听器异常不影响主链。 */
+    private void fireClosed(DemoAlert alert) {
+        if (closureListeners == null) {
+            return;
+        }
+        closureListeners.orderedStream().forEach(listener -> {
+            try {
+                listener.onAlertClosed(alert);
+            } catch (RuntimeException ex) {
+                org.slf4j.LoggerFactory.getLogger(AlertService.class)
+                        .warn("告警闭环监听器执行失败 alert={} listener={} err={}",
+                                alert.id, listener.getClass().getSimpleName(), ex.getMessage());
+            }
         });
     }
 
@@ -485,6 +538,10 @@ public class AlertService {
             if (!RiskLevels.isValid(target)) {
                 throw ApiException.unprocessable("非法风险等级: " + targetCodeOrLabel);
             }
+            // 复查-D8：已关闭告警生命周期已终结，风险升级应走重开流程而非直接改等级
+            if (AlertStatuses.CLOSED.equals(alert.statusCode)) {
+                throw ApiException.conflict("已关闭告警不可升级风险等级");
+            }
             String old = alert.riskCode;
             alert.upgradedFromCode = old;
             alert.riskCode = target;
@@ -668,10 +725,13 @@ public class AlertService {
                 OffsetDateTime now = OffsetDateTime.now(clock);
                 addEvent(existing, AlertTimelineEventTypes.CLOSED, "done", "风险演示解除，事件关闭");
                 existing.statusCode = AlertStatuses.CLOSED;
+                existing.closedAt = now;
                 existing.updatedAt = now;
                 repository.save(existing);
                 notifier.changed("review", existing);
-                return get(existing.id);
+                DemoAlert closed = get(existing.id);
+                fireClosed(closed);
+                return closed;
             }
             return existing;
         });

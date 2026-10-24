@@ -56,6 +56,28 @@ public class FenceService {
     private final com.bproject.safety.support.concurrency.KeyedLock keyedLock =
             new com.bproject.safety.support.concurrency.KeyedLock();
 
+    /**
+     * 复查-D1：编辑器视图——TO_REVIEW 且存在草稿时叠加草稿几何/版本号，
+     * 保证编辑连续性（重开编辑不丢草稿）；运行时读数（仓储 findAll/findById）不受影响。
+     */
+    private DemoFence withDraftOverlay(DemoFence f) {
+        if (f == null || !FenceStatuses.TO_REVIEW.equals(f.statusCode)) {
+            return f;
+        }
+        return repository.findDraft(f.id)
+                .map(draft -> {
+                    DemoFence view = f.copy();
+                    view.version = draft.version;
+                    view.riskCode = draft.riskCode;
+                    view.polygon = draft.polygon;
+                    view.bufferDistance = draft.bufferDistance;
+                    view.bufferPolygon = draft.bufferPolygon;
+                    view.teams = draft.teams;
+                    return view;
+                })
+                .orElse(f);
+    }
+
     /** 广播统一收口：有事务时延迟至 afterCommit。 */
     private void broadcast(String type, java.util.Map<String, Object> data) {
         if (gate != null) {
@@ -72,11 +94,13 @@ public class FenceService {
                         && (status == null || status.isBlank()
                                 || (FenceStatuses.normalize(status) != null
                                 && FenceStatuses.normalize(status).equals(f.statusCode)))
-                        && (kind == null || kind.isBlank() || kind.equals(f.kind))).toList();
+                        && (kind == null || kind.isBlank() || kind.equals(f.kind)))
+                .map(this::withDraftOverlay)
+                .toList();
     }
 
     public DemoFence get(String id) {
-        return require(id);
+        return withDraftOverlay(require(id));
     }
 
     @Transactional
@@ -317,7 +341,9 @@ public class FenceService {
     }
 
     private DemoFence require(String id) {
-        return repository.findById(id).orElseThrow(() -> ApiException.notFound("围栏不存在: " + id));
+        // 复查-D1：写路径的工作副本取草稿视图（TO_REVIEW 续编辑不丢草稿）
+        return withDraftOverlay(repository.findById(id)
+                .orElseThrow(() -> ApiException.notFound("围栏不存在: " + id)));
     }
 
     private void publish(DemoFence f, String op) {

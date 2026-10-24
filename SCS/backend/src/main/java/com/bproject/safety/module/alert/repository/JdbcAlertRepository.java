@@ -419,8 +419,13 @@ public class JdbcAlertRepository implements AlertRepository {
         Timestamp slaDeadlineTs = a.slaDeadline != null ? Timestamp.from(a.slaDeadline.toInstant()) : null;
         Timestamp acceptedAtTs = a.acceptedAt != null ? Timestamp.from(a.acceptedAt.toInstant()) : null;
         Timestamp arrivedAtTs = a.arrivedAt != null ? Timestamp.from(a.arrivedAt.toInstant()) : null;
-        Timestamp closedAtTs = AlertStatuses.CLOSED.equals(a.statusCode)
-                ? Timestamp.from(a.updatedAt != null ? a.updatedAt.toInstant() : OffsetDateTime.now(clock).toInstant()) : null;
+        // 复查-D2：优先沿用读回的闭环时间戳（跨天生命周期多次保存不漂移）；首次关闭才现取
+        Timestamp closedAtTs = null;
+        if (AlertStatuses.CLOSED.equals(a.statusCode)) {
+            closedAtTs = a.closedAt != null
+                    ? Timestamp.from(a.closedAt.toInstant())
+                    : Timestamp.from(a.updatedAt != null ? a.updatedAt.toInstant() : OffsetDateTime.now(clock).toInstant());
+        }
         Timestamp confirmedAtTs = null;
         if (a.confirmTime != null && !a.confirmTime.isBlank()) {
             try {
@@ -599,7 +604,16 @@ public class JdbcAlertRepository implements AlertRepository {
         for (TimelineEvent event : a.timeline) {
             int seq = event.sequenceNo() != null ? event.sequenceNo() : ++maxSeq;
             if (seqSet.contains(seq)) {
-                // 已经持久化过的时间线节点严格只读，绝对不进行任何 UPDATE 或 DELETE
+                // 已持久化节点的 message/occurred_at 严格只读（append-only）；
+                // 复查-D3：state_code 例外同步——内存快照已把前序节点收敛为 done，
+                // 不回写会导致 DB 中多个节点同时 active 且重启后持续累积
+                jdbcTemplate.update(
+                        "UPDATE safety.safety_alert_timeline SET state_code = :state "
+                                + "WHERE alert_id = :alertId AND sequence_no = :sequenceNo AND state_code <> :state",
+                        new MapSqlParameterSource()
+                                .addValue("state", event.state() != null ? event.state() : "done")
+                                .addValue("alertId", rootUuid)
+                                .addValue("sequenceNo", seq));
                 continue;
             }
             seqSet.add(seq);
@@ -1045,6 +1059,11 @@ public class JdbcAlertRepository implements AlertRepository {
         Timestamp arrivedTs = rs.getTimestamp("arrived_at");
         if (arrivedTs != null) {
             a.arrivedAt = arrivedTs.toInstant().atZone(ZONE).toOffsetDateTime();
+        }
+
+        Timestamp closedTs = rs.getTimestamp("closed_at");
+        if (closedTs != null) {
+            a.closedAt = closedTs.toInstant().atZone(ZONE).toOffsetDateTime();
         }
 
         Timestamp updatedTs = rs.getTimestamp("updated_at");

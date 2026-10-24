@@ -113,13 +113,22 @@ class JdbcAlertRepositoryTest {
         verify(jdbcTemplate, atLeastOnce()).update(anyString(), paramCaptor.capture());
 
         // 检查插入 timeline 的参数：应仅插入 seq=2，不应插入 seq=1
+        // （复查-D3：state_code 收敛 UPDATE 也带 sequenceNo，插入以 eventType 参数区分）
         List<MapSqlParameterSource> timelineInserts = paramCaptor.getAllValues().stream()
-                .filter(p -> p.hasValue("sequenceNo"))
+                .filter(p -> p.hasValue("sequenceNo") && p.hasValue("eventType"))
                 .toList();
 
         assertThat(timelineInserts).hasSize(1);
         assertThat(timelineInserts.get(0).getValue("sequenceNo")).isEqualTo(2);
         assertThat(timelineInserts.get(0).getValue("message")).isEqualTo("节点2");
+
+        // 复查-D3：已持久化的 seq=1（内存快照已收敛为 done）应触发 state_code 同步 UPDATE
+        List<MapSqlParameterSource> stateSyncs = paramCaptor.getAllValues().stream()
+                .filter(p -> p.hasValue("sequenceNo") && p.hasValue("state") && !p.hasValue("eventType"))
+                .toList();
+        assertThat(stateSyncs).hasSize(1);
+        assertThat(stateSyncs.get(0).getValue("sequenceNo")).isEqualTo(1);
+        assertThat(stateSyncs.get(0).getValue("state")).isEqualTo("done");
     }
 
     @Test

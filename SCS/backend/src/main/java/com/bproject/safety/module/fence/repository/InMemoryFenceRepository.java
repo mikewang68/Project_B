@@ -23,6 +23,8 @@ import org.springframework.stereotype.Repository;
 public class InMemoryFenceRepository implements FenceRepository, DemoResettableStore {
 
     private final ConcurrentHashMap<String, DemoFence> store = new ConcurrentHashMap<>();
+    /** 复查-D1：TO_REVIEW 草稿仓（id → 草稿全量对象）；生效版本保持在 store 不动。 */
+    private final ConcurrentHashMap<String, DemoFence> draftStore = new ConcurrentHashMap<>();
 
     public InMemoryFenceRepository() {
         // 不在构造器隐式灌种；由 DemoSeedInitializer 在 app.demo.seed-enabled=true 时统一初始化。
@@ -32,6 +34,7 @@ public class InMemoryFenceRepository implements FenceRepository, DemoResettableS
     @Override
     public void resetDemoData() {
         store.clear();
+        draftStore.clear();
         seed().forEach(f -> store.put(f.id, f.copy()));
     }
 
@@ -105,6 +108,34 @@ public class InMemoryFenceRepository implements FenceRepository, DemoResettableS
 
     @Override
     public DemoFence save(DemoFence fence) {
+        // 复查-D1：已生效/版本异常围栏编辑进入 TO_REVIEW 时，生效版本保持运行，
+        // 新几何进草稿仓；发布（EFFECTIVE）时整体替换并清草稿（指针切换语义）
+        DemoFence current = store.get(fence.id);
+        if (current != null
+                && ("EFFECTIVE".equals(current.statusCode) || "MISMATCH".equals(current.statusCode))
+                && "TO_REVIEW".equals(fence.statusCode)) {
+            DemoFence governing = current.copy();
+            governing.statusCode = fence.statusCode;
+            governing.approver = fence.approver;
+            governing.updatedAt = fence.updatedAt;
+            store.put(governing.id, governing);
+            draftStore.put(fence.id, fence.copy());
+            return governing.copy();
+        }
+        if ("EFFECTIVE".equals(fence.statusCode)) {
+            draftStore.remove(fence.id);
+        }
+        store.put(fence.id, fence.copy());
+        return fence.copy();
+    }
+
+    @Override
+    public java.util.Optional<DemoFence> findDraft(String id) {
+        DemoFence draft = id == null ? null : draftStore.get(id);
+        return draft == null ? java.util.Optional.empty() : java.util.Optional.of(draft.copy());
+    }
+
+    private DemoFence legacySave(DemoFence fence) {
         DemoFence persisted = fence.copy();
         store.put(fence.id, persisted);
         return persisted.copy();

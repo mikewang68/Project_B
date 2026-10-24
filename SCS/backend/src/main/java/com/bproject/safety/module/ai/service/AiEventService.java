@@ -70,7 +70,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 创建关联 Alert 并进入统一处置主链；误报永不建 Alert；重复 confirm 不重复建。</p>
  */
 @Service
-public class AiEventService {
+public class AiEventService implements com.bproject.safety.module.alert.service.AlertClosureListener {
 
     private static final Logger log = LoggerFactory.getLogger(AiEventService.class);
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
@@ -180,10 +180,22 @@ public class AiEventService {
                     // 已有关联 Alert（重复 confirm / 派单后回流）不重复创建
                     if (event.linkedAlertId == null) {
                         DemoAlert alert = alertService.createFromAi(toAlertDraft(event));
-                        event.linkedAlertId = alert.id;
-                        appendTimeline(event, "已生成安全告警 " + alert.id + "，进入统一处置主链", "done",
-                                AiTimelineEventTypes.ALERT_LINKED);
-                        log.info("AI 事件 {} 确认违规，关联告警 {}", id, alert.id);
+                        if (repository.claimLinkedAlert(id, alert.id)) {
+                            event.linkedAlertId = alert.id;
+                            appendTimeline(event, "已生成安全告警 " + alert.id + "，进入统一处置主链", "done",
+                                    AiTimelineEventTypes.ALERT_LINKED);
+                            log.info("AI 事件 {} 确认违规，关联告警 {}", id, alert.id);
+                        } else {
+                            // 复查-D4：并发方已抢占关联——本侧重复告警转 CANCELLED，事件挂既有告警
+                            DemoAiEvent winner = repository.findById(id).orElse(event);
+                            String winnerAlertId = winner.linkedAlertId;
+                            alertService.cancelDuplicateAlert(alert.id,
+                                    "AI 事件 " + id + " 的关联告警已由并发方建立（" + winnerAlertId + "）");
+                            event.linkedAlertId = winnerAlertId;
+                            appendTimeline(event, "并发去重：关联至既有告警 " + winnerAlertId, "done",
+                                    AiTimelineEventTypes.ALERT_LINKED);
+                            log.info("AI 事件 {} 关联抢占失败，复用既有告警 {}", id, winnerAlertId);
+                        }
                     }
                 });
     }
@@ -513,6 +525,33 @@ public class AiEventService {
 
     private String nextAiId() {
         return numberGenerator.nextAiEventNumber();
+    }
+
+    // ---------- D6: 告警闭环镜像同步 ----------
+
+    /** 关联告警进入 CLOSED 时，把 linked AI 事件同步闭环（幂等：已 CLOSED 的跳过）。 */
+    @Override
+    public void onAlertClosed(com.bproject.safety.module.alert.model.DemoAlert alert) {
+        if (alert == null || alert.id == null || alert.id.isBlank()) {
+            return;
+        }
+        try {
+            for (DemoAiEvent event : repository.findByLinkedAlertId(alert.id)) {
+                if (AiReviewStatuses.CLOSED.equals(event.statusCode)) {
+                    continue;
+                }
+                event.statusCode = AiReviewStatuses.CLOSED;
+                event.processStatus = "已完成";
+                appendTimeline(event, "关联告警 " + alert.id + " 已关闭，AI 事件同步闭环",
+                        "done", AiTimelineEventTypes.CLOSED);
+                repository.save(event);
+                notifier.changed("closed", event);
+                log.info("AI 事件 {} 随关联告警 {} 关闭同步闭环", event.id, alert.id);
+            }
+        } catch (Exception ex) {
+            // 镜像同步失败不回滚主链（告警关闭是权威事实）；留痕排查
+            log.warn("AI 事件关闭镜像同步失败 alert={} err={}", alert.id, ex.getMessage());
+        }
     }
 
     // ---------- 内部辅助 ----------
