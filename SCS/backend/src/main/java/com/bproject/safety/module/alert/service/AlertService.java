@@ -26,6 +26,8 @@ import com.bproject.safety.module.alert.model.AlertTimelineEventTypes;
 import com.bproject.safety.module.alert.model.TreatmentRecord;
 import com.bproject.safety.module.alert.repository.AlertRepository;
 import com.bproject.safety.module.alert.repository.AlertQuery;
+import com.bproject.safety.module.alert.repository.AlertScopeSummary;
+import java.util.Map;
 import com.bproject.safety.module.alert.seed.AlertDemoSeeder;
 import com.bproject.safety.support.concurrency.KeyedLock;
 import com.bproject.safety.support.demo.DemoUserProperties;
@@ -122,16 +124,17 @@ public class AlertService {
         return alert;
     }
 
+    /** 顶部统计（压测打磨：两个 GROUP BY 计数组合，替代全量加载后内存计数——6 万行 444ms → 毫秒级）。 */
     public AlertMetrics metrics() {
-        List<DemoAlert> all = repository.findAll();
-        long pending = all.stream().filter(a -> AlertStatuses.PENDING_CONFIRM.equals(a.statusCode)).count();
-        long active = all.stream().filter(a -> AlertStatuses.ACTIVE.contains(a.statusCode)).count();
-        long severe = all.stream()
-                .filter(a -> RiskLevels.SEVERE.equals(a.riskCode) && !AlertStatuses.CLOSED.equals(a.statusCode)).count();
-        long urgent = all.stream()
-                .filter(a -> RiskLevels.URGENT.equals(a.riskCode) && !AlertStatuses.CLOSED.equals(a.statusCode)).count();
-        long closed = all.stream().filter(a -> AlertStatuses.CLOSED.equals(a.statusCode)).count();
-        return new AlertMetrics(all.size(), (int) pending, (int) active, (int) severe, (int) urgent, (int) closed);
+        Map<String, Long> byStatus = repository.countByStatus();
+        long total = byStatus.values().stream().mapToLong(Long::longValue).sum();
+        long pending = byStatus.getOrDefault(AlertStatuses.PENDING_CONFIRM, 0L);
+        long active = AlertStatuses.ACTIVE.stream().mapToLong(s -> byStatus.getOrDefault(s, 0L)).sum();
+        long closed = byStatus.getOrDefault(AlertStatuses.CLOSED, 0L);
+        Map<String, Long> byRiskOpen = repository.countOpenByRisk();
+        long severe = byRiskOpen.getOrDefault(RiskLevels.SEVERE, 0L);
+        long urgent = byRiskOpen.getOrDefault(RiskLevels.URGENT, 0L);
+        return new AlertMetrics((int) total, (int) pending, (int) active, (int) severe, (int) urgent, (int) closed);
     }
 
     // ---------- 写操作 ----------

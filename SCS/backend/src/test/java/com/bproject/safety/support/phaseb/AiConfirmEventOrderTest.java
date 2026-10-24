@@ -160,5 +160,11 @@ class AiConfirmEventOrderTest {
         public java.util.Map<String, Long> countByEventType() {
             return delegate.countByEventType();
         }
+
+        @Override
+        public com.bproject.safety.module.alert.repository.AlertScopeSummary summarize(
+                AlertQuery query) {
+            return delegate.summarize(query);
+        }
     }
 }

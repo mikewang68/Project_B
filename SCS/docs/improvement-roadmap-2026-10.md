@@ -274,6 +274,42 @@ APP_SECURITY_JWT_ALLOWED_ALGORITHMS="RS256"      # 过渡期可 "RS256,HS256" �
 
 **review 遗留（P3，未修）**：29 处 JDBC 仓储 catch 静默（建议统一加 debug 日志的机械改动）、Kvrocks 命令超时代码内兜底、ADR-005 测试顺序耦合。
 
+### GitHub 同步记录与流程（2026-10-24 首次全量同步）
+
+**本次推送**：commit `28ff99e`（main），72 文件 +6470/−479，仅动 `SCS/` 子树；
+密钥扫描干净（仅占位符）；本地 ↔ node4 核心代码（backend/deploy/docs/根配置，353 文件）md5 全等；
+node4 侧 7 个滞后文件已补齐、3 个历史构建产物（deploy/ 下两个旧 jar 与一个误拷 SQL）已归档至 `~/scs-archive/`。
+
+**后续同步流程**（本地为权威树，node4 构建树随发布同步）：
+```bash
+# 1. 同步到 node4（示例）：cd Project_B/SCS && tar czf /tmp/s.tar.gz <变更文件> && scp /tmp/s.tar.gz scs-node4:/tmp/ && ssh scs-node4 'cd ~/Project_B/SCS && tar xzf /tmp/s.tar.gz'
+# 2. 同步到 GitHub：git clone https://github.com/mikewang68/Project_B（或复用工作副本）
+#    将本地 SCS 子树覆盖克隆目录的 SCS/（排除 node_modules/.tools/target/dist/__pycache__/.cache/*.tar.gz/.claude/.config.json）
+#    git add SCS/ → git diff --cached --name-only 核对仅本模块 → commit(feat(SCS): ...) → push origin main
+# 3. 三方一致性核验：本地与 node4 以 find+md5sum 对比 backend/src、deploy、docs 与根配置（LC_ALL=C 排序）
+```
+
+### 2026-10-24 第六次发布记录（真实数据规模压测 + 取数路径打磨）
+
+**压测方法**：node4 独立 `scs_test` 库（权威 schema 全量 DDL 从零建库验证通过）+ 独立端口 18099 实例 +
+60,000 条告警种子（全部落在 7 天窗口内，构成统计路径的**最坏工况**；生产库零接触）。
+压测脚本三件套入库：`deploy/scripts/loadtest-{setup.sql,seed.sql,run.py}`（可复用）。
+
+**优化前基线（单线程 P50/P95）**：alerts-page 12/14ms ✓ | alerts-metrics **444/460ms** ✗ |
+analytics-dataset **609/636ms** ✗ | analytics-events **481/495ms** ✗（8 并发下 30s 超时 ×10）。
+
+**根因与打磨**（新增 `AlertRepository.summarize/filterRecent` 契约，JDBC 走 8 个列过滤后的
+GROUP BY/CTE 标量聚合替代全窗口整表加载；班组/类型等 Java 派生维度过滤时回退全量行路径保持语义）：
+1. `AlertService.metrics()`：两个计数契约组合（6 万行 444ms → **19ms，23×**）；
+2. `AnalyticsService.dataset()`：KPI/等级/区域/类型分布走 summarize，榜单与趋势用有界最近样本
+   （≤2000 条时与全量精确一致；609ms → **171ms，3.6×**）；
+3. `AnalyticsService.events()`：无派生过滤时走存储侧 count+LIMIT/OFFSET 分页
+   （481ms → **28ms，17×**；8 并发从 30s 超时 ×10 → **P99 50ms 零错误**）。
+
+**发布**：门禁 41/41（自动尾清理生效）→ JAR SHA `64fdabc3...5892f` 上线（回滚链 `bak_20261024`），
+health 全 UP、鉴权 401/404 正常。双端 437 项测试全绿；ADR-005 顺序耦合在本轮根治
+（MasterDataConsistencyTest 断言前 resetDemoData，Linux 顺序下首次全量通过）。
+
 ## 建议执行顺序
 
 ```

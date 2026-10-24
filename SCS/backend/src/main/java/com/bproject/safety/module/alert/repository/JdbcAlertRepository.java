@@ -290,6 +290,114 @@ public class JdbcAlertRepository implements AlertRepository {
         return out;
     }
 
+    // ---------- 作用域聚合摘要（压测打磨：替代全窗口整表加载 + Java 聚合） ----------
+
+    @Override
+    public AlertScopeSummary summarize(AlertQuery query) {
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        StringBuilder where = new StringBuilder(" WHERE 1=1 ");
+        buildQueryConditions(query, where, params);
+
+        // Q1 标量：总量 + 未关闭严重/紧急（供顶部 metrics 组合）
+        Map<String, Object> scalar = jdbcTemplate.queryForMap(
+                "SELECT count(*) AS total,"
+                        + " COALESCE(SUM(CASE WHEN risk_level_code = 'SEVERE' AND status_code <> 'CLOSED' THEN 1 ELSE 0 END), 0) AS severe_open,"
+                        + " COALESCE(SUM(CASE WHEN risk_level_code = 'URGENT' AND status_code <> 'CLOSED' THEN 1 ELSE 0 END), 0) AS urgent_open"
+                        + " FROM safety.safety_alert" + where, params);
+        long total = ((Number) scalar.get("total")).longValue();
+        long severeOpen = ((Number) scalar.get("severe_open")).longValue();
+        long urgentOpen = ((Number) scalar.get("urgent_open")).longValue();
+
+        // Q2~Q6 分组：状态 / 风险 / 区域（全量+高风险）/ 目标 / 事件类型（全量+高风险）
+        Map<String, Long> byStatus = groupScope(where, params, "status_code");
+        Map<String, Long> byRisk = groupScope(where, params, "risk_level_code");
+        Map<String, Long> byArea = groupScopeCoalesce(where, params, "area_name_snapshot", null);
+        Map<String, Long> byAreaHigh = groupScopeCoalesce(where, params, "area_name_snapshot",
+                "risk_level_code IN ('SEVERE','URGENT')");
+        Map<String, Long> byTarget = groupScopeCoalesce(where, params, "target_object_name_snapshot", null);
+        Map<String, Long> byEventType = groupScopeCoalesce(where, params, null, null);
+        Map<String, Long> byEventTypeHigh = groupScopeCoalesce(where, params, null,
+                "risk_level_code IN ('SEVERE','URGENT')");
+
+        // Q7 平均响应/关闭时长：CTE 限定作用域后与时间线首次节点做 join（秒）
+        String avgSql = """
+                WITH scope AS (SELECT id, occurred_at FROM safety.safety_alert%W)
+                SELECT
+                  avg(extract(epoch FROM (t.first_at - s.occurred_at))) AS avg_seconds
+                FROM scope s
+                JOIN (SELECT alert_id, min(occurred_at) AS first_at
+                      FROM safety.safety_alert_timeline
+                      WHERE event_type = :aggEventType
+                      GROUP BY alert_id) t
+                  ON t.alert_id = s.id AND t.first_at >= s.occurred_at
+                """.replace("%W", where.toString());
+        MapSqlParameterSource confirmParams = new MapSqlParameterSource(params.getValues())
+                .addValue("aggEventType", com.bproject.safety.module.alert.model.AlertTimelineEventTypes.CONFIRMED);
+        Long avgConfirm = queryAvgSeconds(avgSql, confirmParams);
+        MapSqlParameterSource closeParams = new MapSqlParameterSource(params.getValues())
+                .addValue("aggEventType", com.bproject.safety.module.alert.model.AlertTimelineEventTypes.CLOSED);
+        Long avgClose = queryAvgSeconds(avgSql, closeParams);
+
+        return new AlertScopeSummary(total, severeOpen, urgentOpen,
+                byStatus, byRisk, byArea, byAreaHigh, byTarget, byEventType, byEventTypeHigh,
+                avgConfirm, avgClose);
+    }
+
+    private Long queryAvgSeconds(String sql, MapSqlParameterSource params) {
+        java.math.BigDecimal val = jdbcTemplate.queryForObject(sql, params, java.math.BigDecimal.class);
+        if (val == null) {
+            return null;
+        }
+        double d = val.doubleValue();
+        if (Double.isNaN(d) || Double.isInfinite(d)) {
+            return null;
+        }
+        return Math.round(d);
+    }
+
+    private Map<String, Long> groupScope(StringBuilder where, MapSqlParameterSource params, String column) {
+        Map<String, Long> out = new LinkedHashMap<>();
+        jdbcTemplate.query("SELECT " + column + ", count(*) FROM safety.safety_alert" + where
+                + " GROUP BY " + column, params, rs -> {
+            out.put(rs.getString(1), rs.getLong(2));
+        });
+        return out;
+    }
+
+    /** COALESCE 分组（eventType 为空回退 title；键空值兜底为空串，与内存 nz() 口径一致）。 */
+    private Map<String, Long> groupScopeCoalesce(StringBuilder where, MapSqlParameterSource params,
+                                                 String column, String extraWhere) {
+        String expr;
+        if (column != null) {
+            expr = "COALESCE(" + column + ", '')";
+        } else {
+            expr = "COALESCE(event_type, title, '')";
+        }
+        Map<String, Long> out = new LinkedHashMap<>();
+        String extra = extraWhere == null ? "" : " AND " + extraWhere;
+        jdbcTemplate.query("SELECT " + expr + " AS bucket, count(*) FROM safety.safety_alert" + where
+                + extra + " GROUP BY " + expr, params, rs -> {
+            out.put(rs.getString(1), rs.getLong(2));
+        });
+        return out;
+    }
+
+    @Override
+    public List<DemoAlert> filterRecent(AlertQuery query, int limit) {
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        StringBuilder sql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE 1=1 ");
+        buildQueryConditions(query, sql, params);
+        sql.append(" ORDER BY occurred_at DESC, id DESC LIMIT :recentLimit");
+        params.addValue("recentLimit", Math.max(1, limit));
+        Map<UUID, DemoAlert> alertMap = new LinkedHashMap<>();
+        jdbcTemplate.query(sql.toString(), params, rs -> {
+            UUID id = (UUID) rs.getObject("id");
+            alertMap.put(id, mapAlertRoot(rs));
+        });
+        loadAggregateChildren(alertMap);
+        return alertMap.values().stream().map(DemoAlert::copy).toList();
+    }
+
     // ---------- 内部持久化辅助 ----------
 
     private void saveRootAlert(UUID rootUuid, String alertNo, DemoAlert a) {

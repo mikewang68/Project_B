@@ -49,4 +49,21 @@ public interface AlertRepository {
 
     /** 按事件类型计数（eventType 为空时回退标题，与 riskDistribution 口径一致）。 */
     Map<String, Long> countByEventType();
+
+    /**
+     * 作用域聚合摘要（压测打磨）：KPI / 等级分布 / 区域排行 / 重复事件 / 平均响应与关闭时长
+     * 的一次性 SQL 聚合（JDBC），语义与对该 scope 全量行做内存聚合一致。
+     * 供统计分析等只读聚合路径使用，替代全窗口整表加载。
+     */
+    AlertScopeSummary summarize(AlertQuery query);
+
+    /**
+     * 有界最近行：按发生时间倒序取至多 limit 条，行内容与 {@link #filter(AlertQuery)} 等价
+     * （含聚合子数据）。供分组榜单（设备 / 人员 / 班组 / 趋势）等只需有限样本的路径使用；
+     * 作用域 ≤limit 时与全量 filter 结果一致。缺省实现回退 filter 后截断。
+     */
+    default List<DemoAlert> filterRecent(AlertQuery query, int limit) {
+        List<DemoAlert> all = filter(query);
+        return all.size() <= limit ? all : all.subList(0, limit);
+    }
 }
