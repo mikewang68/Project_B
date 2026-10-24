@@ -49,7 +49,10 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .logout(logout -> logout.disable())
                 .cors(cors -> {
                 })
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Native exchange creates a fresh session; subsequent requests must share
+                // its cookie even though the security context is rebuilt on every request.
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionFixation(fixation -> fixation.none()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error", "/actuator/health").permitAll()

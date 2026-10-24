@@ -23,7 +23,10 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
                 .cors(cors -> {})
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Exchange replaces the old session. Per-request rotation would invalidate
+                // the cookie carried by concurrent authenticated browser requests.
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionFixation(fixation -> fixation.none()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/captchaImage", "/error", "/actuator/health/**",
                                 "/transport/crypto/frontend-config", "/transport/crypto/public-key").permitAll()

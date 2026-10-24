@@ -48,7 +48,10 @@ public class SecurityConfig implements WebMvcConfigurer {
         .formLogin(form -> form.disable())
         .logout(logout -> logout.disable())
         .cors(cors -> {})
-        .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        // Exchange already invalidates the old session and creates a fresh one. With a
+        // stateless security context, rotating again on every request races browser APIs.
+        .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .sessionFixation(fixation -> fixation.none()))
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(HttpMethod.OPTIONS, "/**")
