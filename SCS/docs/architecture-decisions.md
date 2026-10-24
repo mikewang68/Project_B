@@ -26,13 +26,17 @@ findSelected 按编码稳定序取首个选中行兜底。
 **后果**：极端并发下可能出现瞬时双选中（窗口极小，读侧有兜底）。
 **解锁条件**：如需强一致，改为单条 SQL 原子切换（CASE WHEN 批量 UPDATE）。
 
-## ADR-004 b_project 防删触发器策略缺口
+## ADR-004 b_project 防删触发器策略（已闭环 2026-10-24）
 
-**背景**：权威 schema 定义了 25 表防物理删除触发器，但 b_project 实况只有 ai_model 挂了
-（P0-3 部署时补建了函数副本）。
-**决策**：不擅自全库补挂——既有运维流程可能依赖 DELETE（如测试清理）；
-全库触发器补挂属基础设施治理项，由 DBA 统一决策（见路线图 D-3）。
-**后果**：正式表存在被误 DELETE 的风险窗口；备份（每日 02:30，保留 14 天）是当前兜底。
+**背景**：权威 schema 定义了全表防物理删除触发器，但 b_project 实况长期只有 ai_model 挂了。
+**决策与执行**（项目组拍板"只做 SCS 自己的 safety 库表"）：
+1. 前置核实：server profile 应用层零 DELETE（DemoAlertMaintenance 仅支持 InMemory，优雅降级）；
+2. 门禁从 b_project 切换至独立可弃库 **scs_test**（同构 schema、不挂护栏、可随时重建），
+   生产库不再承接任何测试写入；连续两轮门禁 41/41 验证切换无损；
+3. `deploy/scripts/install-delete-guards.sql`（幂等）为 b_project **safety 模式 26 张表**全量挂
+   `trg_prevent_delete_*`；金丝雀验证 DELETE 被 ERROR 硬拦截、事务中止零数据受损。
+**注意**：今后任何对 b_project 的数据清理只能走 UPDATE 软删/状态流转；scs_test 重建流程见
+`run-opengauss-tests.sh` 头注释（drop → setup → 权威 DDL → 授权 → 摘护栏）。
 
 ## ADR-005 测试顺序耦合（已根治 2026-10-24）
 

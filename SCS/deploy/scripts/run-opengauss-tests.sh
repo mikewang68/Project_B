@@ -56,8 +56,10 @@ for var in OPENGAUSS_HOST OPENGAUSS_PORT OPENGAUSS_DATABASE OPENGAUSS_USERNAME O
     fi
 done
 
-# 测试目标库：默认复用 backend.env 的库；联调敏感场景可 SCS_TEST_DATABASE=scs_test 切换
-TEST_DATABASE="${SCS_TEST_DATABASE:-${OPENGAUSS_DATABASE}}"
+# 门禁目标库：默认独立可弃库 scs_test（与生产同构、含防删触发器）；
+# 生产库 b_project 不再承接任何测试写入。重建流程：
+#   loadtest-drop.sql → loadtest-setup.sql → 权威 DDL → safety_admin 授权
+TEST_DATABASE="${SCS_TEST_DATABASE:-scs_test}"
 TEST_HOST="${SCS_TEST_HOST:-${OPENGAUSS_HOST}}"
 TEST_PORT="${SCS_TEST_PORT:-${OPENGAUSS_PORT}}"
 
@@ -117,16 +119,7 @@ else
     exit ${MVN_RC}
 fi
 
-# 门禁自带尾清理：测试前缀行不滞留 b_project（幂等，可重复执行）
-CLEANUP_SQL="${SCS_ROOT}/deploy/scripts/cleanup-test-data.sql"
-if [[ -f "${CLEANUP_SQL}" ]] && command -v isula >/dev/null 2>&1; then
-    if sudo isula cp "${CLEANUP_SQL}" bpoc-opengauss:/tmp/scs-cleanup.sql 2>/dev/null \
-       && sudo isula exec bpoc-opengauss su - omm -c \
-            "gsql -d ${TEST_DATABASE} -q -t -A -f /tmp/scs-cleanup.sql" >/dev/null 2>&1; then
-        echo "[OK] Post-run test data cleanup executed"
-    else
-        echo "[WARN] Cleanup skipped (isula/sudo unavailable or non-node4 host) — run deploy/scripts/cleanup-test-data.sql manually"
-    fi
-fi
+# 注：scs_test 与生产同构含防删触发器，测试前缀行不做即时清理（测试自带每轮唯一前缀，
+# 固定前缀用例为 upsert 语义，跨轮自收敛）；库可弃，积累过多时按脚本头注释重建。
 echo "========================================"
 exit 0

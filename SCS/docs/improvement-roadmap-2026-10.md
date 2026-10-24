@@ -23,7 +23,7 @@
 | P2-4 | MinIO 对象存储接入（抓拍原图） | P2 | MinIO 服务 | 1~2 天 |
 | D-1 | RocketMQ 真实启用与可靠性验证 | 运维 | 联调窗口 | 待办（外部窗口） |
 | D-2 | Grafana 看板与指标告警 | 运维 | 无 | ✅ 完成（2026-10-24） |
-| D-3 | 数据生命周期策略（备份/归档/保留期） | 运维 | 无 | 🟡 备份+测试数据清理已完成；归档分区/触发器策略/openGemini 保留期待 DBA |
+| D-3 | 数据生命周期策略（备份/归档/保留期） | 运维 | 无 | 🟡 备份+测试数据清理+**防删护栏全量安装**已完成；归档分区按决策暂不动；openGemini 已核实（见下） |
 | D-4 | 架构决策记录 + 交接文档同步机制 | 流程 | 无 | ✅ 完成（2026-10-24，docs/architecture-decisions.md ADR-001~007） |
 
 ---
@@ -309,6 +309,25 @@ GROUP BY/CTE 标量聚合替代全窗口整表加载；班组/类型等 Java 派
 **发布**：门禁 41/41（自动尾清理生效）→ JAR SHA `64fdabc3...5892f` 上线（回滚链 `bak_20261024`），
 health 全 UP、鉴权 401/404 正常。双端 437 项测试全绿；ADR-005 顺序耦合在本轮根治
 （MasterDataConsistencyTest 断言前 resetDemoData，Linux 顺序下首次全量通过）。
+
+### 2026-10-24 DBA 决策执行记录（①防删护栏 / ③openGemini 核实）
+
+**① 防删护栏全量安装（决策：只做 SCS 的 safety 库表）**：
+前置核实 server profile 应用层零 DELETE（DemoAlertMaintenance 仅 InMemory）→ 门禁切换至
+独立可弃库 scs_test（重建流程固化在 run-opengauss-tests.sh 头注释；连续两轮 41/41 验证无损）
+→ `install-delete-guards.sql`（幂等）为 b_project **safety 26 张表**全量挂护栏 →
+金丝雀验证 DELETE 被 ERROR 硬拦截（事务中止零受损）→ 生产服务健康无恙。
+此后 b_project 数据清理只能走软删/状态流转（详见 ADR-004 已闭环）。
+
+**③ openGemini 核实结论（只读，未做任何变更）**：
+- 服务 active；磁盘 /data 共 1.8T 已用 3%，openGemini 数据目录实际 **1.7G**；
+- 共 8 个库（b_poc / ehm_telemetry / psms_telemetry / e13_* / prom / _internal），SCS 相关的
+  b_poc 仅 1 个度量 bpoc_telemetry、共 **4.2 万个点**（历史演示数据，当前无持续写入——
+  高频轨迹/测距源属 P2 硬件接入，尚未接）；
+- 保留策略确为 **autogen / duration=0s（无限保留）**——隐患属实但当下零风险；
+- **建议**：P2 硬件接入前设一次保留期（届时按实测写入速率定，典型 90 天），登记于 P2 前置项。
+
+**②（归档/分区）与 ④（恢复演练）按决策暂不执行**，维持登记。
 
 ## 建议执行顺序
 
