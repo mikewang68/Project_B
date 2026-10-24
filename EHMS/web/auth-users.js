@@ -34,7 +34,7 @@
     });}
   const baseAction=handleAction;handleAction=function(event){const a=event.currentTarget.dataset.action,id=event.currentTarget.dataset.id;
     if(a==='authReloadUsers')return loadUsers();if(a==='authNewUser')return newUser();if(a==='authEditUser')return editUser(id);if(a==='authResetPassword')return password(id);if(a==='authChangePassword')return password();if(a==='authLogout')return auth.logout().catch(e=>toast(e.message));return baseAction(event);};
-  const basePage=setPage;setPage=function(page){basePage(page);if(page==='iam')loadUsers();};
+  const basePage=setPage;setPage=function(page,options){basePage(page,options);if(page==='iam')loadUsers();};
   let first=true;document.addEventListener('ehm-auth-change',()=>{
     applyPolicy();if(!auth.user){state.authUsers.items=[];state.backendConnected=false;return;}
     if(first){first=false;}else{closeModal();closeDrawer();loadBackendData();if(DELIVERY_PAGES.has(state.page))loadDeliveryConsole();if(state.page==='iam')loadUsers();}

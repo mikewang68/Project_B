@@ -6,12 +6,14 @@
     if(!select){
       select=document.createElement('select');select.id='ehmProjectSelect';select.setAttribute('aria-label','当前项目');
       host.prepend(select);
-      select.addEventListener('change',async()=>{
-        auth.projectId=select.value;
-        if(await auth.refresh()){
-          if(typeof loadBackendData==='function')await loadBackendData();
-          if(typeof renderPage==='function')renderPage();
-        }
+      select.addEventListener('change',()=>{
+        const project=select.value;
+        if(project===auth.projectId)return;
+        // A new document clears every module cache and cancels requests for the old
+        // project. The backend still authorizes the requested project on restoration.
+        select.value=auth.projectId;select.disabled=true;
+        const target=new URL(location.href);target.searchParams.set('project',project);
+        location.assign(target.toString());
       });
     }
     select.replaceChildren();
