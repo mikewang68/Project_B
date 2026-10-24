@@ -2,7 +2,7 @@ import router from './router'
 import { ElMessage } from 'element-plus'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
-import { getToken } from '@/utils/auth'
+import { getToken, hasNativeSession, setNativeSession } from '@/utils/auth'
 import { isHttp, isPathMatch } from '@/utils/validate'
 import { isRelogin } from '@/utils/request'
 import useUserStore from '@/store/modules/user'
@@ -17,9 +17,17 @@ const isWhiteList = (path) => {
   return whiteList.some(pattern => isPathMatch(pattern, path))
 }
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   NProgress.start()
-  if (getToken()) {
+  if (!getToken() && !hasNativeSession()) {
+    try {
+      await useUserStore().getInfo()
+      setNativeSession(true)
+      // The existing branch below installs the authorized dynamic route table.
+      useUserStore().roles = []
+    } catch { /* A native emergency login remains available when no SSO session exists. */ }
+  }
+  if (getToken() || hasNativeSession()) {
     to.meta.title && useSettingsStore().setTitle(to.meta.title)
     /* has token*/
     if (to.path === '/login') {

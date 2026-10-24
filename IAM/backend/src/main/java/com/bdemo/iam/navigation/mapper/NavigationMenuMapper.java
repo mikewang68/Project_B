@@ -15,6 +15,9 @@ public interface NavigationMenuMapper {
       SELECT app_code AS appCode, iam_system_code AS iamSystemCode,
              portal_module_key AS portalModuleKey, display_name AS displayName,
              sort_order AS sortOrder, entry_base_path AS entryBasePath,
+             domain_name AS domainName, public_scheme AS publicScheme, public_port AS publicPort,
+             origin_scheme AS originScheme, origin_ip AS originIp, origin_port AS originPort,
+             module_path AS modulePath, sso_enabled AS ssoEnabled,
              in_nav_scope AS inNavScope, enabled, valid,
              mapping_status AS mappingStatus, approval_status AS approvalStatus
       FROM iam.iam_navigation_app
@@ -34,7 +37,8 @@ public interface NavigationMenuMapper {
              menu_kind AS menuKind, entry_mode AS entryMode, route_path AS routePath,
              entry_path AS entryPath, page_key AS pageKey, tab_key AS tabKey,
              component_path AS componentPath, icon, visible, enabled, valid,
-             nav_eligible AS navEligible, source_permission_raw AS sourcePermissionRaw
+             nav_eligible AS navEligible, source_permission_raw AS sourcePermissionRaw,
+             feature_status AS featureStatus, unavailable_reason AS unavailableReason
       FROM iam.iam_navigation_menu
       WHERE valid = 1 AND enabled = 1 AND visible = 1
       <if test="includeCandidates == null or includeCandidates == false">

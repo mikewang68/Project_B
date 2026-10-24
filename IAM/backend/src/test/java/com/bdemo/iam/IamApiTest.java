@@ -88,6 +88,7 @@ class IamApiTest {
 
   @BeforeEach
   void setUp() {
+    org.mockito.Mockito.when(roleMapper.selectAllowedApps(org.mockito.ArgumentMatchers.anyString())).thenReturn(java.util.List.of("IAM","SYS","WMS","PSMS","SCS","EHMS","EMCS","TRUST"));
     java.util.Map<String, String> activeSessions = new java.util.concurrent.ConcurrentHashMap<>();
     org.mockito.Mockito.doAnswer(
             call -> {
@@ -110,6 +111,14 @@ class IamApiTest {
             })
         .when(sessions)
         .revokeUser(anyString());
+    org.mockito.Mockito.when(sessions.revokeUserAndReturnIds(anyString())).thenAnswer(call -> {
+      var ids = activeSessions.entrySet().stream()
+          .filter(entry -> entry.getValue().equals(call.getArgument(0)))
+          .map(java.util.Map.Entry::getKey).toList();
+      ids.forEach(activeSessions::remove);
+      return ids;
+    });
+
     when(db.queryForList(anyString(), anyString())).thenReturn(List.of());
     when(identities.status(anyString())).thenReturn(Map.of("state", "NOT_PROVISIONED"));
     String adminHash = passwordEncoder.encode("Admin@123");

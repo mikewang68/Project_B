@@ -50,7 +50,7 @@ async function submit(): Promise<void> {
         <el-form-item label="密码" prop="password"><el-input v-model="form.password" type="password" autocomplete="current-password" show-password placeholder="请输入密码" @keyup.enter="submit" /></el-form-item>
         <el-button type="primary" native-type="submit" :loading="submitting" class="login-submit">登录</el-button>
       </el-form>
-      <el-alert title="本地初始账号：admin，初始密码：Admin@123456" type="info" :closable="false" show-icon />
+      <p class="login-help">平台用户请从统一入口进入；本地应急账号由管理员单独提供。</p>
     </section>
   </main>
 </template>

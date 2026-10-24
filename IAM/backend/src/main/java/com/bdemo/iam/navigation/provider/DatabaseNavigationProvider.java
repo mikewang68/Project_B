@@ -30,6 +30,9 @@ public class DatabaseNavigationProvider implements NavigationDataProvider {
   @org.springframework.beans.factory.annotation.Value("${iam.navigation.isolated-test-candidates:false}")
   private boolean includeCandidates = false;
 
+  @org.springframework.beans.factory.annotation.Value("${iam.navigation.show-feature-catalog:false}")
+  private boolean showFeatureCatalog = false;
+
   @Autowired
   public DatabaseNavigationProvider(NavigationMenuMapper menuMapper) {
     this.menuMapper = menuMapper;
@@ -55,7 +58,7 @@ public class DatabaseNavigationProvider implements NavigationDataProvider {
       throw new BizException(500, 50001, "数据库导航服务不可用: NavigationMenuMapper 未就绪");
     }
     try {
-      List<NavigationMenuEntity> menus = menuMapper.selectNavEligibleMenus(includeCandidates);
+      List<NavigationMenuEntity> menus = menuMapper.selectNavEligibleMenus(includeCandidates || showFeatureCatalog);
       return menus != null ? menus : Collections.emptyList();
     } catch (Exception e) {
       log.error("Failed to query navigation menus from database: {}", e.getMessage(), e);

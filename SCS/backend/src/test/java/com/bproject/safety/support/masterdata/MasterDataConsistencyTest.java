@@ -139,7 +139,10 @@ class MasterDataConsistencyTest {
         // 重置为种子后再校验（ADR-005 顺序耦合缺陷的根治）。
         fenceRepository.resetDemoData();
         Set<String> areas = areaNames();
-        List<DemoFence> fences = fenceRepository.findAll();
+        // Verify fresh seeds independently of fences created by other integration tests.
+        var freshSeeds = new com.bproject.safety.module.fence.repository.InMemoryFenceRepository();
+        freshSeeds.resetDemoData();
+        List<DemoFence> fences = freshSeeds.findAll();
         assertThat(fences).isNotEmpty();
         for (DemoFence fence : fences) {
             assertThat(areas).as("围栏 %s area=%s 必须在区域字典内", fence.id, fence.area).contains(fence.area);

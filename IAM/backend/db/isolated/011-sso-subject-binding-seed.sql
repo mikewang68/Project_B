@@ -10,7 +10,7 @@
 --
 -- 内容（wms 受众）
 --     admin       -> WMS 本地 admin
---     auditor     -> WMS 本地 admin（只读语义由 WMS 角色 + IAM 只读否决共同保证）
+--     auditor     -> WMS 本地 auditor（必须有独立的只读业务账号，不继承 admin）
 --     scoped_user -> 刻意不建映射，用于验证「无映射即 403」负例
 --
 -- 安全
@@ -37,16 +37,16 @@ SELECT u.id,'wms','admin','default','','','',1
    AND NOT EXISTS (SELECT 1 FROM iam.sso_subject_binding b
                     WHERE b.subject=u.id AND b.audience='wms');
 
--- auditor -> wms/admin
+-- auditor -> wms/auditor
 UPDATE iam.sso_subject_binding b
-   SET local_subject='admin', company_code='default', org_code='', domain_code='', zone_code='',
+   SET local_subject='auditor', company_code='default', org_code='', domain_code='', zone_code='',
        enabled=1, updated_at=CURRENT_TIMESTAMP
   FROM iam.iam_user u
  WHERE u.username='auditor' AND b.subject=u.id AND b.audience='wms';
 
 INSERT INTO iam.sso_subject_binding
     (subject, audience, local_subject, company_code, org_code, domain_code, zone_code, enabled)
-SELECT u.id,'wms','admin','default','','','',1
+SELECT u.id,'wms','auditor','default','','','',1
   FROM iam.iam_user u
  WHERE u.username='auditor'
    AND NOT EXISTS (SELECT 1 FROM iam.sso_subject_binding b

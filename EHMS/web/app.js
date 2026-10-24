@@ -154,7 +154,24 @@ function renderNav(){
 }
 
 function menuInfo(page){for(const g of MENU){for(const c of g.children){if(c[0]===page)return {group:g,label:c[1],stage:c[2]||''};}}return null;}
-function setPage(page){state.page=page;renderPage();}
+function pageFromLocation(){
+  const query=new URLSearchParams(location.search);
+  const requested=query.get('page')||query.get('navPageKey')||'dashboard';
+  return requested==='cockpit'?'dashboard':requested;
+}
+function syncPageUrl(page,replace=false){
+  const url=new URL(location.href);url.searchParams.delete('navPageKey');url.searchParams.set('page',page);
+  history[replace?'replaceState':'pushState']({ehmPage:page},'',url.pathname+url.search+url.hash);
+}
+function setPage(page,options={}){
+  if(!menuInfo(page)&&page!=='asset-detail'){
+    $('#pageView').innerHTML='<section class="panel"><h2>功能入口不存在</h2><p>请从已授权菜单选择功能。</p></section>';
+    return false;
+  }
+  state.page=page;if(!options.fromHistory)syncPageUrl(page,Boolean(options.replace));renderPage();return true;
+}
+window.addEventListener('popstate',()=>setPage(pageFromLocation(),{fromHistory:true}));
+window.addEventListener('load',()=>setPage(pageFromLocation(),{replace:true}));
 function syncNav(){
   let active=state.page==='asset-detail'?'fleet':state.page;
   $$('.nav-child').forEach(b=>b.classList.toggle('active',b.dataset.page===active));

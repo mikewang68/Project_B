@@ -10,6 +10,7 @@ import com.bdemo.iam.navigation.enums.AccessModeEnum;
 import com.bdemo.iam.navigation.enums.AppCodeEnum;
 import com.bdemo.iam.navigation.enums.EntryModeEnum;
 import com.bdemo.iam.navigation.model.NavigationMenuEntity;
+import com.bdemo.iam.navigation.model.NavigationAppEntity;
 import com.bdemo.iam.navigation.model.NavigationMenuPermEntity;
 import com.bdemo.iam.navigation.provider.DatabaseNavigationProvider;
 import com.bdemo.iam.navigation.provider.FixtureNavigationProvider;
@@ -64,6 +65,13 @@ public class NavigationProjectionService {
    */
   @Value("${iam.navigation.isolated-test-candidates:false}")
   private boolean isolatedTestCandidates = false;
+
+  /** Opt-in after address migration/configuration and target authentication checks. */
+  @Value("${iam.navigation.external-addresses-enabled:false}")
+  private boolean externalAddressesEnabled = false;
+
+  @Value("${iam.navigation.show-feature-catalog:false}")
+  private boolean showFeatureCatalog = false;
 
   // 供隔离测试动态注入或模拟已放行页面（用于验证 WMS 范围用户等离线单测）
   private static final ThreadLocal<Set<String>> SIMULATED_APPROVED_KEYS = new ThreadLocal<>();
@@ -139,6 +147,7 @@ public class NavigationProjectionService {
         ? user.getDisplayName() : user.getUsername());
     userContext.setAccessMode(accessMode.name());
     userContext.setReadOnly(isReadonly);
+    userContext.setAllowedAppCodes(user.getAllowedAppCodes());
 
     // 3. 解析当前数据提供者并读取候选菜单与权限映射（Fail-Closed 保证：若 DB 异常直接外抛 50001）
     NavigationDataProvider provider = resolveActiveProvider();
@@ -147,6 +156,12 @@ public class NavigationProjectionService {
 
     List<NavigationMenuEntity> candidateMenus = provider.getNavEligibleMenus();
     List<NavigationMenuPermEntity> permRules = provider.getViewPermissionRules();
+    Map<String, NavigationAppEntity> addressApps = new LinkedHashMap<>();
+    if (externalAddressesEnabled) {
+      for (NavigationAppEntity configuredApp : provider.getActiveApps()) {
+        addressApps.put(configuredApp.getAppCode(), configuredApp);
+      }
+    }
 
     Map<String, NavigationMenuPermEntity> ruleByMenu = new LinkedHashMap<>();
     Map<String, String> requiredPermByMenu = new LinkedHashMap<>();
@@ -167,13 +182,7 @@ public class NavigationProjectionService {
       }
 
       // 作用域检查：Scoped 用户需核验其是否属于该系统作用域
-      if (accessMode == AccessModeEnum.SCOPED_USER) {
-        boolean inScope = user.getScopedApps().contains(app.name())
-            || hasPermissionPrefix(user, app.getIamSystemCode());
-        if (!inScope) {
-          continue;
-        }
-      }
+      if (!user.mayEnter(app.name())) continue;
 
       List<PageLeafNode> children = new ArrayList<>();
       // E21：目录节点索引，子页按 parentStableMenuKey 挂载
@@ -197,14 +206,14 @@ public class NavigationProjectionService {
         boolean isolatedCandidate =
             isolatedTestCandidates && menu.getValid() == 1 && menu.getEnabled() == 1 && menu.getVisible() == 1;
         if (menu.getValid() != 1 || menu.getEnabled() != 1 || menu.getVisible() != 1
-            || (menu.getNavEligible() != 1 && !isolatedCandidate)) {
+            || (menu.getNavEligible() != 1 && !isolatedCandidate && !showFeatureCatalog)) {
           filteredOutCount++;
           continue;
         }
 
         // 三级放行状态核验：当前目标环境放行状态真实核对
         boolean isApproved = isolatedCandidate || isReleaseApproved(menu.getStableMenuKey(), ruleByMenu, provider);
-        if (!isApproved) {
+        if (!isApproved && !showFeatureCatalog) {
           filteredOutCount++;
           continue;
         }
@@ -217,7 +226,9 @@ public class NavigationProjectionService {
 
         // 权限点匹配核验
         String requiredPerm = requiredPermByMenu.get(menu.getStableMenuKey());
-        boolean hasPerm = checkViewPermission(user, accessMode, requiredPerm);
+        // Directories carry structure; their remaining authorized children decide visibility.
+        boolean hasPerm = isDirectoryNode || showFeatureCatalog && !isApproved && user.getAdminAppCodes().contains(app.name())
+            || checkViewPermission(user, accessMode, requiredPerm);
         if (!hasPerm) {
           filteredOutCount++;
           continue;
@@ -225,6 +236,15 @@ public class NavigationProjectionService {
 
         // 组装节点：目录不参与跳转，页面保留真实 entryPath
         PageLeafNode leaf = toPageLeafNode(menu);
+        leaf.setFeatureStatus(menu.getFeatureStatus());
+        boolean canLaunch = isDirectoryNode || (isApproved
+            && (menu.getNavEligible() == 1 || isolatedCandidate)
+            && !"PLANNED".equalsIgnoreCase(menu.getFeatureStatus())
+            && !"PENDING_VERIFICATION".equalsIgnoreCase(menu.getFeatureStatus()));
+        leaf.setCanLaunch(canLaunch);
+        leaf.setUnavailableReason(menu.getUnavailableReason());
+        if (!canLaunch && (leaf.getUnavailableReason() == null || leaf.getUnavailableReason().isBlank()))
+          leaf.setUnavailableReason("功能尚未完成验证和发布");
         orderMap.put(menu.getStableMenuKey(), menu.getSiblingSortOrder());
         if (isDirectoryNode) {
           directoryNodes.put(menu.getStableMenuKey(), leaf);
@@ -255,10 +275,10 @@ public class NavigationProjectionService {
         }
       }
       // 去掉没有任何可见子页的空目录（目录权限来自子页）
-      children.removeIf(n -> n.isDirectory() && (n.getChildren() == null || n.getChildren().isEmpty()));
       for (PageLeafNode n : children) {
         if (n.isDirectory()) pruneEmptyDirs(n);
       }
+      children.removeIf(n -> n.isDirectory() && (n.getChildren() == null || n.getChildren().isEmpty()));
       children.sort((a, b) -> Integer.compare(
           orderMap.getOrDefault(a.getStableMenuKey(), Integer.MAX_VALUE),
           orderMap.getOrDefault(b.getStableMenuKey(), Integer.MAX_VALUE)));
@@ -276,6 +296,19 @@ public class NavigationProjectionService {
         sysNode.setDisplayName(app.getDefaultDisplayName());
         sysNode.setSortOrder(app.getSortOrder());
         sysNode.setEntryBasePath(app.getEntryBasePath());
+        if (externalAddressesEnabled) {
+          NavigationAppEntity configuredApp = addressApps.get(app.name());
+          sysNode.setSsoEnabled(configuredApp != null && configuredApp.isSsoEnabled());
+          try {
+            sysNode.setEntryBaseUrl(NavigationAddressResolver.resolve(configuredApp));
+            if (configuredApp != null && configuredApp.getEntryBasePath() != null
+                && !configuredApp.getEntryBasePath().isBlank()) {
+              sysNode.setEntryBasePath(configuredApp.getEntryBasePath());
+            }
+          } catch (IllegalArgumentException e) {
+            throw new BizException(500, 50001, "导航访问地址配置无效: " + app.name());
+          }
+        }
         sysNode.setChildren(children);
         systems.add(sysNode);
       }
@@ -337,10 +370,6 @@ public class NavigationProjectionService {
 
   private boolean checkViewPermission(LoginUser user, AccessModeEnum accessMode, String requiredPerm) {
     if (accessMode == AccessModeEnum.FULL_ADMIN) {
-      return true;
-    }
-    if (accessMode == AccessModeEnum.READONLY_AUDITOR) {
-      // 只读审计员对已放行的可读页面具备只读视图权限
       return true;
     }
     if (requiredPerm == null || requiredPerm.isBlank()) {

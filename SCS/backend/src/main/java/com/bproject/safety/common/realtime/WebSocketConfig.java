@@ -20,6 +20,7 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
  */
 @Configuration
 @EnableWebSocket
+@org.springframework.scheduling.annotation.EnableScheduling
 public class WebSocketConfig implements WebSocketConfigurer {
 
     private final WebSocketSessionRegistry registry;

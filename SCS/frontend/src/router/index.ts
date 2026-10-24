@@ -1,3 +1,5 @@
+import { useAuthStore } from '@/stores/auth'
+import { pagePermission } from '@/permissions'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 const OverviewView = () => import('@/views/OverviewView.vue')
@@ -17,6 +19,7 @@ const MobileAlertsView = () => import('@/views/mobile/MobileAlertsView.vue')
 const MobileAlertDetailView = () => import('@/views/mobile/MobileAlertDetailView.vue')
 
 const routes: RouteRecordRaw[] = [
+  {path:'/forbidden',component:()=>import('@/views/ForbiddenView.vue')},
   { path: '/', redirect: '/overview' },
   {
     path: '/overview',
@@ -81,4 +84,15 @@ const routes: RouteRecordRaw[] = [
   { path: '/:pathMatch(.*)*', redirect: '/overview' },
 ]
 
-export default createRouter({ history: createWebHistory(), routes })
+export function createAppRouter(){
+const router=createRouter({ history: createWebHistory(), routes })
+router.beforeEach(async to=>{
+  const auth=useAuthStore()
+  if(!await auth.ensureLoaded(true))return to.path==='/forbidden'?true:'/forbidden'
+  const permission=pagePermission(to.path)
+  if(to.path!=='/forbidden' && (!permission || !auth.can(permission)))return '/forbidden'
+  return true
+})
+return router
+}
+export default createAppRouter()

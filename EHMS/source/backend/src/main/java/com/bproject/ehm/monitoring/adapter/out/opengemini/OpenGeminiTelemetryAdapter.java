@@ -32,6 +32,8 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
     private final String database;
     private final boolean writeEnabled;
     private final String baseUrl;
+    @Value("${ehm.project.default-id:UNASSIGNED}") private String defaultProject="UNASSIGNED";
+    private String project(){return com.bproject.ehm.platform.security.ProjectContext.require(defaultProject);}
 
     public OpenGeminiTelemetryAdapter(
             RestClient.Builder builder,
@@ -81,7 +83,7 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
         if (start.isAfter(end)) throw new IllegalArgumentException("开始时间不得晚于结束时间");
         String query = "SELECT value,quality,unit,metric,asset_code,source_timestamp,received_at FROM "
                 + MEASUREMENT + " WHERE point_code='" + influxLiteral(pointCode)
-                + "' AND time >= '" + start + "' AND time <= '" + end
+                + "' AND project_id='" + influxLiteral(project()) + "' AND time >= '" + start + "' AND time <= '" + end
                 + "' ORDER BY time DESC LIMIT " + bounded;
         try {
             // URI overload preserves the single encoding; String overload encodes % a second time.
@@ -106,6 +108,7 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
         long timestampNs = Math.addExact(Math.multiplyExact(eventTime.getEpochSecond(), 1_000_000_000L),
                 eventTime.getNano());
         return MEASUREMENT
+                + ",project_id=" + influxTag(project())
                 + ",point_code=" + influxTag(sample.pointCode())
                 + ",asset_code=" + influxTag(sample.assetCode())
                 + ",metric=" + influxTag(sample.metric())

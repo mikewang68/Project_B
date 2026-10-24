@@ -11,7 +11,7 @@ function asApiError(p: Promise<unknown>): Promise<ApiError> {
 }
 
 function mockErrorResponse(status: number, body: unknown): void {
-  globalThis.fetch = vi.fn(async () => ({
+  globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => String(url).endsWith('/auth/me') ? new Response(JSON.stringify({csrfToken:'csrf-test'}), {status:200}) : ({
     ok: false,
     status,
     headers: new Headers({ 'X-Trace-Id': 'header-trace' }),
@@ -35,6 +35,13 @@ describe('http client error mapping', () => {
     expect(error.message).toBe('当前状态不允许执行该操作（当前状态：已关闭）')
     // body.traceId 优先于响应头
     expect(error.traceId).toBe('body-trace')
+  })
+
+  it('does not send a mutation after the session has expired', async () => {
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({code:'UNAUTHORIZED',message:'session expired'}), {status:401})) as typeof fetch
+    const error=await asApiError(apiRequest('/rules/A', {method:'DELETE'}))
+    expect(error.status).toBe(401)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 
   it('falls back to generic text when error body is empty', async () => {

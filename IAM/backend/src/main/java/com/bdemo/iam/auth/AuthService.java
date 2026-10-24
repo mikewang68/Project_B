@@ -105,26 +105,27 @@ public class AuthService {
         "/auth/login",
         ip,
         "success");
-    return new LoginResponse(token, user, roles, permissions);
+    return new LoginResponse(token, user, roles, permissions, loginUser != null && loginUser.isSuperAdmin(),
+        loginUser != null && loginUser.isReadOnly(), loginUser == null ? "SCOPED_USER" : loginUser.getAccessMode());
   }
 
   public LoginResponse current(LoginUser loginUser) {
     if (loginUser == null) {
       throw BizException.unauthorized("未登录或登录已过期");
     }
-    User user = userService.get(loginUser.getUserId());
+    User user = userService.currentProfile(loginUser);
     List<Role> roles = userService.loadRoles(loginUser.getUserId());
     List<String> permissions = loginUser.getPermissions().stream().sorted().toList();
-    return new LoginResponse(null, user, roles, permissions);
+    return new LoginResponse(null, user, roles, permissions, loginUser.isSuperAdmin(), loginUser.isReadOnly(), loginUser.getAccessMode());
   }
 
   @org.springframework.beans.factory.annotation.Autowired
   private com.bdemo.iam.security.mapper.SessionMapper sessions;
 
   @org.springframework.transaction.annotation.Transactional
-  public void logout(LoginUser loginUser, String ip) {
+  public List<String> logout(LoginUser loginUser, String ip) {
     if (loginUser != null) {
-      sessions.revokeUser(loginUser.getUserId());
+      List<String> revokedSessions = sessions.revokeUserAndReturnIds(loginUser.getUserId());
       operationLogger.record(
           loginUser.getUsername(),
           loginUser.getUserId(),
@@ -137,6 +138,8 @@ public class AuthService {
           "/auth/logout",
           ip,
           "success");
+      return revokedSessions == null ? List.of() : revokedSessions;
     }
+    return List.of();
   }
 }

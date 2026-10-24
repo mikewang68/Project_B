@@ -15,6 +15,8 @@ export const TOKEN_KEY = 'b-sys-token'
 const client = createClient({ tokenKey: TOKEN_KEY })
 
 export interface LoginResult {
+  superAdmin: boolean
+  readOnly: boolean
   token: string
   user: { id: string; username: string; name: string }
   roles: Array<{ id: string; name: string; code: string }>
@@ -22,6 +24,7 @@ export interface LoginResult {
 }
 
 export interface MeResult {
+  readOnly: boolean
   user: { id: string; username: string; name: string }
   roles: Array<{ id: string; name: string; code: string }>
   permissions: string[]
@@ -67,7 +70,7 @@ export const sysApi = {
   // ---------------- 认证（IAM 签发，SYS 恢复） ----------------
   login: (username: string, password: string) =>
     client.request<LoginResult>('/iam/auth/login', { method: 'POST', body: { username, password } }),
-  logout: () => client.request<void>('/iam/auth/logout', { method: 'POST' }),
+  logout: () => client.request<void>(client.getToken() ? '/iam/auth/logout' : '/sys/auth/sso/logout', { method: 'POST' }),
   me: () => client.request<MeResult>('/sys/auth/me'),
 
   // ---------------- 数据字典：分类 ----------------

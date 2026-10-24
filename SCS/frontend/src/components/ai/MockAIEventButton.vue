@@ -86,7 +86,7 @@ function handleEdgeCommand(command: string | number | object) {
 
     <!-- 模拟场景控制组（保留完整兼容与边界测试） -->
     <div class="ai-control-toolbar__group ai-control-toolbar__sim">
-      <button type="button" class="ai-toolbar-btn ghost" @click="emit('simulate')">
+      <button v-permission="'safety:module:ai:edit'" type="button" class="ai-toolbar-btn ghost" @click="emit('simulate')">
         <ElIcon><MagicStick /></ElIcon>
         <span>模拟标准事件</span>
       </button>

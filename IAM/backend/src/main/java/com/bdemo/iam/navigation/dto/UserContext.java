@@ -8,6 +8,9 @@ public class UserContext {
   private String displayName;
   private String accessMode;
   private boolean readOnly;
+  private java.util.Set<String> allowedAppCodes=java.util.Set.of();
+  public java.util.Set<String> getAllowedAppCodes(){return allowedAppCodes;}
+  public void setAllowedAppCodes(java.util.Set<String> value){allowedAppCodes=java.util.Set.copyOf(value);}
 
   public UserContext() {}
 

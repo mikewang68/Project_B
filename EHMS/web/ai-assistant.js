@@ -1,14 +1,14 @@
 // Server-side model agent. The browser never receives or stores API keys.
 const EHM_AI={busy:false,status:null,sessionId:sessionStorage.getItem('ehm.ai.session')||null,results:new Map(),sequence:0,scopeChanged:false};
 const aiPanel=document.getElementById('assistantPanel');
-function aiOpen(){aiPanel.classList.add('open');aiPanel.setAttribute('aria-hidden','false');aiSyncDevices();refreshAssistantStatus();document.getElementById('assistantInput').focus();}
+function aiOpen(){if(window.EhmAuth.mode==='iam'&&!window.EhmAuth.canWrite()&&!window.EhmAuth.globalRead)return;aiPanel.classList.add('open');aiPanel.setAttribute('aria-hidden','false');aiSyncDevices();refreshAssistantStatus();document.getElementById('assistantInput').focus();}
 function aiClose(){aiPanel.classList.remove('open');aiPanel.setAttribute('aria-hidden','true');}
 function aiSyncDevices(){
   const select=document.getElementById('assistantDevice'),previous=select.value;
   select.innerHTML='<option value="">全场设备</option>'+EQUIPMENT.map(d=>`<option value="${esc(d.code)}">${esc(d.code)} · ${esc(d.name)}</option>`).join('');
   select.value=EQUIPMENT.some(d=>d.code===previous)?previous:((state.page==='asset-detail'&&state.asset)?state.asset:'');
 }
-async function refreshAssistantStatus(){
+async function refreshAssistantStatus(){await window.EhmAuth.ready;const auth=window.EhmAuth;if(!auth.user||auth.mode==='iam'&&!auth.canWrite()&&!auth.globalRead){EHM_AI.status=null;document.getElementById('assistantEntry').hidden=true;return;}document.getElementById('assistantEntry').hidden=false;
   try{EHM_AI.status=await apiRequest('/assistant/status');document.getElementById('assistantStatusText').textContent=EHM_AI.status.message;
     document.querySelector('#assistantEntry i').textContent=EHM_AI.status.ready?(EHM_AI.status.provider||'大模型')+'已配置':'本地检索';
     document.getElementById('assistantModelLabel').textContent=(EHM_AI.status.provider||'大模型')+' · '+(EHM_AI.status.model||'未选择模型')+' · '+(EHM_AI.status.ready?'脱敏业务问答':'等待接入');
@@ -58,4 +58,6 @@ document.getElementById('assistantClear').onclick=async()=>{if(EHM_AI.busy)retur
 document.getElementById('assistantTest').onclick=async()=>{const b=document.getElementById('assistantTest');b.disabled=true;b.textContent='测试中';try{const r=await apiRequest('/assistant/test',{method:'POST'});aiAdd('system',(r.success?'模型连接成功：':'模型未接通：')+r.message);await refreshAssistantStatus();}catch(e){aiAdd('system','连接测试失败：'+e.message);}finally{b.disabled=false;b.textContent='测试连接';}};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')aiClose();});
 refreshAssistantStatus();
-if(EHM_AI.sessionId)apiRequest('/assistant/sessions/'+encodeURIComponent(EHM_AI.sessionId)).then(turns=>{if(turns.length){document.getElementById('assistantMessages').innerHTML='';turns.forEach(t=>aiAdd(t.role==='user'?'user':'answer',t.content));}else{EHM_AI.sessionId=null;sessionStorage.removeItem('ehm.ai.session');}}).catch(()=>{});
+if(EHM_AI.sessionId)window.EhmAuth.ready.then(()=>{const auth=window.EhmAuth;if(auth.mode==='iam'&&!auth.canWrite()&&!auth.globalRead){EHM_AI.sessionId=null;sessionStorage.removeItem('ehm.ai.session');return;}return apiRequest('/assistant/sessions/'+encodeURIComponent(EHM_AI.sessionId)).then(turns=>{if(turns.length){document.getElementById('assistantMessages').innerHTML='';turns.forEach(t=>aiAdd(t.role==='user'?'user':'answer',t.content));}else{EHM_AI.sessionId=null;sessionStorage.removeItem('ehm.ai.session');}}).catch(()=>{});});
+
+document.addEventListener('ehm-auth-change',()=>{void refreshAssistantStatus();});

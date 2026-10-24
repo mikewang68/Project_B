@@ -16,6 +16,8 @@ spring:
 app:
   security:
     enabled: false
+    browser-sso-only: false
+    ws-auth-enabled: false
   cors:
     allowed-origins: http://localhost:5173
   demo:

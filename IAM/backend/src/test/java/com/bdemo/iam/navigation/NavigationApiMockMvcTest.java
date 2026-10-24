@@ -86,6 +86,7 @@ public class NavigationApiMockMvcTest {
 
   @BeforeEach
   void setUp() {
+    org.mockito.Mockito.when(roleMapper.selectAllowedApps(org.mockito.ArgumentMatchers.anyString())).thenReturn(java.util.List.of("IAM","SYS","WMS","PSMS","SCS","EHMS","EMCS","TRUST"));
     NavigationProjectionService.clearSimulatedApprovedKeys();
 
     java.util.Map<String, String> activeSessions = new java.util.concurrent.ConcurrentHashMap<>();
@@ -101,6 +102,14 @@ public class NavigationApiMockMvcTest {
       activeSessions.values().removeIf(user -> user.equals(call.getArgument(0)));
       return null;
     }).when(sessions).revokeUser(anyString());
+    org.mockito.Mockito.when(sessions.revokeUserAndReturnIds(anyString())).thenAnswer(call -> {
+      var ids = activeSessions.entrySet().stream()
+          .filter(entry -> entry.getValue().equals(call.getArgument(0)))
+          .map(java.util.Map.Entry::getKey).toList();
+      ids.forEach(activeSessions::remove);
+      return ids;
+    });
+
 
     String hash = passwordEncoder.encode("Pass@123");
 

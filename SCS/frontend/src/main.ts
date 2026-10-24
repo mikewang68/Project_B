@@ -16,14 +16,27 @@ import '@/styles/screen.scss'
 import '@/styles/mobile.scss'
 import App from './App.vue'
 import router from './router'
-import { bootstrapSession } from '@/api/auth/session'
+import { watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
-// 身份链路：若地址带 sso_ticket 则交换成本地会话；否则沿用已有 Cookie。
-// 失败不阻塞挂载——未登录态由页面自身的 401 处理呈现。
-void bootstrapSession()
-
+// The callback establishes an HttpOnly session; routing restores current server authorization.
 const app = createApp(App)
 app.use(createPinia()).use(router)
 for (const component of [ElButton, ElDialog, ElDrawer, ElIcon, ElInput, ElInputNumber, ElOption, ElPagination, ElSegmented, ElSelect, ElSlider, ElSwitch, ElTable, ElTableColumn, ElTag]) app.component(component.name!, component)
 app.directive('loading', ElLoading.directive)
+const permissionWatchers=new WeakMap<HTMLElement,()=>void>()
+function applyPermission(el:HTMLElement,permission:string){
+  const auth=useAuthStore()
+  const allowed=auth.can(permission)&&(!auth.user?.readOnly||permission.endsWith(':export'))
+  if(!allowed){el.setAttribute('disabled','');el.setAttribute('aria-disabled','true');el.dataset.permissionBlocked='1';el.title='当前账号未获此操作权限'}
+  else if(el.dataset.permissionBlocked){el.removeAttribute('disabled');el.removeAttribute('aria-disabled');delete el.dataset.permissionBlocked;el.removeAttribute('title')}
+}
+app.directive('permission',{
+  mounted(el:HTMLElement,binding){
+    const auth=useAuthStore()
+    permissionWatchers.set(el,watch(()=>[auth.user,auth.can(String(binding.value))],()=>applyPermission(el,String(binding.value)),{immediate:true}))
+  },
+  updated(el:HTMLElement,binding){applyPermission(el,String(binding.value))},
+  unmounted(el:HTMLElement){permissionWatchers.get(el)?.();permissionWatchers.delete(el)},
+})
 app.mount('#app')

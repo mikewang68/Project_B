@@ -9,7 +9,7 @@ function mockFetchOnce(payload: unknown, init?: { status?: number; body?: string
     json: vi.fn(async () => payload),
     text: vi.fn(async () => init?.body ?? JSON.stringify(payload)),
   } as unknown as Response
-  globalThis.fetch = vi.fn(async () => response) as unknown as typeof fetch
+  globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => String(url).endsWith('/auth/me') ? new Response(JSON.stringify({csrfToken:'csrf-test'}),{status:200}) : response) as unknown as typeof fetch
   return response
 }
 
@@ -51,8 +51,10 @@ describe('alert api client', () => {
   it('posts assign with payload and idempotency header', async () => {
     mockFetchOnce({ id: 'ALM-1', status: '待处理' })
     await alertApi.assignAlert('ALM-1', { assignee: '安全员 王建国', priority: '紧急', limitMin: 15 })
-    const call = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0]!
-    const [, init] = call
+    const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
+    expect(calls[0]![0]).toBe('/api/v1/auth/me')
+    const [, init] = calls.at(-1)!
+    expect(init.headers.get('X-SCS-CSRF')).toBe('csrf-test')
     expect(init.method).toBe('POST')
     expect(init.headers.get('Idempotency-Key')).toBe('idem-key-1')
     expect(JSON.parse(init.body)).toMatchObject({ assignee: '安全员 王建国', limitMin: 15 })

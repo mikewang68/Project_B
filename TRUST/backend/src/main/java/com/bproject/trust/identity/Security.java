@@ -52,12 +52,13 @@ public class Security {
       @Qualifier("iamClient") com.bproject.trust.ports.PlatformIdentity iamClient,
       com.bproject.trust.adapters.iam.SimulatedIamClient simulatedIam,
       IntegrationSettings settings,
+      org.springframework.beans.factory.ObjectProvider<TrustSsoSessions> ssoSessions,
       com.bproject.trust.logevidence.LogOperations logOperations)
       throws Exception {
     com.bproject.trust.ports.PlatformIdentity iam =
         settings.read().simulated() ? simulatedIam : iamClient;
     http.addFilterBefore(
-        new PlatformIdentityFilter(iam, settings, logOperations),
+        new PlatformIdentityFilter(iam, settings, logOperations).withSso(ssoSessions.getIfAvailable()),
         org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
     http.addFilterAfter(
         new com.bproject.trust.logevidence.OperationAuditFilter(logOperations),
@@ -73,6 +74,8 @@ public class Security {
                         "/api/v1/identity-mode",
                         "/api/v1/login",
                         "/api/v1/iam/login",
+                        "/api/v1/auth/sso/exchange",
+                        "/api/v1/auth/sso/revoke",
                         "/api/v1/dev-login",
                         "/actuator/health")
                     .permitAll()
@@ -81,7 +84,7 @@ public class Security {
         .csrf(
             c ->
                 c.csrfTokenRepository(new HttpSessionCsrfTokenRepository())
-                    .ignoringRequestMatchers("/api/v1/integrations/**"))
+                    .ignoringRequestMatchers("/api/v1/integrations/**", "/api/v1/auth/sso/exchange", "/api/v1/auth/sso/revoke"))
         .formLogin(
             f ->
                 f.loginProcessingUrl("/api/v1/login")
@@ -139,6 +142,11 @@ public class Security {
                             q.setAttribute(
                                 "TRUST_LOGOUT_PRINCIPAL", new PlatformPrincipal(user, user, org));
                             q.setAttribute("TRUST_LOGOUT_TRACE", trace);
+                          }
+                          if(session!=null&&session.getAttribute(TrustSsoSessions.ATTRIBUTE) instanceof TrustSsoSessions.Binding binding){
+                            var nativeSso=ssoSessions.getIfAvailable();
+                            if(nativeSso==null)throw new IllegalStateException("SSO not configured");
+                            nativeSso.logout(binding);
                           }
                         })
                     .logoutSuccessHandler(

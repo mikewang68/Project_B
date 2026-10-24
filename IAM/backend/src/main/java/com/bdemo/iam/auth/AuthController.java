@@ -52,8 +52,8 @@ public class AuthController {
     public R<java.util.Map<String, Object>> logout(HttpServletRequest http) {
         LoginUser user = JwtAuthFilter.currentUser();
         String sid = SsoLogoutCoordinator.sessionIdOf(http);
-        authService.logout(user, clientIp(http));
-        SsoLogoutCoordinator.Result slo = ssoLogout.logout(user, sid, http);
+        java.util.List<String> revokedSessions = authService.logout(user, clientIp(http));
+        SsoLogoutCoordinator.Result slo = ssoLogout.logoutAll(user, sid, revokedSessions, http);
         return R.ok(slo.toBody());
     }
 

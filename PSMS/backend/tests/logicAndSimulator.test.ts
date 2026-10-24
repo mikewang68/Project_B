@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
+vi.mock('../src/config/env.js', () => ({ env: {} }));
+vi.mock('../src/db/openGaussClient.js', () => ({ getPool: vi.fn() }));
 import { CHAIN_ACTIONS } from '../src/services/writeLog.service.js';
 
 describe('PSMS integration contracts', () => {

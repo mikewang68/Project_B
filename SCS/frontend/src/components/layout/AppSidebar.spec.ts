@@ -1,7 +1,11 @@
 import { mount } from '@vue/test-utils'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { useAuthStore } from '@/stores/auth'
+import { pagePermissions } from '@/permissions'
 import AppSidebar from './AppSidebar.vue'
-import router from '@/router'
+import { createAppRouter } from '@/router'
+let router:ReturnType<typeof createAppRouter>
 
 const EXPECTED_PATHS = [
   '/overview',
@@ -17,16 +21,22 @@ const EXPECTED_PATHS = [
 ]
 
 async function mountSidebar() {
+  router=createAppRouter()
+  const pinia=createPinia(); setActivePinia(pinia)
+  const user={id:'scs-admin',name:'SCS Admin',role:'ADMIN',team:'',shift:'day',online:true,permissions:Object.values(pagePermissions)}
+  const auth=useAuthStore(); auth.setCurrentUser(user)
+  vi.spyOn(auth,'ensureLoaded').mockResolvedValue(user)
   await router.push('/overview')
   await router.isReady()
   return mount(AppSidebar, {
     props: { open: false },
-    global: { plugins: [router], stubs: { 'el-icon': { template: '<span><slot /></span>' } } },
+    global: { plugins: [pinia, router], stubs: { 'el-icon': { template: '<span><slot /></span>' } } },
   })
 }
 
 afterEach(() => {
   document.body.innerHTML = ''
+  vi.restoreAllMocks()
 })
 
 describe('AppSidebar 导航', { timeout: 20000 }, () => {

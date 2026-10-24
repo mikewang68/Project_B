@@ -6,7 +6,7 @@ import { DEMO_SESSION_STORAGE_KEY } from './sessionConstants';
 import type { SessionContext } from './types';
 
 export { DEMO_SESSION_STORAGE_KEY } from './sessionConstants';
-export const DEFAULT_DEMO_TIME = createFixtureSnapshot().scenarios.find(
+export const DEFAULT_DEMO_TIME = import.meta.env.VITE_PSMS_REAL_API === 'true' ? new Date().toISOString() : createFixtureSnapshot().scenarios.find(
   ({ id }) => id === 'SCN-01',
 )!.clock;
 
@@ -50,6 +50,15 @@ export function loadDemoSession(
 }
 
 export function loadCurrentDemoSession(): SessionContext {
+  if (import.meta.env.VITE_PSMS_REAL_API === 'true') {
+    if (!verifiedLiveSession) throw new Error('尚未恢复服务端业务会话');
+    return verifiedLiveSession;
+  }
   const storage = typeof window === 'undefined' ? undefined : window.localStorage;
   return loadDemoSession(storage, DEFAULT_DEMO_TIME);
+}
+
+let verifiedLiveSession: SessionContext | undefined;
+export function setVerifiedLiveSession(session: SessionContext): void {
+  verifiedLiveSession = Object.freeze({ ...session, dataScope: Object.freeze([...session.dataScope]) });
 }

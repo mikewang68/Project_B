@@ -189,8 +189,8 @@ renderEdge=function(){
 };
 
 const baseSetPageV4=setPage;
-setPage=function(page){
-  baseSetPageV4(page);
+setPage=function(page,options){
+  baseSetPageV4(page,options);
   if(STRUCTURE_PAGES.has(page)) loadStructureData();
 };
 

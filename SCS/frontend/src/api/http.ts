@@ -45,19 +45,15 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   if (init.method && init.method !== 'GET' && !headers.has('Idempotency-Key')) headers.set('Idempotency-Key', traceId())
 
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers,
-      // 身份由同源 HttpOnly 会话 Cookie 承载（见 auth/session.ts），
-      // 不再从 localStorage 读取静态 token。credentials 必须为 include，
-      // 否则浏览器不会带上 JSESSIONID。
-      credentials: 'include',
-      signal: controller.signal,
-    })
-    if (response.status === 401) {
-      // 会话失效（含 IAM 侧注销联动），通知外壳切回未登录态
-      window.dispatchEvent(new CustomEvent('scs:unauthenticated'))
+    if (init.method && !['GET','HEAD','OPTIONS'].includes(init.method.toUpperCase())) {
+      const sessionResponse = await fetch(`${API_BASE}/auth/me`, { credentials:'same-origin', cache:'no-store', signal:controller.signal })
+      if (sessionResponse.status === 401) window.dispatchEvent(new CustomEvent('scs:unauthenticated'))
+      if (!sessionResponse.ok) throw await buildError(sessionResponse, requestTraceId)
+      const session = await sessionResponse.json()
+      if (session.csrfToken) headers.set('X-SCS-CSRF', session.csrfToken)
     }
+    const response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials:'same-origin', signal: controller.signal })
+    if (response.status === 401) window.dispatchEvent(new CustomEvent('scs:unauthenticated'))
     if (!response.ok) throw await buildError(response, requestTraceId)
     return (await response.json()) as T
   } catch (error) {

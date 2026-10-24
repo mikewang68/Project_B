@@ -40,7 +40,7 @@ public class SecurityConfig implements WebMvcConfigurer {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http,com.bdemo.sys.security.SysSsoSessions nativeSessions) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 // JWT 无状态 API：显式关闭表单登录、HTTP Basic 与默认登出，避免 Spring Security 默认认证入口残留
@@ -49,17 +49,21 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .logout(logout -> logout.disable())
                 .cors(cors -> {
                 })
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Native exchange creates a fresh session; subsequent requests must share
+                // its cookie even though the security context is rebuilt on every request.
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionFixation(fixation -> fixation.none()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error", "/actuator/health").permitAll()
+                        .requestMatchers("/auth/sso/exchange","/auth/sso/revoke").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(eh -> eh
                         .authenticationEntryPoint((request, response, ex) ->
                                 writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "未登录或登录已过期"))
                         .accessDeniedHandler((request, response, ex) ->
                                 writeError(response, HttpServletResponse.SC_FORBIDDEN, "没有访问权限")))
-                .addFilterBefore(new JwtAuthFilter(jwtService, loginUserLoader),
+                .addFilterBefore(new JwtAuthFilter(jwtService, loginUserLoader).withNativeSessions(nativeSessions),
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

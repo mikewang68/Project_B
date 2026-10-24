@@ -34,8 +34,8 @@ watch(() => props.modelValue, (open) => { if (open) reason.value = '' })
       </label>
     </div>
     <template #footer>
-      <button type="button" class="warning" @click="emit('reject', reason.trim() || '复核未通过，请继续处置')">驳回继续处理</button>
-      <button type="button" class="primary" @click="emit('approve')">通过并关闭</button>
+      <button v-permission="'safety:module:alert:approve'" type="button" class="warning" @click="emit('reject', reason.trim() || '复核未通过，请继续处置')">驳回继续处理</button>
+      <button v-permission="'safety:module:alert:approve'" type="button" class="primary" @click="emit('approve')">通过并关闭</button>
     </template>
   </ElDialog>
 </template>

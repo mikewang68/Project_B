@@ -15,6 +15,8 @@ export const useAuthStore = defineStore('auth', () => {
   const roleLabel = computed(() => user.value?.role ?? '')
   const team = computed(() => user.value?.team ?? '')
   const shift = computed(() => user.value?.shift ?? null)
+  const can = (permission:string):boolean => !!user.value?.permissions?.includes(permission)
+  function clear():void { user.value=null; loaded.value=false }
 
   function setCurrentUser(nextUser: CurrentUser): void {
     user.value = nextUser
@@ -64,6 +66,8 @@ export const useAuthStore = defineStore('auth', () => {
     shift,
     ensureLoaded,
     refresh,
+    can,
+    clear,
     setCurrentUser,
   }
 })

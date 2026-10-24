@@ -11,7 +11,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { AuthSession, LoginRequest, LoginResponse, SysUser, SysRole } from '@/sys/types'
 import { MENU_TREE, filterMenuByPerms, collectAllPerms, type MenuNode } from '@/sys/sys-menu'
-import { sysApi, TOKEN_KEY, type LoginResult, type MeResult } from '@/api/sys'
+import { sysApi, type LoginResult, type MeResult } from '@/api/sys'
 
 /** 登录落地页候选：取第一个有权限的页面，都没有则去 403 */
 const LANDING_CANDIDATES = [
@@ -27,10 +27,12 @@ export const useAuthStore = defineStore('auth', () => {
   const permCodes = ref<Set<string>>(new Set())
   const menuTree = ref<MenuNode[]>([])
   /** 是否已完成 /auth/me 恢复（路由守卫等待） */
-  const hydrated = ref(!localStorage.getItem(TOKEN_KEY))
+  const hydrated = ref(false)
+  const readOnly = ref(false)
+  const fullAdmin = ref(false)
 
   const isLoggedIn = computed(() => session.value !== null && currentUser.value !== null)
-  const isSuperAdmin = computed(() => userRoles.value.some((r) => r.code === 'super_admin' && r.status === 'active'))
+  const isSuperAdmin = computed(() => fullAdmin.value && !readOnly.value)
 
   const landingPath = computed(() => {
     const hit = LANDING_CANDIDATES.find((c) => permCodes.value.has(c.perm))
@@ -39,7 +41,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   function hydrate(user: { id: string; username: string; name: string },
                   roles: Array<{ id: string; name: string; code: string }>,
-                  permissions: string[], token: string, superAdmin: boolean) {
+                  permissions: string[], token: string, superAdmin: boolean, readonly = false) {
+    readOnly.value = readonly
+    fullAdmin.value = superAdmin && !readonly
     currentUser.value = {
       id: user.id,
       username: user.username,
@@ -54,10 +58,11 @@ export const useAuthStore = defineStore('auth', () => {
     userRoles.value = mappedRoles
     const codes = new Set(permissions)
     // 前端兜底：超管拥有 SYS 菜单树全部权限（权限仍以服务端返回为准）
-    if (superAdmin || mappedRoles.some((r) => r.code === 'super_admin')) {
+    if (fullAdmin.value) {
       for (const p of collectAllPerms()) codes.add(p.code)
     }
     permCodes.value = codes
+    if (readOnly.value) for (const p of codes) if (!/:(view|read|list|query|detail)$/.test(p)) codes.delete(p)
     menuTree.value = filterMenuByPerms(MENU_TREE, codes)
     session.value = {
       token,
@@ -71,6 +76,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function reset() {
+    readOnly.value = false
+    fullAdmin.value = false
     session.value = null
     currentUser.value = null
     userRoles.value = []
@@ -86,7 +93,7 @@ export const useAuthStore = defineStore('auth', () => {
       const result: LoginResult = await sysApi.login(req.username.trim(), req.password)
       sysApi.token.setToken(result.token)
       hydrate(result.user, result.roles, result.permissions, result.token,
-        result.roles.some((r) => r.code === 'super_admin'))
+        result.superAdmin, result.readOnly)
       return {
         success: true,
         session: session.value || undefined,
@@ -100,24 +107,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** 登出（尽力调用 IAM 记录日志，无论成败都清空本地会话） */
   async function logout() {
-    try {
-      await sysApi.logout()
-    } catch {
-      // 后端不可达也要允许本地登出
-    }
+    await sysApi.logout()
     reset()
   }
 
   /** 刷新页面后凭 token 调用 SYS /auth/me 恢复会话 */
   async function restoreFromSession() {
     const token = sysApi.token.getToken()
-    if (!token) {
-      reset()
-      return
-    }
     try {
       const me: MeResult = await sysApi.me()
-      hydrate(me.user, me.roles, me.permissions, token, me.superAdmin)
+      hydrate(me.user, me.roles, me.permissions, token || '', me.superAdmin, me.readOnly)
     } catch {
       reset()
     } finally {
@@ -126,7 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    session, currentUser, userRoles, permCodes, menuTree, hydrated,
+    session, currentUser, userRoles, permCodes, menuTree, hydrated, readOnly,
     isLoggedIn, isSuperAdmin, landingPath,
     login, logout, restoreFromSession,
   }

@@ -23,7 +23,7 @@ const emit = defineEmits<{
       <button v-if="link === 'online'" type="button" class="ops-btn danger" @click="emit('disconnect')">
         <el-icon><Connection /></el-icon>模拟云边断网
       </button>
-      <button v-else type="button" class="ops-btn primary" :disabled="recovering" @click="emit('recover')">
+      <button v-permission="'safety:module:ops:execute'" v-else type="button" class="ops-btn primary" :disabled="recovering" @click="emit('recover')">
         <el-icon><RefreshLeft /></el-icon>恢复云边连接
       </button>
       <button type="button" class="ops-btn" :disabled="link !== 'disconnected'" @click="emit('localRisk')">
