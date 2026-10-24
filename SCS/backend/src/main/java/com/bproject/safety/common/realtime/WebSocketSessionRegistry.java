@@ -28,10 +28,6 @@ public class WebSocketSessionRegistry {
     private static final int SEND_TIME_LIMIT_MS = 2000;
     private static final int SEND_BUFFER_LIMIT_BYTES = 256 * 1024;
 
-    /** 复查-D7：慢客户端防护参数——发送阻塞超 2s 或缓冲超 256KB 即关闭该连接，不拖住业务提交线程。 */
-    private static final int SEND_TIME_LIMIT_MS = 2000;
-    private static final int SEND_BUFFER_LIMIT_BYTES = 256 * 1024;
-
     public void connect(WebSocketSession session) {
         // ConcurrentWebSocketSessionDecorator：并发发送安全 + 超时/缓冲上限（超限抛 SessionLimitExceeded 走 disconnect）
         sessions.put(session.getId(), new org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator(
