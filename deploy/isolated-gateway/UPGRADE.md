@@ -35,6 +35,7 @@ PSMS 后端回归在 `PSMS` 执行 `pnpm exec vitest run --config vitest.backend
    PSMS 已发布读取适配器执行 `029-psms-native-read-permissions.sql`，其他资源读取须另外登记，不能因本地账号有全局数据范围就自动开放。
    完整导航目录导入后执行 `030-core-feature-view-mappings.sql`，补齐五个核心入口的查看映射与独立只读授权。它不批准发布、不替换已有 VIEW 决策；升级为严格只读菜单检查时须先完成此步。
    EMCS 原生管理查询执行 `031-emcs-native-read-permissions.sql`，登记明确的 list/query 编码，并清理默认只读角色中旧的派生导出授权；独立角色的授权不受影响。导出不能因为权限名称以 view 结尾而自动纳入默认只读角色。
+   EHMS 业务目录执行 `032-ehms-feature-view-mappings.sql`，为待办、设备、告警、工单等功能登记独立查看映射候选及只读授权。该迁移不批准发布、不改变菜单可启动状态，也不授予写入或导出权限；须按实际页面、接口及数据范围分别验收后审批。
 5. EHMS 聚合项目维度：`EHMS/sql/027_project_scope.sql`。历史数据先进入 `UNASSIGNED`，依据明确归属回填；迁移后旧版不带项目条件的后端不能继续写入。
 6. EMCS 令牌撤销：`EMCS/sql/026_token_revocations.sql`。撤销记录必须保留到令牌过期。
 7. WMS 显式主体映射：`WMS/WMS/db/sso/001-wms-sso-subject-map.sql`，随后执行 `002-gauss-empty-zone.sql`；已有映射须核对并保留。Gauss A 模式把空字符串视为 NULL，未声明区域的字段必须允许 NULL，公司范围仍须非空且与本地用户一致。
@@ -53,6 +54,10 @@ SCS 全局快照的 AI 事件为最多 50 条最新记录，`aiEventWindow` 返�
 接口、Cookie 与私有绑定格式见 [SSO 协议](SSO_PROTOCOL.md)。中心注册表、八个目标桥、服务身份、本地业务用户、IAM 主体绑定和数据范围必须逐项对应。不能用同名 `admin` 推导业务管理员权限。
 
 门户 HTTPS origin 对应登录网关及其 API；各业务域名的 `/sso/` 对应本系统目标桥，其余业务 API 对应同批后端。回调、原生接口上下文和 SPA 基础路径必须分别核对。EHMS 根路径进入 `/ehm/`，PSMS 与 EMCS 使用相对重定向，保留外部 HTTPS 与域名。
+
+应用域名还须同步到对应后端的 CORS / Origin 白名单。验证写操作时携带浏览器实际 Origin，并保留非法来源拒绝检查；没有 Origin 的回环调用不能证明浏览器写入可用。不要用通配来源代替正式登记。
+
+EHMS 深链接保留 `page` 与 `project`。项目切换重新加载文档以丢弃旧缓存和在途请求，身份恢复时仍由服务器校验项目范围。被拒绝的项目显示访问受限及返回入口，不应重新索要密码或悄悄切到其他项目。
 
 `entry_base_path` 是菜单登记的逻辑前缀，`module_path` 是域名上的实际业务根，两者可以不同。例如登记目录 `/wms/` 可以映射到业务域名的 `/`；桥接时按已登记前缀转换。不能将逻辑前缀改为 `/` 来表示物理根目录，也不能放宽未登记路径检查来掩盖配置错误。
 
