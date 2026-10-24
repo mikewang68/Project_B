@@ -68,9 +68,16 @@ public class StateController {
         this.demoGuard = demoGuard;
     }
 
+    private static boolean allowed(com.bproject.safety.config.ScsLocalPolicy.Actor actor,String permission){
+        return actor==null||actor.admin()||actor.permissions().contains(permission);
+    }
+
     @GetMapping("/state")
     @Operation(summary = "获取全局安全态势快照 (SafetySnapshot)")
     public Map<String, Object> getState() {
+        var attributes=org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        var actor=attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servlet
+            && servlet.getRequest().getAttribute("SCS_ACTOR") instanceof com.bproject.safety.config.ScsLocalPolicy.Actor a?a:null;
         String now = OffsetDateTime.now(clock.withZone(ZONE)).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("schemaVersion", "1.0.0");
@@ -90,7 +97,7 @@ public class StateController {
 
         // 2. people
         List<Map<String, Object>> peopleList = new ArrayList<>();
-        List<DemoPersonnel> persons = personnelRepository.findAll();
+        List<DemoPersonnel> persons = allowed(actor,"safety:person:map:view")?personnelRepository.findAll():List.of();
         if (persons.isEmpty()) {
             if(demoGuard.isSeedEnabled())peopleList.addAll(defaultPeople(now));
         } else {
@@ -115,7 +122,7 @@ public class StateController {
 
         // 3. fences
         List<Map<String, Object>> fencesList = new ArrayList<>();
-        List<DemoFence> fences = fenceRepository.findAll();
+        List<DemoFence> fences = allowed(actor,"safety:fence:list:view")?fenceRepository.findAll():List.of();
         if (fences.isEmpty()) {
             if(demoGuard.isSeedEnabled())fencesList.addAll(defaultFences());
         } else {
@@ -142,7 +149,7 @@ public class StateController {
 
         // 4. devices
         List<Map<String, Object>> deviceList = new ArrayList<>();
-        List<DemoCollisionDevice> devices = collisionRepository.findAll();
+        List<DemoCollisionDevice> devices = allowed(actor,"safety:module:collision:view")?collisionRepository.findAll():List.of();
         if (devices.isEmpty()) {
             if(demoGuard.isSeedEnabled())deviceList.addAll(defaultDevices());
         } else {
@@ -168,8 +175,8 @@ public class StateController {
 
         // 5. aiEvents
         List<Map<String, Object>> aiList = new ArrayList<>();
-        List<DemoAiEvent> aiEvents = aiEventRepository.findRecent(50);
-        long aiTotal = aiEventRepository.count();
+        List<DemoAiEvent> aiEvents = allowed(actor,"safety:module:ai:view")?aiEventRepository.findRecent(50):List.of();
+        long aiTotal = allowed(actor,"safety:module:ai:view")?aiEventRepository.count():0L;
         snapshot.put("aiEventWindow", Map.of("limit",50,"returned",aiEvents.size(),
                 "total",aiTotal,"truncated",aiTotal>aiEvents.size()));
         if (aiEvents.isEmpty()) {
@@ -197,7 +204,7 @@ public class StateController {
 
         // 6. alarms
         List<Map<String, Object>> alarmList = new ArrayList<>();
-        List<DemoAlert> alerts = alertRepository.findAll();
+        List<DemoAlert> alerts = allowed(actor,"safety:module:alert:view")?alertRepository.findAll():List.of();
         if (alerts.isEmpty()) {
             if(demoGuard.isSeedEnabled())alarmList.addAll(defaultAlarms(now));
         } else {
@@ -221,7 +228,7 @@ public class StateController {
 
         // 7. rules
         List<Map<String, Object>> ruleList = new ArrayList<>();
-        List<DemoRule> rules = ruleRepository.findAll();
+        List<DemoRule> rules = allowed(actor,"safety:module:rule:view")?ruleRepository.findAll():List.of();
         if (rules.isEmpty()) {
             if(demoGuard.isSeedEnabled())ruleList.addAll(defaultRules());
         } else {
@@ -265,6 +272,13 @@ public class StateController {
             snapshot.put("scenarios",List.of());snapshot.put("auditLogs",List.of());
             snapshot.put("system",Map.of("cloudConnected",false,"edgeVersion","未核验","cachedEvents",0,"availability",0,
                 "services",List.of(Map.of("name","设备与边缘状态","state","unknown","latencyMs",0,"detail","等待在线状态接入，未核验健康指标"))));
+        }
+        if(actor!=null&&!actor.admin()){
+            Map<String,String> fields=Map.of("people","safety:person:map:view","fences","safety:fence:list:view",
+                "devices","safety:module:collision:view","aiEvents","safety:module:ai:view",
+                "alarms","safety:module:alert:view","rules","safety:module:rule:view",
+                "auditLogs","safety:module:ops:view");
+            fields.forEach((field,permission)->{if(!allowed(actor,permission))snapshot.put(field,List.of());});
         }
         return snapshot;
     }

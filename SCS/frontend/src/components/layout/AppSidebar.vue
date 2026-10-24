@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { markRaw } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { pagePermission } from '@/permissions'
+const auth=useAuthStore()
+const visible=(path:string):boolean => {const permission=pagePermission(path);return !!permission&&auth.can(permission)}
 import {
   Aim,
   Bell,
@@ -72,10 +76,10 @@ const displayEnds = [
     </div>
 
     <nav class="sidebar-nav" aria-label="主导航">
-      <section v-for="group in navigation" :key="group.label || 'primary'" class="nav-group">
+      <section v-for="group in navigation.filter(g=>g.items.some(i=>visible(i.path)))" :key="group.label || 'primary'" class="nav-group">
         <p v-if="group.label">{{ group.label }}</p>
         <RouterLink
-          v-for="item in group.items"
+          v-for="item in group.items.filter(i=>visible(i.path))"
           :key="item.path"
           :to="item.path"
           class="nav-link"
@@ -91,7 +95,7 @@ const displayEnds = [
     <div class="sidebar-display">
       <p>展示端入口（新窗口打开）</p>
       <a
-        v-for="item in displayEnds"
+        v-for="item in displayEnds.filter(i=>visible(i.href))"
         :key="item.href"
         :href="item.href"
         target="_blank"

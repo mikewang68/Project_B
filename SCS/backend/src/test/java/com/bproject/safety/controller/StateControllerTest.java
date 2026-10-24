@@ -38,4 +38,18 @@ class StateControllerTest {
     assertEquals("未接入", ((Map<?,?>) state.get("workPlan")).get("status"));
     assertEquals(false, ((Map<?,?>) state.get("system")).get("cloudConnected"));
   }
+  @Test void aSnapshotCannotBypassPerModuleReadPermissions(){
+    var people=mock(PersonnelRepository.class);var fences=mock(FenceRepository.class);
+    var devices=mock(CollisionRepository.class);var events=mock(AiEventRepository.class);
+    var alerts=mock(AlertRepository.class);var rules=mock(RuleRepository.class);
+    var request=new org.springframework.mock.web.MockHttpServletRequest();
+    request.setAttribute("SCS_ACTOR",new com.bproject.safety.config.ScsLocalPolicy.Actor("subject","safety",java.util.Set.of("OPERATOR"),java.util.Set.of("safety:home:map:view","safety:module:alert:view"),false,false));
+    org.springframework.web.context.request.RequestContextHolder.setRequestAttributes(new org.springframework.web.context.request.ServletRequestAttributes(request));
+    try{
+      var controller=new StateController(Clock.systemUTC(),people,fences,devices,events,alerts,rules,new DemoFeatureGuard(false,false));
+      var state=controller.getState();assertEquals(0L,((Map<?,?>)state.get("aiEventWindow")).get("total"));
+      verify(alerts).findAll();verifyNoInteractions(people,fences,devices,events,rules);
+      for(String field:List.of("people","fences","devices","aiEvents","rules"))assertEquals(List.of(),state.get(field));
+    }finally{org.springframework.web.context.request.RequestContextHolder.resetRequestAttributes();}
+  }
 }

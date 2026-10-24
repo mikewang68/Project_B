@@ -1,0 +1,61 @@
+groups:
+  - name: scs-backend
+    rules:
+      - alert: SCSBackendDown
+        expr: up{job="scs-backend"} == 0
+        for: 2m
+        labels:
+          severity: P0
+          channel: phone
+        annotations:
+          summary: "SCS 后端不可达（{{ $labels.instance }}）"
+          description: "Prometheus 抓取失败超过 2 分钟，服务可能宕机或网络中断。"
+
+      - alert: SCSEdgeReplayBacklog
+        expr: increase(scs_edge_pending_events[5m]) > 10
+        labels:
+          severity: P0
+          channel: phone
+        annotations:
+          summary: "边缘断网补传队列持续增长"
+          description: "5 分钟内补传队列新增 >10 条：边缘-中心补传链路异常（RocketMQ 关闭或网络分区），断网自治事件无法回传。"
+
+      - alert: SCSHigh5xxRate
+        expr: sum(rate(http_server_requests_seconds_count{job="scs-backend",status=~"5.."}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: P1
+          channel: im
+        annotations:
+          summary: "SCS 5xx 错误率异常"
+          description: "5xx QPS 超过 0.1 并持续 5 分钟。"
+
+      - alert: SCSJvmHeapHigh
+        expr: jvm_memory_used_bytes{job="scs-backend",area="heap"} / jvm_memory_max_bytes{job="scs-backend",area="heap"} > 0.85
+        for: 10m
+        labels:
+          severity: P1
+          channel: im
+        annotations:
+          summary: "SCS JVM 堆内存使用率 >85%"
+          description: "当前上限 768m（-Xmx），持续高位将触发 Full GC。"
+
+      - alert: SCSHikariPoolSaturated
+        expr: hikaricp_connections_pending{job="scs-backend"} > 0
+        for: 2m
+        labels:
+          severity: P1
+          channel: im
+        annotations:
+          summary: "SCS 数据库连接池饱和"
+          description: "有请求等待连接超过 2 分钟（pool=SafetyGateHikariPool，max=4）。"
+
+      - alert: SCSDiskNearlyFull
+        expr: disk_free_bytes{job="scs-backend"} / disk_total_bytes{job="scs-backend"} < 0.15
+        for: 10m
+        labels:
+          severity: P1
+          channel: im
+        annotations:
+          summary: "SCS 所在磁盘剩余 <15%"
+          description: "关注 openGauss 数据目录与日志增长。"

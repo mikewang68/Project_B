@@ -217,6 +217,45 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
     }
 
     @Override
+    public boolean claimLinkedAlert(String eventId, String alertId) {
+        UUID alertUuid = com.bproject.safety.module.alert.repository.JdbcAlertRepository.resolveUuid(alertId);
+        int claimed = jdbcTemplate.update(
+                "UPDATE safety.ai_event SET linked_alert_id = :alertUuid, updated_at = now() "
+                        + "WHERE event_no = :eventNo AND (linked_alert_id IS NULL OR linked_alert_id = :alertUuid)",
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource()
+                        .addValue("alertUuid", alertUuid)
+                        .addValue("eventNo", eventId));
+        return claimed > 0;
+    }
+
+    @Override
+    public List<DemoAiEvent> findByLinkedAlertId(String alertId) {
+        if (alertId == null || alertId.isBlank()) {
+            return List.of();
+        }
+        UUID alertUuid = com.bproject.safety.module.alert.repository.JdbcAlertRepository.resolveUuid(alertId.trim());
+        List<String> eventNos = jdbcTemplate.query(
+                "SELECT event_no FROM safety.ai_event WHERE linked_alert_id = :lid",
+                java.util.Collections.singletonMap("lid", (Object) alertUuid),
+                (rs, rowNum) -> rs.getString("event_no"));
+        if (eventNos.isEmpty()) {
+            return List.of();
+        }
+        return eventNos.stream()
+                .map(no -> findById(no).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
+    @Override
+    public long countPendingReview() {
+        Long c = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM safety.ai_event WHERE status_code IN ('PENDING', 'UNCERTAIN')",
+                Collections.emptyMap(), Long.class);
+        return c != null ? c : 0L;
+    }
+
+    @Override
     public Counts counts() {
         return jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) AS total,

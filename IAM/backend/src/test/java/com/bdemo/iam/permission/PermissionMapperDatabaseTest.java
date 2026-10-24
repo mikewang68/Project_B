@@ -30,19 +30,30 @@ class PermissionMapperDatabaseTest {
         }
         statement.execute("SET LOCAL search_path TO pg_temp,public");
         statement.execute("CREATE TEMP TABLE iam_role(id varchar(64),status varchar(16),deleted smallint) ON COMMIT PRESERVE ROWS");
-        statement.execute("CREATE TEMP TABLE iam_permission(id varchar(64),permission_code varchar(128),status varchar(16)) ON COMMIT PRESERVE ROWS");
+        statement.execute("CREATE TEMP TABLE iam_permission(id varchar(64),permission_code varchar(128),status varchar(16),system_code varchar(32)) ON COMMIT PRESERVE ROWS");
+        statement.execute("CREATE TEMP TABLE iam_role_app_scope(role_id varchar(64),app_code varchar(16)) ON COMMIT PRESERVE ROWS");
+        statement.execute("CREATE TEMP TABLE iam_navigation_app(app_code varchar(16),iam_system_code varchar(32)) ON COMMIT PRESERVE ROWS");
+        statement.execute("INSERT INTO iam_role_app_scope VALUES('active-role','WMS'),('disabled-role','TRUST'),('deleted-role','TRUST')");
+        statement.execute("INSERT INTO iam_navigation_app VALUES('WMS','wms'),('TRUST','trust')");
         statement.execute("CREATE TEMP TABLE iam_role_permission(role_id varchar(64),permission_id varchar(64)) ON COMMIT PRESERVE ROWS");
         statement.execute("INSERT INTO iam_role VALUES('active-role','active',0),('disabled-role','disabled',0),('deleted-role','active',1)");
-        statement.execute("INSERT INTO iam_permission VALUES('opaque-read-row','wms:master:read','active'),"
-            + "('opaque-export-row','wms:export','disabled'),('other-row','trust:event:read','active')");
+        statement.execute("INSERT INTO iam_permission VALUES('opaque-read-row','wms:master:read','active','wms'),"
+            + "('opaque-export-row','wms:export','disabled','wms'),('other-row','trust:event:read','active','trust')");
         statement.execute("INSERT INTO iam_role_permission VALUES('active-role','opaque-read-row'),"
-            + "('active-role','opaque-export-row'),('disabled-role','other-row'),('deleted-role','other-row')");
+            + "('active-role','opaque-export-row'),('active-role','other-row'),('disabled-role','other-row'),('deleted-role','other-row')");
         var configuration = new Configuration(new Environment("owned-integration",
             new JdbcTransactionFactory(), new UnpooledDataSource()));
         configuration.addMapper(PermissionMapper.class);
+        configuration.addMapper(com.bdemo.iam.role.mapper.RoleMapper.class);
         var factory = new SqlSessionFactoryBuilder().build(configuration);
         try (var session = factory.openSession(connection)) {
           var mapper = session.getMapper(PermissionMapper.class);
+          var roleMapper=session.getMapper(com.bdemo.iam.role.mapper.RoleMapper.class);
+          roleMapper.insertRolePermissions("new-role",List.of("wms:master:read"));
+          try(var result=statement.executeQuery("SELECT permission_id FROM iam_role_permission WHERE role_id='new-role'")){
+            assertTrue(result.next());assertEquals("opaque-read-row",result.getString(1));
+          }
+          assertEquals(List.of("wms:master:read"),roleMapper.selectPermissionCodes("new-role"));
           var roles = List.of("active-role", "disabled-role", "deleted-role");
           assertEquals(List.of("wms:master:read"), mapper.selectCodesByRoleIds(roles));
           statement.execute("UPDATE iam_permission SET status='disabled' WHERE id='opaque-read-row'");

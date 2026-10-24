@@ -3,21 +3,23 @@
   const auth=window.EhmAuth;state.authUsers={items:[],loading:false,error:''};
   const restricted=new Set(['sampleInstall','sampleTick','openCaseFlow','healthToWorkOrder','defectToWorkOrder','downloadAuditPackage','confirmCause','batchAssign','ackAlarm','newWork','createWork']);
   function adminAction(action){return restricted.has(action)||/^(new|create|edit|archive|delete|ack|close|run|review|publish|disable|verify|generate|start|submit|receive|reserve|issue|release|return|seed|simulate|advance|complete|convert|export|download|saveTemplate|saveCalibration|saveConfig)/i.test(action||'');}
+  const actionPermissions={createWork:'ehealth:maint:order:execute',newWork:'ehealth:maint:order:execute',advanceWork:'ehealth:maint:order:execute',ackAlarm:'ehealth:alert:center:execute',closeAlarm:'ehealth:alert:center:execute',openCaseFlow:'ehealth:alert:center:execute'};
+  function allowedAction(action){return !auth.enabled||auth.canWrite()||!auth.readOnly&&auth.permissions.includes(actionPermissions[action]);}
   function applyPolicy(){
     const admin=!auth.enabled||auth.canWrite();
     document.querySelectorAll('[data-action]').forEach(button=>{
       if(!adminAction(button.dataset.action))return;
-      if(!admin&&!button.disabled){button.dataset.authBlocked='1';button.disabled=true;button.classList.add('auth-admin-only');button.title='仅超级管理员可操作';}
-      else if(admin&&button.dataset.authBlocked){delete button.dataset.authBlocked;button.disabled=false;button.classList.remove('auth-admin-only');button.removeAttribute('title');}
+      if(!allowedAction(button.dataset.action)&&!button.disabled){button.dataset.authBlocked='1';button.disabled=true;button.classList.add('auth-admin-only');button.title='仅超级管理员可操作';}
+      else if(allowedAction(button.dataset.action)&&button.dataset.authBlocked){delete button.dataset.authBlocked;button.disabled=false;button.classList.remove('auth-admin-only');button.removeAttribute('title');}
     });
     const test=document.getElementById('assistantTest');if(test){test.disabled=!admin;test.title=admin?'':'连接测试仅超级管理员可操作';}
     const account=document.getElementById('authAccountButton');if(account){account.textContent=auth.user?(auth.user.username+' · '+(auth.canWrite()?'超级管理员':'一般用户')):'账号';account.title='当前登录账号';}
   }
   const observer=new MutationObserver(()=>applyPolicy());observer.observe(document.getElementById('pageView'),{childList:true,subtree:true});
-  document.addEventListener('click',event=>{const button=event.target.closest('[data-action]');if(auth.enabled&&!auth.canWrite()&&button&&adminAction(button.dataset.action)){event.preventDefault();event.stopImmediatePropagation();toast('仅超级管理员可操作，请使用管理员账号登录。');}},true);
+  document.addEventListener('click',event=>{const button=event.target.closest('[data-action]');if(auth.enabled&&button&&adminAction(button.dataset.action)&&!allowedAction(button.dataset.action)){event.preventDefault();event.stopImmediatePropagation();toast('仅超级管理员可操作，请使用管理员账号登录。');}},true);
   const renderExisting=renderIam;
   renderIam=function(){
-    if(auth.mode!=='local')return renderExisting();const user=auth.user||{},admin=auth.canWrite(),d=state.authUsers;
+    if(auth.mode!=='local')return `<section class="panel"><h2>统一身份与本系统权限</h2><p>${esc(auth.user?.username||'')} · ${auth.readOnly?'只读访问':auth.canWrite()?'本系统管理员':'业务人员'}</p><p>账号与密码由平台统一维护；本系统依据授权提供功能。</p><p>授权项目：${auth.projectIds.map(esc).join('、')}</p></section>`;const user=auth.user||{},admin=auth.canWrite(),d=state.authUsers;
     const rows=d.items.map(item=>`<tr><td><strong>${esc(item.username)}</strong><small>${esc(item.displayName)}</small></td><td>${tag(item.role==='SUPER_ADMIN'?'超级管理员':'一般用户',item.role==='SUPER_ADMIN'?'info':'good')}</td><td>${tag(item.enabled?'正常':'已停用',item.enabled?'good':'severe')}</td><td>${esc(item.id)}</td><td><button class="table-action" data-action="authEditUser" data-id="${esc(item.id)}">编辑 / 权限</button>${item.id!==user.id?`<button class="table-action" data-action="authResetPassword" data-id="${esc(item.id)}">重置密码</button>`:''}</td></tr>`).join('');
     return `<section class="panel auth-users"><div class="panel-head"><div><h2>账号与访问权限</h2><p>权限由后端会话和账号角色决定，不能在浏览器中自行切换。</p></div><div>${admin?button('刷新账号','authReloadUsers')+button('新增账号','authNewUser','primary'):''}</div></div><div class="panel-body"><div class="auth-identity"><div><strong>${esc(user.displayName||user.username)}</strong><p>${esc(user.username)} · ${admin?'超级管理员':'一般用户'}</p></div><div>${button('修改本人密码','authChangePassword')}${button('退出登录','authLogout')}</div></div><div class="auth-role-note">${admin?'可管理设备、测点、工单等业务数据，以及创建、停用账号和分配两类角色。':'当前为只读访问：可查询业务数据；新增、修改、删除、审批、后台执行、敏感导出与账号管理均被后端拒绝。'}</div><div class="table-wrap"><table class="data-table"><thead><tr><th>角色</th><th>查看设备 / 报表</th><th>新增 / 修改 / 删除</th><th>账号管理</th><th>日志</th></tr></thead><tbody><tr><td>一般用户</td><td>允许</td><td>不允许</td><td>不允许</td><td>仅本人</td></tr><tr><td>超级管理员</td><td>允许</td><td>允许</td><td>允许</td><td>本EHM作用域</td></tr></tbody></table></div></div>${admin?`<div class="panel-head"><h2>系统账号</h2><span>${d.items.length} 个</span></div>${d.error?`<div class="callout warning">${esc(d.error)}</div>`:''}<div class="table-wrap"><table class="data-table"><thead><tr><th>用户名 / 名称</th><th>角色</th><th>状态</th><th>稳定用户ID</th><th>操作</th></tr></thead><tbody>${rows||`<tr><td colspan="5">${d.loading?'正在读取账号…':'暂无账号数据，请刷新'}</td></tr>`}</tbody></table></div>`:''}<div class="panel-foot">账号停用或角色改变会立即撤销其现有会话。不能停用或降级当前管理员，不删除历史操作日志。</div></section>`;
   };
@@ -39,7 +41,7 @@
     applyPolicy();if(!auth.user){state.authUsers.items=[];state.backendConnected=false;return;}
     if(first){first=false;}else{closeModal();closeDrawer();loadBackendData();if(DELIVERY_PAGES.has(state.page))loadDeliveryConsole();if(state.page==='iam')loadUsers();}
   });
-  document.getElementById('authAccountButton').onclick=()=>openModal('当前登录账号',auth.user?.displayName||'账号',`<div class="auth-role-note">${esc(auth.user?.username||'')} · ${auth.canWrite()?'超级管理员':'一般用户'}<br/>会话由后端验证；退出后无法继续调用业务接口。</div><div class="auth-user-actions"><button class="button" id="accountOpenUsers">账号与权限</button><button class="button" id="accountOpenPassword">修改本人密码</button><button class="button" id="accountLogout">退出登录</button></div>`,'关闭',()=>{});
+  document.getElementById('authAccountButton').onclick=()=>openModal('当前登录账号',auth.user?.displayName||'账号',`<div class="auth-role-note">${esc(auth.user?.username||'')} · ${auth.canWrite()?'超级管理员':'一般用户'}<br/>会话由后端验证；退出后无法继续调用业务接口。</div><div class="auth-user-actions"><button class="button" id="accountOpenUsers">账号与权限</button>${auth.mode==='local'?'<button class="button" id="accountOpenPassword">修改本人密码</button>':''}<button class="button" id="accountLogout">退出登录</button></div>`,'关闭',()=>{});
   document.addEventListener('click',event=>{if(event.target.id==='accountOpenUsers'){closeModal();setPage('iam');}if(event.target.id==='accountOpenPassword')password();if(event.target.id==='accountLogout')auth.logout().then(closeModal).catch(e=>toast(e.message));});
   applyPolicy();
 })();

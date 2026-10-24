@@ -5,7 +5,8 @@ import { mobileApi } from './mobile'
 /** 同一个 fetch mock 按调用次序返回不同 payload，保证 mock.calls 完整累积 */
 function installFetch(payloads: unknown[]): ReturnType<typeof vi.fn> {
   let idx = 0
-  const fetchMock = vi.fn(async () => {
+  const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
+    if(String(url).endsWith('/auth/me'))return new Response(JSON.stringify({csrfToken:'csrf-test'}),{status:200})
     const payload = payloads[Math.min(idx++, payloads.length - 1)]
     return {
       ok: true,
@@ -48,7 +49,7 @@ describe('mobile projection api', () => {
     await mobileApi.getHome()
     await mobileApi.accept('ALM-1')
     await mobileApi.arrive('ALM-1')
-    const [homeCall, acceptCall, arriveCall] = fetchMock.mock.calls
+    const [homeCall, acceptCall, arriveCall] = fetchMock.mock.calls.filter(c=>!String(c[0]).endsWith('/auth/me'))
     expect(String(homeCall![0])).toBe('/api/v1/mobile/home')
     expect(String(acceptCall![0])).toBe('/api/v1/mobile/incidents/ALM-1/accept')
     expect(String(arriveCall![0])).toBe('/api/v1/mobile/incidents/ALM-1/arrive')

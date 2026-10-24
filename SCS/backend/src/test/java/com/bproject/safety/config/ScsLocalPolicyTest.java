@@ -31,6 +31,20 @@ class ScsLocalPolicyTest {
     assertTrue(policy.permits(actor, "POST", "/api/v1/auth/sso/logout"));
   }
 
+  @Test
+  void applicationAdminNeedsExplicitLocalAdminAndCurrentCentralGrant() throws Exception {
+    var policy=policy();
+    var current=new HashMap<String,Object>(claims(List.of(),false,false));
+    current.put("applicationAdmin",true);
+    assertTrue(policy.resolve(current).admin());
+    assertTrue(policy.permits(policy.resolve(current),"POST","/api/v1/ai/models"));
+    current.put("applicationAdmin",false);
+    assertFalse(policy.resolve(current).admin());
+    assertFalse(policy.permits(policy.resolve(current),"POST","/api/v1/ai/models"));
+    current.put("applicationAdmin",true);current.put("readOnly",true);
+    assertFalse(policy.resolve(current).admin());
+  }
+
   private ScsLocalPolicy policy() throws Exception {
     var json = new ObjectMapper(); var path = directory.resolve("bindings.json");
     Files.writeString(path, json.writeValueAsString(Map.of("subject-a", Map.of(

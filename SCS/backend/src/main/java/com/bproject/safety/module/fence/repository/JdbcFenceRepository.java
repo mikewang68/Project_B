@@ -55,12 +55,8 @@ public class JdbcFenceRepository implements FenceRepository {
                    f.buffer_distance, f.is_deleted, f.created_at, f.updated_at,
                    v.risk_level_code, v.polygon, v.team_scope
             FROM safety.safety_fence f
-            LEFT JOIN (
-                SELECT fence_id, MAX(id) AS latest_id
-                FROM safety.safety_fence_version
-                GROUP BY fence_id
-            ) latest ON latest.fence_id = f.id
-            LEFT JOIN safety.safety_fence_version v ON v.id = latest.latest_id AND v.fence_id = f.id
+            LEFT JOIN safety.safety_fence_version v
+                   ON v.fence_id = f.id AND v.version_no = f.active_version
             """;
 
     private static final String SELECT_ALL = BASE_SELECT + " WHERE f.is_deleted = false ORDER BY f.fence_code ASC";
@@ -113,11 +109,53 @@ public class JdbcFenceRepository implements FenceRepository {
         Objects.requireNonNull(fence.id, "fence.id must not be null");
 
         DemoFence toPersist = fence.copy();
-        Long fenceId = upsertFenceRoot(toPersist);
+        // 复查-D1：已生效/版本异常围栏编辑进入 TO_REVIEW 时，active_version 保持指向
+        // 生效版本（新几何仅作为草稿版本行写入）；其余场景（含发布）指针随版本走
+        String governingVersion = findGoverningVersionToKeep(toPersist);
+        Long fenceId = upsertFenceRoot(toPersist, governingVersion);
         upsertFenceVersion(fenceId, toPersist);
         upsertFenceEdgeSync(fenceId, toPersist);
 
         return findById(toPersist.id).orElse(toPersist);
+    }
+
+    /** 编辑进入 TO_REVIEW 时返回应保留的生效版本号；否则 null（指针随新版本）。 */
+    private String findGoverningVersionToKeep(DemoFence incoming) {
+        if (!"TO_REVIEW".equals(incoming.statusCode)) {
+            return null;
+        }
+        List<String> prior = jdbcTemplate.query(
+                "SELECT status_code, active_version FROM safety.safety_fence "
+                        + "WHERE fence_code = :code AND is_deleted = false",
+                java.util.Collections.singletonMap("code", (Object) incoming.id),
+                (rs, n) -> rs.getString(1) + "|" + rs.getString(2));
+        if (prior.isEmpty()) {
+            return null;
+        }
+        String[] parts = prior.get(0).split("\\|", 2);
+        String priorStatus = parts[0];
+        String priorActive = parts.length > 1 ? parts[1] : null;
+        if (("EFFECTIVE".equals(priorStatus) || "MISMATCH".equals(priorStatus))
+                && priorActive != null && !priorActive.isBlank()
+                && !priorActive.equals(incoming.version)) {
+            return priorActive;
+        }
+        return null;
+    }
+
+    /** 复查-D1：待评审草稿全量视图（草稿版本号 ≠ active_version 时才有草稿）。 */
+    @Override
+    public java.util.Optional<DemoFence> findDraft(String id) {
+        if (id == null || id.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        List<FenceRowDto> rows = jdbcTemplate.query(
+                BASE_SELECT.replace("v.version_no = f.active_version", "v.version_no = f.version")
+                        + " WHERE f.fence_code = :code AND f.is_deleted = false "
+                        + "AND f.version <> f.active_version",
+                java.util.Collections.singletonMap("code", (Object) id.trim()),
+                rowMapper);
+        return rows.stream().findFirst().map(this::toDemoFence);
     }
 
     @Override
@@ -132,7 +170,7 @@ public class JdbcFenceRepository implements FenceRepository {
 
     // ---------- 内部持久化操作 ----------
 
-    private Long upsertFenceRoot(DemoFence f) {
+    private Long upsertFenceRoot(DemoFence f, String governingVersion) {
         String areaCode = null;
         if (f.area != null && !f.area.isBlank()) {
             areaCode = masterData.areas().stream()
@@ -151,7 +189,8 @@ public class JdbcFenceRepository implements FenceRepository {
                 .addValue("fenceKind", f.kind != null ? f.kind : "危险区域")
                 .addValue("tone", f.tone != null ? f.tone : "danger")
                 .addValue("areaCode", areaCode)
-                .addValue("activeVersion", f.version != null ? f.version : "v1.0")
+                .addValue("activeVersion", governingVersion != null ? governingVersion
+                        : (f.version != null ? f.version : "v1.0"))
                 .addValue("statusCode", f.statusCode != null ? f.statusCode : FenceStatuses.EFFECTIVE)
                 .addValue("effectiveAt", effectiveTs)
                 .addValue("expiresAt", expiresTs)

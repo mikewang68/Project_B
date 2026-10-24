@@ -1,0 +1,12 @@
+package com.bproject.ehm.platform.security;
+import static org.junit.jupiter.api.Assertions.*;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+class EhmBusinessPermissionsTest {
+ EhmSsoSessions.Actor actor(boolean readonly,Set<String> permissions){return new EhmSsoSessions.Actor("subject","maintenance","USER","sid",readonly,Set.of("PROJECT_B"),permissions,false);}
+ @Test void maintenanceWorkDoesNotGrantAssetOrAccountAdministration(){var a=actor(false,Set.of("ehealth:maint:order:view","ehealth:maint:order:execute"));assertTrue(EhmBusinessPermissions.permits(a,"GET","/api/ehm/v1/work-orders"));assertTrue(EhmBusinessPermissions.permits(a,"POST","/api/ehm/v1/work-orders/W1/start"));assertFalse(EhmBusinessPermissions.permits(a,"DELETE","/api/ehm/v1/devices/D1"));assertFalse(EhmBusinessPermissions.permits(a,"POST","/api/ehm/v1/auth/users"));assertFalse(EhmBusinessPermissions.permits(a,"POST","/api/ehm/v1/work-orders/W1/approve"));}
+ @Test void readonlyAndExportRemainIndependent(){var a=actor(true,Set.of("ehealth:maint:order:view","ehealth:maint:order:execute"));assertFalse(EhmBusinessPermissions.permits(a,"POST","/api/ehm/v1/work-orders/W1/start"));assertFalse(EhmBusinessPermissions.permits(a,"GET","/api/ehm/v1/work-orders/export"));}
+ @Test void maintenanceDashboardUsesItsExplicitReadGrant(){var a=actor(false,Set.of("ehealth:wb:cockpit:view"));assertTrue(EhmBusinessPermissions.permits(a,"GET","/api/ehm/v1/dashboard/summary"));assertTrue(EhmBusinessPermissions.permits(a,"GET","/api/ehm/v1/analytics/overview"));assertFalse(EhmBusinessPermissions.permits(a,"POST","/api/ehm/v1/dashboard/summary"));assertFalse(EhmBusinessPermissions.permits(a,"GET","/api/ehm/v1/analytics/overview/export"));}
+ @Test void deviceAndAlarmReadsDoNotGrantDownloads(){var a=actor(false,Set.of("ehealth:asset:archive:view","ehealth:alert:center:view"));assertTrue(EhmBusinessPermissions.permits(a,"GET","/api/ehm/v1/devices"));assertFalse(EhmBusinessPermissions.permits(a,"GET","/api/ehm/v1/devices/export"));assertFalse(EhmBusinessPermissions.permits(a,"GET","/api/ehm/v1/alarms/download"));}
+ @Test void approvalCannotHideInAGenericStatusBody(){var a=actor(false,Set.of("ehealth:maint:order:execute"));assertTrue(EhmBusinessPermissions.permitsWorkOrderStatus(a,"SUBMITTED"));assertFalse(EhmBusinessPermissions.permitsWorkOrderStatus(a,"APPROVED"));assertFalse(EhmBusinessPermissions.permitsWorkOrderStatus(a,"REJECTED"));assertTrue(EhmBusinessPermissions.permitsWorkOrderStatus(a,"CANCELLED"));}
+}

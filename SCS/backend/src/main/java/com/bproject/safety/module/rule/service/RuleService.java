@@ -45,13 +45,33 @@ public class RuleService {
     private final DomainLivePublisher publisher;
     private final Clock clock;
     private final RuleNumberGenerator numberGenerator;
+    /** review-#4/#10：事务化路径的广播经 gate 延迟到 afterCommit。 */
+    private final com.bproject.safety.common.realtime.LiveEventGate gate;
 
+    /** 兼容历史测试直连（无广播门控，行为与旧版一致）。 */
     public RuleService(RuleRepository repository, DomainLivePublisher publisher, Clock clock,
                        RuleNumberGenerator numberGenerator) {
+        this(repository, publisher, clock, numberGenerator, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public RuleService(RuleRepository repository, DomainLivePublisher publisher, Clock clock,
+                       RuleNumberGenerator numberGenerator,
+                       @org.springframework.lang.Nullable com.bproject.safety.common.realtime.LiveEventGate gate) {
         this.repository = repository;
         this.publisher = publisher;
         this.clock = clock;
         this.numberGenerator = numberGenerator;
+        this.gate = gate;
+    }
+
+    /** 广播统一收口：有事务时延迟至 afterCommit，避免"广播已发、事务回滚"。 */
+    private void broadcast(String type, java.util.Map<String, Object> data) {
+        if (gate != null) {
+            gate.buffer(() -> publisher.publish(type, data));
+        } else {
+            publisher.publish(type, data);
+        }
     }
 
     // ---------- 查询 ----------
@@ -221,6 +241,8 @@ public class RuleService {
         return get(id);
     }
 
+    /** review-#4：PUBLISHING→ACTIVE 两次 save 原子化，中途失败规则不再永久卡 PUBLISHING。 */
+    @org.springframework.transaction.annotation.Transactional
     public DemoRule publish(String id, com.bproject.safety.module.rule.dto.RuleRequests.PublishRequest req) {
         DemoRule r = require(id);
         if (!RuleStatuses.APPROVED.equals(r.statusCode) && !RuleStatuses.ACTIVE.equals(r.statusCode)) {
@@ -237,7 +259,8 @@ public class RuleService {
         r.effectiveAt = nowDateTime();
         r.updatedAt = nowDateTime();
         repository.save(r);
-        publisher.publish(LiveEventTypes.RULE_PUBLISHED, syncData(r));
+        // 有事务时延迟到 afterCommit 再广播，避免"广播已发、事务回滚"
+        broadcast(LiveEventTypes.RULE_PUBLISHED, syncData(r));
         return get(id);
     }
 

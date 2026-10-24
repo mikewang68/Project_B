@@ -21,9 +21,17 @@ public class WebSocketSessionRegistry {
     private static final Logger log = LoggerFactory.getLogger(WebSocketSessionRegistry.class);
 
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+    @org.springframework.beans.factory.annotation.Autowired private LiveSessionAuthorization authorization;
+    private final com.fasterxml.jackson.databind.ObjectMapper json=new com.fasterxml.jackson.databind.ObjectMapper();
+
+    /** 复查-D7：慢客户端防护参数——发送阻塞超 2s 或缓冲超 256KB 即关闭该连接，不拖住业务提交线程。 */
+    private static final int SEND_TIME_LIMIT_MS = 2000;
+    private static final int SEND_BUFFER_LIMIT_BYTES = 256 * 1024;
 
     public void connect(WebSocketSession session) {
-        sessions.put(session.getId(), session);
+        // ConcurrentWebSocketSessionDecorator：并发发送安全 + 超时/缓冲上限（超限抛 SessionLimitExceeded 走 disconnect）
+        sessions.put(session.getId(), new org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator(
+                session, SEND_TIME_LIMIT_MS, SEND_BUFFER_LIMIT_BYTES));
         log.debug("WS connected: {} (online={})", session.getId(), sessions.size());
     }
 
@@ -38,7 +46,22 @@ public class WebSocketSessionRegistry {
 
     /** 向全部在线连接广播文本消息；单个连接失败不影响其他连接。 */
     public void broadcast(TextMessage message) {
-        sessions.values().forEach(session -> send(session, message));
+        String type;
+        try{type=json.readTree(message.getPayload()).path("type").asText();}catch(Exception invalid){return;}
+        for(var session:sessions.values())try{
+            var actor=authorization==null?null:authorization.current(session);
+            if(authorization==null || authorization.permits(actor,type))send(session,message);
+        }catch(Exception revoked){closeUnauthorized(session);}
+    }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay=5000)
+    public void sweepRevoked(){
+        if(authorization==null)return;
+        for(var session:sessions.values())try{authorization.current(session);}catch(Exception revoked){closeUnauthorized(session);}
+    }
+    private void closeUnauthorized(WebSocketSession session){
+        sessions.remove(session.getId());
+        try{session.close(org.springframework.web.socket.CloseStatus.POLICY_VIOLATION);}catch(Exception ignored){}
     }
 
     private void send(WebSocketSession session, TextMessage message) {

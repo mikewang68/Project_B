@@ -68,6 +68,7 @@ public class SysSsoSessions {
         ||!b.local().equals(user.getUsername())||!b.local().equals(a.path("localSubject").asText())
         ||!a.path("readOnly").isBoolean()||!a.path("permissions").isArray())throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
     boolean readOnly=a.path("readOnly").asBoolean();user.setReadOnly(readOnly);
+    user.setGlobalRead(readOnly && a.path("globalRead").asBoolean(false));
     user.setSuperAdmin(user.isSuperAdmin()&&a.path("superAdmin").asBoolean(false)&&!readOnly);
     if(!user.isSuperAdmin()){
       Set<String> central=new HashSet<>();a.path("permissions").forEach(v->central.add(v.asText()));

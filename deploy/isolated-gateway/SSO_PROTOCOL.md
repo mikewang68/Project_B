@@ -56,7 +56,7 @@
 
 端点均由目标后端处理，不能由前端模拟。交换、撤销、当前授权查询和服务端统一退出使用目标受众的服务身份。业务写请求同时通过本地会话、当前 IAM 授权、本地权限和 CSRF 核验。
 
-IAM 授权断言 1.2 包含 `subject`、`sessionId`、`audience`、`localSubject`、`readOnly`、`superAdmin`、`roles`、`permissions`、`company/org/domain/zone`、`projectIds` 和 `authorizationVersion`。后端不能根据同名账号自动映射或提权。缺少显式映射、缺少范围、无法执行的范围、失效会话或停用用户必须拒绝。
+IAM 授权断言 1.3 包含 `subject`、`sessionId`、`audience`、`localSubject`、`readOnly`、`superAdmin`、`roles`、`permissions`、`allowedAppCodes`、`applicationAdmin`、`globalRead`、`company/org/domain/zone`、`projectIds` 和 `authorizationVersion`。后端不能根据同名账号自动映射或提权。缺少显式映射、缺少范围、无法执行的范围、失效会话或停用用户必须拒绝。
 
 `POST /api/v1/iam/auth/sso/session/introspect` 每次检查当前授权；`POST /api/v1/iam/auth/sso/session/logout` 撤销平台会话并调用持久化注销协调器。通知失败由重试队列补投，业务后端仍须因中心会话失效而拒绝旧 Cookie。中心暂不可用应明确报错，不得退回默认身份。
 
@@ -113,3 +113,17 @@ EMCS 私有主体绑定除 `enabled`、`userId` 外，还使用与 SCS 相同结
 迁移包括 IAM 功能目录与项目授权、EHMS 项目维度、EMCS 原生令牌撤销表。EMCS 撤销记录必须保存在数据库，不能在应用重启后重新接受已退出的原生令牌。
 
 首版授权码、浏览器事务及多数业务会话为单进程存储，重启后需重新登录。多实例部署必须使用共享原子存储或明确会话路由，不能将当前实现直接扩容后声称跨实例一次性与撤销语义成立。
+
+## 系统范围与管理对象归属
+
+先由数据库管理员应用 `IAM/backend/db/isolated/033` 至 `036` 兼容迁移，再升级依赖这些表的 IAM 后端。运行账号需要 `iam_role_app_scope`、`iam_management_owner` 的业务读写权限，以及 `iam_scope_migration` 的读取权限；建表权限只交给迁移账号。迁移不创建用户，不设置密码，不自动开放菜单。
+
+角色的系统范围来自 `iam_role_app_scope`，管理级别显式记录为 `ADMIN` 或 `BUSINESS`。目录、短票签发及会话查询均检查相同范围；权限编码的前缀不构成系统授权。导航的 `userContext.allowedAppCodes` 返回这组标准大写编码，单系统账号只返回自己的编码。首次迁移记录既有授权，重复运行不会恢复已撤销的范围。
+
+`applicationAdmin` 只表示目标受众内的管理员资格；它由当前数据库范围与管理级别计算，且受 `readOnly` 否决。业务后端还要验证显式本地管理员映射。它不能写入平台 `superAdmin`，也不能用于为其他受众签发授权。`globalRead` 只允许获授全局读取的账号读取平台归属对象，不能授予导出或写权限。
+
+IAM 专用管理员只管理 `iam_management_owner` 中归属 IAM 的用户和角色。新建对象登记归属；共享、历史未知归属对象属于平台。角色分配同时检查对象归属、角色系统范围与受保护角色。授予的权限不得超过操作者当前 IAM 权限；本人拥有的系统不能通过角色名、改密或身份供给接口扩大。
+
+SYS 同批应用 `SYS/backend/db/004-resource-ownership.sql`。字典、配置和操作日志的历史未知归属默认 `GLOBAL`；部署方按可核实的业务归属单独登记 `SYS`。列表、详情、统计、更新与导出均使用相同归属条件。回退到缺少这些条件的旧后端前，必须暂停专用账号或入口。
+
+SCS 的 `GET /api/v1/auth/me` 保留原字段，并返回服务端核验的 `permissions`、`readOnly`、`authorizationVersion` 及写操作所需 `csrfToken`。前端据此过滤菜单、路由和操作按钮；后端仍独立校验每项操作。WebSocket 只接收已登记的业务会话，每次推送检查当前中央会话、本地映射与对应事件读取权限，定时清理失效连接。设备采集密钥仅用于登记的采集端点，不能连接业务推送。

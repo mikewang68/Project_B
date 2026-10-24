@@ -4,13 +4,13 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod';
 import { User, type UserDoc } from '../db/tables.js';
 import { env } from '../config/env.js';
-import { mayReadBusinessRoute } from './sso-policy.js';
+import { mayReadBusinessRoute, mayWriteBusinessRoute } from './sso-policy.js';
 
 const bindingsSchema = z.record(z.string().regex(/^(?:[a-f\d]{32}|[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12})$/i),
   z.object({ userId: z.string().min(1), enabled: z.boolean() }).strict());
 const assertionSchema = z.object({ subject: z.string(), sessionId: z.string().min(1), localSubject: z.string().min(1),
   audience: z.union([z.literal('psms'), z.literal('[psms]'), z.tuple([z.literal('psms')])]),
-  readOnly:z.boolean(),superAdmin:z.boolean(),permissions:z.array(z.string()),
+  readOnly:z.boolean(),superAdmin:z.boolean(),applicationAdmin:z.boolean().optional().default(false),permissions:z.array(z.string()),
   company: z.string().nullish(), org: z.string().nullish(), domain: z.string().nullish(), zone: z.string().nullish() });
 type Session = { userId: string; subject: string; iamSid: string; csrf: string; expires: number };
 const sessions = new Map<string, Session>();
@@ -141,7 +141,8 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
         ||assertion.data.localSubject!==user.username){fail(res,401,'SSO_LOCAL_IDENTITY_REJECTED');return;}
     const current=assertion.data;
     const effective = {readOnly: current.readOnly || user.roleCode === 'viewer',
-      superAdmin: current.superAdmin && ['super_admin','admin'].includes(user.roleCode), permissions: current.permissions};
+      superAdmin: current.superAdmin && ['super_admin','admin'].includes(user.roleCode),
+      applicationAdmin: current.applicationAdmin && ['super_admin','admin'].includes(user.roleCode), permissions: current.permissions};
     res.locals.platformAuthorization = effective;
     if([current.company,current.org,current.domain,current.zone].some(value=>value?.trim())){fail(res,403,'SSO_SCOPE_UNSUPPORTED');return;}
     // Scope limits form a ceiling; current business grants are still required below.
@@ -156,7 +157,7 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
     }
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
       if (effective.readOnly) { fail(res, 403, 'READ_ONLY'); return; }
-      if(!effective.superAdmin&&!current.permissions.some(permission=>permission===`pps:api:${req.path.replace(/^\/api\//,'').split('/')[0]}:write`)){
+      if(!mayWriteBusinessRoute(effective,req.path)){
         fail(res,403,'OPERATION_PERMISSION_DENIED');return;
       }
       if (req.header('X-PSMS-CSRF') !== session.csrf) { fail(res, 403, 'CSRF_REJECTED'); return; }

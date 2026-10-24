@@ -82,25 +82,28 @@ public class CollisionService {
         return points;
     }
 
-    // ---------- 查询 ----------
+    // ---------- 查询（review-#3：与写方法共用人服务监视器，pairs 为 LinkedHashMap，
+    //     无锁读曾与 resetAllPairs 并发可抛 ConcurrentModificationException）----------
 
-    public List<DemoCollisionDevice> devices(String type) {
+    public synchronized List<DemoCollisionDevice> devices(String type) {
         return repository.findAll().stream()
                 .filter(d -> type == null || type.isBlank() || type.equals(d.type))
-                .map(this::decorate).toList();
+                .map(this::decorate)
+                .toList();
     }
 
-    public DemoCollisionDevice get(String id) {
+    public synchronized DemoCollisionDevice get(String id) {
         return decorate(requireDevice(id));
     }
 
-    public PairView pair(String currentId, String relatedId) {
+    public synchronized PairView pair(String currentId, String relatedId) {
         PairState pair = resolvePair(currentId != null ? currentId : relatedId);
         return PairView.of(pair, OffsetDateTime.now(clock).toString());
     }
 
-    public List<DistancePoint> trend(String id) {
-        return resolvePair(id).trend;
+    /** 趋势返回快照副本：可变 List 不得逃逸服务监视器。 */
+    public synchronized List<DistancePoint> trend(String id) {
+        return List.copyOf(resolvePair(id).trend);
     }
 
     private DemoCollisionDevice decorate(DemoCollisionDevice d) {

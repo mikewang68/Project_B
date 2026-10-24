@@ -261,6 +261,145 @@ public class JdbcAlertRepository implements AlertRepository {
         return val != null ? val : 0L;
     }
 
+    /** Step 8 / P0-4：态势计数口径下推为存储侧 GROUP BY，替代大屏/统计每次刷新的全量聚合加载。 */
+    @Override
+    public Map<String, Long> countByStatus() {
+        return countGrouping("SELECT status_code, count(*) FROM safety.safety_alert GROUP BY status_code");
+    }
+
+    @Override
+    public Map<String, Long> countOpenByRisk() {
+        return countGrouping(
+                "SELECT risk_level_code, count(*) FROM safety.safety_alert WHERE status_code <> 'CLOSED'"
+                        + " GROUP BY risk_level_code");
+    }
+
+    @Override
+    public Map<String, Long> countByEventType() {
+        // eventType 为空回退标题，与 riskDistribution 内存口径一致
+        return countGrouping(
+                "SELECT COALESCE(event_type, title) AS bucket, count(*) FROM safety.safety_alert"
+                        + " GROUP BY COALESCE(event_type, title)");
+    }
+
+    private Map<String, Long> countGrouping(String sql) {
+        Map<String, Long> out = new LinkedHashMap<>();
+        jdbcTemplate.query(sql, Collections.emptyMap(), rs -> {
+            out.put(rs.getString(1), rs.getLong(2));
+        });
+        return out;
+    }
+
+    // ---------- 作用域聚合摘要（压测打磨：替代全窗口整表加载 + Java 聚合） ----------
+
+    @Override
+    public AlertScopeSummary summarize(AlertQuery query) {
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        StringBuilder where = new StringBuilder(" WHERE 1=1 ");
+        buildQueryConditions(query, where, params);
+
+        // Q1 标量：总量 + 未关闭严重/紧急（供顶部 metrics 组合）
+        Map<String, Object> scalar = jdbcTemplate.queryForMap(
+                "SELECT count(*) AS total,"
+                        + " COALESCE(SUM(CASE WHEN risk_level_code = 'SEVERE' AND status_code <> 'CLOSED' THEN 1 ELSE 0 END), 0) AS severe_open,"
+                        + " COALESCE(SUM(CASE WHEN risk_level_code = 'URGENT' AND status_code <> 'CLOSED' THEN 1 ELSE 0 END), 0) AS urgent_open"
+                        + " FROM safety.safety_alert" + where, params);
+        long total = ((Number) scalar.get("total")).longValue();
+        long severeOpen = ((Number) scalar.get("severe_open")).longValue();
+        long urgentOpen = ((Number) scalar.get("urgent_open")).longValue();
+
+        // Q2~Q6 分组：状态 / 风险 / 区域（全量+高风险）/ 目标 / 事件类型（全量+高风险）
+        Map<String, Long> byStatus = groupScope(where, params, "status_code");
+        Map<String, Long> byRisk = groupScope(where, params, "risk_level_code");
+        Map<String, Long> byArea = groupScopeCoalesce(where, params, "area_name_snapshot", null);
+        Map<String, Long> byAreaHigh = groupScopeCoalesce(where, params, "area_name_snapshot",
+                "risk_level_code IN ('SEVERE','URGENT')");
+        Map<String, Long> byTarget = groupScopeCoalesce(where, params, "target_object_name_snapshot", null);
+        Map<String, Long> byEventType = groupScopeCoalesce(where, params, null, null);
+        Map<String, Long> byEventTypeHigh = groupScopeCoalesce(where, params, null,
+                "risk_level_code IN ('SEVERE','URGENT')");
+
+        // Q7 平均响应/关闭时长：CTE 限定作用域后与时间线首次节点做 join（秒）
+        // 复查-4.1：与内存 secondsToFirst 口径严格一致——先按 >=occurred_at 过滤时间线节点，
+        // 再逐告警取首个事件（旧写法先全局 min 再过滤，会把含早期节点的告警整体剔除）
+        String avgSql = """
+                WITH scope AS (SELECT id, occurred_at FROM safety.safety_alert%W),
+                hits AS (
+                  SELECT s.id AS alert_id, s.occurred_at, min(tl.occurred_at) AS first_at
+                  FROM scope s
+                  JOIN safety.safety_alert_timeline tl
+                    ON tl.alert_id = s.id AND tl.event_type = :aggEventType
+                   AND tl.occurred_at >= s.occurred_at
+                  GROUP BY s.id, s.occurred_at)
+                SELECT avg(extract(epoch FROM (first_at - occurred_at))) AS avg_seconds FROM hits
+                """.replace("%W", where.toString());
+        MapSqlParameterSource confirmParams = new MapSqlParameterSource(params.getValues())
+                .addValue("aggEventType", com.bproject.safety.module.alert.model.AlertTimelineEventTypes.CONFIRMED);
+        Long avgConfirm = queryAvgSeconds(avgSql, confirmParams);
+        MapSqlParameterSource closeParams = new MapSqlParameterSource(params.getValues())
+                .addValue("aggEventType", com.bproject.safety.module.alert.model.AlertTimelineEventTypes.CLOSED);
+        Long avgClose = queryAvgSeconds(avgSql, closeParams);
+
+        return new AlertScopeSummary(total, severeOpen, urgentOpen,
+                byStatus, byRisk, byArea, byAreaHigh, byTarget, byEventType, byEventTypeHigh,
+                avgConfirm, avgClose);
+    }
+
+    private Long queryAvgSeconds(String sql, MapSqlParameterSource params) {
+        java.math.BigDecimal val = jdbcTemplate.queryForObject(sql, params, java.math.BigDecimal.class);
+        if (val == null) {
+            return null;
+        }
+        double d = val.doubleValue();
+        if (Double.isNaN(d) || Double.isInfinite(d)) {
+            return null;
+        }
+        return Math.round(d);
+    }
+
+    private Map<String, Long> groupScope(StringBuilder where, MapSqlParameterSource params, String column) {
+        Map<String, Long> out = new LinkedHashMap<>();
+        jdbcTemplate.query("SELECT " + column + ", count(*) FROM safety.safety_alert" + where
+                + " GROUP BY " + column, params, rs -> {
+            out.put(rs.getString(1), rs.getLong(2));
+        });
+        return out;
+    }
+
+    /** COALESCE 分组（eventType 为空回退 title；键空值兜底为空串，与内存 nz() 口径一致）。 */
+    private Map<String, Long> groupScopeCoalesce(StringBuilder where, MapSqlParameterSource params,
+                                                 String column, String extraWhere) {
+        String expr;
+        if (column != null) {
+            expr = "COALESCE(" + column + ", '')";
+        } else {
+            expr = "COALESCE(event_type, title, '')";
+        }
+        Map<String, Long> out = new LinkedHashMap<>();
+        String extra = extraWhere == null ? "" : " AND " + extraWhere;
+        jdbcTemplate.query("SELECT " + expr + " AS bucket, count(*) FROM safety.safety_alert" + where
+                + extra + " GROUP BY " + expr, params, rs -> {
+            out.put(rs.getString(1), rs.getLong(2));
+        });
+        return out;
+    }
+
+    @Override
+    public List<DemoAlert> filterRecent(AlertQuery query, int limit) {
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        StringBuilder sql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE 1=1 ");
+        buildQueryConditions(query, sql, params);
+        sql.append(" ORDER BY occurred_at DESC, id DESC LIMIT :recentLimit");
+        params.addValue("recentLimit", Math.max(1, limit));
+        Map<UUID, DemoAlert> alertMap = new LinkedHashMap<>();
+        jdbcTemplate.query(sql.toString(), params, rs -> {
+            UUID id = (UUID) rs.getObject("id");
+            alertMap.put(id, mapAlertRoot(rs));
+        });
+        loadAggregateChildren(alertMap);
+        return alertMap.values().stream().map(DemoAlert::copy).toList();
+    }
+
     // ---------- 内部持久化辅助 ----------
 
     private void saveRootAlert(UUID rootUuid, String alertNo, DemoAlert a) {
@@ -280,8 +419,13 @@ public class JdbcAlertRepository implements AlertRepository {
         Timestamp slaDeadlineTs = a.slaDeadline != null ? Timestamp.from(a.slaDeadline.toInstant()) : null;
         Timestamp acceptedAtTs = a.acceptedAt != null ? Timestamp.from(a.acceptedAt.toInstant()) : null;
         Timestamp arrivedAtTs = a.arrivedAt != null ? Timestamp.from(a.arrivedAt.toInstant()) : null;
-        Timestamp closedAtTs = AlertStatuses.CLOSED.equals(a.statusCode)
-                ? Timestamp.from(a.updatedAt != null ? a.updatedAt.toInstant() : OffsetDateTime.now(clock).toInstant()) : null;
+        // 复查-D2：优先沿用读回的闭环时间戳（跨天生命周期多次保存不漂移）；首次关闭才现取
+        Timestamp closedAtTs = null;
+        if (AlertStatuses.CLOSED.equals(a.statusCode)) {
+            closedAtTs = a.closedAt != null
+                    ? Timestamp.from(a.closedAt.toInstant())
+                    : Timestamp.from(a.updatedAt != null ? a.updatedAt.toInstant() : OffsetDateTime.now(clock).toInstant());
+        }
         Timestamp confirmedAtTs = null;
         if (a.confirmTime != null && !a.confirmTime.isBlank()) {
             try {
@@ -460,7 +604,16 @@ public class JdbcAlertRepository implements AlertRepository {
         for (TimelineEvent event : a.timeline) {
             int seq = event.sequenceNo() != null ? event.sequenceNo() : ++maxSeq;
             if (seqSet.contains(seq)) {
-                // 已经持久化过的时间线节点严格只读，绝对不进行任何 UPDATE 或 DELETE
+                // 已持久化节点的 message/occurred_at 严格只读（append-only）；
+                // 复查-D3：state_code 例外同步——内存快照已把前序节点收敛为 done，
+                // 不回写会导致 DB 中多个节点同时 active 且重启后持续累积
+                jdbcTemplate.update(
+                        "UPDATE safety.safety_alert_timeline SET state_code = :state "
+                                + "WHERE alert_id = :alertId AND sequence_no = :sequenceNo AND state_code <> :state",
+                        new MapSqlParameterSource()
+                                .addValue("state", event.state() != null ? event.state() : "done")
+                                .addValue("alertId", rootUuid)
+                                .addValue("sequenceNo", seq));
                 continue;
             }
             seqSet.add(seq);
@@ -787,6 +940,16 @@ public class JdbcAlertRepository implements AlertRepository {
 
     // ---------- 查询条件与映射辅助 ----------
 
+    /** 复查-5.3：时间边界非法时统一 400（此前 JDBC 静默忽略、内存路径 500，三处行为不一）。 */
+    private static OffsetDateTime parseBoundaryOrThrow(String iso) {
+        try {
+            return OffsetDateTime.parse(iso.trim());
+        } catch (RuntimeException ex) {
+            throw com.bproject.safety.common.error.ApiException.badRequest(
+                    "时间参数格式非法（要求 ISO-8601 OffsetDateTime）: " + iso);
+        }
+    }
+
     private void buildQueryConditions(AlertQuery q, StringBuilder sql, MapSqlParameterSource params) {
         if (q.keyword() != null && !q.keyword().isBlank()) {
             String pattern = "%" + q.keyword().trim() + "%";
@@ -826,20 +989,14 @@ public class JdbcAlertRepository implements AlertRepository {
             params.addValue("assigneePattern", "%" + q.assignee().trim() + "%");
         }
         if (q.from() != null && !q.from().isBlank()) {
-            try {
-                OffsetDateTime fromOdt = OffsetDateTime.parse(q.from());
-                sql.append(" AND occurred_at >= :fromTs ");
-                params.addValue("fromTs", Timestamp.from(fromOdt.toInstant()));
-            } catch (Exception ignored) {
-            }
+            OffsetDateTime fromOdt = parseBoundaryOrThrow(q.from());
+            sql.append(" AND occurred_at >= :fromTs ");
+            params.addValue("fromTs", Timestamp.from(fromOdt.toInstant()));
         }
         if (q.to() != null && !q.to().isBlank()) {
-            try {
-                OffsetDateTime toOdt = OffsetDateTime.parse(q.to());
-                sql.append(" AND occurred_at <= :toTs ");
-                params.addValue("toTs", Timestamp.from(toOdt.toInstant()));
-            } catch (Exception ignored) {
-            }
+            OffsetDateTime toOdt = parseBoundaryOrThrow(q.to());
+            sql.append(" AND occurred_at <= :toTs ");
+            params.addValue("toTs", Timestamp.from(toOdt.toInstant()));
         }
     }
 
@@ -902,6 +1059,11 @@ public class JdbcAlertRepository implements AlertRepository {
         Timestamp arrivedTs = rs.getTimestamp("arrived_at");
         if (arrivedTs != null) {
             a.arrivedAt = arrivedTs.toInstant().atZone(ZONE).toOffsetDateTime();
+        }
+
+        Timestamp closedTs = rs.getTimestamp("closed_at");
+        if (closedTs != null) {
+            a.closedAt = closedTs.toInstant().atZone(ZONE).toOffsetDateTime();
         }
 
         Timestamp updatedTs = rs.getTimestamp("updated_at");

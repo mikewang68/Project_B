@@ -37,9 +37,17 @@ public class SafetyProjectionService {
         return repository.findAll();
     }
 
-    /** 未关闭的活动告警数。 */
+    /** 告警总量（D-2 指标用：count() 直读，不加载聚合列表）。 */
+    public long allAlertCount() {
+        return repository.count();
+    }
+
+    /** 未关闭的活动告警数（Step 8：存储侧 GROUP BY 计数，不再全量加载）。 */
     public long activeCount() {
-        return repository.findAll().stream().filter(a -> !AlertStatuses.CLOSED.equals(a.statusCode)).count();
+        return repository.countByStatus().entrySet().stream()
+                .filter(e -> !AlertStatuses.CLOSED.equals(e.getKey()))
+                .mapToLong(Map.Entry::getValue)
+                .sum();
     }
 
     /** 处置中口径：处理中 / 待复核 / 已升级。 */
@@ -47,41 +55,34 @@ public class SafetyProjectionService {
             AlertStatuses.PROCESSING, AlertStatuses.PENDING_REVIEW, AlertStatuses.ESCALATED);
 
     public long processingCount() {
-        return repository.findAll().stream()
-                .filter(a -> IN_HANDLING.contains(a.statusCode))
-                .count();
+        return repository.countByStatus().entrySet().stream()
+                .filter(e -> IN_HANDLING.contains(e.getKey()))
+                .mapToLong(Map.Entry::getValue)
+                .sum();
     }
 
     public long countByRiskOpen(String riskCodeOrLabel) {
         String riskCode = com.bproject.safety.module.alert.model.RiskLevels.normalize(riskCodeOrLabel);
-        return repository.findAll().stream()
-                .filter(a -> riskCode.equals(a.riskCode) && !AlertStatuses.CLOSED.equals(a.statusCode)).count();
+        return repository.countOpenByRisk().getOrDefault(riskCode, 0L);
     }
 
     public long closedCount() {
-        return repository.findAll().stream().filter(a -> AlertStatuses.CLOSED.equals(a.statusCode)).count();
+        return repository.countByStatus().getOrDefault(AlertStatuses.CLOSED, 0L);
     }
 
-    /** 风险类型分布（按数量倒序）。 */
+    /** 风险类型分布（按数量倒序，存储侧 GROUP BY 计数）。 */
     public List<RiskCount> riskDistribution() {
-        Map<String, Integer> typeCount = new LinkedHashMap<>();
-        repository.findAll().forEach(a ->
-                typeCount.merge(a.eventType == null ? a.title : a.eventType, 1, Integer::sum));
-        return typeCount.entrySet().stream()
-                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                .map(e -> new RiskCount(e.getKey(), e.getValue()))
+        return repository.countByEventType().entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .map(e -> new RiskCount(e.getKey(), e.getValue().intValue()))
                 .toList();
     }
 
-    /** 最近事件（按发生时间倒序）。 */
+    /** 最近事件（按发生时间倒序，分页通道 SQL LIMIT 截断）。 */
     public List<DemoAlert> recent(int limit, int max) {
         int size = limit <= 0 ? 12 : Math.min(limit, max);
-        return repository.findAll().stream()
-                .sorted(Comparator.comparing((DemoAlert a) -> a.occurredAt,
-                                Comparator.nullsLast(Comparator.reverseOrder()))
-                        .thenComparing(a -> a.id, Comparator.reverseOrder()))
-                .limit(size)
-                .toList();
+        return repository.page(new com.bproject.safety.module.alert.repository.AlertQuery(
+                null, null, null, null, null, null, null, null, null, null, 1, size)).list();
     }
 
     /** 事件摘要（联动失败优先提示人工接管）。 */

@@ -55,8 +55,10 @@ public class InMemoryAiEventRepository implements AiEventRepository, DemoClearab
                 .filter(e -> q.type() == null || q.type().equals(e.type))
                 .filter(e -> q.area() == null || q.area().equals(e.area))
                 .filter(e -> q.camera() == null || q.camera().equals(e.camera))
-                .filter(e -> q.status() == null || AiReviewStatuses.normalize(q.status()).equals(e.statusCode))
-                .filter(e -> q.risk() == null || AiRiskLevels.normalize(q.risk()).equals(e.riskCode))
+                .filter(e -> q.status() == null || (AiReviewStatuses.normalize(q.status()) != null
+                        && AiReviewStatuses.normalize(q.status()).equals(e.statusCode)))
+                .filter(e -> q.risk() == null || (AiRiskLevels.normalize(q.risk()) != null
+                        && AiRiskLevels.normalize(q.risk()).equals(e.riskCode)))
                 .filter(e -> matchConfidence(q.confidence(), e))
                 .filter(e -> matchTimeBucket(q.timeBucket(), e))
                 .sorted(TIME_DESC)
@@ -110,6 +112,39 @@ public class InMemoryAiEventRepository implements AiEventRepository, DemoClearab
     }
     @Override public List<String> distinctCameras() {
         return activeEvents().map(e -> e.camera).filter(v -> v!=null&&!v.isBlank()).distinct().sorted().toList();
+    }
+
+    @Override
+    public boolean claimLinkedAlert(String eventId, String alertId) {
+        DemoAiEvent e = store.get(eventId);
+        if (e == null) {
+            return false;
+        }
+        // 单 JVM 下 confirm 已由 KeyedLock 串行化，此处 CAS 为契约完备性
+        if (e.linkedAlertId == null || e.linkedAlertId.isBlank()) {
+            e.linkedAlertId = alertId;
+            return true;
+        }
+        return e.linkedAlertId.equals(alertId);
+    }
+
+    @Override
+    public List<DemoAiEvent> findByLinkedAlertId(String alertId) {
+        if (alertId == null || alertId.isBlank()) {
+            return List.of();
+        }
+        return store.values().stream()
+                .filter(e -> alertId.equals(e.linkedAlertId))
+                .map(DemoAiEvent::copy)
+                .toList();
+    }
+
+    @Override
+    public long countPendingReview() {
+        return store.values().stream()
+                .filter(e -> com.bproject.safety.module.ai.model.AiReviewStatuses.PENDING.equals(e.statusCode)
+                        || com.bproject.safety.module.ai.model.AiReviewStatuses.UNCERTAIN.equals(e.statusCode))
+                .count();
     }
 
     /** 清空存储（DemoClearableStore，仅 Demo / 测试调用）。 */

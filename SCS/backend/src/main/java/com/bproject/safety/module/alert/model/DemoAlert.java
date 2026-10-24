@@ -97,6 +97,8 @@ public class DemoAlert {
     public OffsetDateTime acceptedAt;
     /** 移动端到场时间（ISO-8601）。 */
     public OffsetDateTime arrivedAt;
+    /** 复查-D2：闭环事实时间戳（库表 closed_at 已有列，此前无读侧字段导致取值不可见）。 */
+    public OffsetDateTime closedAt;
 
     /** 规范时间戳（ISO-8601，带时区）。 */
     public OffsetDateTime occurredAt;

@@ -6,15 +6,18 @@ import com.bproject.safety.support.demo.DemoClearableStore;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 /**
  * 进程内离线事件队列：按 eventId 存储，查询按 edgeOccurredAt、eventId 稳定排序。
  *
  * <p>Phase B：copy-on-read / copy-on-write（{@link EdgePendingEvent#copy()} 深拷贝
- * payloadSummary / localLinkage）；不提供 findMutable，去重权威来自仓储查询而非 Service 的 HashSet。</p>
+ * payloadSummary / localLinkage）；不提供 findMutable，去重权威来自仓储查询而非 Service 的 HashSet。
+ * server profile 下由 {@link JdbcEdgeEventQueueRepository} 接管（edge_pending_event 表持久化）。</p>
  */
 @Repository
+@Profile("!server")
 public class InMemoryEdgeEventQueueRepository implements EdgeEventQueueRepository, DemoClearableStore {
 
     private final ConcurrentHashMap<String, EdgePendingEvent> store = new ConcurrentHashMap<>();
@@ -72,6 +75,13 @@ public class InMemoryEdgeEventQueueRepository implements EdgeEventQueueRepositor
     public int pendingCount(String nodeId) {
         return (int) store.values().stream()
                 .filter(e -> nodeId == null || nodeId.equals(e.edgeNodeId))
+                .filter(e -> PendingEventStatuses.pendingLike(e.status))
+                .count();
+    }
+
+    @Override
+    public int pendingCountAll() {
+        return (int) store.values().stream()
                 .filter(e -> PendingEventStatuses.pendingLike(e.status))
                 .count();
     }

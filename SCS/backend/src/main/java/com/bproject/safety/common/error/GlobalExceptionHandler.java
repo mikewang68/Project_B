@@ -72,6 +72,13 @@ public class GlobalExceptionHandler {
         return ApiError.of(ErrorCodes.BAD_REQUEST, "请求参数不合法: " + rootMessage(ex), currentTraceId(), details);
     }
 
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(IllegalStateException.class)
+    public ApiError handleIllegalState(IllegalStateException ex) {
+        // 复查-5.4：幂等键并发重复等运行态冲突 → 409（原落入兜底 500）
+        return ApiError.of(ErrorCodes.STATE_CONFLICT, ex.getMessage(), currentTraceId(), null);
+    }
+
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ApiError handleMethod(HttpRequestMethodNotSupportedException ex) {

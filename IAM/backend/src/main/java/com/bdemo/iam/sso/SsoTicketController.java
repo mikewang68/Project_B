@@ -62,6 +62,7 @@ public class SsoTicketController {
     if (audience == null || audience.isBlank()) {
       throw new SsoTicketService.SsoTicketException("缺少 audience");
     }
+    if(!user.mayEnter(audience))throw new SsoTicketService.SsoTicketException("目标系统未被授权");
 
     // V1.1：必须有显式主体映射，无回退
     subjects.requireBound(user.getUserId(), user.getUsername(), audience);

@@ -5,6 +5,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class LoginUser {
+    private boolean globalRead;
+    public boolean isGlobalRead(){return globalRead;}
+    public void setGlobalRead(boolean value){globalRead=value;}
     private boolean readOnly;
     public boolean isReadOnly(){return readOnly;}
     public void setReadOnly(boolean value){readOnly=value;}

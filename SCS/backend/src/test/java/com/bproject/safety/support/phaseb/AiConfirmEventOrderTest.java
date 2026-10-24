@@ -145,5 +145,26 @@ class AiConfirmEventOrderTest {
         public long count() {
             return delegate.count();
         }
+
+        @Override
+        public java.util.Map<String, Long> countByStatus() {
+            return delegate.countByStatus();
+        }
+
+        @Override
+        public java.util.Map<String, Long> countOpenByRisk() {
+            return delegate.countOpenByRisk();
+        }
+
+        @Override
+        public java.util.Map<String, Long> countByEventType() {
+            return delegate.countByEventType();
+        }
+
+        @Override
+        public com.bproject.safety.module.alert.repository.AlertScopeSummary summarize(
+                AlertQuery query) {
+            return delegate.summarize(query);
+        }
     }
 }

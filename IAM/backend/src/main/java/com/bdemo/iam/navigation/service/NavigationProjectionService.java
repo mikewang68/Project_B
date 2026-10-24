@@ -147,6 +147,7 @@ public class NavigationProjectionService {
         ? user.getDisplayName() : user.getUsername());
     userContext.setAccessMode(accessMode.name());
     userContext.setReadOnly(isReadonly);
+    userContext.setAllowedAppCodes(user.getAllowedAppCodes());
 
     // 3. 解析当前数据提供者并读取候选菜单与权限映射（Fail-Closed 保证：若 DB 异常直接外抛 50001）
     NavigationDataProvider provider = resolveActiveProvider();
@@ -181,13 +182,7 @@ public class NavigationProjectionService {
       }
 
       // 作用域检查：Scoped 用户需核验其是否属于该系统作用域
-      if (accessMode == AccessModeEnum.SCOPED_USER) {
-        boolean inScope = user.getScopedApps().contains(app.name())
-            || hasPermissionPrefix(user, app.getIamSystemCode());
-        if (!inScope) {
-          continue;
-        }
-      }
+      if (!user.mayEnter(app.name())) continue;
 
       List<PageLeafNode> children = new ArrayList<>();
       // E21：目录节点索引，子页按 parentStableMenuKey 挂载
@@ -232,7 +227,8 @@ public class NavigationProjectionService {
         // 权限点匹配核验
         String requiredPerm = requiredPermByMenu.get(menu.getStableMenuKey());
         // Directories carry structure; their remaining authorized children decide visibility.
-        boolean hasPerm = isDirectoryNode || checkViewPermission(user, accessMode, requiredPerm);
+        boolean hasPerm = isDirectoryNode || showFeatureCatalog && !isApproved && user.getAdminAppCodes().contains(app.name())
+            || checkViewPermission(user, accessMode, requiredPerm);
         if (!hasPerm) {
           filteredOutCount++;
           continue;

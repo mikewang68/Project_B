@@ -65,7 +65,7 @@ public class OverviewService {
     }
 
     public OverviewSummary summary() {
-        long pendingAi = aiEventRepository.counts().pending();
+        long pendingAi = aiEventRepository.countPendingReview();
         return new OverviewSummary(
                 SafetyProjectionService.DEMO_ON_DUTY,
                 SafetyProjectionService.DEMO_DEVICE_ONLINE,

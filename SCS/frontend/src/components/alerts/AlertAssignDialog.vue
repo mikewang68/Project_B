@@ -102,7 +102,7 @@ function submit(): void {
     </div>
     <template #footer>
       <button type="button" @click="emit('update:modelValue', false)">取消</button>
-      <button type="button" class="primary" :disabled="!!dictStore.error" @click="submit">确认{{ mode }}</button>
+      <button v-permission="'safety:module:alert:handle'" type="button" class="primary" :disabled="!!dictStore.error" @click="submit">确认{{ mode }}</button>
     </template>
   </ElDialog>
 </template>

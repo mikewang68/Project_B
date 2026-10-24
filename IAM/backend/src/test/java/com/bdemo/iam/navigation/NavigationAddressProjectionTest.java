@@ -38,6 +38,7 @@ class NavigationAddressProjectionTest {
     login(new LoginUser("test-id", "test-user", "Test", true, Set.of()));
   }
   private void login(LoginUser user) {
+    user.setScopedApps(user.isSuperAdmin()?com.bdemo.iam.security.AppScopePolicy.allApps():Set.of(user.getPermissions().stream().anyMatch(p->p.startsWith("wms:"))?"WMS":"IAM"));
     SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user,null,List.of()));
   }
   @AfterEach void cleanup() { SecurityContextHolder.clearContext(); }

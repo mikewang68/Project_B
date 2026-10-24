@@ -30,6 +30,9 @@ class RuntimeSchemaDatabaseTest {
             }
           }
         }
+        try(var query=connection.prepareStatement("SELECT count(*) FROM information_schema.columns WHERE table_schema='safety' AND table_name='ai_model' AND column_name IN('model_code','model_name','is_selected','is_deleted','supported_classes','confidence_threshold','iou_threshold','updated_at')" );var result=query.executeQuery()){
+          assertTrue(result.next());assertEquals(8,result.getInt(1),"AI model persistence requires the compatible 002 migration");
+        }
       }finally{connection.rollback();}
     }
   }

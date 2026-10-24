@@ -380,7 +380,7 @@ executeInference()
 
           <div class="control-actions">
             <button
-              type="button"
+ v-permission="'safety:module:ai:model:execute'"              type="button"
               class="primary-infer-btn"
               :disabled="isInferring"
               @click="executeInference"
@@ -389,7 +389,7 @@ executeInference()
               <span>{{ isInferring ? '模型推理计算中…' : '执行 AI 智能识别推理' }}</span>
             </button>
             <button
-              type="button"
+ v-permission="'safety:module:ai:model:execute'"              type="button"
               class="refresh-btn"
               title="重新检测"
               @click="executeInference"
@@ -473,7 +473,7 @@ executeInference()
             </template>
             <template v-else-if="inferenceResult.violationCount > 0">
               <button
-                type="button"
+ v-permission="'safety:module:ai:model:execute'"                type="button"
                 class="escalate-btn"
                 :disabled="isEscalating"
                 @click="escalateToAlert"

@@ -124,7 +124,7 @@ public final class ScsIamTicketValidator {
     result.put("sessionId", data.path("sessionId").asText(""));
     result.put("roles", data.path("roles"));
     result.put("permissions", data.path("permissions"));
-    for(String field:java.util.List.of("localSubject","company","org","domain","zone","readOnly","superAdmin"))
+    for(String field:java.util.List.of("localSubject","company","org","domain","zone","readOnly","superAdmin","applicationAdmin"))
       result.put(field,mapper.convertValue(data.path(field),Object.class));
     return result;
   }

@@ -63,8 +63,21 @@ public class SecurityInterceptor implements HandlerInterceptor {
     private final ScsIamTicketValidator ticketValidator;
     private final boolean jwtSecretConfigured;
     private final String jwtIssuerConfigured;
+    @Value("${app.security.browser-sso-only:${app.security.enabled:true}}") private boolean browserSsoOnly;
+    public boolean isUnifiedSessionRequired(){return browserSsoOnly;}
     @org.springframework.beans.factory.annotation.Autowired private ScsLocalPolicy localPolicy;
 
+    public SecurityInterceptor(
+            boolean enabled, String expectedApiKey, String expectedBearerToken,
+            String jwtSecret, String jwtIssuer, long clockSkewSeconds,
+            String iamBaseUrl, String iamServiceToken, String iamAudience, long iamTimeoutMs,
+            ObjectMapper objectMapper) {
+        this(enabled, expectedApiKey, expectedBearerToken, jwtSecret, jwtIssuer, clockSkewSeconds,
+                iamBaseUrl, iamServiceToken, iamAudience, iamTimeoutMs, objectMapper,
+                "", "", "HS256,HS384,HS512");
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
     public SecurityInterceptor(
             @Value("${app.security.enabled:true}") boolean enabled,
             @Value("${app.security.api-key:}") String expectedApiKey,
@@ -74,9 +87,12 @@ public class SecurityInterceptor implements HandlerInterceptor {
             @Value("${app.security.jwt-clock-skew-seconds:60}") long clockSkewSeconds,
             @Value("${app.security.iam-base-url:}") String iamBaseUrl,
             @Value("${app.security.iam-service-token:}") String iamServiceToken,
-            @Value("${app.security.iam-audience:scs}") String iamAudience,
+            @Value("${app.security.iam-audience:}") String iamAudience,
             @Value("${app.security.iam-timeout-ms:3000}") long iamTimeoutMs,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            @Value("${app.security.jwt-public-key-pem:}") String jwtPublicKeyPem,
+            @Value("${app.security.jwt-jwks-url:}") String jwtJwksUrl,
+            @Value("${app.security.jwt-allowed-algorithms:HS256,HS384,HS512}") String jwtAllowedAlgorithms) {
         this.enabled = enabled;
         this.expectedApiKey = expectedApiKey != null ? expectedApiKey.trim() : "";
         // 保留该配置项只为显式拒绝：任何静态令牌都不再被接受。
@@ -86,13 +102,31 @@ public class SecurityInterceptor implements HandlerInterceptor {
                 new ScsIamTicketValidator(iamBaseUrl, iamServiceToken, iamAudience, iamTimeoutMs, objectMapper);
         // 受众（aud）不在此处硬校验：跨系统受众由 finish() 统一返回 403 FORBIDDEN_SCOPE_MISMATCH，
         // 避免把"身份合法但受众不符"误报成签名失败。
-        // issuer 不允许选配：只要启用了 JWT 通道，就必须能校验签发方。
+        // issuer 不允许选配：只要启用了 JWT 通道（对称或非对称），就必须能校验签发方。
         this.jwtSecretConfigured = jwtSecret != null && !jwtSecret.isBlank();
         this.jwtIssuerConfigured = jwtIssuer == null ? "" : jwtIssuer.trim();
+        boolean hasAsymKeySource = (jwtPublicKeyPem != null && !jwtPublicKeyPem.isBlank())
+                || (jwtJwksUrl != null && !jwtJwksUrl.trim().isBlank());
         this.jwtVerifier =
-                jwtSecret == null || jwtSecret.isBlank()
-                        ? null
-                        : new JwtVerifier(jwtSecret, jwtIssuer, clockSkewSeconds, objectMapper);
+                (this.jwtSecretConfigured || hasAsymKeySource)
+                        ? new JwtVerifier(jwtSecret, jwtIssuer, clockSkewSeconds, objectMapper,
+                                parseAllowedAlgorithms(jwtAllowedAlgorithms), jwtPublicKeyPem, jwtJwksUrl)
+                        : null;
+    }
+
+    /** 算法白名单解析：逗号分隔、忽略空白；缺省回落 HS 三件套（兼容既有部署）。 */
+    private static Set<String> parseAllowedAlgorithms(String configured) {
+        if (configured == null || configured.isBlank()) {
+            return Set.of("HS256", "HS384", "HS512");
+        }
+        Set<String> parsed = new HashSet<>();
+        for (String alg : configured.split(",")) {
+            String trimmed = alg.trim().toUpperCase(java.util.Locale.ROOT);
+            if (!trimmed.isEmpty()) {
+                parsed.add(trimmed);
+            }
+        }
+        return parsed.isEmpty() ? Set.of("HS256", "HS384", "HS512") : parsed;
     }
 
     @PostConstruct
@@ -109,9 +143,15 @@ public class SecurityInterceptor implements HandlerInterceptor {
                     "app.security.jwt-secret 已配置但 app.security.jwt-issuer 为空："
                             + "拒绝在无法校验签发方的情况下启用 JWT 验签（fail-closed）。");
         }
+        if (jwtVerifier != null && !jwtSecretConfigured && jwtIssuerConfigured.isBlank()) {
+            throw new IllegalStateException(
+                    "app.security.jwt-public-key-pem / jwt-jwks-url 已配置但 app.security.jwt-issuer 为空："
+                            + "拒绝在无法校验签发方的情况下启用非对称 JWT 验签（fail-closed）。");
+        }
         if (jwtVerifier == null && !ticketValidator.isUsable()) {
             throw new IllegalStateException(
-                    "Security is enabled but neither app.security.jwt-secret nor the IAM ticket validator "
+                    "Security is enabled but neither app.security.jwt-secret / jwt-public-key-pem / jwt-jwks-url "
+                            + "nor the IAM ticket validator "
                             + "(app.security.iam-base-url + iam-service-token + iam-audience) is configured. "
                             + "Refusing to start without an authentication path (fail-closed).");
         }
@@ -141,7 +181,9 @@ public class SecurityInterceptor implements HandlerInterceptor {
             var binding=ScsSessionRegistry.get(existing.getId());
             if(binding==null || ScsSessionRegistry.isSessionRevoked(existing.getId())){sendUnauthorized(request,response,"业务会话绑定缺失或已撤销");return false;}
             try{
-                var actor=localPolicy.resolve(ticketValidator.current(binding.iamSubject(),binding.iamSid()));
+                var assertion=ticketValidator.current(binding.iamSubject(),binding.iamSid());
+                var actor=localPolicy.resolve(assertion);
+                request.setAttribute("SCS_AUTHORIZATION_VERSION",assertion.get("authorizationVersion"));
                 if(!localPolicy.permits(actor,request.getMethod(),path)){
                     sendForbidden(request,response,ErrorCodes.FORBIDDEN_READONLY_ROLE,"当前业务操作未获授权",Map.of());return false;
                 }
@@ -171,6 +213,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        if(browserSsoOnly){sendUnauthorized(request,response,"请通过统一入口建立业务会话");return false;}
         // 5. 用户 / 网关 Bearer Token 凭证检查
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {

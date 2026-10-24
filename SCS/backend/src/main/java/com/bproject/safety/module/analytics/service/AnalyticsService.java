@@ -8,6 +8,9 @@ import com.bproject.safety.module.alert.model.DemoAlert;
 import com.bproject.safety.module.alert.model.RiskLevels;
 import com.bproject.safety.module.alert.model.TimelineEvent;
 import com.bproject.safety.module.alert.demo.DemoAlertMaintenance;
+import com.bproject.safety.module.alert.model.AlertPageResult;
+import com.bproject.safety.module.alert.repository.AlertQuery;
+import com.bproject.safety.module.alert.repository.AlertScopeSummary;
 import com.bproject.safety.module.alert.repository.AlertRepository;
 import com.bproject.safety.module.analytics.dto.AnalyticsDtos.AreaRisk;
 import com.bproject.safety.module.analytics.dto.AnalyticsDtos.Dataset;
@@ -76,11 +79,50 @@ public class AnalyticsService {
 
     // ---------- 聚合数据集 ----------
 
+    /** 榜单/趋势的有界样本上限：作用域 ≤ 上限时与全量精确一致；超出时这些面板基于最近样本。 */
+    private static final int PANEL_SAMPLE_LIMIT = 2000;
+
     public Dataset dataset(String period, String from, String to, String area, String team,
                            String type, String level) {
-        List<DemoAlert> scope = filter(period, from, to, area, team, type, level, null, null);
+        // 班组/统计类型为 Java 派生维度、无法 SQL 聚合：设了这些过滤时回退全量行路径（语义与旧版一致）
+        if (isFilterValue(team) || isFilterValue(type)) {
+            return datasetFromRows(filter(period, from, to, area, team, type, level, null, null), period);
+        }
+        // 压测打磨：KPI/等级/区域/类型分布走 summarize（SQL 聚合，任何规模毫秒级且全量精确）；
+        // 班组/设备/人员/趋势为 Java 派生维度，基于有界最近样本（现实窗口内 = 全量精确）。
+        AlertQuery scopeQuery = scopeQuery(period, from, to, area, level);
+        AlertScopeSummary summary = alerts.summarize(scopeQuery);
+        List<DemoAlert> scope = alerts.filterRecent(scopeQuery, PANEL_SAMPLE_LIMIT);
 
-        List<Kpi> kpi = buildKpi(scope);
+        List<Kpi> kpi = buildKpi(summary);
+        List<TrendPoint> trend = buildTrend(scope, period);
+        List<RiskTypeCount> riskTypes = summary.byEventType().entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .map(e -> new RiskTypeCount(e.getKey(), e.getValue(),
+                        summary.byEventTypeHigh().getOrDefault(e.getKey(), 0L)))
+                .toList();
+        List<AreaRisk> areas = summary.byArea().entrySet().stream()
+                .map(e -> {
+                    long total = e.getValue();
+                    long high = summary.byAreaHigh().getOrDefault(e.getKey(), 0L);
+                    // DEMO RISK SCORE：总量 + 2×高风险，仅用于排行排序，非正式风险模型
+                    return new AreaRisk(e.getKey(), total, high, total + 2 * high);
+                })
+                .sorted(Comparator.comparingLong(AreaRisk::score).reversed())
+                .toList();
+        List<TeamEfficiency> teams = buildTeams(scope);
+        List<HotDevice> devices = buildDevices(scope);
+        List<RepeatPerson> persons = buildPersons(scope);
+        List<LevelCount> levels = LEVEL_CODES.stream()
+                .map(code -> new LevelCount(RiskLevels.label(code),
+                        summary.byRisk().getOrDefault(code, 0L)))
+                .toList();
+        return new Dataset(kpi, trend, riskTypes, areas, teams, devices, persons, levels, true);
+    }
+
+    /** 全量行路径（班组/类型过滤启用时）：语义与 summarize 路径严格一致，仅数据来源不同。 */
+    private Dataset datasetFromRows(List<DemoAlert> scope, String period) {
+        List<Kpi> kpi = buildKpiFromRows(scope);
         List<TrendPoint> trend = buildTrend(scope, period);
         List<RiskTypeCount> riskTypes = countMap(scope).entrySet().stream()
                 .sorted(Map.Entry.<String, long[]>comparingByValue((a, b) -> Long.compare(b[0], a[0])))
@@ -91,7 +133,6 @@ public class AnalyticsService {
                 .map(e -> {
                     long high = e.getValue().stream().filter(RiskClassifier::isHighRisk).count();
                     long total = e.getValue().size();
-                    // DEMO RISK SCORE：总量 + 2×高风险，仅用于排行排序，非正式风险模型
                     return new AreaRisk(e.getKey(), total, high, total + 2 * high);
                 })
                 .sorted(Comparator.comparingLong(AreaRisk::score).reversed())
@@ -106,11 +147,34 @@ public class AnalyticsService {
         return new Dataset(kpi, trend, riskTypes, areas, teams, devices, persons, levels, true);
     }
 
-    private List<Kpi> buildKpi(List<DemoAlert> scope) {
+    /** KPI 从聚合摘要构造（与全量行内存聚合口径一致）。 */
+    private List<Kpi> buildKpi(AlertScopeSummary summary) {
+        long total = summary.total();
+        long severe = summary.byRisk().getOrDefault(RiskLevels.SEVERE, 0L);
+        long urgent = summary.byRisk().getOrDefault(RiskLevels.URGENT, 0L);
+        long high = summary.highTotal();
+        Long avgResp = summary.avgConfirmSeconds();
+        Long avgClose = summary.avgCloseSeconds();
+        long repeated = summary.repeatedTotal();
+        List<Kpi> kpi = new ArrayList<>();
+        kpi.add(new Kpi("total", "事件总数", String.valueOf(total), 0, "flat", true,
+                "Backend 实时聚合（无环比基线）", "hero", null));
+        kpi.add(new Kpi("high", "高风险事件", String.valueOf(high), 0, "flat", true,
+                "严重 " + severe + " · 紧急 " + urgent, "default", null));
+        kpi.add(new Kpi("response", "平均响应时间", fmtDuration(avgResp), 0, "flat", true,
+                "发生到确认的平均耗时", "time", avgResp));
+        kpi.add(new Kpi("close", "平均关闭时间", fmtDuration(avgClose), 0, "flat", true,
+                "发生到关闭的平均耗时", "time", avgClose));
+        kpi.add(new Kpi("repeat", "重复风险事件", String.valueOf(repeated), 0, "flat", true,
+                "同一对象重复触发的事件数", "default", null));
+        return kpi;
+    }
+
+    /** 行构造版 KPI（班组/类型过滤回退路径），口径与 buildKpi(AlertScopeSummary) 一致。 */
+    private List<Kpi> buildKpiFromRows(List<DemoAlert> scope) {
         long total = scope.size();
         long severe = scope.stream().filter(a -> RiskLevels.SEVERE.equals(a.riskCode)).count();
         long urgent = scope.stream().filter(a -> RiskLevels.URGENT.equals(a.riskCode)).count();
-        long high = severe + urgent;
         Long avgResp = average(scope, AnalyticsService::confirmSeconds);
         Long avgClose = average(scope, AnalyticsService::closeSeconds);
         Map<String, List<DemoAlert>> byTarget = scope.stream()
@@ -119,7 +183,7 @@ public class AnalyticsService {
         List<Kpi> kpi = new ArrayList<>();
         kpi.add(new Kpi("total", "事件总数", String.valueOf(total), 0, "flat", true,
                 "Backend 实时聚合（无环比基线）", "hero", null));
-        kpi.add(new Kpi("high", "高风险事件", String.valueOf(high), 0, "flat", true,
+        kpi.add(new Kpi("high", "高风险事件", String.valueOf(severe + urgent), 0, "flat", true,
                 "严重 " + severe + " · 紧急 " + urgent, "default", null));
         kpi.add(new Kpi("response", "平均响应时间", fmtDuration(avgResp), 0, "flat", true,
                 "发生到确认的平均耗时", "time", avgResp));
@@ -245,17 +309,33 @@ public class AnalyticsService {
 
     public EventPage events(String period, String from, String to, String area, String team, String type,
                             String level, String deviceId, String person, int page, int pageSize) {
-        List<DemoAlert> scope = filter(period, from, to, area, team, type, level, deviceId, person);
-        List<EventItem> items = scope.stream().map(this::toEventItem).toList();
         int p = Math.max(1, page);
-        int size = pageSize <= 0 ? 10 : pageSize;
-        int start = Math.min((p - 1) * size, items.size());
-        int end = Math.min(start + size, items.size());
-        return new EventPage(p, size, items.size(), items.subList(start, end));
+        // 复查修正：直连构造绕过了 AlertQuery.of 的 200 上限，这里显式钳制防 LIMIT 被撑爆
+        int size = pageSize <= 0 ? 10 : Math.min(pageSize, 200);
+        // 设了 Java 派生过滤（班组/类型/设备/人员）时回退全量行内存分页（语义与旧版一致）
+        boolean hasDerivedFilters = isFilterValue(team) || isFilterValue(type)
+                || isFilterValue(deviceId) || isFilterValue(person);
+        if (hasDerivedFilters) {
+            List<DemoAlert> scope = filter(period, from, to, area, team, type, level, deviceId, person);
+            List<EventItem> items = scope.stream().map(this::toEventItem).toList();
+            int start = Math.min((p - 1) * size, items.size());
+            int end = Math.min(start + size, items.size());
+            return new EventPage(p, size, items.size(), items.subList(start, end));
+        }
+        // 压测打磨：无派生过滤走存储侧 count + LIMIT/OFFSET 分页（6 万行 495ms → 毫秒级）
+        AlertQuery base = scopeQuery(period, from, to, area, level);
+        AlertQuery pageQuery = new AlertQuery(base.keyword(), base.risk(), null, base.area(),
+                null, null, null, null, base.from(), base.to(), p, size);
+        AlertPageResult result = alerts.page(pageQuery);
+        List<EventItem> items = result.list().stream().map(this::toEventItem).toList();
+        return new EventPage(result.page(), result.pageSize(), result.total(), items);
     }
 
     public Map<String, Object> deviceDetail(String id) {
-        List<DemoAlert> scope = alerts.findAll().stream()
+        // keyword 预过滤（跨列 ILIKE，含 target 快照）收敛扫描范围，再按 target 精确匹配；
+        // 上限 1000 条防失控，覆盖明细页展示规模
+        List<DemoAlert> scope = alerts.filter(new AlertQuery(id, null, null, null, null, null, null,
+                        null, null, null, 1, 1000)).stream()
                 .filter(a -> a.target != null && a.target.contains(id)).toList();
         HotDevice device = buildDevices(scope).stream().filter(d -> d.deviceId().equals(id)).findFirst()
                 .orElse(null);
@@ -267,7 +347,9 @@ public class AnalyticsService {
     }
 
     public Map<String, Object> personDetail(String id) {
-        List<DemoAlert> scope = alerts.findAll().stream()
+        // 同 deviceDetail：keyword 超集预过滤 + personIdOf 精确过滤
+        List<DemoAlert> scope = alerts.filter(new AlertQuery(id, null, null, null, null, null, null,
+                        null, null, null, 1, 1000)).stream()
                 .filter(a -> RiskClassifier.personIdOf(a.target) != null
                         && id.equals(RiskClassifier.personIdOf(a.target))).toList();
         RepeatPerson person = buildPersons(scope).stream().filter(p -> p.personId().equals(id)).findFirst()
@@ -349,13 +431,13 @@ public class AnalyticsService {
 
     // ---------- 过滤 / 计算辅助 ----------
 
-    private List<DemoAlert> filter(String period, String from, String to, String area, String team,
-                                  String type, String level, String deviceId, String person) {
+    /** 作用域查询（时间窗 + 区域 + 风险等级三个直接列条件下推存储侧）。 */
+    private AlertQuery scopeQuery(String period, String from, String to, String area, String level) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         OffsetDateTime start;
         OffsetDateTime end = now.plusMinutes(1);
         if (from != null && !from.isBlank()) {
-            start = OffsetDateTime.parse(from);
+            start = parseBoundaryOrThrow(from);
         } else {
             int back = switch (nz(period)) {
                 case "今日" -> 48; // DEMO 窗口：种子固定 2026-09-04，今日放宽到 48h 保证演示数据可见
@@ -365,18 +447,38 @@ public class AnalyticsService {
             start = now.minusHours(back);
         }
         if (to != null && !to.isBlank()) {
-            end = OffsetDateTime.parse(to);
+            end = parseBoundaryOrThrow(to);
         }
-        final OffsetDateTime fs = start;
-        final OffsetDateTime fe = end;
-        return alerts.findAll().stream()
-                .filter(a -> a.occurredAt == null || (!a.occurredAt.isBefore(fs) && !a.occurredAt.isAfter(fe)))
-                .filter(a -> area == null || area.isBlank() || "全部".equals(area) || area.equals(a.area))
-                .filter(a -> level == null || level.isBlank() || "全部".equals(level)
-                        || RiskLevels.normalize(level).equals(a.riskCode))
-                .filter(a -> team == null || team.isBlank() || "全部".equals(team)
+        // Step 8 / P0-4：列条件下推；occurredAt 为空的行不进入窗口结果（库表 occurred_at 为 NOT NULL）
+        String riskCode = level == null || level.isBlank() || AlertQuery.ALL.equals(level)
+                ? null : RiskLevels.normalize(level);
+        String areaFilter = area == null || area.isBlank() || AlertQuery.ALL.equals(area) ? null : area;
+        return new AlertQuery(null, riskCode, null, areaFilter, null, null, null,
+                null, start.toString(), end.toString(), 1, 1);
+    }
+
+    private static OffsetDateTime parseBoundaryOrThrow(String iso) {
+        try {
+            return OffsetDateTime.parse(iso.trim());
+        } catch (RuntimeException ex) {
+            throw com.bproject.safety.common.error.ApiException.badRequest(
+                    "时间参数格式非法（要求 ISO-8601 OffsetDateTime）: " + iso);
+        }
+    }
+
+    private static boolean isFilterValue(String v) {
+        return v != null && !v.isBlank() && !AlertQuery.ALL.equals(v);
+    }
+
+    private List<DemoAlert> filter(String period, String from, String to, String area, String team,
+                                  String type, String level, String deviceId, String person) {
+        // 班组 / 统计类型 / 设备 / 人员为 Java 派生维度（RiskClassifier 解析 target 快照），
+        // 保留在列条件收敛后的结果集上内存过滤。
+        AlertQuery scopeQuery = scopeQuery(period, from, to, area, level);
+        return alerts.filter(scopeQuery).stream()
+                .filter(a -> team == null || team.isBlank() || AlertQuery.ALL.equals(team)
                         || team.equals(RiskClassifier.teamOf(a)))
-                .filter(a -> type == null || type.isBlank() || "全部".equals(type)
+                .filter(a -> type == null || type.isBlank() || AlertQuery.ALL.equals(type)
                         || type.equals(RiskClassifier.analyticsType(a)))
                 .filter(a -> deviceId == null || deviceId.isBlank()
                         || deviceId.equals(RiskClassifier.deviceIdOf(a.target)))

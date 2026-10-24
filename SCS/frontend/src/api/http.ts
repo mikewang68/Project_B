@@ -41,17 +41,19 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   headers.set('X-Trace-Id', requestTraceId)
-  if (init.method && !['GET','HEAD','OPTIONS'].includes(init.method.toUpperCase())) {
-    const sessionResponse = await fetch(`${API_BASE}/auth/me`, { credentials:'same-origin', cache:'no-store' })
-    if (!sessionResponse.ok) throw new Error('无法核验登录会话')
-    const session = await sessionResponse.json()
-    if (session.csrfToken) headers.set('X-SCS-CSRF', session.csrfToken)
-  }
   if (init.body) headers.set('Content-Type', 'application/json; charset=utf-8')
   if (init.method && init.method !== 'GET' && !headers.has('Idempotency-Key')) headers.set('Idempotency-Key', traceId())
 
   try {
+    if (init.method && !['GET','HEAD','OPTIONS'].includes(init.method.toUpperCase())) {
+      const sessionResponse = await fetch(`${API_BASE}/auth/me`, { credentials:'same-origin', cache:'no-store', signal:controller.signal })
+      if (sessionResponse.status === 401) window.dispatchEvent(new CustomEvent('scs:unauthenticated'))
+      if (!sessionResponse.ok) throw await buildError(sessionResponse, requestTraceId)
+      const session = await sessionResponse.json()
+      if (session.csrfToken) headers.set('X-SCS-CSRF', session.csrfToken)
+    }
     const response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials:'same-origin', signal: controller.signal })
+    if (response.status === 401) window.dispatchEvent(new CustomEvent('scs:unauthenticated'))
     if (!response.ok) throw await buildError(response, requestTraceId)
     return (await response.json()) as T
   } catch (error) {

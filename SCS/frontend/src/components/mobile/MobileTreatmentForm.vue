@@ -92,6 +92,6 @@ async function submit(): Promise<void> {
       <textarea v-model="note" rows="2" placeholder="选填"></textarea>
     </div>
 
-    <button type="button" class="m-btn m-btn--primary m-btn--block" :disabled="submitting" @click="submit">提交处理结果</button>
+    <button v-permission="'safety:module:alert:handle'" type="button" class="m-btn m-btn--primary m-btn--block" :disabled="submitting" @click="submit">提交处理结果</button>
   </section>
 </template>

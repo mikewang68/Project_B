@@ -26,6 +26,8 @@ import com.bproject.safety.module.alert.model.AlertTimelineEventTypes;
 import com.bproject.safety.module.alert.model.TreatmentRecord;
 import com.bproject.safety.module.alert.repository.AlertRepository;
 import com.bproject.safety.module.alert.repository.AlertQuery;
+import com.bproject.safety.module.alert.repository.AlertScopeSummary;
+import java.util.Map;
 import com.bproject.safety.module.alert.seed.AlertDemoSeeder;
 import com.bproject.safety.support.concurrency.KeyedLock;
 import com.bproject.safety.support.demo.DemoUserProperties;
@@ -76,13 +78,27 @@ public class AlertService {
     private final AlertNumberGenerator numberGenerator;
     private final TransactionTemplate transactionTemplate;
     private final KeyedLock keyedLock;
+    /** 复查-D6：告警闭环监听器（AI 事件镜像同步等）；ObjectProvider 惰性解析避免构造期循环依赖。 */
+    private final org.springframework.beans.factory.ObjectProvider<AlertClosureListener> closureListeners;
 
-    @Autowired
+    /** 兼容历史测试直连的 9 参构造（无闭环监听器）。 */
     public AlertService(AlertRepository repository, IdempotencyService idempotency,
                         DemoUserProperties demoUser, DemoMasterData masterData, Clock clock,
                         AlertChangeNotifier notifier, AlertNumberGenerator numberGenerator,
                         @Nullable PlatformTransactionManager transactionManager,
                         @Nullable KeyedLock keyedLock) {
+        this(repository, idempotency, demoUser, masterData, clock, notifier, numberGenerator,
+                transactionManager, keyedLock, null);
+    }
+
+    /** 复查-D6：全参构造（Spring 使用，注入闭环监听器）。 */
+    @Autowired
+    public AlertService(AlertRepository repository, IdempotencyService idempotency,
+                        DemoUserProperties demoUser, DemoMasterData masterData, Clock clock,
+                        AlertChangeNotifier notifier, AlertNumberGenerator numberGenerator,
+                        @Nullable PlatformTransactionManager transactionManager,
+                        @Nullable KeyedLock keyedLock,
+                        @Nullable org.springframework.beans.factory.ObjectProvider<AlertClosureListener> closureListeners) {
         this.repository = repository;
         this.idempotency = idempotency;
         this.demoUser = demoUser;
@@ -92,6 +108,7 @@ public class AlertService {
         this.numberGenerator = numberGenerator;
         this.transactionTemplate = transactionManager != null ? new TransactionTemplate(transactionManager) : null;
         this.keyedLock = keyedLock != null ? keyedLock : new KeyedLock();
+        this.closureListeners = closureListeners;
     }
 
     /** 兼容历史测试直接初始化的 7 参数构造函数 */
@@ -122,19 +139,38 @@ public class AlertService {
         return alert;
     }
 
+    /** 顶部统计（压测打磨：两个 GROUP BY 计数组合，替代全量加载后内存计数——6 万行 444ms → 毫秒级）。 */
     public AlertMetrics metrics() {
-        List<DemoAlert> all = repository.findAll();
-        long pending = all.stream().filter(a -> AlertStatuses.PENDING_CONFIRM.equals(a.statusCode)).count();
-        long active = all.stream().filter(a -> AlertStatuses.ACTIVE.contains(a.statusCode)).count();
-        long severe = all.stream()
-                .filter(a -> RiskLevels.SEVERE.equals(a.riskCode) && !AlertStatuses.CLOSED.equals(a.statusCode)).count();
-        long urgent = all.stream()
-                .filter(a -> RiskLevels.URGENT.equals(a.riskCode) && !AlertStatuses.CLOSED.equals(a.statusCode)).count();
-        long closed = all.stream().filter(a -> AlertStatuses.CLOSED.equals(a.statusCode)).count();
-        return new AlertMetrics(all.size(), (int) pending, (int) active, (int) severe, (int) urgent, (int) closed);
+        Map<String, Long> byStatus = repository.countByStatus();
+        long total = byStatus.values().stream().mapToLong(Long::longValue).sum();
+        long pending = byStatus.getOrDefault(AlertStatuses.PENDING_CONFIRM, 0L);
+        long active = AlertStatuses.ACTIVE.stream().mapToLong(s -> byStatus.getOrDefault(s, 0L)).sum();
+        long closed = byStatus.getOrDefault(AlertStatuses.CLOSED, 0L);
+        Map<String, Long> byRiskOpen = repository.countOpenByRisk();
+        long severe = byRiskOpen.getOrDefault(RiskLevels.SEVERE, 0L);
+        long urgent = byRiskOpen.getOrDefault(RiskLevels.URGENT, 0L);
+        return new AlertMetrics((int) total, (int) pending, (int) active, (int) severe, (int) urgent, (int) closed);
     }
 
     // ---------- 写操作 ----------
+
+    /** 复查-D4：并发双建去重兜底——重复告警转 CANCELLED（状态流转，兼容防删护栏）。 */
+    @Transactional
+    public DemoAlert cancelDuplicateAlert(String id, String reason) {
+        return mutate(id, null, "cancel-duplicate",
+                List.of(AlertStatuses.PENDING_CONFIRM, AlertStatuses.CONFIRMED, AlertStatuses.PENDING_ASSIGNMENT,
+                        AlertStatuses.PENDING_PROCESS, AlertStatuses.PROCESSING, AlertStatuses.PENDING_REVIEW),
+                alert -> {
+                    alert.statusCode = AlertStatuses.CANCELLED;
+                    alert.mobileStage = null;
+                    alert.slaDeadline = null;
+                    alert.slaRemainingSec = null;
+                    alert.closedAt = OffsetDateTime.now(clock);
+                    addEvent(alert, AlertTimelineEventTypes.CLOSED, "done",
+                            "重复告警已取消：" + (reason == null ? "并发去重" : reason));
+                    return alert;
+                });
+    }
 
     /** 确认事件：待确认（兼容已确认）→ 待派单。 */
     @Transactional
@@ -142,11 +178,15 @@ public class AlertService {
         String operator = pickOperator(req == null ? null : req.operator());
         return mutate(id, idemKey, "confirm",
                 List.of(AlertStatuses.PENDING_CONFIRM, AlertStatuses.CONFIRMED), alert -> {
+                    // 复查-1.3：兼容"重复确认"只前推状态，不重写确认人/不追加第二条 CONFIRMED 时间线
+                    boolean firstConfirm = AlertStatuses.PENDING_CONFIRM.equals(alert.statusCode);
                     alert.statusCode = AlertStatuses.PENDING_ASSIGNMENT;
-                    alert.confirmUser = operator;
-                    alert.confirmTime = nowHms();
-                    addEvent(alert, AlertTimelineEventTypes.CONFIRMED, "active",
-                            operator + " 确认事件，等待派单");
+                    if (firstConfirm) {
+                        alert.confirmUser = operator;
+                        alert.confirmTime = nowHms();
+                        addEvent(alert, AlertTimelineEventTypes.CONFIRMED, "active",
+                                operator + " 确认事件，等待派单");
+                    }
                     return alert;
                 });
     }
@@ -165,6 +205,10 @@ public class AlertService {
             int limitMin = req != null && req.limitMin() != null ? req.limitMin()
                     : req != null && req.slaLimitMin() != null ? req.slaLimitMin()
                     : alert.slaLimitMin != null ? alert.slaLimitMin : 15;
+            // 复查-1.4：非正数时限会直接生成已过期的 slaDeadline，拒绝
+            if (limitMin <= 0) {
+                throw ApiException.unprocessable("SLA 时限必须为正数分钟: " + limitMin);
+            }
             alert.assigneeUserCode = user.id();
             alert.assignee = user.name();
             alert.priority = priority;
@@ -252,8 +296,12 @@ public class AlertService {
     @Transactional
     public DemoAlert review(String id, ReviewRequest req, String idemKey) {
         String reviewer = pickOperator(req == null ? null : firstNonBlank(req.reviewer(), req.operator()));
-        return mutate(id, idemKey, "review", List.of(AlertStatuses.PENDING_REVIEW), alert -> {
+        DemoAlert closed = mutate(id, idemKey, "review", List.of(AlertStatuses.PENDING_REVIEW), alert -> {
             alert.statusCode = AlertStatuses.CLOSED;
+            // 复查-1.2：关闭后移动端工作流缓存不再有意义，清空防残留显示"处理中"
+            alert.mobileStage = null;
+            // 复查-D2：闭环事实时间戳（处置时长可由 closedAt - occurredAt 派生）
+            alert.closedAt = OffsetDateTime.now(clock);
             alert.reviewUser = reviewer;
             alert.reviewTime = nowHms();
             alert.reviewNote = req == null ? null : firstNonBlank(req.note(), req.reviewNote());
@@ -261,6 +309,24 @@ public class AlertService {
             alert.slaRemainingSec = null;
             addEvent(alert, AlertTimelineEventTypes.CLOSED, "done", "复核完成，事件关闭");
             return alert;
+        });
+        fireClosed(closed);
+        return closed;
+    }
+
+    /** 复查-D6：闭环监听器逐个通知（惰性解析）；单监听器异常不影响主链。 */
+    private void fireClosed(DemoAlert alert) {
+        if (closureListeners == null) {
+            return;
+        }
+        closureListeners.orderedStream().forEach(listener -> {
+            try {
+                listener.onAlertClosed(alert);
+            } catch (RuntimeException ex) {
+                org.slf4j.LoggerFactory.getLogger(AlertService.class)
+                        .warn("告警闭环监听器执行失败 alert={} listener={} err={}",
+                                alert.id, listener.getClass().getSimpleName(), ex.getMessage());
+            }
         });
     }
 
@@ -322,12 +388,16 @@ public class AlertService {
                     } else {
                         target = RiskLevels.URGENT;
                     }
-                    if (RiskLevels.URGENT.equals(oldCode) || target.equals(oldCode)) {
-                        throw ApiException.conflict("告警已处于最高风险等级或目标等级未升高: " + RiskLevels.label(oldCode));
+                    // 复查-1.1：严格升级校验（rank 比较），杜绝 SEVERE→WARNING 以"升级"名义降级
+                    if (RiskLevels.rank(target) <= RiskLevels.rank(oldCode)) {
+                        throw ApiException.conflict("升级目标等级必须高于当前等级（当前: "
+                                + RiskLevels.label(oldCode) + "，目标: " + RiskLevels.label(target) + "）");
                     }
                     alert.upgradedFromCode = oldCode;
                     alert.previousRiskLevelCode = oldCode;
                     alert.riskCode = target;
+                    // 复查-1.5：与 upgradeRisk 同口径——升级为高风险后联动可用
+                    alert.linkageAvailable = RiskLevels.isHigh(target);
                     // B5-01: 升级是风险等级变化，主生命周期 statusCode 保持原值，不进入 ESCALATED 状态
                     if (AlertStatuses.ESCALATED.equals(alert.statusCode)) {
                         alert.statusCode = AlertStatuses.PROCESSING;
@@ -467,6 +537,10 @@ public class AlertService {
             String target = RiskLevels.normalize(targetCodeOrLabel);
             if (!RiskLevels.isValid(target)) {
                 throw ApiException.unprocessable("非法风险等级: " + targetCodeOrLabel);
+            }
+            // 复查-D8：已关闭告警生命周期已终结，风险升级应走重开流程而非直接改等级
+            if (AlertStatuses.CLOSED.equals(alert.statusCode)) {
+                throw ApiException.conflict("已关闭告警不可升级风险等级");
             }
             String old = alert.riskCode;
             alert.upgradedFromCode = old;
@@ -615,6 +689,18 @@ public class AlertService {
                 a.source = "人员安全";
                 a.statusCode = AlertStatuses.PENDING_CONFIRM;
                 a.assignee = UNASSIGNED;
+                // 复查-1.6：复用旧对象重开演示时清上一轮处置/复核残留
+                a.assigneeUserCode = null;
+                a.confirmUser = null;
+                a.confirmTime = null;
+                a.reviewUser = null;
+                a.reviewTime = null;
+                a.reviewNote = null;
+                a.treatment = null;
+                a.mobileStage = null;
+                a.slaLimitMin = null;
+                a.slaDeadline = null;
+                a.slaRemainingSec = null;
                 // 演示开关语义为“规则引擎判定”，provenance 标记为 RULE。
                 applyProvenance(a, "RULE-PER-001", "v3.3", DecisionSources.RULE, "RULE-PER-001", "v3.3");
                 a.durationSec = 0;
@@ -639,10 +725,13 @@ public class AlertService {
                 OffsetDateTime now = OffsetDateTime.now(clock);
                 addEvent(existing, AlertTimelineEventTypes.CLOSED, "done", "风险演示解除，事件关闭");
                 existing.statusCode = AlertStatuses.CLOSED;
+                existing.closedAt = now;
                 existing.updatedAt = now;
                 repository.save(existing);
                 notifier.changed("review", existing);
-                return get(existing.id);
+                DemoAlert closed = get(existing.id);
+                fireClosed(closed);
+                return closed;
             }
             return existing;
         });

@@ -8,6 +8,7 @@ import com.bproject.safety.support.demo.DemoClearableStore;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,8 +57,8 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
         return store.values().stream()
                 .map(DemoAlert::copy)
                 .filter(a -> matchKeyword(q.keyword(), a))
-                .filter(a -> q.risk() == null || RiskLevels.normalize(q.risk()).equals(a.riskCode))
-                .filter(a -> q.status() == null || AlertStatuses.normalize(q.status()).equals(a.statusCode))
+                .filter(a -> noMatchIfInvalid(q.risk(), RiskLevels.normalize(q.risk()), a.riskCode))
+                .filter(a -> noMatchIfInvalid(q.status(), AlertStatuses.normalize(q.status()), a.statusCode))
                 .filter(a -> q.area() == null || q.area().equals(a.area))
                 .filter(a -> q.eventType() == null || q.eventType().equals(a.eventType))
                 .filter(a -> q.source() == null || q.source().equals(a.source))
@@ -112,6 +113,96 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
         return store.size();
     }
 
+    @Override
+    public java.util.Map<String, Long> countByStatus() {
+        java.util.Map<String, Long> out = new java.util.LinkedHashMap<>();
+        store.values().forEach(a -> out.merge(a.statusCode, 1L, Long::sum));
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, Long> countOpenByRisk() {
+        java.util.Map<String, Long> out = new java.util.LinkedHashMap<>();
+        store.values().stream()
+                .filter(a -> !AlertStatuses.CLOSED.equals(a.statusCode))
+                .forEach(a -> out.merge(a.riskCode, 1L, Long::sum));
+        return out;
+    }
+
+    @Override
+    public java.util.Map<String, Long> countByEventType() {
+        java.util.Map<String, Long> out = new java.util.LinkedHashMap<>();
+        store.values().forEach(a ->
+                out.merge(a.eventType == null ? a.title : a.eventType, 1L, Long::sum));
+        return out;
+    }
+
+    /** 与 JDBC summarize 语义一致：同源数据单遍计算（test/dev profile 数据量小，直算即可）。 */
+    @Override
+    public AlertScopeSummary summarize(AlertQuery query) {
+        List<DemoAlert> scope = filter(query);
+        Map<String, Long> byStatus = new java.util.LinkedHashMap<>();
+        Map<String, Long> byRisk = new java.util.LinkedHashMap<>();
+        Map<String, Long> byArea = new java.util.LinkedHashMap<>();
+        Map<String, Long> byAreaHigh = new java.util.LinkedHashMap<>();
+        Map<String, Long> byTarget = new java.util.LinkedHashMap<>();
+        Map<String, Long> byEventType = new java.util.LinkedHashMap<>();
+        Map<String, Long> byEventTypeHigh = new java.util.LinkedHashMap<>();
+        long severeOpen = 0;
+        long urgentOpen = 0;
+        for (DemoAlert a : scope) {
+            byStatus.merge(nz(a.statusCode), 1L, Long::sum);
+            byRisk.merge(nz(a.riskCode), 1L, Long::sum);
+            boolean high = com.bproject.safety.module.alert.model.RiskLevels.isHigh(a.riskCode);
+            byArea.merge(nz(a.area), 1L, Long::sum);
+            if (high) {
+                byAreaHigh.merge(nz(a.area), 1L, Long::sum);
+                byEventTypeHigh.merge(a.eventType == null ? nz(a.title) : a.eventType, 1L, Long::sum);
+            }
+            byTarget.merge(nz(a.target), 1L, Long::sum);
+            byEventType.merge(a.eventType == null ? nz(a.title) : a.eventType, 1L, Long::sum);
+            if (com.bproject.safety.module.alert.model.RiskLevels.SEVERE.equals(a.riskCode)
+                    && !AlertStatuses.CLOSED.equals(a.statusCode)) {
+                severeOpen++;
+            }
+            if (com.bproject.safety.module.alert.model.RiskLevels.URGENT.equals(a.riskCode)
+                    && !AlertStatuses.CLOSED.equals(a.statusCode)) {
+                urgentOpen++;
+            }
+        }
+        return new AlertScopeSummary(scope.size(), severeOpen, urgentOpen,
+                byStatus, byRisk, byArea, byAreaHigh, byTarget, byEventType, byEventTypeHigh,
+                avgSecondsTo(scope, java.util.Set.of(com.bproject.safety.module.alert.model.AlertTimelineEventTypes.CONFIRMED)),
+                avgSecondsTo(scope, java.util.Set.of(com.bproject.safety.module.alert.model.AlertTimelineEventTypes.CLOSED)));
+    }
+
+    private Long avgSecondsTo(List<DemoAlert> scope, java.util.Set<String> eventTypes) {
+        List<Long> values = scope.stream()
+                .map(a -> secondsToFirst(a, eventTypes))
+                .filter(java.util.Objects::nonNull).toList();
+        if (values.isEmpty()) {
+            return null;
+        }
+        return Math.round(values.stream().mapToLong(Long::longValue).average().orElse(0));
+    }
+
+    /** 与 AnalyticsService.secondsToFirst 同语义：时间线中首个 ≥occurredAt 的目标事件耗时（秒）。 */
+    private static Long secondsToFirst(DemoAlert a, java.util.Set<String> eventTypes) {
+        if (a.occurredAt == null || a.timeline == null) {
+            return null;
+        }
+        return a.timeline.stream()
+                .filter(t -> t.at() != null && t.eventType() != null && eventTypes.contains(t.eventType()))
+                .map(t -> t.at()).filter(t -> !t.isBefore(a.occurredAt))
+                .min(java.util.Comparator.naturalOrder())
+                .map(t -> java.time.Duration.between(a.occurredAt, t).getSeconds())
+                .orElse(null);
+    }
+
+    private static String nz(String s) {
+        return s == null ? "" : s;
+    }
+
     /** 清空存储（DemoClearableStore，仅 Demo 场景维护 / 测试调用）。 */
     @Override
     public void clearDemoData() {
@@ -124,6 +215,14 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
      */
     public boolean deleteDemoAlert(String id) {
         return store.remove(id) != null;
+    }
+
+    /** 复查-5.1：非法枚举入参（normalize 为 null）不匹配任何行，与 JDBC 路径行为一致，且不 NPE。 */
+    private static boolean noMatchIfInvalid(String raw, String normalized, String actual) {
+        if (raw == null) {
+            return true;
+        }
+        return normalized != null && normalized.equals(actual);
     }
 
     private boolean matchKeyword(String kw, DemoAlert a) {
@@ -141,14 +240,23 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
     /**
      * 轻量时间范围筛选：支持 ISO 起止时间（from/to）以及前端现有的"近2小时/今日"口径。
      */
+    private static OffsetDateTime parseBoundaryOrThrow(String iso) {
+        try {
+            return OffsetDateTime.parse(iso.trim());
+        } catch (RuntimeException ex) {
+            throw com.bproject.safety.common.error.ApiException.badRequest(
+                    "时间参数格式非法（要求 ISO-8601 OffsetDateTime）: " + iso);
+        }
+    }
+
     private boolean matchTimeRange(AlertQuery q, DemoAlert a) {
         if (a.occurredAt == null) {
             return q.from() == null && q.to() == null;
         }
-        if (q.from() != null && a.occurredAt.isBefore(OffsetDateTime.parse(q.from()))) {
+        if (q.from() != null && a.occurredAt.isBefore(parseBoundaryOrThrow(q.from()))) {
             return false;
         }
-        if (q.to() != null && a.occurredAt.isAfter(OffsetDateTime.parse(q.to()))) {
+        if (q.to() != null && a.occurredAt.isAfter(parseBoundaryOrThrow(q.to()))) {
             return false;
         }
         return true;

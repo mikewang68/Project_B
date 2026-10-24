@@ -18,7 +18,9 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class EmcsSsoSessions {
   public record Binding(String subject,String sid,long userId,String local)implements java.io.Serializable{}
-  public record Current(AuthenticatedUser principal,Set<String> roles,Set<String> permissions,boolean readOnly){}
+  public record Current(AuthenticatedUser principal,Set<String> roles,Set<String> permissions,boolean readOnly,Set<String> centralPermissions){
+    public Current(AuthenticatedUser principal,Set<String> roles,Set<String> permissions,boolean readOnly){this(principal,roles,permissions,readOnly,Set.of());}
+  }
   private final String base,credential,file;private final boolean enabled;private final SystemUserMapper users;
   private final ObjectMapper json=new ObjectMapper();
   private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
@@ -61,6 +63,7 @@ public class EmcsSsoSessions {
         "/transport/crypto/frontend-config","/transport/crypto/public-key").contains(path))return true;
     if(method.equals("POST")&&path.equals("/logout"))return true;
     if(current.permissions().contains("*:*:*")&&!current.readOnly())return true;
+    if(current.permissions().contains("EMCS_APPLICATION_ADMIN")&&!current.readOnly())return true;
     try{
       var rules=json.readTree(java.nio.file.Files.readString(java.nio.file.Path.of(file))).path(binding.subject()).path("routes");
       for(var rule:rules)if(method.equals(rule.path("method").asText())&&path.matches(rule.path("pathPattern").asText())
@@ -81,7 +84,8 @@ public class EmcsSsoSessions {
     if(!full)permissions.removeIf(p->!central.contains(p)&&!central.contains("ems:"+p));
     if(readOnly)permissions.removeIf(p->!p.matches(".*:(list|read|view|query|detail)$"));
     if(full)permissions.add("*:*:*");
-    return new Current(new AuthenticatedUser(user.userId(),user.userName()),Set.copyOf(roles),Set.copyOf(permissions),readOnly);
+    if(!readOnly && roles.contains("lw_emcs_admin") && a.path("applicationAdmin").asBoolean(false)){permissions.add("EMCS_APPLICATION_ADMIN");roles.add("admin");}
+    return new Current(new AuthenticatedUser(user.userId(),user.userName()),Set.copyOf(roles),Set.copyOf(permissions),readOnly,Set.copyOf(central));
   }
   public void logout(HttpSession session){if(session!=null&&session.getAttribute("EMCS_SSO") instanceof Binding b){call("session/logout",Map.of("subject",b.subject(),"sessionId",b.sid(),"audience","emcs"));sessions.remove(session.getId());try{session.invalidate();}catch(IllegalStateException ignored){}}}
   public int revoke(String sid){if(sid==null||sid.isBlank())throw new ResponseStatusException(HttpStatus.BAD_REQUEST);int count=0;

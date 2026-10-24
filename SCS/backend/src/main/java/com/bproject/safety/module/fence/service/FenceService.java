@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 电子围栏业务服务（Backend Demo）：CRUD / 评审 / 发布（边缘下发）/ 版本异常 / 重新下发 / 停用。
@@ -31,13 +32,59 @@ public class FenceService {
     private final DomainLivePublisher publisher;
     private final Clock clock;
     private final FenceNumberGenerator numberGenerator;
+    /** review-#10：广播经 gate 延迟到 afterCommit（与其余模块收口一致）。 */
+    private final com.bproject.safety.common.realtime.LiveEventGate gate;
 
+    /** 兼容历史测试直连（无广播门控，行为与旧版一致）。 */
     public FenceService(FenceRepository repository, DomainLivePublisher publisher, Clock clock,
                         FenceNumberGenerator numberGenerator) {
+        this(repository, publisher, clock, numberGenerator, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public FenceService(FenceRepository repository, DomainLivePublisher publisher, Clock clock,
+                        FenceNumberGenerator numberGenerator,
+                        @org.springframework.lang.Nullable com.bproject.safety.common.realtime.LiveEventGate gate) {
         this.repository = repository;
         this.publisher = publisher;
         this.clock = clock;
         this.numberGenerator = numberGenerator;
+        this.gate = gate;
+    }
+
+    /** 复查-3.3：围栏级分段锁（check-then-act 竞态收敛；与 AiEventService 同款）。 */
+    private final com.bproject.safety.support.concurrency.KeyedLock keyedLock =
+            new com.bproject.safety.support.concurrency.KeyedLock();
+
+    /**
+     * 复查-D1：编辑器视图——TO_REVIEW 且存在草稿时叠加草稿几何/版本号，
+     * 保证编辑连续性（重开编辑不丢草稿）；运行时读数（仓储 findAll/findById）不受影响。
+     */
+    private DemoFence withDraftOverlay(DemoFence f) {
+        if (f == null || !FenceStatuses.TO_REVIEW.equals(f.statusCode)) {
+            return f;
+        }
+        return repository.findDraft(f.id)
+                .map(draft -> {
+                    DemoFence view = f.copy();
+                    view.version = draft.version;
+                    view.riskCode = draft.riskCode;
+                    view.polygon = draft.polygon;
+                    view.bufferDistance = draft.bufferDistance;
+                    view.bufferPolygon = draft.bufferPolygon;
+                    view.teams = draft.teams;
+                    return view;
+                })
+                .orElse(f);
+    }
+
+    /** 广播统一收口：有事务时延迟至 afterCommit。 */
+    private void broadcast(String type, java.util.Map<String, Object> data) {
+        if (gate != null) {
+            gate.buffer(() -> publisher.publish(type, data));
+        } else {
+            publisher.publish(type, data);
+        }
     }
 
     public List<DemoFence> list(String keyword, String status, String kind) {
@@ -45,15 +92,23 @@ public class FenceService {
         return repository.findAll().stream().filter(f ->
                 (kw.isEmpty() || f.name.contains(kw) || f.id.contains(kw))
                         && (status == null || status.isBlank()
-                                || FenceStatuses.normalize(status).equals(f.statusCode))
-                        && (kind == null || kind.isBlank() || kind.equals(f.kind))).toList();
+                                || (FenceStatuses.normalize(status) != null
+                                && FenceStatuses.normalize(status).equals(f.statusCode)))
+                        && (kind == null || kind.isBlank() || kind.equals(f.kind)))
+                .map(this::withDraftOverlay)
+                .toList();
     }
 
     public DemoFence get(String id) {
-        return require(id);
+        return withDraftOverlay(require(id));
     }
 
+    @Transactional
     public DemoFence create(CreateFenceRequest req) {
+        return keyedLock.execute("create", () -> doCreate(req));
+    }
+
+    private DemoFence doCreate(CreateFenceRequest req) {
         validate(req.name(), req.polygon());
         if (req.kind() != null && !KINDS.contains(req.kind())) {
             throw ApiException.unprocessable("非法围栏类型: " + req.kind());
@@ -77,7 +132,12 @@ public class FenceService {
         return f;
     }
 
+    @Transactional
     public DemoFence update(String id, UpdateFenceRequest req) {
+        return keyedLock.execute(id, () -> doUpdate(id, req));
+    }
+
+    private DemoFence doUpdate(String id, UpdateFenceRequest req) {
         DemoFence f = require(id);
         if (FenceStatuses.DISABLED.equals(f.statusCode)) {
             throw ApiException.conflict("已停用围栏不可编辑，请重新启用后再修改");
@@ -99,7 +159,12 @@ public class FenceService {
         return f;
     }
 
+    @Transactional
     public DemoFence submitReview(String id) {
+        return keyedLock.execute(id, () -> doSubmitReview(id));
+    }
+
+    private DemoFence doSubmitReview(String id) {
         DemoFence f = require(id);
         if (!List.of(FenceStatuses.DRAFT, FenceStatuses.TO_PUBLISH).contains(f.statusCode)) {
             throw ApiException.conflict("当前状态不允许提交评审（当前状态："
@@ -113,14 +178,21 @@ public class FenceService {
         return f;
     }
 
-    /** 发布：模拟 4 个边缘节点全部同步成功，状态 → 已生效。 */
+    /**
+     * 发布：模拟 4 个边缘节点全部同步成功，状态 → 已生效。
+     * 复查-3.6：发布前置为已过评审（TO_REVIEW/TO_PUBLISH），DRAFT 不可越过评审直接生效。
+     */
+    @Transactional
     public DemoFence publish(String id) {
+        return keyedLock.execute(id, () -> doPublish(id));
+    }
+
+    private DemoFence doPublish(String id) {
         DemoFence f = require(id);
-        if (FenceStatuses.DISABLED.equals(f.statusCode)) {
-            throw ApiException.conflict("已停用围栏不可发布");
-        }
-        if (FenceStatuses.EFFECTIVE.equals(f.statusCode) && f.edgeSynced == f.edgeTotal) {
-            return f;
+        if (!List.of(FenceStatuses.TO_REVIEW, FenceStatuses.TO_PUBLISH).contains(f.statusCode)
+                && !(FenceStatuses.EFFECTIVE.equals(f.statusCode) && f.edgeSynced == f.edgeTotal)) {
+            throw ApiException.conflict("当前状态不允许发布（当前状态："
+                    + FenceStatuses.label(f.statusCode) + "；请先提交评审）");
         }
         f.nodes = DemoFence.successNodes();
         f.edgeSynced = f.edgeTotal;
@@ -132,9 +204,19 @@ public class FenceService {
         return f;
     }
 
-    /** 单节点重新下发：指定节点恢复 success；全部成功后围栏恢复已生效。 */
+    /** 单节点重新下发：指定节点恢复 success；全部成功后围栏恢复已生效。
+     *  复查-3.7：仅运行中的围栏（已生效/版本异常）可重发，停用围栏不得借道拉回。 */
+    @Transactional
     public DemoFence redeliver(String id, String nodeId) {
+        return keyedLock.execute(id, () -> doRedeliver(id, nodeId));
+    }
+
+    private DemoFence doRedeliver(String id, String nodeId) {
         DemoFence f = require(id);
+        if (!List.of(FenceStatuses.EFFECTIVE, FenceStatuses.MISMATCH).contains(f.statusCode)) {
+            throw ApiException.conflict("当前状态不允许重新下发（当前状态："
+                    + FenceStatuses.label(f.statusCode) + "）");
+        }
         String target = nodeId == null || nodeId.isBlank() ? "EDGE-03" : nodeId;
         boolean exists = f.nodes.stream().anyMatch(n -> n.id().equals(target));
         if (!exists) {
@@ -151,7 +233,12 @@ public class FenceService {
         return f;
     }
 
+    @Transactional
     public DemoFence disable(String id) {
+        return keyedLock.execute(id, () -> doDisable(id));
+    }
+
+    private DemoFence doDisable(String id) {
         DemoFence f = require(id);
         if (!List.of(FenceStatuses.EFFECTIVE, FenceStatuses.MISMATCH, FenceStatuses.TO_PUBLISH)
                 .contains(f.statusCode)) {
@@ -167,9 +254,18 @@ public class FenceService {
         return f;
     }
 
-    /** 模拟 EDGE-03 版本不一致（SIMULATED）。 */
+    /** 模拟 EDGE-03 版本不一致（SIMULATED）。复查-3.7：仅对已生效围栏有意义。 */
+    @Transactional
     public DemoFence simulateMismatch(String id) {
+        return keyedLock.execute(id, () -> doSimulateMismatch(id));
+    }
+
+    private DemoFence doSimulateMismatch(String id) {
         DemoFence f = require(id);
+        if (!FenceStatuses.EFFECTIVE.equals(f.statusCode)) {
+            throw ApiException.conflict("仅已生效围栏可模拟版本不一致（当前状态："
+                    + FenceStatuses.label(f.statusCode) + "）");
+        }
         f.nodes = DemoFence.successNodes();
         f.nodes = f.nodes.stream().map(n -> n.id().equals("EDGE-03") ? n.withState(EdgeNode.FAILED) : n).toList();
         f.edgeSynced = (int) f.nodes.stream().filter(n -> EdgeNode.SUCCESS.equals(n.state())).count();
@@ -245,7 +341,9 @@ public class FenceService {
     }
 
     private DemoFence require(String id) {
-        return repository.findById(id).orElseThrow(() -> ApiException.notFound("围栏不存在: " + id));
+        // 复查-D1：写路径的工作副本取草稿视图（TO_REVIEW 续编辑不丢草稿）
+        return withDraftOverlay(repository.findById(id)
+                .orElseThrow(() -> ApiException.notFound("围栏不存在: " + id)));
     }
 
     private void publish(DemoFence f, String op) {
@@ -257,6 +355,6 @@ public class FenceService {
         data.put("edgeSynced", f.edgeSynced);
         data.put("edgeTotal", f.edgeTotal);
         data.put("changeType", op);
-        publisher.publish(LiveEventTypes.FENCE_CHANGED, data);
+        broadcast(LiveEventTypes.FENCE_CHANGED, data);
     }
 }

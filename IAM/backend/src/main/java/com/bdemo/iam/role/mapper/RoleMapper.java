@@ -15,6 +15,26 @@ import java.util.List;
 
 @Mapper
 public interface RoleMapper {
+    @Select("SELECT DISTINCT s.app_code FROM iam_role_app_scope s JOIN iam_role r ON r.id=s.role_id AND r.status='active' AND r.deleted=0 JOIN iam_user_role ur ON ur.role_id=r.id WHERE ur.user_id=#{userId} ORDER BY s.app_code")
+    List<String> selectAllowedApps(@Param("userId") String userId);
+    @Select("SELECT DISTINCT s.app_code FROM iam_role_app_scope s JOIN iam_role r ON r.id=s.role_id AND r.status='active' AND r.deleted=0 JOIN iam_user_role ur ON ur.role_id=r.id WHERE ur.user_id=#{userId} AND s.access_level='ADMIN' ORDER BY s.app_code")
+    List<String> selectAdminApps(String userId);
+    @Select("SELECT app_code FROM iam_role_app_scope WHERE role_id=#{id} ORDER BY app_code")
+    List<String> selectRoleApps(String id);
+    @Insert("INSERT INTO iam_role_app_scope(role_id,app_code) VALUES(#{id},#{app})")
+    void insertAppScope(@Param("id") String id,@Param("app") String app);
+    @Select("SELECT app_code FROM iam_role_app_scope WHERE role_id=#{id} AND access_level='ADMIN'")
+    List<String> selectRoleAdminApps(String id);
+    @Insert("INSERT INTO iam_role_app_scope(role_id,app_code,access_level) VALUES(#{id},#{app},#{level})")
+    void insertAppScopeLevel(@Param("id") String id,@Param("app") String app,@Param("level") String level);
+    @Delete("DELETE FROM iam_role_app_scope WHERE role_id=#{id}")
+    void deleteAppScopes(String id);
+    @Select("SELECT app_code FROM iam_management_owner WHERE object_kind=#{kind} AND object_id=#{id}")
+    String selectManagementOwner(@Param("kind") String kind,@Param("id") String id);
+    @Insert("INSERT INTO iam_management_owner(object_kind,object_id,app_code) VALUES(#{kind},#{id},#{app})")
+    void insertManagementOwner(@Param("kind") String kind,@Param("id") String id,@Param("app") String app);
+    @Select("SELECT system_code FROM iam_permission WHERE permission_code=#{code} AND status='active'")
+    String selectPermissionSystem(String code);
 
     String COLUMNS = """
             id, role_name AS name, role_code AS code, description, status,
@@ -67,12 +87,12 @@ public interface RoleMapper {
     int deleteRolePermissions(@Param("roleId") String roleId);
 
     @Insert("<script>" +
-            "INSERT INTO iam_role_permission(role_id, permission_id) VALUES " +
-            "<foreach collection='permCodes' item='code' separator=','>(#{roleId}, #{code})</foreach>" +
+            "INSERT INTO iam_role_permission(role_id, permission_id) SELECT #{roleId},p.id FROM iam_permission p WHERE p.permission_code IN " +
+            "<foreach collection='permCodes' item='code' open='(' separator=',' close=')'>#{code}</foreach>" +
             "</script>")
     int insertRolePermissions(@Param("roleId") String roleId, @Param("permCodes") List<String> permCodes);
 
-    @Select("SELECT permission_id FROM iam_role_permission WHERE role_id = #{roleId} ORDER BY permission_id")
+    @Select("SELECT p.permission_code FROM iam_role_permission rp JOIN iam_permission p ON p.id=rp.permission_id WHERE rp.role_id = #{roleId} ORDER BY p.permission_code")
     List<String> selectPermissionCodes(@Param("roleId") String roleId);
 
     // ---- 有效权限洞察 ----
@@ -90,15 +110,15 @@ public interface RoleMapper {
     /** 批量取角色-权限关系行（供权限来源映射，避免 N+1）。 */
     @Select("""
             <script>
-            SELECT role_id AS roleId, permission_id AS permissionCode
-            FROM iam_role_permission
-            WHERE role_id IN
+            SELECT rp.role_id AS roleId, p.permission_code AS permissionCode
+            FROM iam_role_permission rp JOIN iam_permission p ON p.id=rp.permission_id
+            WHERE rp.role_id IN
             <foreach collection='roleIds' item='rid' open='(' separator=',' close=')'>#{rid}</foreach>
             </script>
             """)
     List<RolePermissionRow> selectRolePermissionRows(@Param("roleIds") List<String> roleIds);
 
     /** 全量角色-权限关系（权限健康规则批量加载）。 */
-    @Select("SELECT role_id AS roleId, permission_id AS permissionCode FROM iam_role_permission")
+    @Select("SELECT rp.role_id AS roleId,p.permission_code AS permissionCode FROM iam_role_permission rp JOIN iam_permission p ON p.id=rp.permission_id")
     List<RolePermissionRow> selectAllRolePermissionRows();
 }

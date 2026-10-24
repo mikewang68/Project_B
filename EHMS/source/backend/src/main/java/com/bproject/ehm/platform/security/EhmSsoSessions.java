@@ -26,7 +26,8 @@ public class EhmSsoSessions {
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
     private final Map<String,HttpSession> sessions=new ConcurrentHashMap<>();
     private final Set<String> revoked=ConcurrentHashMap.newKeySet();
-    public record Actor(String subject,String localSubject,String role,String iamSid,boolean readOnly,Set<String> projects) implements java.security.Principal {
+    public record Actor(String subject,String localSubject,String role,String iamSid,boolean readOnly,Set<String> projects,Set<String> permissions,boolean globalRead) implements java.security.Principal {
+        public Actor(String subject,String localSubject,String role,String iamSid,boolean readOnly,Set<String> projects){this(subject,localSubject,role,iamSid,readOnly,projects,Set.of(),false);}
         public String getName(){return subject;}public boolean admin(){return role.equals("SUPER_ADMIN")&&!readOnly;}
     }
     public EhmSsoSessions(ObjectMapper mapper,@Value("${ehm.sso.iam-base-url:}") String base,
@@ -103,12 +104,13 @@ public class EhmSsoSessions {
         Set<String> granted=new HashSet<>();data.path("projectIds").forEach(v->granted.add(ProjectContext.validate(v.asText())));
         Set<String> localProjects=new HashSet<>();binding.path("projectIds").forEach(v->localProjects.add(ProjectContext.validate(v.asText())));
         granted.retainAll(localProjects);if(granted.isEmpty())throw fail(403,"SSO_PROJECT_NOT_GRANTED");
-        boolean readOnly=data.path("readOnly").asBoolean()||role.equals("USER");
+        boolean readOnly=data.path("readOnly").asBoolean();
         if(role.equals("SUPER_ADMIN")&&!readOnly&&!data.path("superAdmin").asBoolean(false)){
             boolean allowed=false;for(var p:data.path("permissions"))if(p.asText().equals("ehealth:admin"))allowed=true;
             if(!allowed)throw fail(403,"SSO_ADMIN_NOT_GRANTED");
         }
-        return new Actor(sub,local,role,sid,readOnly,Set.copyOf(granted));
+        Set<String> permissions=new HashSet<>();data.path("permissions").forEach(p->permissions.add(p.asText()));
+        return new Actor(sub,local,role,sid,readOnly,Set.copyOf(granted),Set.copyOf(permissions),readOnly&&data.path("globalRead").asBoolean(false));
     }
     private static ResponseStatusException fail(int code,String message){return new ResponseStatusException(HttpStatus.valueOf(code),message);}
 }

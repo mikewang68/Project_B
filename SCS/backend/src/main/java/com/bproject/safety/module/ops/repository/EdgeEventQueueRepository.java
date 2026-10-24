@@ -39,6 +39,13 @@ public interface EdgeEventQueueRepository {
     /** 某节点仍占用队列（PENDING/SYNCING/FAILED）的事件数。 */
     int pendingCount(String nodeId);
 
+    /**
+     * 全部节点仍占用队列（PENDING/SYNCING/FAILED）的事件数（复查修正：指标 gauge 用——
+     * 之前用全表 count，补传成功（SYNCED）也会推高计数，会误触发"补传链路异常"P0 告警；
+     * 未完成态的持续增长才是真信号）。
+     */
+    int pendingCountAll();
+
     long count();
 
     /**

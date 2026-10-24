@@ -33,18 +33,19 @@ public class AuthController {
         Object sub=request.getAttribute(com.bproject.safety.config.SecurityInterceptor.ATTR_USER_SUB);
         if(!(sub instanceof String subject)||subject.isBlank()) {
             if (!securityEnabled && environment.acceptsProfiles(org.springframework.core.env.Profiles.of("demo", "test")))
-                return new CurrentUser(user.id(),user.name(),user.role(),user.team(),user.shift(),user.online(),"");
+                return new CurrentUser(user.id(),user.name(),user.role(),user.team(),user.shift(),user.online(),"",java.util.Set.of(),false,"");
             throw new com.bproject.safety.common.error.ApiException(org.springframework.http.HttpStatus.UNAUTHORIZED,"UNAUTHORIZED","请先登录统一入口");
         }
         String name=subject,role="USER";
         if(request.getAttribute("SCS_ACTOR") instanceof com.bproject.safety.config.ScsLocalPolicy.Actor actor){
-            name=actor.username();role=actor.readOnly()?"READONLY":actor.admin()?"ADMIN":"OPERATOR";
+            name=actor.username();role=actor.readOnly()?"READONLY":actor.roles().contains("ADMIN")?"ADMIN":"OPERATOR";
         }
         var session=request.getSession(false);String csrf=session==null?"":java.util.Objects.toString(session.getAttribute("SCS_CSRF"),"");
-        return new CurrentUser(subject,name,role,"","",true,csrf);
+        var actor=request.getAttribute("SCS_ACTOR") instanceof com.bproject.safety.config.ScsLocalPolicy.Actor a?a:null;
+        return new CurrentUser(subject,name,role,"","",true,csrf,actor==null?java.util.Set.of():actor.permissions(),actor!=null&&actor.readOnly(),java.util.Objects.toString(request.getAttribute("SCS_AUTHORIZATION_VERSION"),""));
     }
 
     /** 与 docs/backend-demo-api-inventory.json 中 /auth/me 的 response 字段一致。 */
-    public record CurrentUser(String id, String name, String role, String team, String shift, boolean online, String csrfToken) {
+    public record CurrentUser(String id, String name, String role, String team, String shift, boolean online, String csrfToken,java.util.Set<String> permissions,boolean readOnly,String authorizationVersion) {
     }
 }

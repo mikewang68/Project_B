@@ -36,7 +36,7 @@ function submit(): void {
     </label>
     <template #footer>
       <button type="button" @click="emit('update:modelValue', false)">取消</button>
-      <button type="button" class="primary" @click="submit">确认标记误报</button>
+      <button v-permission="'safety:module:ai:edit'" type="button" class="primary" @click="submit">确认标记误报</button>
     </template>
   </ElDialog>
 </template>

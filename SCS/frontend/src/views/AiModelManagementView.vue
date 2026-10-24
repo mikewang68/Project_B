@@ -245,7 +245,7 @@ onMounted(() => {
               <button
                 type="button"
                 class="btn-config"
-                @click.stop="openConfigDialog(item)"
+                v-permission="'safety:module:ai:model:edit'" @click.stop="openConfigDialog(item)"
               >
                 <el-icon><Setting /></el-icon>
                 <span>调参配置</span>
@@ -255,7 +255,7 @@ onMounted(() => {
                 v-if="!item.isSelected"
                 type="button"
                 class="btn-select"
-                @click.stop="selectModel(item.id)"
+                v-permission="'safety:module:ai:model:edit'" @click.stop="selectModel(item.id)"
               >
                 <span>选用此模型</span>
               </button>
@@ -334,7 +334,7 @@ onMounted(() => {
         <span class="dialog-footer">
           <el-button @click="configDialogVisible = false">取消</el-button>
           <el-button
-            type="primary"
+ v-permission="'safety:module:ai:model:edit'"            type="primary"
             :loading="isSavingConfig"
             @click="saveConfig"
           >

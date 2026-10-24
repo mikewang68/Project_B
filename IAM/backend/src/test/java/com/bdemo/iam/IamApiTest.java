@@ -88,6 +88,7 @@ class IamApiTest {
 
   @BeforeEach
   void setUp() {
+    org.mockito.Mockito.when(roleMapper.selectAllowedApps(org.mockito.ArgumentMatchers.anyString())).thenReturn(java.util.List.of("IAM","SYS","WMS","PSMS","SCS","EHMS","EMCS","TRUST"));
     java.util.Map<String, String> activeSessions = new java.util.concurrent.ConcurrentHashMap<>();
     org.mockito.Mockito.doAnswer(
             call -> {

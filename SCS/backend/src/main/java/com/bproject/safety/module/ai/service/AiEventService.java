@@ -70,7 +70,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 创建关联 Alert 并进入统一处置主链；误报永不建 Alert；重复 confirm 不重复建。</p>
  */
 @Service
-public class AiEventService {
+public class AiEventService implements com.bproject.safety.module.alert.service.AlertClosureListener {
 
     private static final Logger log = LoggerFactory.getLogger(AiEventService.class);
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
@@ -86,6 +86,9 @@ public class AiEventService {
     private final Clock clock;
     private final AiEventNumberGenerator numberGenerator;
     private final LiveEventGate gate;
+    /** review-#6：事件级分段锁（替代 synchronized(id.intern())）。 */
+    private final com.bproject.safety.support.concurrency.KeyedLock keyedLock =
+            new com.bproject.safety.support.concurrency.KeyedLock();
     private final List<CameraInfo> cameras;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -173,10 +176,22 @@ public class AiEventService {
                     // 已有关联 Alert（重复 confirm / 派单后回流）不重复创建
                     if (event.linkedAlertId == null) {
                         DemoAlert alert = alertService.createFromAi(toAlertDraft(event));
-                        event.linkedAlertId = alert.id;
-                        appendTimeline(event, "已生成安全告警 " + alert.id + "，进入统一处置主链", "done",
-                                AiTimelineEventTypes.ALERT_LINKED);
-                        log.info("AI 事件 {} 确认违规，关联告警 {}", id, alert.id);
+                        if (repository.claimLinkedAlert(id, alert.id)) {
+                            event.linkedAlertId = alert.id;
+                            appendTimeline(event, "已生成安全告警 " + alert.id + "，进入统一处置主链", "done",
+                                    AiTimelineEventTypes.ALERT_LINKED);
+                            log.info("AI 事件 {} 确认违规，关联告警 {}", id, alert.id);
+                        } else {
+                            // 复查-D4：并发方已抢占关联——本侧重复告警转 CANCELLED，事件挂既有告警
+                            DemoAiEvent winner = repository.findById(id).orElse(event);
+                            String winnerAlertId = winner.linkedAlertId;
+                            alertService.cancelDuplicateAlert(alert.id,
+                                    "AI 事件 " + id + " 的关联告警已由并发方建立（" + winnerAlertId + "）");
+                            event.linkedAlertId = winnerAlertId;
+                            appendTimeline(event, "并发去重：关联至既有告警 " + winnerAlertId, "done",
+                                    AiTimelineEventTypes.ALERT_LINKED);
+                            log.info("AI 事件 {} 关联抢占失败，复用既有告警 {}", id, winnerAlertId);
+                        }
                     }
                 });
     }
@@ -245,23 +260,40 @@ public class AiEventService {
                     if (List.of(AlertStatuses.PENDING_CONFIRM, AlertStatuses.CONFIRMED)
                             .contains(current.statusCode)) {
                         alertService.confirm(alertId, new ConfirmRequest(reviewer), null);
+                        current = alertService.get(alertId);
                     }
-                    AssignRequest req = new AssignRequest(user.name(), user.id(), user.name(),
-                            priority, 15, null, null, note);
-                    alertService.assign(alertId, req, null);
-
                     if (event.reviewer == null) {
                         event.reviewer = reviewer;
                         event.reviewTime = nowHms();
                     }
-                    event.statusCode = AiReviewStatuses.ASSIGNED;
-                    event.assigneeUserCode = user.id();
-                    event.assignee = user.name();
-                    event.assignmentPriority = priority;
-                    event.assignmentNote = note;
-                    event.processStatus = AlertStatuses.label(AlertStatuses.PENDING_PROCESS);
-                    appendTimeline(event, "已派单至" + user.name() + "（" + priority + "优先级）", "active",
-                            AiTimelineEventTypes.ASSIGNED);
+                    if (AlertStatuses.PENDING_ASSIGNMENT.equals(current.statusCode)) {
+                        AssignRequest req = new AssignRequest(user.name(), user.id(), user.name(),
+                                priority, 15, null, null, note);
+                        alertService.assign(alertId, req, null);
+                        event.statusCode = AiReviewStatuses.ASSIGNED;
+                        event.assigneeUserCode = user.id();
+                        event.assignee = user.name();
+                        event.assignmentPriority = priority;
+                        event.assignmentNote = note;
+                        event.processStatus = AlertStatuses.label(AlertStatuses.PENDING_PROCESS);
+                        appendTimeline(event, "已派单至" + user.name() + "（" + priority + "优先级）", "active",
+                                AiTimelineEventTypes.ASSIGNED);
+                    } else {
+                        // 复查-2.4：主链已被告警页/移动端直接推进，AI 侧同步对齐而非 409 卡死
+                        // （旧逻辑 assign 409 后事件永久停在 CONFIRMED，process/close 均不可达）
+                        String aiStage = switch (current.statusCode) {
+                            case AlertStatuses.PENDING_PROCESS -> AiReviewStatuses.ASSIGNED;
+                            case AlertStatuses.CLOSED -> AiReviewStatuses.CLOSED;
+                            default -> AiReviewStatuses.PROCESSING;
+                        };
+                        event.statusCode = aiStage;
+                        event.assigneeUserCode = current.assigneeUserCode;
+                        event.assignee = current.assignee;
+                        event.processStatus = AlertStatuses.label(current.statusCode);
+                        appendTimeline(event, "关联告警已由主链推进至"
+                                + AlertStatuses.label(current.statusCode) + "，AI 事件同步对齐",
+                                "active", AiTimelineEventTypes.NOTE);
+                    }
                 });
     }
 
@@ -311,7 +343,7 @@ public class AiEventService {
         String effectiveIdemKey = (idemKey != null && !idemKey.isBlank())
                 ? idemKey
                 : "EDGE-AI:" + (body.cameraCode() != null ? body.cameraCode().trim() : "CAM-01")
-                  + ":" + type + ":" + (System.currentTimeMillis() / 10000);
+                  + ":" + type + ":" + payloadDigest(body);
 
         String eventId = idempotency.process(effectiveIdemKey, () -> gate.buffer(() -> {
             DemoAiEvent event = new DemoAiEvent();
@@ -491,6 +523,33 @@ public class AiEventService {
         return numberGenerator.nextAiEventNumber();
     }
 
+    // ---------- D6: 告警闭环镜像同步 ----------
+
+    /** 关联告警进入 CLOSED 时，把 linked AI 事件同步闭环（幂等：已 CLOSED 的跳过）。 */
+    @Override
+    public void onAlertClosed(com.bproject.safety.module.alert.model.DemoAlert alert) {
+        if (alert == null || alert.id == null || alert.id.isBlank()) {
+            return;
+        }
+        try {
+            for (DemoAiEvent event : repository.findByLinkedAlertId(alert.id)) {
+                if (AiReviewStatuses.CLOSED.equals(event.statusCode)) {
+                    continue;
+                }
+                event.statusCode = AiReviewStatuses.CLOSED;
+                event.processStatus = "已完成";
+                appendTimeline(event, "关联告警 " + alert.id + " 已关闭，AI 事件同步闭环",
+                        "done", AiTimelineEventTypes.CLOSED);
+                repository.save(event);
+                notifier.changed("closed", event);
+                log.info("AI 事件 {} 随关联告警 {} 关闭同步闭环", event.id, alert.id);
+            }
+        } catch (Exception ex) {
+            // 镜像同步失败不回滚主链（告警关闭是权威事实）；留痕排查
+            log.warn("AI 事件关闭镜像同步失败 alert={} err={}", alert.id, ex.getMessage());
+        }
+    }
+
     // ---------- 内部辅助 ----------
 
     /**
@@ -500,7 +559,10 @@ public class AiEventService {
      */
     private DemoAiEvent mutate(String id, String idemKey, String op, List<String> allowed,
                                java.util.function.Consumer<DemoAiEvent> changer) {
-        synchronized (id.intern()) {
+        // review-#6：弃用 synchronized(id.intern())——字符串常量池对象做锁监视器全局共享且锁域不可控，
+        // 改用与 AlertService 同款 KeyedLock（引用计数分段锁，不同事件并行）
+        keyedLock.lock(id);
+        try {
             idempotency.process(idemKey, () -> {
                 gate.buffer(() -> {
                     DemoAiEvent event = repository.findById(id)
@@ -517,6 +579,8 @@ public class AiEventService {
                 return op + ":" + id;
             });
             return get(id);
+        } finally {
+            keyedLock.unlock(id);
         }
     }
 
@@ -674,9 +738,26 @@ public class AiEventService {
         return Map.of("status", "error", "running", false, "message", "边缘 AI 推流控制失败");
     }
 
+    /**
+     * 复查-2.5：兜底幂等键的载荷摘要。旧实现按 10 秒时间桶——同摄像头同类型的第二条
+     * 真实上报会被静默去重丢弃；改为对完整载荷取哈希，同载荷重试仍收敛为一次建单，
+     * 不同内容各自成立。
+     */
+    private String payloadDigest(AiIngestRequest body) {
+        try {
+            byte[] bytes = objectMapper.writeValueAsBytes(body);
+            return java.util.HexFormat.of().formatHex(
+                    java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (Exception ex) {
+            return String.valueOf(java.util.Objects.hashCode(body));
+        }
+    }
+
     /** 获取边缘抓拍图片字节流（代理转发至 edge-ai /snapshots/ 静态端点）。 */
     public ResponseEntity<byte[]> getSnapshot(String edgeUrl, String filename) {
-        if (filename == null || filename.isBlank() || filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+        if (filename == null || filename.isBlank() || filename.contains("..") || filename.contains("/")
+                || filename.contains("\\") || filename.contains(":")) {
+            // 复查-6.4：冒号拦截 Windows 盘符相对路径（C:x）逃逸
             return ResponseEntity.badRequest().build();
         }
         String base = (edgeUrl != null && !edgeUrl.isBlank()) ? edgeUrl : "http://127.0.0.1:18090";

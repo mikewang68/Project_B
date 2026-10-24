@@ -1,0 +1,191 @@
+{
+  "title": "SCS 安全卡控系统总览",
+  "uid": "scs-overview",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "DS",
+        "type": "datasource",
+        "query": "prometheus"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "安全态势（业务指标）",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "stat",
+      "title": "未关闭告警",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [{ "expr": "scs_alerts_open" }],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 20 },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 }
+    },
+    {
+      "type": "stat",
+      "title": "处置中",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [{ "expr": "scs_alerts_processing" }],
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 }
+    },
+    {
+      "type": "stat",
+      "title": "已关闭",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [{ "expr": "scs_alerts_closed" }],
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 }
+    },
+    {
+      "type": "stat",
+      "title": "边缘补传队列深度",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [{ "expr": "scs_edge_pending_events" }],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 20 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "告警态势趋势",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [
+        { "expr": "scs_alerts_open", "legendFormat": "未关闭" },
+        { "expr": "scs_alerts_processing", "legendFormat": "处置中" },
+        { "expr": "scs_alerts_closed", "legendFormat": "已关闭" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 }
+    },
+    {
+      "type": "timeseries",
+      "title": "边缘补传队列深度（持续增长=链路异常）",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [{ "expr": "scs_edge_pending_events", "legendFormat": "队列深度" }],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 }
+    },
+    {
+      "type": "row",
+      "title": "服务健康",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 }
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP QPS（按状态码）",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count[5m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 14 }
+    },
+    {
+      "type": "timeseries",
+      "title": "HikariCP 连接池",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [
+        { "expr": "hikaricp_connections_active", "legendFormat": "active" },
+        { "expr": "hikaricp_connections_idle", "legendFormat": "idle" },
+        { "expr": "hikaricp_connections_pending", "legendFormat": "pending" }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 14 }
+    },
+    {
+      "type": "timeseries",
+      "title": "连接获取耗时 P95",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(hikaricp_connections_acquire_seconds_bucket[5m])) by (le))",
+          "legendFormat": "acquire p95"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 14 }
+    },
+    {
+      "type": "row",
+      "title": "JVM 与系统",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 }
+    },
+    {
+      "type": "timeseries",
+      "title": "JVM 堆内存",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [
+        {
+          "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})",
+          "legendFormat": "used"
+        },
+        {
+          "expr": "sum(jvm_memory_max_bytes{area=\"heap\"})",
+          "legendFormat": "max"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 23 }
+    },
+    {
+      "type": "timeseries",
+      "title": "GC 暂停速率",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [
+        {
+          "expr": "rate(jvm_gc_pause_seconds_sum[5m])",
+          "legendFormat": "gc pause/s"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 23 }
+    },
+    {
+      "type": "gauge",
+      "title": "磁盘剩余",
+      "datasource": { "type": "prometheus", "uid": "${DS}" },
+      "targets": [
+        {
+          "expr": "disk_free_bytes / disk_total_bytes"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.15 },
+              { "color": "green", "value": 0.3 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 23 }
+    }
+  ]
+}

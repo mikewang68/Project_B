@@ -132,8 +132,12 @@ class MasterDataConsistencyTest {
     }
 
     @Test
-    @DisplayName("Fence Seed：area 全部 canonical（人员越界建单取围栏区域）")
+    @DisplayName("Fence Seed：种子围栏 area 全部 canonical（越界建单取围栏区域）")
     void fenceSeedsUseCanonicalAreas() {
+        // 共享 Spring 上下文中，先跑的测试类可能经 FenceService 自建围栏——其 area 为
+        // 运行时默认"自定义区域"（FenceService 合法业务行为），不属于种子一致性范畴。
+        // 重置为种子后再校验（ADR-005 顺序耦合缺陷的根治）。
+        fenceRepository.resetDemoData();
         Set<String> areas = areaNames();
         // Verify fresh seeds independently of fences created by other integration tests.
         var freshSeeds = new com.bproject.safety.module.fence.repository.InMemoryFenceRepository();

@@ -53,7 +53,7 @@ function submit(): void {
     </div>
     <template #footer>
       <button type="button" @click="emit('update:modelValue', false)">取消</button>
-      <button type="button" class="primary" :disabled="!measures.length" @click="submit">提交处置结果</button>
+      <button v-permission="'safety:module:alert:handle'" type="button" class="primary" :disabled="!measures.length" @click="submit">提交处置结果</button>
     </template>
   </ElDialog>
 </template>

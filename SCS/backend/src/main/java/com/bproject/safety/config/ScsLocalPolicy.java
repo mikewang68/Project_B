@@ -24,7 +24,7 @@ public class ScsLocalPolicy {
         if(!c.path(scope).asText().equals(b.path(scope).asText())||!c.path(scope).asText().isBlank())
           throw new IllegalArgumentException("Unsupported data scope");
       boolean readOnly=c.path("readOnly").asBoolean()||role.equals("VIEWER");
-      boolean admin=role.equals("ADMIN")&&c.path("superAdmin").asBoolean(false)&&!readOnly;
+      boolean admin=role.equals("ADMIN")&&(c.path("superAdmin").asBoolean(false)||c.path("applicationAdmin").asBoolean(false))&&!readOnly;
       Set<String> permissions=new HashSet<>();b.path("permissions").forEach(v->permissions.add(v.asText()));
       if(!c.path("superAdmin").asBoolean(false)){
         Set<String> central=new HashSet<>();c.path("permissions").forEach(v->central.add(v.asText()));permissions.retainAll(central);
@@ -38,9 +38,12 @@ public class ScsLocalPolicy {
     if (method.equals("POST") && path.equals("/api/v1/auth/sso/logout")) return true;
     boolean safe=Set.of("GET","HEAD","OPTIONS").contains(method);
     boolean export=path.matches(".*/(export|download)(/.*)?");
-    if(actor.readOnly()&&(!safe||export))return false;
+    if(actor.readOnly()&&!safe)return false;
     if(safe&&path.equals("/api/v1/auth/me"))return true;
+    if(safe&&path.equals("/ws/live"))return actor.admin() || actor.permissions().stream().anyMatch(p->p.endsWith(":view") || p.endsWith(":read"));
     if(actor.admin())return true;
+    String required=ScsRoutePermissions.required(method,path);
+    if(required!=null)return actor.permissions().contains(required);
     try{
       var root=mapper.readTree(Files.readString(Path.of(file)));var rules=root.path(actor.subject()).path("routes");
       for(var rule:rules)if(method.equals(rule.path("method").asText())&&path.matches(rule.path("pathPattern").asText()))

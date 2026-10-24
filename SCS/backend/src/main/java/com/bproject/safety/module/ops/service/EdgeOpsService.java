@@ -186,8 +186,9 @@ public class EdgeOpsService {
         return data;
     }
 
-    /** 在线节点惰性刷新心跳与运行指标（离线 / 恢复中冻结心跳，体现断网）。 */
-    private void refreshRuntime(DemoEdgeNode n) {
+    /** 在线节点惰性刷新心跳与运行指标（离线 / 恢复中冻结心跳，体现断网）。
+     *  review-#7：读改写（uptimeSec += 3 等）入锁，防并发 GET 互相丢更新与写竞争。 */
+    private synchronized void refreshRuntime(DemoEdgeNode n) {
         boolean dirty = false;
         if (EdgeNodeStatuses.ONLINE.equals(n.status) || EdgeNodeStatuses.DEGRADED.equals(n.status)) {
             OffsetDateTime cur = now();

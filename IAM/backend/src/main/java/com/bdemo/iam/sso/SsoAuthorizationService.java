@@ -33,10 +33,7 @@ public class SsoAuthorizationService {
     if (user == null) throw new SsoTicketService.SsoTicketException("统一登录用户已停用");
     subjects.requireBound(subject, user.getUsername(), aud);
     boolean readOnly = user.isReadOnly() || "READONLY_AUDITOR".equals(user.getAccessMode());
-    boolean global = !readOnly && (user.isSuperAdmin() || "FULL_ADMIN".equals(user.getAccessMode()));
-    String permissionPrefix = com.bdemo.iam.navigation.enums.AppCodeEnum.fromString(aud).getIamSystemCode() + ":";
-    if (!global && user.getScopedApps().stream().noneMatch(app -> app.equalsIgnoreCase(aud))
-        && user.getPermissions().stream().noneMatch(p -> p.startsWith(permissionPrefix)))
+    if (!user.mayEnter(aud))
       throw new SsoTicketService.SsoTicketException("目标系统未被授权");
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("active", true);
@@ -48,12 +45,16 @@ public class SsoAuthorizationService {
     result.put("readOnly", readOnly);
     result.put("superAdmin", user.isSuperAdmin() && !Boolean.TRUE.equals(result.get("readOnly")));
     result.put("accessMode", user.getAccessMode());
+    result.put("allowedAppCodes",new TreeSet<>(user.getAllowedAppCodes()));
+    result.put("globalRead",com.bdemo.iam.security.AppScopePolicy.globalRead(user));
+    result.put("applicationAdmin",!readOnly && (user.isSuperAdmin() || user.getAdminAppCodes().contains(aud.toUpperCase(java.util.Locale.ROOT))));
     result.put("roles", new TreeSet<>(user.getRoles()));
-    result.put("permissions", new TreeSet<>(user.getPermissions()));
+    String permissionPrefix = com.bdemo.iam.navigation.enums.AppCodeEnum.fromString(aud).getIamSystemCode() + ":";
+    result.put("permissions",new TreeSet<>(user.getPermissions().stream().filter(p->p.startsWith(permissionPrefix)).toList()));
     result.put("projectIds",new TreeSet<>(subjects.projects(subject,aud)));
     result.putAll(subjects.scopeFor(subject, aud));
     result.remove("local");
-    result.put("contractVersion", "1.2");
+    result.put("contractVersion", "1.3");
     try {
       String canonical = result.toString();
       result.put("authorizationVersion", HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
