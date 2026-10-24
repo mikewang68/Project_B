@@ -13,8 +13,11 @@ import {
 } from '@element-plus/icons-vue'
 import type { AiInferenceRequest, AiInferenceResult, AiModelInfo, DetectedObjectBox } from '@/types/aiModel'
 import { aiModelApi } from '@/api/aiModels'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
+const canExecute = computed(() => !!auth.user && !auth.user.readOnly && auth.can('safety:module:ai:model:execute'))
 
 const props = defineProps<{
   activeModel?: AiModelInfo | undefined
@@ -101,11 +104,11 @@ function selectScenario(scenarioId: string): void {
   inferenceResult.value = null
   selectedBox.value = null
   escalatedAlertId.value = ''
-  void executeInference()
 }
 
 // 执行实际识别推理
 async function executeInference(): Promise<void> {
+  if (!canExecute.value) return
   isInferring.value = true
   selectedBox.value = null
   escalatedAlertId.value = ''
@@ -128,7 +131,7 @@ async function executeInference(): Promise<void> {
 
 // 一键上报为正式安全告警
 async function escalateToAlert(): Promise<void> {
-  if (!inferenceResult.value) return
+  if (!canExecute.value || !inferenceResult.value) return
   isEscalating.value = true
   try {
     const res = await aiModelApi.escalate({
@@ -160,8 +163,7 @@ function goToAlerts(): void {
   void router.push('/alarms')
 }
 
-// 挂载时立即执行一次默认案例的推理
-executeInference()
+// 查看模型页面和切换案例均不自动执行；执行需要显式操作和当前权限。
 </script>
 
 <template>
@@ -170,7 +172,7 @@ executeInference()
     <div class="scenario-selector-bar dashboard-card">
       <div class="selector-heading">
         <el-icon><Monitor /></el-icon>
-        <span>选择实际识别案例：</span>
+        <span>选择识别案例：</span>
       </div>
       <div class="scenario-chips">
         <button
@@ -194,7 +196,7 @@ executeInference()
         <div class="monitor-header">
           <div class="monitor-title">
             <span class="rec-dot"></span>
-            <b>实时现场监控画面 · {{ activeScenarioInfo.camera }}</b>
+            <b>案例示意画面（非现场视频） · {{ activeScenarioInfo.camera }}</b>
             <small>{{ activeScenarioInfo.area }}</small>
           </div>
           <div class="monitor-tools">
@@ -216,7 +218,7 @@ executeInference()
             <span>FPS: {{ activeModel?.fps || 25.0 }} | 1080P@50Hz</span>
           </div>
           <div class="osd-overlay top-right">
-            <span>{{ inferenceResult?.timestamp || '2026-10-10 13:40:00' }}</span>
+            <span>{{ inferenceResult?.timestamp || '未执行' }}</span>
           </div>
 
           <!-- 模拟现场高清矢量监控画面 -->
