@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { DeviceCategory, OpsDevice } from '@/types/operations'
-import { onlineCount } from '@/mock/opsData'
+import { onlineCount } from '@/adapters/operations'
 import OpsHealthBadge from './OpsHealthBadge.vue'
 
 defineProps<{ categories: DeviceCategory[] }>()

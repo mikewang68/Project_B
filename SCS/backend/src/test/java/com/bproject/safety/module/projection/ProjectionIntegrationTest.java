@@ -51,10 +51,10 @@ class ProjectionIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.todayAlerts", is(12)))
                 .andExpect(jsonPath("$.urgentAlerts", is(1)))
-                .andExpect(jsonPath("$.onDuty", is(128)))
-                .andExpect(jsonPath("$.onDutyDemo", is(true)))
-                .andExpect(jsonPath("$.deviceDemo", is(true)))
-                .andExpect(jsonPath("$.deviceHealth", org.hamcrest.Matchers.hasSize(4)))
+                .andExpect(jsonPath("$.onDuty", is(6)))
+                .andExpect(jsonPath("$.onDutyDemo", is(false)))
+                .andExpect(jsonPath("$.deviceDemo", is(false)))
+                .andExpect(jsonPath("$.deviceHealth", org.hamcrest.Matchers.hasSize(3)))
                 .andExpect(jsonPath("$.riskTypeDistribution[0].count", greaterThanOrEqualTo(1)))
                 .andExpect(jsonPath("$.riskTrend", org.hamcrest.Matchers.hasSize(24)));
     }

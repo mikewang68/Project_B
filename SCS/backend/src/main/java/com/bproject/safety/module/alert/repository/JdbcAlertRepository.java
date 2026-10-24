@@ -282,6 +282,44 @@ public class JdbcAlertRepository implements AlertRepository {
                         + " GROUP BY COALESCE(event_type, title)");
     }
 
+    // ---------- 复查②：态势趋势桶聚合（替代固定 Demo 曲线） ----------
+
+    @Override
+    public java.util.List<com.bproject.safety.module.alert.repository.AlertTrendBucket> trendByHour(int hours) {
+        String sql = """
+                SELECT to_char(occurred_at AT TIME ZONE 'Asia/Shanghai', 'HH24') || ':00' AS label,
+                       count(*) AS total,
+                       COALESCE(SUM(CASE WHEN risk_level_code IN ('SEVERE', 'URGENT') THEN 1 ELSE 0 END), 0) AS high
+                FROM safety.safety_alert
+                WHERE occurred_at >= :since
+                GROUP BY 1
+                ORDER BY 1
+                """;
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("since", Timestamp.from(java.time.OffsetDateTime.now(clock).minusHours(hours).toInstant()));
+        return jdbcTemplate.query(sql, params, (rs, rowNum) ->
+                new com.bproject.safety.module.alert.repository.AlertTrendBucket(
+                        rs.getString("label"), rs.getLong("total"), rs.getLong("high")));
+    }
+
+    @Override
+    public java.util.List<com.bproject.safety.module.alert.repository.AlertTrendBucket> trendByDay(int days) {
+        String sql = """
+                SELECT to_char(occurred_at AT TIME ZONE 'Asia/Shanghai', 'MM/DD') AS label,
+                       count(*) AS total,
+                       COALESCE(SUM(CASE WHEN risk_level_code IN ('SEVERE', 'URGENT') THEN 1 ELSE 0 END), 0) AS high
+                FROM safety.safety_alert
+                WHERE occurred_at >= :since
+                GROUP BY 1
+                ORDER BY min(occurred_at)
+                """;
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("since", Timestamp.from(java.time.OffsetDateTime.now(clock).minusDays(days).toInstant()));
+        return jdbcTemplate.query(sql, params, (rs, rowNum) ->
+                new com.bproject.safety.module.alert.repository.AlertTrendBucket(
+                        rs.getString("label"), rs.getLong("total"), rs.getLong("high")));
+    }
+
     private Map<String, Long> countGrouping(String sql) {
         Map<String, Long> out = new LinkedHashMap<>();
         jdbcTemplate.query(sql, Collections.emptyMap(), rs -> {
