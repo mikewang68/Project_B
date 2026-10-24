@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useSafetyStore } from './safety'
-import { demoSnapshot } from '@/mock/snapshot'
+import { demoSnapshot } from './fixtures/safetySnapshot'
 import * as http from '@/api/http'
 import type { SafetySnapshot } from '@/types/safety'
 vi.mock('@/api/live',()=>({SafetyLiveClient:class {connect(){}stop(){}}}))
