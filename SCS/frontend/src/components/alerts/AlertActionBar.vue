@@ -24,7 +24,7 @@ const severe = (a: AlertEvent): boolean => a.risk === '严重' || a.risk === '�
       <button v-if="alert.linkageAvailable && severe(alert)" type="button" :disabled="actionPending" @click="emit('linkage')">
         <el-icon><Linkage /></el-icon>发起联动
       </button>
-      <button type="button" class="primary" :disabled="actionPending" @click="emit('confirm')"><el-icon><Check /></el-icon>确认事件</button>
+      <button v-permission="'safety:module:alert:handle'" type="button" class="primary" :disabled="actionPending" @click="emit('confirm')"><el-icon><Check /></el-icon>确认事件</button>
     </template>
 
     <!-- 已确认 / 待派单 -->
@@ -32,21 +32,20 @@ const severe = (a: AlertEvent): boolean => a.risk === '严重' || a.risk === '�
       <button v-if="alert.linkageAvailable && severe(alert) && !alert.linkageFinished" type="button" :disabled="actionPending" @click="emit('linkage')">
         <el-icon><Linkage /></el-icon>发起联动
       </button>
-      <button type="button" class="primary" :disabled="actionPending" @click="emit('assign')"><el-icon><Promotion /></el-icon>派单</button>
+      <button v-permission="'safety:module:alert:handle'" type="button" class="primary" :disabled="actionPending" @click="emit('assign')"><el-icon><Promotion /></el-icon>派单</button>
     </template>
 
     <!-- 待处理 -->
     <template v-else-if="alert.status === '待处理'">
-      <button type="button" :disabled="actionPending" @click="emit('transfer')"><el-icon><Switch /></el-icon>转派</button>
-      <!-- 交互复查-P1：紧急已是最高等级，升级必 409，隐藏按钮 -->
-      <button v-if="alert.risk !== '紧急'" type="button" :disabled="actionPending" @click="emit('escalate')"><el-icon><Top /></el-icon>事件升级</button>
-      <button type="button" class="primary" :disabled="actionPending" @click="emit('start')"><el-icon><VideoPlay /></el-icon>开始处理</button>
+      <button v-permission="'safety:module:alert:handle'" type="button" :disabled="actionPending" @click="emit('transfer')"><el-icon><Switch /></el-icon>转派</button>
+      <button v-if="alert.risk !== '紧急'" v-permission="'safety:module:alert:handle'" type="button" :disabled="actionPending" @click="emit('escalate')"><el-icon><Top /></el-icon>事件升级</button>
+      <button v-permission="'safety:module:alert:handle'" type="button" class="primary" :disabled="actionPending" @click="emit('start')"><el-icon><VideoPlay /></el-icon>开始处理</button>
     </template>
 
     <!-- 处理中 / 已升级 -->
     <template v-else-if="alert.status === '处理中' || alert.status === '已升级'">
-      <button type="button" :disabled="actionPending" @click="emit('transfer')"><el-icon><Switch /></el-icon>转派</button>
-      <button v-if="alert.risk !== '紧急'" type="button" :disabled="actionPending" @click="emit('escalate')"><el-icon><Top /></el-icon>事件升级</button>
+      <button v-permission="'safety:module:alert:handle'" type="button" :disabled="actionPending" @click="emit('transfer')"><el-icon><Switch /></el-icon>转派</button>
+      <button v-if="alert.risk !== '紧急'" v-permission="'safety:module:alert:handle'" type="button" :disabled="actionPending" @click="emit('escalate')"><el-icon><Top /></el-icon>事件升级</button>
       <button v-if="alert.linkageAvailable && severe(alert) && !alert.linkageFinished && !alert.linkageFailed" type="button" :disabled="actionPending" @click="emit('linkage')">
         <el-icon><Linkage /></el-icon>发起联动
       </button>
@@ -56,7 +55,7 @@ const severe = (a: AlertEvent): boolean => a.risk === '严重' || a.risk === '�
     <!-- 待复核：严重/紧急必须复核 -->
     <template v-else-if="alert.status === '待复核'">
       <span class="alert-action-bar__note">处置结果已提交，需管理复核后关闭</span>
-      <button type="button" class="primary" :disabled="actionPending" @click="emit('review')"><el-icon><Lock /></el-icon>安全复核</button>
+      <button v-permission="'safety:module:alert:approve'" type="button" class="primary" :disabled="actionPending" @click="emit('review')"><el-icon><Lock /></el-icon>安全复核</button>
     </template>
 
     <!-- 已关闭 -->

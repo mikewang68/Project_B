@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { AiSceneKind, CameraHealth, DetectionBox } from '@/types/ai'
 
 const props = defineProps<{
@@ -11,6 +11,9 @@ const props = defineProps<{
   compact?: boolean | undefined
   snapshotUrl?: string | undefined
 }>()
+const snapshotFailed = ref(false)
+const hasSnapshot = computed(() => Boolean(props.snapshotUrl) && !snapshotFailed.value)
+watch(() => props.snapshotUrl, () => { snapshotFailed.value = false })
 
 const W = 320
 const H = 200
@@ -38,8 +41,8 @@ function labelText(b: DetectionBox): string {
 </script>
 
 <template>
-  <div class="ai-detection-image" :data-compact="compact ? 'y' : 'n'" :data-health="degraded ? 'fault' : 'ok'" :data-has-snapshot="snapshotUrl ? 'y' : 'n'">
-    <svg :viewBox="`0 0 ${W} ${H}`" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <div class="ai-detection-image" :data-compact="compact ? 'y' : 'n'" :data-health="degraded ? 'fault' : 'ok'" :data-has-snapshot="hasSnapshot ? 'y' : 'n'">
+    <svg v-if="hasSnapshot" :viewBox="`0 0 ${W} ${H}`" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
         <linearGradient :id="`sky-${camera}-${time}`" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="#eef2f5" />
@@ -52,7 +55,7 @@ function labelText(b: DetectionBox): string {
       </defs>
 
       <!-- 真实抓拍底图 -->
-      <image v-if="snapshotUrl" :href="snapshotUrl" x="0" y="0" :width="W" :height="H" preserveAspectRatio="xMidYMid slice" />
+      <image v-if="snapshotUrl" :href="snapshotUrl" x="0" y="0" :width="W" :height="H" preserveAspectRatio="xMidYMid slice" @error="snapshotFailed = true" />
 
       <!-- 无抓拍图片时：基础场地与场景轮廓 -->
       <template v-else>
@@ -123,12 +126,15 @@ function labelText(b: DetectionBox): string {
         </g>
       </g>
     </svg>
+    <div v-else role="status" class="ai-snapshot-unavailable" style="min-height:160px;display:grid;place-content:center;text-align:center;padding:24px">
+      <strong>现场截图不可用</strong><span>可继续查询事件记录；缺失图片不作为视觉证据。</span>
+    </div>
 
     <div v-if="degraded" class="ai-image-degrade"></div>
     <div class="ai-image-osd">
       <span><i></i>{{ camera }}</span>
       <span class="ai-image-osd-right">
-        <em v-if="snapshotUrl" class="ai-image-live-badge">现场抓拍</em>
+        <em v-if="hasSnapshot" class="ai-image-live-badge">现场抓拍</em>
         {{ time }}
       </span>
     </div>

@@ -12,19 +12,13 @@ import AlertReviewDialog from '@/components/alerts/AlertReviewDialog.vue'
 import { alertApi, type AssignPayload, type TreatmentPayload } from '@/api/alerts'
 import { createLatestGuard } from '@/composables/useLatestGuard'
 import { mapAlertMetricsDto, mapAlertPage, mapAlertEvent, nextRiskLevel } from '@/adapters/alert'
-import { ALERT_METRIC_BASE, createInitialAlerts } from '@/mock/alertEvents'
 import { useLiveStore } from '@/stores/live'
 import type { AlertEvent, AlertMetrics } from '@/types/alert'
 
 const router = useRouter()
 const liveStore = useLiveStore()
 
-/**
- * 数据源说明：告警中心主数据流来自 Spring Boot（/api/v1/alerts）。
- * mock/alertEvents.ts 仅在显式开启 VITE_ENABLE_ALERT_MOCK_FALLBACK=true 且 API 失败时作为回退，
- * 并会明确 Toast 提示；默认关闭，避免“以为接通了其实在用 Mock”。
- */
-const MOCK_FALLBACK_ENABLED = import.meta.env.VITE_ENABLE_ALERT_MOCK_FALLBACK === 'true'
+// 告警数据只从业务服务恢复；请求失败时保留错误状态，不生成替代告警。
 
 const EMPTY_METRICS: AlertMetrics = { total: 0, pending: 0, active: 0, severe: 0, urgent: 0, closed: 0 }
 
@@ -43,7 +37,6 @@ const pageSize = ref(10)
 const listLoading = ref(false)
 const metricsLoading = ref(false)
 const listError = ref('')
-const usingMockFallback = ref(false)
 
 // ---- 详情抽屉 ----
 const drawerVisible = ref(false)
@@ -90,32 +83,12 @@ async function loadMetrics(): Promise<void> {
     if (!metricsGuard.isLatest(token)) return
     metrics.value = mapAlertMetricsDto(dto)
   } catch (cause) {
-    if (MOCK_FALLBACK_ENABLED) {
-      metrics.value = { ...EMPTY_METRICS, ...ALERT_METRIC_BASE }
-      return
-    }
+    if (!metricsGuard.isLatest(token)) return
+    metrics.value = { ...EMPTY_METRICS }
     ElMessage.error(errorMessage(cause, '告警指标加载失败'))
   } finally {
     metricsLoading.value = false
   }
-}
-
-/** Mock 回退路径：本地筛选 + 本地分页（仅 VITE_ENABLE_ALERT_MOCK_FALLBACK=true 时可达） */
-function mockPage() {
-  const all = createInitialAlerts()
-  const kw = filters.keyword.trim()
-  const filtered = all.filter((a) =>
-    (!kw || a.id.includes(kw) || a.title.includes(kw) || a.target.includes(kw) || a.ruleId.includes(kw)) &&
-    (filters.risk === '全部' || a.risk === filters.risk) &&
-    (filters.status === '全部' || a.status === filters.status) &&
-    (filters.area === '全部' || a.area === filters.area) &&
-    (filters.eventType === '全部' || a.eventType === filters.eventType) &&
-    (filters.assignee === '全部' || a.assignee === filters.assignee) &&
-    (filters.source === '全部' || a.source === filters.source),
-  )
-  total.value = filtered.length
-  const start = (page.value - 1) * pageSize.value
-  alerts.value = filtered.slice(start, start + pageSize.value)
 }
 
 async function loadList(): Promise<void> {
@@ -129,14 +102,8 @@ async function loadList(): Promise<void> {
     total.value = result.total
     page.value = result.page
     pageSize.value = result.pageSize
-    usingMockFallback.value = false
   } catch (cause) {
-    if (MOCK_FALLBACK_ENABLED) {
-      mockPage()
-      usingMockFallback.value = true
-      ElMessage.warning('后端不可用，当前列表为本地 Mock 回退数据')
-      return
-    }
+    if (!listGuard.isLatest(token)) return
     alerts.value = []
     total.value = 0
     listError.value = errorMessage(cause, '告警列表加载失败')
@@ -151,7 +118,7 @@ async function loadOptions(): Promise<void> {
     const result = mapAlertPage(await alertApi.getAlerts({ page: 1, pageSize: 200 }))
     optionAlerts.value = result.list
   } catch {
-    if (MOCK_FALLBACK_ENABLED) optionAlerts.value = createInitialAlerts()
+    optionAlerts.value = []
   }
 }
 
@@ -162,11 +129,8 @@ async function openDetail(row: AlertEvent): Promise<void> {
   try {
     current.value = mapAlertEvent(await alertApi.getAlertDetail(row.id))
   } catch (cause) {
-    if (MOCK_FALLBACK_ENABLED) {
-      current.value = optionAlerts.value.find((a) => a.id === row.id) ?? row
-    } else {
-      ElMessage.error(errorMessage(cause, '告警详情加载失败'))
-    }
+    current.value = undefined
+    ElMessage.error(errorMessage(cause, '告警详情加载失败'))
   } finally {
     detailLoading.value = false
   }
@@ -397,7 +361,6 @@ onBeforeUnmount(() => {
         <h1>告警中心</h1>
         <p>统一管理人员、设备、AI 与系统安全事件</p>
       </div>
-      <span v-if="usingMockFallback" class="alert-fallback-tag">Mock 回退数据</span>
     </header>
 
     <div v-loading="metricsLoading">

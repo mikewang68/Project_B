@@ -3,6 +3,12 @@ import { computed } from 'vue'
 import { ArrowDown, Bell, Expand } from '@element-plus/icons-vue'
 import type { LiveState } from '@/api/live'
 import { useOperationsStore } from '@/stores/operations'
+import { useAuthStore } from '@/stores/auth'
+const auth=useAuthStore()
+async function logout(){
+  const response=await fetch('/api/v1/auth/sso/logout',{method:'POST',credentials:'same-origin',headers:{'X-SCS-CSRF':auth.user?.csrfToken??''}})
+  if(response.ok){window.dispatchEvent(new CustomEvent('scs:unauthenticated'));window.location.assign('/')}
+}
 
 const props = defineProps<{
   title: string
@@ -59,10 +65,11 @@ function chipState(): string {
       </button>
 
       <button class="header-user" type="button" aria-label="当前用户菜单">
-        <span class="header-avatar">李</span>
-        <span class="header-user__copy"><b>李娜</b><small>安全员</small></span>
+        <span class="header-avatar">{{auth.displayName.slice(0,1)}}</span>
+        <span class="header-user__copy"><b>{{auth.displayName}}</b><small>{{auth.roleLabel}}</small></span>
         <el-icon><ArrowDown /></el-icon>
       </button>
+      <button type="button" @click="logout">退出登录</button>
     </div>
   </header>
 </template>

@@ -97,7 +97,7 @@ function confirm(): void {
     </div>
     <template #footer>
       <button type="button" class="m-btn m-btn--ghost" @click="close">取消</button>
-      <button type="button" class="m-btn m-btn--danger" @click="confirm">确认升级</button>
+      <button v-permission="'safety:module:alert:handle'" type="button" class="m-btn m-btn--danger" @click="confirm">确认升级</button>
     </template>
   </ElDialog>
 </template>

@@ -4,6 +4,7 @@ import com.bproject.safety.module.ai.model.AiPageResult;
 import com.bproject.safety.module.ai.model.DemoAiEvent;
 import java.util.List;
 import java.util.Optional;
+import java.time.OffsetDateTime;
 
 /**
  * AI 事件存储抽象。本地实现为 {@link InMemoryAiEventRepository}（无需数据库即可运行）；
@@ -16,6 +17,18 @@ public interface AiEventRepository {
 
     /** 全量数据（按发生时间倒序），供指标聚合使用。 */
     List<DemoAiEvent> findAll();
+
+    /** Bounded event window for the live snapshot; never materialize the history. */
+    default List<DemoAiEvent> findRecent(int limit) {
+        return page(AiEventQuery.of(null,null,null,null,null,null,null,null,1,
+                Math.max(1, Math.min(limit, 200)))).list();
+    }
+
+    record Counts(long total, long pending, long confirmed, long falsePositive, long cameraFault) {}
+    Counts counts();
+    long countOccurredBetween(OffsetDateTime fromInclusive, OffsetDateTime untilExclusive);
+    List<String> distinctAreas();
+    List<String> distinctCameras();
 
     /** 条件筛选（不分页）。 */
     List<DemoAiEvent> filter(AiEventQuery query);

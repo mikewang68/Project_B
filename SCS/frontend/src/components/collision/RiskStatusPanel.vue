@@ -46,7 +46,7 @@ const metrics = computed(() => [
     </section>
     <div class="risk-metric-grid"><div v-for="metric in metrics" :key="metric[0]"><small>{{ metric[0] }}</small><b>{{ metric[1] }}</b></div></div>
     <div class="plc-state" :data-state="controlFailure ? 'failed' : deviceStopped ? 'success' : 'normal'"><span><i></i>PLC 控制状态</span><b>{{ plcStatus }}</b></div>
-    <div v-if="controlFailure" class="takeover-alert"><b>设备状态：未确认</b><p>控制链路未闭环，必须由现场人员确认设备已停止。</p><button type="button" @click="$emit('takeover')">人工接管</button></div>
+    <div v-if="controlFailure" class="takeover-alert"><b>设备状态：未确认</b><p>控制链路未闭环，必须由现场人员确认设备已停止。</p><button v-permission="'safety:module:collision:execute'" type="button" @click="$emit('takeover')">人工接管</button></div>
     <button v-if="deviceStopped && !controlFailure" type="button" class="risk-release-button" @click="$emit('release')">解除风险</button>
   </aside>
 </template>

@@ -15,7 +15,7 @@ import LocalEventQueue from '@/components/operations/LocalEventQueue.vue'
 import RecoveryDialog from '@/components/operations/RecoveryDialog.vue'
 import DeviceDiagnosticDialog from '@/components/operations/DeviceDiagnosticDialog.vue'
 import { useOperationsStore } from '@/stores/operations'
-import { operationsApi, type BackendEdgeNode, type BackendOpsDevice } from '@/api/operations'
+import { operationsApi } from '@/api/operations'
 import {
   onlineCount,
   toCloudLink,

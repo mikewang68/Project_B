@@ -101,6 +101,12 @@ public class GlobalExceptionHandler {
         return ApiError.of(ErrorCodes.NOT_FOUND, "请求的资源不存在: " + path, currentTraceId(), null);
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public org.springframework.http.ResponseEntity<ApiError> handleStatus(org.springframework.web.server.ResponseStatusException ex) {
+        return org.springframework.http.ResponseEntity.status(ex.getStatusCode()).body(
+                ApiError.of("HTTP_"+ex.getStatusCode().value(), "请求未获授权或暂不可用", currentTraceId(), null));
+    }
+
     /** 兜底：不向前端泄露堆栈，仅记录服务端日志。 */
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(Exception.class)

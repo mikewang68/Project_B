@@ -188,8 +188,8 @@ async function onSubmitted(): Promise<void> {
         class="m-btn m-btn--ghost"
         @click="escalateOpen = true"
       >升级事件</button>
-      <button v-if="incident.status === '待接单'" type="button" class="m-btn m-btn--primary m-btn--block" :disabled="acting" @click="accept">接单</button>
-      <button v-if="incident.status === '已接单'" type="button" class="m-btn m-btn--primary m-btn--block" :disabled="acting" @click="arrive">确认到场</button>
+      <button v-permission="'safety:module:alert:handle'" v-if="incident.status === '待接单'" type="button" class="m-btn m-btn--primary m-btn--block" :disabled="acting" @click="accept">接单</button>
+      <button v-permission="'safety:module:alert:handle'" v-if="incident.status === '已接单'" type="button" class="m-btn m-btn--primary m-btn--block" :disabled="acting" @click="arrive">确认到场</button>
       <button v-if="incident.status === '已到场'" type="button" class="m-btn m-btn--primary m-btn--block" :disabled="acting" @click="startHandle">开始处理</button>
     </footer>
 

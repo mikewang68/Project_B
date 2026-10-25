@@ -124,7 +124,38 @@ public final class ScsIamTicketValidator {
     result.put("sessionId", data.path("sessionId").asText(""));
     result.put("roles", data.path("roles"));
     result.put("permissions", data.path("permissions"));
+    for(String field:java.util.List.of("localSubject","company","org","domain","zone","readOnly","superAdmin","applicationAdmin"))
+      result.put(field,mapper.convertValue(data.path(field),Object.class));
     return result;
+  }
+
+  public Map<String,Object> current(String subject,String sid){
+    try{
+      var req=HttpRequest.newBuilder(URI.create(baseUrl+"/auth/sso/session/introspect")).timeout(timeout)
+          .header("Content-Type","application/json").header("X-SSO-Service-Token",serviceToken)
+          .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(Map.of("subject",subject,"sessionId",sid,"audience",audience)))).build();
+      var response=http.send(req,HttpResponse.BodyHandlers.ofString());var root=mapper.readTree(response.body());var data=root.path("data");
+      if(response.statusCode()!=200||root.path("code").asInt(-1)!=0||!data.path("active").asBoolean()
+          ||!subject.equals(data.path("subject").asText())||!sid.equals(data.path("sessionId").asText())
+          ||!audience.equals(data.path("audience").asText()))throw new InvalidTicketException("IAM会话已失效");
+      Map<String,Object> result=mapper.convertValue(data,new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});
+      result.put("sub",subject);result.put("scope",audience);return result;
+    }catch(InvalidTicketException e){throw e;}catch(InterruptedException e){Thread.currentThread().interrupt();throw new InvalidTicketException("IAM暂不可用");}
+    catch(Exception e){throw new InvalidTicketException("IAM暂不可用");}
+  }
+
+  public void logout(String subject, String sid) {
+    try {
+      var req = HttpRequest.newBuilder(URI.create(baseUrl + "/auth/sso/session/logout")).timeout(timeout)
+          .header("Content-Type", "application/json").header("X-SSO-Service-Token", serviceToken)
+          .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(
+              Map.of("subject", subject, "sessionId", sid, "audience", audience)))).build();
+      var response = http.send(req, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() != 200 || mapper.readTree(response.body()).path("code").asInt(-1) != 0)
+        throw new InvalidTicketException("统一退出未完成");
+    } catch (InvalidTicketException e) { throw e; }
+    catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new InvalidTicketException("统一退出暂不可用"); }
+    catch (Exception e) { throw new InvalidTicketException("统一退出暂不可用"); }
   }
 
   /** 允许 "scs" / "[scs]" / "[scs, wms]" / "scs,wms" 等表示形式。 */

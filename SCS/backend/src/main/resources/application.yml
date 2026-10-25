@@ -108,11 +108,10 @@ app:
     jwt-secret: ${APP_SECURITY_JWT_SECRET:}
     jwt-issuer: ${APP_SECURITY_JWT_ISSUER:}
     jwt-clock-skew-seconds: ${APP_SECURITY_JWT_CLOCK_SKEW_SECONDS:60}
-    # P1-1 非对称验签（IAM RS256 对接）：公钥 PEM（支持字面 \n）与 JWKS 端点二选一，
-    # JWKS 优先；两者均配置时 JWKS 为主。算法白名单外的 token 一律拒绝。
     jwt-public-key-pem: ${APP_SECURITY_JWT_PUBLIC_KEY_PEM:}
     jwt-jwks-url: ${APP_SECURITY_JWT_JWKS_URL:}
     jwt-allowed-algorithms: ${APP_SECURITY_JWT_ALLOWED_ALGORITHMS:HS256,HS384,HS512}
+    ws-auth-enabled: ${APP_SECURITY_WS_AUTH_ENABLED:true}
     # SSO 契约 V1.1：SCS 用服务身份向 IAM 原子消费一次性票据
     iam-base-url: ${APP_SECURITY_IAM_BASE_URL:}
     iam-service-token: ${APP_SECURITY_IAM_SERVICE_TOKEN:}

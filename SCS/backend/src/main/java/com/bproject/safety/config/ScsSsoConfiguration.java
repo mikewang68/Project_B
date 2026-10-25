@@ -19,7 +19,7 @@ public class ScsSsoConfiguration {
   ScsIamTicketValidator scsIamTicketValidator(
       @Value("${app.security.iam-base-url:}") String iamBaseUrl,
       @Value("${app.security.iam-service-token:}") String iamServiceToken,
-      @Value("${app.security.iam-audience:safety}") String iamAudience,
+      @Value("${app.security.iam-audience:scs}") String iamAudience,
       @Value("${app.security.iam-timeout-ms:3000}") long iamTimeoutMs,
       ObjectMapper objectMapper) {
     return new ScsIamTicketValidator(iamBaseUrl, iamServiceToken, iamAudience, iamTimeoutMs, objectMapper);

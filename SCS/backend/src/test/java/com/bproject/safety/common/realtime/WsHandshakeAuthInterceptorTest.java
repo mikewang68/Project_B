@@ -26,8 +26,8 @@ import org.springframework.mock.web.MockHttpSession;
 @DisplayName("review-#1: WS 握手鉴权拦截器测试")
 class WsHandshakeAuthInterceptorTest {
 
-    private static final String API_KEY = "scs-edge-key-2026";
-    private static final String JWT_SECRET = "scs-unit-test-hs256-secret-0123456789abcdef";
+    private static final String API_KEY = java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID();
+    private static final String JWT_SECRET = java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID();
     private static final String AUDIENCE = "safety";
 
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
@@ -124,8 +124,8 @@ class WsHandshakeAuthInterceptorTest {
     }
 
     @Test
-    @DisplayName("已建立的 SCS 会话（Cookie 场景）：握手通过——浏览器前端零改动")
-    void acceptsEstablishedSession() {
+    @DisplayName("伪造的会话属性不能代替已登记的 SCS 会话")
+    void rejectsUnregisteredSessionAttributes() {
         WsHandshakeAuthInterceptor interceptor = new WsHandshakeAuthInterceptor(security(), true);
         Handshake hs = handshake("GET", "/ws/live");
         MockHttpSession session = (MockHttpSession) hs.request().getSession(true);
@@ -136,19 +136,19 @@ class WsHandshakeAuthInterceptorTest {
         session.setAttribute("SCS_SSO_SCOPE", "safety");
 
         assertThat(interceptor.beforeHandshake(
-                hs.serverRequest(), hs.serverResponse(), null, hs.attributes())).isTrue();
-        assertThat(hs.attributes()).containsEntry(SecurityInterceptor.ATTR_USER_SUB, "op_1001");
+                hs.serverRequest(), hs.serverResponse(), null, hs.attributes())).isFalse();
+        assertThat(hs.attributes()).doesNotContainKey(SecurityInterceptor.ATTR_USER_SUB);
     }
 
     @Test
-    @DisplayName("X-API-Key 机器凭据：握手通过（边缘节点直连场景）")
-    void acceptsApiKey() {
+    @DisplayName("设备采集凭据不能连接业务 WebSocket")
+    void rejectsIngestionCredentialOnBusinessSocket() {
         WsHandshakeAuthInterceptor interceptor = new WsHandshakeAuthInterceptor(security(), true);
         Handshake hs = handshake("GET", "/ws/live");
         hs.request().addHeader("X-API-Key", API_KEY);
 
         assertThat(interceptor.beforeHandshake(
-                hs.serverRequest(), hs.serverResponse(), null, hs.attributes())).isTrue();
+                hs.serverRequest(), hs.serverResponse(), null, hs.attributes())).isFalse();
     }
 
     @Test

@@ -29,7 +29,7 @@ const emit = defineEmits<{ takeover: [] }>()
     <div v-if="failed && !takeover" class="alert-linkage__alarm">
       <el-icon><WarningFilled /></el-icon>
       <p>无法确认设备已停止，请立即人工接管。</p>
-      <button type="button" class="danger" @click="emit('takeover')">人工接管</button>
+      <button v-permission="'safety:module:alert:handle'" type="button" class="danger" @click="emit('takeover')">人工接管</button>
     </div>
     <div v-else-if="takeover" class="alert-linkage__taken">
       <el-icon><Check /></el-icon><span>已由人工接管现场设备，接管动作已记录至时间线</span>
