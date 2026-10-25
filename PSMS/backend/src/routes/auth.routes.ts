@@ -38,7 +38,7 @@ authRouter.post('/refresh', async (req, res, next) => {
 authRouter.get('/me', authenticate, async (req, res, next) => {
   try {
     const user = await authService.getCurrentUser(req.user!.userId);
-    res.json({ ok: true, data: user });
+    res.json({ ok: true, data: { ...user, ...(res.locals.platformAuthorization ?? {}) } });
   } catch (err) {
     next(err);
   }

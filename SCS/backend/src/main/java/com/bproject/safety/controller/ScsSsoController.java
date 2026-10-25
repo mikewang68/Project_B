@@ -48,6 +48,7 @@ public class ScsSsoController {
 
   private final ScsIamTicketValidator ticketValidator;
   private final ObjectMapper mapper;
+  @org.springframework.beans.factory.annotation.Autowired private com.bproject.safety.config.ScsLocalPolicy localPolicy;
 
   /** 是否启用 IAM 集中验票（未配置时返回 SSO_NOT_CONFIGURED）。 */
   @Value("${app.security.jwt-secret:}")
@@ -78,6 +79,8 @@ public class ScsSsoController {
     if (!ticketValidator.isUsable()) {
       return error("SSO_NOT_CONFIGURED", "SCS 未配置 IAM 验票通道", request);
     }
+    String service=request.getHeader("X-SSO-Service-Token");
+    if(service==null||!constantTimeEquals(ticketValidator.serviceToken(),service))return error("SSO_FORBIDDEN","服务身份无效",request);
 
     Map<String, Object> claims;
     try {
@@ -92,8 +95,10 @@ public class ScsSsoController {
       return error("SSO_BAD_ASSERTION", "票据缺少主体", request);
     }
 
-    Set<String> roles = toStringSet(claims.get("roles"));
-    Set<String> permissions = toStringSet(claims.get("permissions"));
+    com.bproject.safety.config.ScsLocalPolicy.Actor actor;
+    try{actor=localPolicy.resolve(claims);}catch(ScsIamTicketValidator.InvalidTicketException denied){return error("SSO_FORBIDDEN","业务映射不可用",request);}
+    Set<String> roles = actor.roles();
+    Set<String> permissions = actor.permissions();
     String scope = String.valueOf(claims.getOrDefault("scope", ""));
     String iamSid = String.valueOf(claims.getOrDefault("sessionId", ""));
 
@@ -109,6 +114,7 @@ public class ScsSsoController {
     bound.setAttribute("SCS_SSO_ROLES", roles);
     bound.setAttribute("SCS_SSO_PERMISSIONS", permissions);
     bound.setAttribute("SCS_SSO_SCOPE", scope);
+    bound.setAttribute("SCS_CSRF",java.util.UUID.randomUUID().toString()+java.util.UUID.randomUUID());
 
     ScsSessionRegistry.bind(bound.getId(), subject, iamSid, roles, permissions, scope);
 
@@ -118,6 +124,20 @@ public class ScsSsoController {
     out.put("permissions", permissions);
     out.put("scope", scope);
     return ok(out, request);
+  }
+
+  @PostMapping("/logout")
+  public ResponseEntity<Map<String,Object>> logout(HttpServletRequest request) {
+    var session = request.getSession(false);
+    var binding = session == null ? null : ScsSessionRegistry.get(session.getId());
+    if (binding == null) return error("SSO_TICKET_REJECTED", "会话不存在", request);
+    try { ticketValidator.logout(binding.iamSubject(), binding.iamSid()); }
+    catch (ScsIamTicketValidator.InvalidTicketException denied) {
+      return error("SSO_NOT_CONFIGURED", "统一退出暂不可用，请重试", request);
+    }
+    ScsSessionRegistry.revokeByIamSid(binding.iamSid());
+    session.invalidate();
+    return ok(Map.of("loggedOut", true), request);
   }
 
   /** IAM 注销联动：撤销该 IAM 会话对应的全部 SCS 会话。 */

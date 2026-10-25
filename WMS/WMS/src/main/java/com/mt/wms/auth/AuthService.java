@@ -44,7 +44,7 @@ public class AuthService {
                 user.username(), user.displayName(), roles, permissions, user.passwordChangeRequired());
     }
 
-    AuthModels.CurrentUserView currentUser(WmsPrincipal principal, jakarta.servlet.http.HttpSession session) {
+    public AuthModels.CurrentUserView currentUser(WmsPrincipal principal, jakarta.servlet.http.HttpSession session) {
         return new AuthModels.CurrentUserView(principal.userId(), principal.username(), principal.displayName(),
                 principal.companyCode(), principal.companyName(), principal.roles(), principal.permissions(),
                 principal.passwordChangeRequired(), repository.findMenus(principal.permissions()),

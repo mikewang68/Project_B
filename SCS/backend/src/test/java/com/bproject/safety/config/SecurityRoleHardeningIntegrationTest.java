@@ -26,7 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
         "app.security.enabled=true",
-        "app.security.api-key=scs-edge-key-2026",
+        "app.security.browser-sso-only=false",
+        "app.security.api-key=offline-unit-only-ingestion-key-never-deploy",
         "app.security.jwt-secret=scs-it-hs256-secret-0123456789abcdefghijklmn",
         "app.security.jwt-issuer=iam"
 })

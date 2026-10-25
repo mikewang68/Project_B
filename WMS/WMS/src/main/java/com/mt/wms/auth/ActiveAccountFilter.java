@@ -37,6 +37,8 @@ public class ActiveAccountFilter extends OncePerRequestFilter {
                 return;
             }
             WmsPrincipal principal=refreshed.get();
+            if (request.getAttribute("WMS_IAM_AUTHORIZATION") instanceof com.fasterxml.jackson.databind.JsonNode current)
+                principal=com.mt.wms.auth.sso.WmsCurrentAuthorization.apply(principal,current);
             // Use a new context to avoid mutating one shared by concurrent requests on the same session.
             var context=SecurityContextHolder.createEmptyContext();
             context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(principal,null,principal.getAuthorities()));

@@ -66,6 +66,10 @@ public class WsHandshakeAuthInterceptor implements HandshakeInterceptor {
         try {
             boolean allowed = security.preHandle(httpRequest, httpResponse, wsHandler);
             if (allowed) {
+                var httpSession=httpRequest.getSession(false);
+                var binding=httpSession==null?null:com.bproject.safety.config.ScsSessionRegistry.get(httpSession.getId());
+                if(security.isUnifiedSessionRequired() && binding==null){httpResponse.setStatus(401);return false;}
+                if(binding!=null)attributes.put("SCS_WS_BINDING",binding);
                 copyPrincipal(httpRequest, attributes);
             } else {
                 log.warn("WS 握手鉴权失败：remote={}", httpRequest.getRemoteAddr());

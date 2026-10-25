@@ -18,7 +18,9 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
-  forward-headers-strategy: framework
+  # Preserve the TCP peer for the SSO trusted-proxy chain check.
+  # Do not let a global ForwardedHeaderFilter trust browser-supplied XFF first.
+  forward-headers-strategy: none
   servlet:
     session:
       cookie:

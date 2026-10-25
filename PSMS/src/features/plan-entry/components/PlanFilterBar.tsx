@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { planStatuses } from '../../../contracts';
 import { businessLabel } from '../../../presentation/businessCopy';
 import { planExceptionFilterValues, type PlanEntryQuery } from '../types';
+import { useDemoSelector } from '../../../runtime';
 
 export type PlanFilterBarProps = {
   query: PlanEntryQuery;
@@ -11,6 +12,8 @@ export type PlanFilterBarProps = {
 };
 
 export default function PlanFilterBar({ query, onChange }: PlanFilterBarProps) {
+  const scopes = useDemoSelector(state => state.session.dataScope);
+  const areas = ['AREA-A', 'AREA-B', 'AREA-C'].filter(area => scopes.some(scope => [area, '*', 'GLOBAL'].includes(scope)));
   const emit = (patch: Partial<PlanEntryQuery>): void => {
     onChange({ ...query, ...patch, page: 1, planId: undefined });
   };
@@ -28,6 +31,10 @@ export default function PlanFilterBar({ query, onChange }: PlanFilterBarProps) {
   return (
     <Form className="plan-filter-bar" layout="vertical" aria-label="计划筛选">
       <div className="plan-filter-grid">
+        {import.meta.env.VITE_PSMS_REAL_API === 'true' ? <Form.Item label="作业区" htmlFor="area-filter">
+          <Select id="area-filter" aria-label="作业区" value={query.workArea}
+            options={areas.map(area => ({ value: area, label: area }))} onChange={workArea => emit({ workArea })} />
+        </Form.Item> : null}
         <Form.Item label="计划批次" htmlFor="plan-batch-filter">
           <Input
             id="plan-batch-filter"

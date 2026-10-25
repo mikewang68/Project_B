@@ -33,7 +33,7 @@ public class IamAuditIdentityFilter extends OncePerRequestFilter {
         if(required && endpoint.isBlank())throw new IllegalArgumentException("Required IAM identity endpoint is not configured");
         if(!endpoint.isBlank() && (!java.util.Set.of("http","https").contains(URI.create(endpoint).getScheme()) || URI.create(endpoint).getUserInfo()!=null))throw new IllegalArgumentException("Invalid IAM identity endpoint");
     }
-    @Override protected boolean shouldNotFilter(HttpServletRequest request){return !request.getRequestURI().startsWith("/api/ehm/v1/")||java.util.Set.of("/api/ehm/v1/auth/login","/api/ehm/v1/auth/logout").contains(request.getRequestURI());}
+    @Override protected boolean shouldNotFilter(HttpServletRequest request){return !request.getRequestURI().startsWith("/api/ehm/v1/")||java.util.Set.of("/api/ehm/v1/auth/login","/api/ehm/v1/auth/logout","/api/ehm/v1/auth/sso/health","/api/ehm/v1/auth/sso/exchange","/api/ehm/v1/auth/sso/revoke").contains(request.getRequestURI());}
     @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException {
         if(request.getUserPrincipal()!=null){chain.doFilter(request,response);return;}
         String authorization=request.getHeader("Authorization");

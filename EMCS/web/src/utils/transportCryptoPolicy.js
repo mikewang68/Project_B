@@ -2,7 +2,7 @@ import axios from 'axios'
 
 import cache from '@/plugins/cache'
 
-const TRANSPORT_BASE_URL = import.meta.env.VITE_APP_BASE_API
+const TRANSPORT_BASE_URL = import.meta.env.VITE_APP_BASE_API || '/emcs-api'
 const EXCLUDED_URL_PATTERNS = [
   '/transport/crypto/frontend-config',
   '/transport/crypto/public-key',

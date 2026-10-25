@@ -36,14 +36,14 @@ class OpenGaussJsonStoreTest {
     @Test
     void savesJsonThroughUpdateFirstUpsert() {
         when(jdbc.update(startsWith("UPDATE ehm.aggregate_store"),
-                any(), any(), eq("asset"), eq("GT-01"))).thenReturn(1);
+                any(), any(), eq("UNASSIGNED"), eq("asset"), eq("GT-01"))).thenReturn(1);
         OpenGaussJsonStore store = new OpenGaussJsonStore(jdbc, mapper(), "ehm", "aggregate_store", false);
         Map<String, Object> value = Map.of("code", "GT-01", "health", 88);
 
         assertEquals(value, store.save("asset", "GT-01", value));
 
         verify(jdbc).update(startsWith("UPDATE ehm.aggregate_store"),
-                any(), any(), eq("asset"), eq("GT-01"));
+                any(), any(), eq("UNASSIGNED"), eq("asset"), eq("GT-01"));
     }
 
     @Test

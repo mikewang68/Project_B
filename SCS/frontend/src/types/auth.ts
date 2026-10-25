@@ -6,4 +6,8 @@ export interface CurrentUser {
   team: string
   shift: 'day' | 'night' | (string & {})
   online: boolean
+  permissions?: string[]
+  readOnly?: boolean
+  authorizationVersion?: string
+  csrfToken?: string
 }

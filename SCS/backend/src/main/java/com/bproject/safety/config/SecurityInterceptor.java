@@ -63,8 +63,10 @@ public class SecurityInterceptor implements HandlerInterceptor {
     private final ScsIamTicketValidator ticketValidator;
     private final boolean jwtSecretConfigured;
     private final String jwtIssuerConfigured;
+    @Value("${app.security.browser-sso-only:${app.security.enabled:true}}") private boolean browserSsoOnly;
+    public boolean isUnifiedSessionRequired(){return browserSsoOnly;}
+    @org.springframework.beans.factory.annotation.Autowired private ScsLocalPolicy localPolicy;
 
-    /** 兼容构造器（既有测试直连使用）：非对称三项取缺省关闭，保持 HS-only 行为。 */
     public SecurityInterceptor(
             boolean enabled, String expectedApiKey, String expectedBearerToken,
             String jwtSecret, String jwtIssuer, long clockSkewSeconds,
@@ -176,71 +178,42 @@ public class SecurityInterceptor implements HandlerInterceptor {
         //     撤销检查优先于一切：即使会话还在，IAM 侧注销后也必须拒绝。
         HttpSession existing = request.getSession(false);
         if (existing != null && Boolean.TRUE.equals(existing.getAttribute("SCS_SSO_ESTABLISHED"))) {
-            if (ScsSessionRegistry.isSessionRevoked(existing.getId())) {
-                try {
-                    existing.invalidate();
-                } catch (IllegalStateException ignored) {
-                    // 并发请求已销毁
+            var binding=ScsSessionRegistry.get(existing.getId());
+            if(binding==null || ScsSessionRegistry.isSessionRevoked(existing.getId())){sendUnauthorized(request,response,"业务会话绑定缺失或已撤销");return false;}
+            try{
+                var assertion=ticketValidator.current(binding.iamSubject(),binding.iamSid());
+                var actor=localPolicy.resolve(assertion);
+                request.setAttribute("SCS_AUTHORIZATION_VERSION",assertion.get("authorizationVersion"));
+                if(!localPolicy.permits(actor,request.getMethod(),path)){
+                    sendForbidden(request,response,ErrorCodes.FORBIDDEN_READONLY_ROLE,"当前业务操作未获授权",Map.of());return false;
                 }
-                ScsSessionRegistry.unbind(existing.getId());
-                log.warn("拒绝已撤销的 SCS 会话: path={}", path);
-                sendUnauthorized(request, response, "访问受限：IAM 会话已注销，SCS 会话同时失效");
-                return false;
-            }
-            @SuppressWarnings("unchecked")
-            Set<String> sessionRoles = (Set<String>) existing.getAttribute("SCS_SSO_ROLES");
-            @SuppressWarnings("unchecked")
-            Set<String> sessionPerms = (Set<String>) existing.getAttribute("SCS_SSO_PERMISSIONS");
-            String subject = String.valueOf(existing.getAttribute("SCS_SSO_SUBJECT"));
-            String scope = String.valueOf(existing.getAttribute("SCS_SSO_SCOPE"));
-            AuthPrincipal p = new AuthPrincipal(
-                    subject,
-                    sessionRoles == null ? Set.of() : sessionRoles,
-                    sessionPerms == null ? Set.of() : sessionPerms,
-                    scope,
-                    false,
-                    isReadOnlyRolePresent(sessionRoles == null ? Set.of() : sessionRoles));
-            return finish(p, request, response, path, "local session");
+                if(!Set.of("GET","HEAD","OPTIONS").contains(request.getMethod())){
+                    String csrf=request.getHeader("X-SCS-CSRF"),expected=(String)existing.getAttribute("SCS_CSRF");
+                    if(csrf==null||expected==null||!MessageDigest.isEqual(csrf.getBytes(StandardCharsets.UTF_8),expected.getBytes(StandardCharsets.UTF_8))){
+                        sendForbidden(request,response,ErrorCodes.FORBIDDEN_READONLY_ROLE,"CSRF校验失败",Map.of());return false;
+                    }
+                }
+                request.setAttribute("SCS_ACTOR",actor);
+                if (path.equals("/api/v1/auth/sso/logout")) {
+                    request.setAttribute(ATTR_USER_SUB, actor.subject());
+                    return true;
+                }
+                return finish(new AuthPrincipal(actor.subject(),actor.roles(),actor.permissions(),"scs",false,actor.readOnly()),request,response,path,"native SSO");
+            }catch(ScsIamTicketValidator.InvalidTicketException denied){sendUnauthorized(request,response,"统一身份或业务映射不可用");return false;}
         }
-
         // 3. 边缘节点机器凭据检查 (X-API-Key，常量时间等值比较)
         String apiKey = request.getHeader("X-API-Key");
         if (apiKey != null && !apiKey.isBlank() && !expectedApiKey.isBlank()
                 && MessageDigest.isEqual(apiKey.getBytes(StandardCharsets.UTF_8), expectedApiKey.getBytes(StandardCharsets.UTF_8))) {
+            if(!path.startsWith("/api/v1/ingest/") && !path.equals("/api/v1/ai-events/ingest")){
+                sendForbidden(request,response,ErrorCodes.FORBIDDEN_READONLY_ROLE,"机器凭据不用于业务操作",Map.of());return false;
+            }
             request.setAttribute(ATTR_USER_SUB, "edge-node");
             request.setAttribute(ATTR_USER_ROLES, Set.of("ROLE_EDGE"));
             return true;
         }
 
-        // 4. SSO 一次性票据（优先于 Bearer，主体由 IAM 返回）
-        String ssoTicket = request.getHeader("X-SSO-Ticket");
-        if (ssoTicket != null && !ssoTicket.isBlank()) {
-            if (!ticketValidator.isUsable()) {
-                log.warn("拒绝 SSO 票据访问（IAM 验票未配置）: path={}, method={}", path, request.getMethod());
-                sendUnauthorized(request, response, "访问受限：SSO 票据验票未启用");
-                return false;
-            }
-            try {
-                Map<String, Object> claims = ticketValidator.validate(ssoTicket);
-                Set<String> roles = new HashSet<>();
-                Set<String> permissions = new HashSet<>();
-                extractStringCollection(objectMapper.valueToTree(claims.get("roles")), roles);
-                extractStringCollection(objectMapper.valueToTree(claims.get("permissions")), permissions);
-                AuthPrincipal principal = new AuthPrincipal(
-                        String.valueOf(claims.get("sub")),
-                        roles,
-                        permissions,
-                        String.valueOf(claims.get("scope")),
-                        false,
-                        isReadOnlyRolePresent(roles));
-                return finish(principal, request, response, path, "SSO ticket");
-            } catch (ScsIamTicketValidator.InvalidTicketException e) {
-                log.warn("拒绝 SSO 票据访问: path={}, reason={}", path, e.getMessage());
-                sendUnauthorized(request, response, "访问受限：SSO 票据无效或已使用");
-                return false;
-            }
-        }
-
+        if(browserSsoOnly){sendUnauthorized(request,response,"请通过统一入口建立业务会话");return false;}
         // 5. 用户 / 网关 Bearer Token 凭证检查
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -418,9 +391,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
                 || path.startsWith("/health")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/swagger-ui")
-                || path.startsWith("/api/v1/auth")
-                || path.startsWith("/api/v1/meta")
-                || path.startsWith("/api/v1/state")
+                || Set.of("/api/v1/auth/sso/exchange","/api/v1/auth/sso/revoke","/api/v1/auth/sso/health").contains(path)
                 || path.startsWith("/api/v1/health")
                 || path.equals("/error");
     }

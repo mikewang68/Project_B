@@ -16,6 +16,9 @@ import java.util.Date;
 public class JwtService {
     private final SecretKey key;
     private final Duration tokenDuration;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private org.springframework.jdbc.core.JdbcTemplate revocationDb;
+    private final java.util.Map<String,Instant> localRevocations=new java.util.concurrent.ConcurrentHashMap<>();
 
     public JwtService(
             @Value("${b-demo.auth.jwt-secret}") String secret,
@@ -30,6 +33,7 @@ public class JwtService {
     public String create(long userId, String userName) {
         Instant now = Instant.now();
         return Jwts.builder()
+                .id(java.util.UUID.randomUUID().toString())
                 .subject(Long.toString(userId))
                 .claim("user_name", userName)
                 .issuedAt(Date.from(now))
@@ -39,7 +43,25 @@ public class JwtService {
     }
 
     public AuthenticatedUser parse(String token) {
+        String hash=hash(token);
+        if(revocationDb!=null){
+            Integer count=revocationDb.queryForObject("SELECT COUNT(*) FROM sys_token_revocation WHERE token_sha256=? AND expires_at>CURRENT_TIMESTAMP",Integer.class,hash);
+            if(count!=null&&count>0)throw new IllegalArgumentException("Session revoked");
+        }else if(localRevocations.getOrDefault(hash,Instant.MIN).isAfter(Instant.now()))throw new IllegalArgumentException("Session revoked");
         Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
         return new AuthenticatedUser(Long.parseLong(claims.getSubject()), claims.get("user_name", String.class));
+    }
+    public void revoke(String token){
+        Claims claims=Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+        Instant expires=claims.getExpiration().toInstant();String hash=hash(token);
+        if(revocationDb!=null){
+            int changed=revocationDb.update("UPDATE sys_token_revocation SET expires_at=? WHERE token_sha256=?",java.sql.Timestamp.from(expires),hash);
+            if(changed==0)try{revocationDb.update("INSERT INTO sys_token_revocation(token_sha256,expires_at) VALUES(?,?)",hash,java.sql.Timestamp.from(expires));}
+            catch(org.springframework.dao.DuplicateKeyException concurrent){/* Same token already revoked. */}
+        }else localRevocations.put(hash,expires);
+    }
+    private static String hash(String token){
+        try{return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8)));}
+        catch(java.security.NoSuchAlgorithmException impossible){throw new IllegalStateException(impossible);}
     }
 }

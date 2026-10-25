@@ -50,7 +50,7 @@ async function accept(event: Event): Promise<void> {
     </p>
     <footer v-if="props.incident.status === '待接单'">
       <button type="button" class="m-btn m-btn--ghost" @click.stop="open">查看</button>
-      <button type="button" class="m-btn m-btn--primary" :disabled="acting" @click="accept">接单</button>
+      <button v-permission="'safety:module:alert:handle'" type="button" class="m-btn m-btn--primary" :disabled="acting" @click="accept">接单</button>
     </footer>
   </article>
 </template>

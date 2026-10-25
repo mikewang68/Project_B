@@ -26,16 +26,14 @@ app:
     jwt-secret: ${APP_SECURITY_JWT_SECRET:}
     jwt-issuer: ${APP_SECURITY_JWT_ISSUER:}
     jwt-clock-skew-seconds: ${APP_SECURITY_JWT_CLOCK_SKEW_SECONDS:60}
-    # P1-1 非对称验签（IAM RS256 对接，缺省不启用；详见 docs/improvement-roadmap P1-1 节）
     jwt-public-key-pem: ${APP_SECURITY_JWT_PUBLIC_KEY_PEM:}
     jwt-jwks-url: ${APP_SECURITY_JWT_JWKS_URL:}
     jwt-allowed-algorithms: ${APP_SECURITY_JWT_ALLOWED_ALGORITHMS:HS256,HS384,HS512}
-    # review-#1：WS 握手鉴权（会话 Cookie / API-Key / Bearer / ?token=，与 REST 同源校验）。
-    # server profile 缺省开启；旧前端（无会话亦无凭据的直连客户端）需先升级再启用。
     ws-auth-enabled: ${APP_SECURITY_WS_AUTH_ENABLED:true}
     iam-base-url: ${APP_SECURITY_IAM_BASE_URL:}
     iam-service-token: ${APP_SECURITY_IAM_SERVICE_TOKEN:}
-    iam-audience: ${APP_SECURITY_IAM_AUDIENCE:safety}
+    iam-audience: ${APP_SECURITY_IAM_AUDIENCE:scs}
+    sso-bindings-file: ${SCS_SSO_BINDINGS_FILE:}
     iam-timeout-ms: ${APP_SECURITY_IAM_TIMEOUT_MS:3000}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
@@ -46,10 +44,3 @@ app:
   opengemini:
     enabled: ${OPENGEMINI_ENABLED:true}
     base-url: ${OPENGEMINI_URL}
-
-# review-#8：生产关闭 API 文档端点（此前 /v3/api-docs 与 /swagger-ui 匿名可枚举全部接口契约）
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    enabled: false
