@@ -24,6 +24,15 @@ public class PageLeafNode {
   private String routePath = "";
   private String pageKey = "";
   private String tabKey = "";
+  private String featureStatus = "READY";
+  private boolean canLaunch = true;
+  private String unavailableReason = "";
+  public String getFeatureStatus() { return featureStatus; }
+  public void setFeatureStatus(String value) { featureStatus = value; }
+  public boolean isCanLaunch() { return canLaunch; }
+  public void setCanLaunch(boolean value) { canLaunch = value; }
+  public String getUnavailableReason() { return unavailableReason; }
+  public void setUnavailableReason(String value) { unavailableReason = value; }
   private List<PageLeafNode> children = new ArrayList<>();
 
   public PageLeafNode() {}

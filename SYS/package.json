@@ -1,7 +1,7 @@
 {
   "name": "sys-admin",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "B项目 系统设置与维护系统（SYS）——独立部署工程：数据字典、操作日志、系统配置",
   "engines": {

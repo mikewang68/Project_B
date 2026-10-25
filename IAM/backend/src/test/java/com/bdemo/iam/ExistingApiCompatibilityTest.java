@@ -81,6 +81,7 @@ public class ExistingApiCompatibilityTest {
 
   @BeforeEach
   void setUp() {
+    org.mockito.Mockito.when(roleMapper.selectAllowedApps(org.mockito.ArgumentMatchers.anyString())).thenReturn(java.util.List.of("IAM","SYS","WMS","PSMS","SCS","EHMS","EMCS","TRUST"));
     java.util.Map<String, String> activeSessions = new java.util.concurrent.ConcurrentHashMap<>();
     org.mockito.Mockito.doAnswer(call -> {
       activeSessions.put(call.getArgument(0), call.getArgument(1));
@@ -94,6 +95,14 @@ public class ExistingApiCompatibilityTest {
       activeSessions.values().removeIf(user -> user.equals(call.getArgument(0)));
       return null;
     }).when(sessions).revokeUser(anyString());
+    org.mockito.Mockito.when(sessions.revokeUserAndReturnIds(anyString())).thenAnswer(call -> {
+      var ids = activeSessions.entrySet().stream()
+          .filter(entry -> entry.getValue().equals(call.getArgument(0)))
+          .map(java.util.Map.Entry::getKey).toList();
+      ids.forEach(activeSessions::remove);
+      return ids;
+    });
+
 
     String hash = passwordEncoder.encode("Pass@123");
     when(userMapper.selectAuthByUsername("admin")).thenReturn(Map.of("id", "u-admin", "username", "admin", "passwordHash", hash, "status", "active"));

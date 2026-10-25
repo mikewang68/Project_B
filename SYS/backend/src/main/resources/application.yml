@@ -29,7 +29,7 @@ mybatis:
 
 app:
   jwt:
-    # 必须与 IAM 后端完全一致；生产通过环境变量 JWT_SECRET 注入
+    # 遗留 Bearer 验证器；原生 SSO 使用独立服务凭据，无须共享 IAM 签名密钥
     secret: ${JWT_SECRET:dev-only-iam-sys-jwt-secret-please-change-in-production-0123456789}
     expire-hours: ${JWT_EXPIRE_HOURS:12}
   cors:

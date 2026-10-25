@@ -30,14 +30,17 @@ public class RoleService {
 
   @org.springframework.beans.factory.annotation.Autowired
   private com.bdemo.iam.provisioning.IdentityTasks identities;
+  @org.springframework.beans.factory.annotation.Autowired private com.bdemo.iam.security.AppScopePolicy appScopes;
 
   public List<Role> list() {
-    List<Role> roles = roleMapper.selectAll();
+    List<Role> roles = new java.util.ArrayList<>(roleMapper.selectAll());
+    if(appScopes!=null) roles.removeIf(r->!appScopes.visible("ROLE",r.getId()));
     roles.forEach(r -> r.setPermCodes(roleMapper.selectPermissionCodes(r.getId())));
     return roles;
   }
 
   public Role get(String id) {
+    if(appScopes!=null && !appScopes.visible("ROLE",id))throw BizException.notFound("角色不存在");
     Role role = roleMapper.selectById(id);
     if (role == null) {
       throw BizException.notFound("角色不存在");
@@ -53,6 +56,8 @@ public class RoleService {
     if (code == null || code.isBlank()) {
       throw BizException.badRequest("请输入角色编码");
     }
+    if(Set.of("SUPER_ADMIN","PLATFORM_ADMIN_FULL","PLATFORM_AUDITOR_READONLY").contains(code.toUpperCase(java.util.Locale.ROOT)))
+      throw BizException.forbidden("保留角色不能通过业务接口创建");
     if (roleMapper.countByCode(code) > 0) {
       throw BizException.conflict("角色编码已存在：" + code);
     }
@@ -64,6 +69,7 @@ public class RoleService {
     if (permCodes != null && !permCodes.isEmpty()) {
       roleMapper.insertRolePermissions(id, permCodes.stream().distinct().toList());
     }
+    if(appScopes!=null)appScopes.recordCreated("ROLE",id);
     return get(id);
   }
 
@@ -90,6 +96,7 @@ public class RoleService {
 
   @Transactional
   public void delete(String id) {
+    if(appScopes!=null)appScopes.requireOwned("ROLE",id);
     Role existing = mustExist(id);
     if ("super_admin".equals(existing.getCode())) {
       throw BizException.badRequest("内置系统管理员角色不可删除");
@@ -106,6 +113,7 @@ public class RoleService {
 
   @Transactional
   public Role assignPermissions(String roleId, List<String> permCodes) {
+    if(appScopes!=null)appScopes.requireOwned("ROLE",roleId);
     Role role = mustExist(roleId);
     if ("super_admin".equals(role.getCode())) {
       throw BizException.badRequest("内置管理员角色权限由系统内置，不允许修改");
@@ -118,10 +126,12 @@ public class RoleService {
     if (!codes.isEmpty()) {
       roleMapper.insertRolePermissions(roleId, codes);
     }
+    if(appScopes!=null)appScopes.updateRoleScopes(roleId);
     return get(roleId);
   }
 
   private void protect(Role role) {
+    if(appScopes!=null)appScopes.requireOwned("ROLE",role.getId());
     if ("super_admin".equals(role.getCode())) throw BizException.badRequest("内置管理员角色不可停用或修改");
   }
 
@@ -134,6 +144,7 @@ public class RoleService {
   }
 
   private void validatePermCodes(List<String> permCodes) {
+    if(appScopes!=null)appScopes.requireDelegable(permCodes);
     if (permCodes == null || permCodes.isEmpty()) {
       return;
     }

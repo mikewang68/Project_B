@@ -28,6 +28,9 @@ public class PermissionService {
      */
     public List<PermissionNode> tree() {
         List<PermissionNode> all = permissionMapper.selectAllNodes();
+        var actor=com.bdemo.iam.security.JwtAuthFilter.currentUser();
+        if(actor!=null && !com.bdemo.iam.security.AppScopePolicy.globalRead(actor))
+            all=all.stream().filter(n->"iam".equals(n.getSystem())).toList();
         Map<String, PermissionNode> byId = new LinkedHashMap<>();
         Map<String, List<PermissionNode>> buttonsByParent = new LinkedHashMap<>();
         List<PermissionNode> roots = new ArrayList<>();

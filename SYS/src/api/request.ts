@@ -1,7 +1,7 @@
 /**
  * 统一 REST 请求客户端（fetch 实现，无额外依赖）。
  * - baseURL：VITE_API_BASE_URL，默认 /api/v1（dev 由 Vite 代理到后端）
- * - 鉴权：Bearer JWT（由 IAM 登录签发，SYS 本地验签），token 仅存 localStorage
+ * - 鉴权：同源原生 Cookie + 写请求 CSRF；兼容显式保留的 Bearer token
  * - 响应约定：后端统一返回 { code, message, data }，code === 0 为成功
  * - 401：清除 token 并派发 app:unauthorized 事件，由路由/登录页处理
  */
@@ -62,6 +62,13 @@ export function createClient(options: ApiClientOptions): ApiClient {
     const headers: Record<string, string> = { Accept: 'application/json' }
     const token = getToken()
     if (token) headers.Authorization = `Bearer ${token}`
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      const csrfResponse = await fetch(baseUrl() + '/sys/auth/sso/csrf', { credentials: 'same-origin', cache: 'no-store',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+      if (!csrfResponse.ok) throw new ApiError(csrfResponse.status, csrfResponse.status, '无法核验登录会话')
+      const csrfBody = await csrfResponse.json()
+      if (csrfBody.data?.csrfToken) headers['X-SYS-CSRF'] = csrfBody.data.csrfToken
+    }
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
 
     let resp: Response

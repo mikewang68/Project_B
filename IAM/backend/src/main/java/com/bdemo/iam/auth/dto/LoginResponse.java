@@ -9,5 +9,8 @@ public record LoginResponse(
         String token,
         User user,
         List<Role> roles,
-        List<String> permissions) {
+        List<String> permissions,
+        boolean superAdmin,
+        boolean readOnly,
+        String accessMode) {
 }

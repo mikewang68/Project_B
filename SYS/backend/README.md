@@ -1,70 +1,51 @@
-# SYS 后端（sys-backend）
+# SYS 后端 · 1.1.0
 
-系统设置与维护后端：数据字典、操作日志、系统配置。Spring Boot 3.5 / Java 17 /
-MyBatis（注解 Mapper）/ Spring Security + JWT(HS256) / openGauss 6.0.5。
+Spring Boot 3.5、Java 17、MyBatis、openGauss。业务 API 前缀为 `/api/v1/sys`，响应格式为 `{ "code": 0, "message": "success", "data": ... }`。本服务管理字典、配置和日志，不创建平台账号或签发平台登录凭据。
 
-- 端口：`8082`
-- context-path：`/api/v1/sys`
-- 数据库：openGauss 库 `project_b`，schema `sys`（账号 `sys_app`）
-- **不建用户表、不签发登录 token**：登录由前端转发 IAM `/api/v1/iam/auth/login`；
-  本服务只验签 JWT，并跨 schema 只读 `iam.iam_user / iam_role / iam_user_role /
-  iam_role_permission`（sys_app 已被授予这 4 张表 + iam_permission 的 SELECT）完成身份与权限加载
-- 统一操作日志表 `sys.sys_operation_log` 归本服务所有，IAM 通过被授予的 SELECT/INSERT 跨库写入
-- 统一响应：`{ "code": 0, "message": "success", "data": ... }`
+## 统一会话
 
-## 1. 数据库初始化
+| 方法与路径（相对 API 前缀） | 用途 |
+|---|---|
+| POST `/auth/sso/exchange` | 使用受服务身份保护的 IAM 短票建立本地会话 |
+| GET `/auth/me` | 恢复当前本地身份、当前权限及只读状态 |
+| GET `/auth/sso/csrf` | 获取 Cookie 写操作使用的 CSRF 令牌 |
+| POST `/auth/sso/logout` | 撤销平台会话并清理本地会话 |
+| POST `/auth/sso/revoke` | 由获准服务通知撤销指定会话 |
 
-顺序见 IAM 后端 README（`01-create-database.sql` → IAM schema/seed → SYS schema/seed）。
-SYS 脚本：
+每次请求重新验会话，并取中央授权与本地权限交集。主体到本地用户 ID 必须显式映射；映射缺失、身份无效或集中服务不可用时拒绝请求，不回退为默认管理员。Cookie 写操作使用 `X-SYS-CSRF`。
 
-- `SYS/backend/db/01-sys-schema.sql`：sys_dict_type / sys_dict_item（逻辑删除 + 部分唯一索引）/
-  sys_operation_log / sys_config，并 `GRANT SELECT,INSERT ON sys_operation_log TO iam_app`
-- `SYS/backend/db/02-sys-seed.sql`：字典 5 分类 15 项、配置 3 组 10 项、初始日志 8 条
+## 业务接口
 
-## 2. 配置（环境变量注入，不提交真实密钥）
+| 方法与路径 | 权限与行为 |
+|---|---|
+| GET/POST `/dict/types`，PUT/DELETE `/dict/types/{id}` | `sys:dict:type:*`，分类 CRUD |
+| GET/POST `/dict/items`，PUT/DELETE `/dict/items/{id}` | `sys:dict:item:*`，字典项 CRUD |
+| GET `/logs` | `sys:log:list:view`，过滤与分页 |
+| GET `/logs/export` | `sys:log:list:export`，独立授权，生成 UTF-8 BOM CSV |
+| GET `/configs` | `sys:config:list:view`，仅返回可见归属对象 |
+| PUT `/configs/group/{group}` | `sys:config:list:edit`，检查分组内对象归属及可编辑状态 |
 
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `SYS_SERVER_PORT` | 8082 | 监听端口 |
-| `DB_HOST` / `DB_PORT` / `DB_NAME` | 127.0.0.1 / 5432 / project_b | openGauss 连接 |
-| `DB_USER` / `DB_PASSWORD` | sys_app / change-me | 应用账号 |
-| `JWT_SECRET` | 仅开发占位 | HS256 密钥，**必须与 IAM 后端完全一致** |
-| `CORS_ALLOWED_ORIGINS` | 5175/4176/5174 | 允许的前端来源 |
+专用管理员只能管理 SYS 归属对象。未知历史对象默认 `GLOBAL`，不能批量转给 SYS。全局只读限制优先；前端按钮隐藏不能代替后端检查。
 
-可复制 `src/main/resources/application-example.yml` 为 `application-local.yml`（已被 .gitignore 忽略）。
+## 配置
 
-## 3. 运行
+模板见 [unified.env.example](../deploy/unified.env.example) 和 [subject-bindings.example.json](../deploy/subject-bindings.example.json)。服务间凭据、数据库密码、签名密钥与本地主体映射由部署人员私下注入。
+
+`sys.sso.enabled`、`sys.sso.iam-base-url`、`sys.sso.service-token`、`sys.sso.bindings-file` 分别控制启用、集中身份 API、服务身份和显式映射。环境变量使用对应的 `SYS_SSO_*` 名称。`SYS_SERVER_PORT` 控制后端端口，`DB_HOST/PORT/NAME/USER/PASSWORD` 控制 SYS 连接库。
+
+本地用户和角色由 `LoginUserLoader` 从 SYS 连接库中的身份表加载；这不表示可以跨连接访问 IAM 的独立数据库。旧共享库 DDL 的跨 schema 授权不应直接套用到独立数据库。统一会话模式使用独立服务身份，不要求共享 IAM JWT 签名密钥；遗留 Bearer 代码仅供显式配置的兼容环境使用。
+
+## 数据库与升级
+
+新环境需先建立受限应用角色及 SYS 基础表；`db/01-sys-schema.sql` 和 `02-sys-seed.sql` 是历史共享库初始化材料，包含固定角色授权及演示数据，不能对现有共享数据重复执行。
+
+已有环境升级使用 `db/004-resource-ownership.sql` 添加资源归属列和索引。`db/005-native-permission-catalog.sql` 的目标是身份权限表所在库的 `iam` schema，必须在该库由授权人员执行，不能误当作 SYS 业务库迁移。详细顺序见 [升级说明](../docs/upgrade-1.1.0.md)。
+
+## 构建与测试
 
 ```bash
-cd SYS/backend
-mvn spring-boot:run
-# 或
-mvn -DskipTests package
+mvn test package
 java -jar target/sys-backend.jar
 ```
 
-## 4. 主要接口
-
-| 方法 | 路径 | 权限 | 说明 |
-| --- | --- | --- | --- |
-| GET | `/auth/me` | 登录 | 跨 schema 加载当前用户/角色/权限 |
-| GET/POST | `/dict/types`、`/dict/types/{code}`(PUT/DELETE) | sys:dict:type:* | 字典分类 CRUD（删分类事务内逻辑删其下字典项） |
-| GET/POST | `/dict/items?typeCode=`、`/dict/items/{id}`(PUT/DELETE) | sys:dict:item:* | 字典项 CRUD |
-| GET | `/logs` | sys:log:list:view | 日志过滤（kind/module/result/keyword/时间区间）+ 分页；不传分页返回全量 |
-| GET | `/logs/export` | sys:log:list:export | 导出 UTF-8 BOM CSV，后端自记一条 export 日志 |
-| GET | `/configs` | sys:config:list:view | 全部配置（按组） |
-| PUT | `/configs/group/{group}` | sys:config:list:edit | 按组保存，仅更新 editable=1 且发生变化的键，返回 `{updated:n}` |
-
-冲突处理：唯一键冲突由 Service 预检 + 数据库部分唯一索引双保险，
-`DuplicateKeyException` 经全局异常处理转为 HTTP 409。
-
-## 5. 演示账号
-
-与 IAM 共用（登录走 IAM）：admin/Admin@123（全部权限）、viewer/Viewer@123
-（5 个只读权限码，含 `sys:log:list:export`，无任何增删改权限）。
-
-## 6. 测试
-
-`mvn test`：MockMvc Web 层测试（Mapper 与跨 schema 的 IamIdentityMapper 全部 Mock，
-**不需要数据库**），覆盖 401、字典列表、viewer 越权 403、分类重码 409、建分类成功、
-viewer 导出 CSV、viewer 改配置 403、admin 按组保存配置。
+测试覆盖原生会话、主体映射、归属过滤、业务接口和日志诊断。没有执行真实数据库测试或上线核验时，应如实记录限制；不得以源码说明代替现场验收。

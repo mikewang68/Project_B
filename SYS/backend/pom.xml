@@ -13,7 +13,7 @@
 
   <groupId>com.bdemo</groupId>
   <artifactId>sys-backend</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <name>sys-backend</name>
   <description>SYS - system settings &amp; maintenance backend (openGauss)</description>
 
@@ -56,7 +56,7 @@
       <version>${opengauss-jdbc.version}</version>
     </dependency>
 
-    <!-- JWT (HS256)，密钥与 IAM 相同，本地校验 IAM 签发的 token -->
+    <!-- Legacy JWT verifier; native SSO uses an independent IAM service credential. -->
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-api</artifactId>

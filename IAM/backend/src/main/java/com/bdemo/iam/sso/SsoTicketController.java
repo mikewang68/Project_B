@@ -40,6 +40,9 @@ public class SsoTicketController {
   private final SsoSubjectGuard subjects;
   private final SsoServiceIdentity services;
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private SsoAuthorizationService authorization;
+
   public SsoTicketController(
       SsoTicketService tickets, SsoSubjectGuard subjects, SsoServiceIdentity services) {
     this.tickets = tickets;
@@ -59,6 +62,7 @@ public class SsoTicketController {
     if (audience == null || audience.isBlank()) {
       throw new SsoTicketService.SsoTicketException("缺少 audience");
     }
+    if(!user.mayEnter(audience))throw new SsoTicketService.SsoTicketException("目标系统未被授权");
 
     // V1.1：必须有显式主体映射，无回退
     subjects.requireBound(user.getUserId(), user.getUsername(), audience);
@@ -112,6 +116,8 @@ public class SsoTicketController {
     }
 
     Claims claims = tickets.verify(request.ticket(), aud);
+    Map<String, Object> currentAuthorization =
+        authorization.current(claims.getSubject(), claims.get("sid", String.class), aud);
     String consumer = request.consumer() == null ? aud : request.consumer();
     if (!tickets.consume(claims.getId(), consumer)) {
       throw new SsoTicketService.SsoTicketException("票据已被使用（重放被拒绝）");
@@ -127,7 +133,7 @@ public class SsoTicketController {
     body.put("domain", claims.get("domain", String.class));
     body.put("zone", claims.get("zone", String.class));
     body.put("localSubject", subjects.localSubject(claims.getSubject(), aud));
-    body.put("contractVersion", "1.1");
+    body.putAll(currentAuthorization);
     return R.ok(body);
   }
 

@@ -1,74 +1,47 @@
-# 系统设置与维护系统（SYS）
+# SYS 系统设置与维护 · 1.1.0
 
-B 项目面向各业务系统的**系统设置与维护后台**，在 Project_B 仓库中作为独立模块目录 `SYS/`，与 IAM（统一身份与权限）、DTS（数字孪生）等平级，独立开发、独立构建、独立部署。
+SYS 提供数据字典、操作日志、系统配置与日志诊断，使用 Vue 3、TypeScript、Spring Boot、Java 17 和 openGauss。前端通过真实 REST 接口读取业务数据，统一入口通过原生服务端 Cookie 恢复登录身份。
 
-> 边界：用户 / 角色 / 菜单权限的维护在 **IAM**；SYS 只负责数据字典、操作日志、系统配置等通用运维设置。账号与权限体系与 IAM 同构，后端统一认证中心就绪后共用同一套账号。
+## 功能与权限
 
-## 一、功能范围
+- 字典分类与字典项支持查询、创建、修改、删除和状态维护。
+- 日志支持过滤、统计、诊断和单独授权的 CSV 导出。
+- 系统配置按分组保存，并执行服务端归属和操作权限检查。
+- SYS 专用管理员只管理 SYS 归属对象。共享、历史归属不明和其他系统对象保持平台管理边界；列表、详情、批量修改和导出采用一致限制。
+- 统一权限、本地权限和资源归属共同决定是否允许操作；全局只读限制优先于管理员身份，导出不随查询权限自动授予。
 
-- **数据字典**：字典分类 + 字典项两级维护，完整增删改查、启停、排序、标签样式、同分类值唯一校验；删除分类连带清理其字典项（二次确认）。
-- **操作日志**：登录日志 / 操作日志统一留痕，支持按类别、模块、结果、时间范围、关键词筛选，可导出带 BOM 的 CSV（Excel 中文不乱码），导出动作本身也记日志。
-- **系统配置**：按「基础设置 / 安全策略 / 会话设置」分组管理参数，支持文本 / 数值 / 开关 / 下拉四种类型，分组保存、只更新发生变化的项。
-- **权限闭环**：路由级拦截 + 菜单动态显隐 + `v-perm` 按钮级控制，只读账号看不到任何写操作按钮。
-- **外观可换肤**：与 IAM 一致的 4 套皮肤 × 3 种布局，顶栏「外观设置」在线切换，偏好存 `localStorage(b-sys-prefs)`。
+账号与角色维护由 IAM 负责。SYS 不签发平台登录令牌，不提供通用演示账号密码。
 
-## 二、技术栈（与开发服务器基线、IAM 对齐）
+## 构建
 
-Vue 3.5 + TypeScript + Vite、Pinia、Vue Router 4、Element Plus、Sass；pnpm（≥9）、Node ≥ 20.19。
-
-## 三、权限编码（前缀 `sys`）
-
-| 模块 | 功能点 | 编码 |
-|---|---|---|
-| 数据字典 | 字典分类 | `sys:dict:type:view/add/edit/delete` |
-| 数据字典 | 字典项 | `sys:dict:item:view/add/edit/delete` |
-| 操作日志 | 日志查询 | `sys:log:list:view/export` |
-| 系统配置 | 参数配置 | `sys:config:list:view/edit` |
-
-> 同一套 `sys:*` 编码已同步登记到 IAM 的全平台权限菜单树，由 IAM 统一给角色授权。
-
-## 四、本地运行
+Node.js >= 20.19、pnpm >= 9，后端使用 Java 17 和 Maven。
 
 ```bash
 cd SYS
-npx -y pnpm@10.34.5 install --frozen-lockfile
-npx -y pnpm@10.34.5 dev      # http://localhost:5175
+pnpm --ignore-workspace install --frozen-lockfile
+pnpm --ignore-workspace run build
+mvn -f backend/pom.xml test package
 ```
 
-| 账号 | 密码 | 说明 |
-|---|---|---|
-| admin | Admin@123 | 超级管理员，全部维护权限 |
-| viewer | Viewer@123 | 运维只读：可查看、可导出日志，无增改按钮 |
+前端产物为 `dist/`，后端产物为 `backend/target/sys-backend.jar`。数据库相关测试与真实部署检查应使用经批准的独立数据库。
 
-当前为纯前端 mock，数据存浏览器 `localStorage`（前缀 `b-sys-`）；控制台执行 `resetAllMockData()` 可恢复初始数据。
+## 统一身份对接
 
-## 五、构建与部署
+正式集成使用目标系统换票建立原生 Cookie，刷新时先请求 `/api/v1/sys/auth/me`。每次受保护请求向 IAM 查询当前会话和权限；退出、停用或撤权后拒绝旧会话。不能通过本地管理员名称推断平台超级权限。
 
-```bash
-npx -y pnpm@10.34.5 build    # 先 vue-tsc 类型检查，产物在 dist/
-npx -y pnpm@10.34.5 preview  # 本地预览生产产物（4176）
-```
+Cookie 写操作需要 `X-SYS-CSRF`，令牌从 `/api/v1/sys/auth/sso/csrf` 获取。`/api/v1/sys/auth/sso/logout` 发起平台退出。后端服务凭据仅供服务间换票、验会话和撤销使用，不进入前端构建产物。
 
-- 根路径部署：把 `dist/` 交 Nginx；子路径（如 `/sys/`）：`vite build --base=/sys/` 或设 `VITE_BASE=/sys/`。
-- 后端接口默认同源 `/api/v1`（规划 `/api/v1/sys/*`），由 Nginx 反代到网关。
+旧开发流程仍保留 Bearer 客户端兼容代码；统一集成不依赖将 IAM 签名密钥共享给 SYS。SYS 本地身份由显式主体映射确定，并保留本地权限约束。
 
-## 六、目录结构
+部署配置、数据库归属迁移和回退步骤见 [1.1.0 升级说明](docs/upgrade-1.1.0.md)，接口与配置细节见 [后端说明](backend/README.md)。`.env.example` 仅包含前端代理参数；真实账号、密钥和映射文件应通过私有部署配置注入。
 
-```
-SYS/
-├─ index.html / vite.config.ts / tsconfig*.json
-└─ src/
-   ├─ main.ts App.vue
-   ├─ sys/          # types 数据模型、sys-menu 权限树、mock-data 持久化
-   ├─ permissions/  # 权限判断 + v-perm 指令
-   ├─ stores/       # auth（认证）、sys（字典/配置/日志）、preference（皮肤布局）
-   ├─ styles/       # tokens.scss 4 皮肤变量、index.scss
-   ├─ router/ layouts/
-   └─ views/
-      ├─ LoginView.vue / ForbiddenView.vue
-      └─ maintain/  # DictView 数据字典 / LogView 操作日志 / ConfigView 系统配置
-```
+## 权限编码
 
-## 七、对接真实后端
+| 功能 | 权限 |
+|---|---|
+| 字典分类 | `sys:dict:type:view/add/edit/delete` |
+| 字典项 | `sys:dict:item:view/add/edit/delete` |
+| 日志 | `sys:log:list:view/export` |
+| 配置 | `sys:config:list:view/edit` |
 
-把 `src/sys/mock-data.ts` 的读写替换为 `/api/v1/sys/*` REST 调用即可，数据模型与 store 调用形态保持不变；登录改为统一认证中心签发 JWT。
+版本变化见 [CHANGELOG](CHANGELOG.md)。现场验收结果、截图、部署清单和账号文件保存在项目私有 `.local/`，不由本 README 声明任何服务器运行状态。

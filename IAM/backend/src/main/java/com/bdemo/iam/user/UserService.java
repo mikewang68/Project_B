@@ -46,6 +46,9 @@ public class UserService implements LoginUserLoader {
   @org.springframework.beans.factory.annotation.Autowired
   private com.bdemo.iam.provisioning.IdentityTasks identities;
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bdemo.iam.security.AppScopePolicy appScopes;
+
   // ---- 查询 ----
 
   public List<User> list(String keyword, String status, String roleId) {
@@ -53,7 +56,7 @@ public class UserService implements LoginUserLoader {
     LoginUser current = com.bdemo.iam.security.JwtAuthFilter.currentUser();
     String scopeZone = null;
     String scopeCompany = null;
-    if (current != null && !current.isSuperAdmin()) {
+    if (current != null && !hasGlobalUserRead(current)) {
       // 非全权管理员：只允许看到本人可信域内的用户；域缺失则 fail-closed 返回空集合
       scopeZone = current.getScopeZone();
       scopeCompany = current.getScopeCompany();
@@ -70,6 +73,8 @@ public class UserService implements LoginUserLoader {
             kw,
             scopeZone,
             scopeCompany);
+    users=new java.util.ArrayList<>(users);
+    if(appScopes!=null) users.removeIf(u -> !appScopes.visible("USER",u.getId()));
     for (User u : users) {
       hydrate(u);
     }
@@ -84,13 +89,28 @@ public class UserService implements LoginUserLoader {
     if (u == null) {
       throw BizException.notFound("用户不存在");
     }
+    if(appScopes!=null && !appScopes.visible("USER",id)) throw BizException.notFound("用户不存在");
     LoginUser current = com.bdemo.iam.security.JwtAuthFilter.currentUser();
-    if (current != null && !current.isSuperAdmin() && !inCurrentScope(current, u)) {
+    if (current != null && !hasGlobalUserRead(current) && !inCurrentScope(current, u)) {
       // 与列表保持一致的 fail-closed：不能通过猜 ID 读取域外用户
       throw BizException.notFound("用户不存在");
     }
     hydrate(u);
     return u;
+  }
+
+  /** Self-profile restoration does not grant permission to list other users. */
+  public User currentProfile(LoginUser current) {
+    if (current == null || current.getUserId() == null) throw BizException.unauthorized("未登录或登录已过期");
+    User user = userMapper.selectById(current.getUserId());
+    if (user == null) throw BizException.notFound("用户不存在");
+    hydrate(user);
+    return user;
+  }
+
+  private boolean hasGlobalUserRead(LoginUser current) {
+    return current.isSuperAdmin() || current.isReadOnly() && current.getRoles().stream()
+        .anyMatch(role -> "platform_auditor_readonly".equalsIgnoreCase(role));
   }
 
   /** 判断目标用户是否落在当前登录主体的可信数据域内。 */
@@ -177,6 +197,7 @@ public class UserService implements LoginUserLoader {
         null,
         now);
     replaceRoles(id, roleIds);
+    if(appScopes!=null) appScopes.recordCreated("USER",id);
     identities.sync(id, "USER_CHANGED");
     return get(id);
   }
@@ -194,6 +215,7 @@ public class UserService implements LoginUserLoader {
       String blockchainId,
       String blockchainAddress,
       LoginUser current) {
+    if(appScopes!=null) appScopes.requireOwned("USER",id);
     if (blockchainId != null || blockchainAddress != null)
       throw BizException.badRequest("身份字段由服务端管理");
     userMapper.lockUser(id);
@@ -243,6 +265,7 @@ public class UserService implements LoginUserLoader {
 
   @Transactional
   public void delete(String id, LoginUser current) {
+    if(appScopes!=null) appScopes.requireOwned("USER",id);
     userMapper.lockUser(id);
     if (current != null && id.equals(current.getUserId())) {
       throw BizException.badRequest("不能删除当前登录账号");
@@ -259,6 +282,7 @@ public class UserService implements LoginUserLoader {
 
   @Transactional
   public User setStatus(String id, String target, LoginUser current) {
+    if(appScopes!=null) appScopes.requireOwned("USER",id);
     userMapper.lockUser(id);
     User u = userMapper.selectById(id);
     if (u == null) {
@@ -279,6 +303,7 @@ public class UserService implements LoginUserLoader {
 
   @Transactional
   public void resetPassword(String id, String rawPassword) {
+    if(appScopes!=null) appScopes.requireOwned("USER",id);
     userMapper.lockUser(id);
     if (userMapper.selectById(id) == null) {
       throw BizException.notFound("用户不存在");
@@ -294,6 +319,7 @@ public class UserService implements LoginUserLoader {
 
   @Transactional
   public User assignRoles(String id, List<String> roleIds) {
+    if(appScopes!=null) appScopes.requireOwned("USER",id);
     userMapper.lockUser(id);
     if (userMapper.selectById(id) == null) {
       throw BizException.notFound("用户不存在");
@@ -335,9 +361,6 @@ public class UserService implements LoginUserLoader {
             || "auditor".equalsIgnoreCase(code)) {
           hasReadonlyAuditor = true;
         }
-        if ("wms_manager".equalsIgnoreCase(code) || "WMS_MANAGER".equalsIgnoreCase(code)) {
-          scopedApps.add("WMS");
-        }
       }
     }
 
@@ -364,11 +387,13 @@ public class UserService implements LoginUserLoader {
     }
 
     Set<String> perms = permissionService.codesByRoleIds(roleIds);
+    if(appScopes!=null) scopedApps.addAll(appScopes.allowedApps(userId));
     LoginUser loginUser = new LoginUser(u.getId(), u.getUsername(), u.getName(), effectiveSuperAdmin, perms);
     loginUser.setReadOnly(readOnly);
     loginUser.setAccessMode(accessMode);
     loginUser.setRoles(activeRoleCodes);
     loginUser.setScopedApps(scopedApps);
+    if(appScopes!=null)loginUser.setAdminAppCodes(new java.util.HashSet<>(roleMapper.selectAdminApps(userId)));
     // 可信数据域：直接取库内归属，供行级查询下推过滤；客户端 Header 不参与
     loginUser.setScopeZone(u.getZoneCode());
     loginUser.setScopeCompany(u.getCompanyCode());
@@ -435,6 +460,7 @@ public class UserService implements LoginUserLoader {
         throw BizException.badRequest("角色「" + role.getName() + "」已停用，不能分配");
       }
       var actor = com.bdemo.iam.security.JwtAuthFilter.currentUser();
+      if(appScopes!=null) appScopes.requireAssignableRole(rid,role.getCode());
       if ("super_admin".equals(role.getCode()) && (actor == null || !actor.isSuperAdmin()))
         throw BizException.forbidden("仅系统管理员可授予管理员角色");
       seen.add(rid);

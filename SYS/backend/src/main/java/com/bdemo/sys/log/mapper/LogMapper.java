@@ -19,6 +19,7 @@ public interface LogMapper {
                    created_at AS createdAt
             FROM sys_operation_log
             <where>
+              <if test="!@com.bdemo.sys.security.ResourceScope@globalRead()"> AND owner_app_code='SYS' </if>
               <if test="kind != null and kind != ''"> AND kind = #{kind} </if>
               <if test="module != null and module != ''"> AND module = #{module} </if>
               <if test="result != null and result != ''"> AND result = #{result} </if>
@@ -44,6 +45,7 @@ public interface LogMapper {
             <script>
             SELECT COUNT(1) FROM sys_operation_log
             <where>
+              <if test="!@com.bdemo.sys.security.ResourceScope@globalRead()"> AND owner_app_code='SYS' </if>
               <if test="kind != null and kind != ''"> AND kind = #{kind} </if>
               <if test="module != null and module != ''"> AND module = #{module} </if>
               <if test="result != null and result != ''"> AND result = #{result} </if>
@@ -62,10 +64,10 @@ public interface LogMapper {
 
     @Insert("""
             INSERT INTO sys_operation_log
-              (id, kind, username, user_id, module, action, target, detail,
+              (owner_app_code, id, kind, username, user_id, module, action, target, detail,
                request_method, request_uri, ip, result, duration_ms, created_at)
             VALUES
-              (#{id}, #{kind}, #{username}, #{userId}, #{module}, #{action}, #{target}, #{detail},
+              ('SYS', #{id}, #{kind}, #{username}, #{userId}, #{module}, #{action}, #{target}, #{detail},
                #{requestMethod}, #{requestUri}, #{ip}, #{result}, #{durationMs}, #{now})
             """)
     int insert(@Param("id") String id, @Param("kind") String kind,
@@ -79,6 +81,7 @@ public interface LogMapper {
     // ============ 统计聚合（统一过滤条件） ============
     String STATS_WHERE = """
             <where>
+              <if test="!@com.bdemo.sys.security.ResourceScope@globalRead()"> AND owner_app_code='SYS' </if>
               <if test="begin != null"> AND created_at &gt;= #{begin} </if>
               <if test="end != null"> AND created_at &lt;= #{end} </if>
               <if test="user != null and user != ''"> AND username = #{user} </if>

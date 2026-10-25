@@ -71,7 +71,9 @@ public class IdentityTasks {
     var user =
         db.queryForMap(
             "SELECT company_code,status,deleted FROM iam.iam_user WHERE id=? FOR UPDATE", userId);
-    String org = (String) user.get("company_code");
+    // Legacy users may lack an organization. Account revocation must still commit;
+    // the unmapped value keeps downstream identity provisioning fail-closed.
+    String org = Objects.toString(user.get("company_code"), "");
     String desired =
         ((Number) user.get("deleted")).intValue() != 0
             ? "DELETED"

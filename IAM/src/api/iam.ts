@@ -15,6 +15,8 @@ export const TOKEN_KEY = 'b-iam-token'
 const client = createClient({ tokenKey: TOKEN_KEY, prefix: 'iam' })
 
 export interface LoginResult {
+  superAdmin: boolean
+  readOnly: boolean
   token: string
   user: User
   roles: Role[]
@@ -22,6 +24,7 @@ export interface LoginResult {
 }
 
 export interface MeResult {
+  readOnly: boolean
   user: { id: string; username: string; name: string }
   roles: Array<Pick<Role, 'id' | 'name' | 'code'>>
   permissions: string[]

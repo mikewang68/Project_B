@@ -24,10 +24,13 @@ public interface PermissionMapper {
 
     @Select("""
             <script>
-            SELECT DISTINCT rp.permission_id
+            SELECT DISTINCT p.permission_code
             FROM iam_role_permission rp
             JOIN iam_role r ON r.id = rp.role_id AND r.deleted = 0 AND r.status = 'active'
-            WHERE rp.role_id IN
+            JOIN iam_permission p ON p.id = rp.permission_id AND p.status = 'active'
+            JOIN iam_role_app_scope s ON s.role_id=r.id
+            JOIN iam_navigation_app a ON a.app_code=s.app_code AND a.iam_system_code=p.system_code
+            WHERE p.permission_code IS NOT NULL AND p.permission_code &lt;&gt; '' AND rp.role_id IN
             <foreach collection='roleIds' item='rid' open='(' separator=',' close=')'>#{rid}</foreach>
             </script>
             """)
