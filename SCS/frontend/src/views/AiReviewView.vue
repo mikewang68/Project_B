@@ -39,6 +39,7 @@ const filterTime = ref('全部时段')
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 
 const listGuard = createLatestGuard()
+const detailGuard = createLatestGuard()
 
 async function loadList(): Promise<void> {
   const token = listGuard.next()
@@ -90,15 +91,21 @@ const selectedEvent = ref<AiEvent>()
 const detailLoading = ref(false)
 
 async function openEvent(event: AiEvent): Promise<void> {
+  // 详情竞态守卫：快速连点两条事件时，先发后到的响应不得覆盖当前选中项，
+  // 否则「确认违规 / 误报 / 派单 / 处理中 / 关闭」会作用在错误的事件上。
+  const token = detailGuard.next()
   selectedId.value = event.id
   drawerOpen.value = true
   detailLoading.value = true
   try {
-    selectedEvent.value = await aiEventApi.getAiEventDetail(event.id)
+    const detail = await aiEventApi.getAiEventDetail(event.id)
+    if (!detailGuard.isLatest(token)) return
+    selectedEvent.value = detail
   } catch (error) {
+    if (!detailGuard.isLatest(token)) return
     ElMessage.error(error instanceof ApiError ? error.message : '事件详情加载失败')
   } finally {
-    detailLoading.value = false
+    if (detailGuard.isLatest(token)) detailLoading.value = false
   }
 }
 
