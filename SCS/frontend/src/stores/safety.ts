@@ -75,8 +75,9 @@ export const useSafetyStore = defineStore('safety', () => {
   const triggerScenario = (id: string) => mutate(`/demo/scenarios/${id}`, {})
   const setFenceEnabled = (id: string, enabled: boolean) => mutate(`/fences/${id}/state`, { enabled })
   const setRuleEnabled = (id: string, enabled: boolean) => mutate(`/rules/${id}/state`, { enabled })
-  const reviewAi = (id: string, result: string) => mutate(`/ai-events/${id}/review`, { result, reviewer: 'AI复核员' })
-  const actOnAlarm = (id: string, action: string) => mutate(`/alarms/${id}/actions`, { action, operator: '演示安全员', remark: '界面操作' })
+  // 操作人不写死：后端以会话主体作为审计兜底（本 store 仅服务于未挂路由的演示页）
+  const reviewAi = (id: string, result: string) => mutate(`/ai-events/${id}/review`, { result })
+  const actOnAlarm = (id: string, action: string) => mutate(`/alarms/${id}/actions`, { action, remark: '界面操作' })
   const setNetwork = (connected: boolean) => mutate('/simulation/network', { connected })
   const setPaused = (paused: boolean) => mutate('/simulation/pause', { paused })
   const setSpeed = (multiplier: number) => mutate('/simulation/speed', { multiplier })

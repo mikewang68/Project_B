@@ -29,10 +29,11 @@ export interface MobileHome {
 
 export const mobileApi = {
   getHome: () => apiRequest<MobileHome>('/mobile/home'),
+  // 接单 / 到场的操作人不写死：不传 handler，后端以会话主体（真实登录人）记录审计
   /** 移动端接单：mobileStage → ACCEPTED，主状态保持待处理 */
-  accept: (id: string, handler = '王建国') =>
+  accept: (id: string, handler?: string) =>
     postJson<AlertEvent>(`/mobile/incidents/${encodeURIComponent(id)}/accept`, { handler }),
   /** 移动端确认到场：ACCEPTED → ARRIVED */
-  arrive: (id: string, handler = '王建国') =>
+  arrive: (id: string, handler?: string) =>
     postJson<AlertEvent>(`/mobile/incidents/${encodeURIComponent(id)}/arrive`, { handler }),
 }

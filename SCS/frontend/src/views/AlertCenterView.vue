@@ -246,7 +246,8 @@ async function onReviewApprove(): Promise<void> {
     return
   }
   const id = current.value.id
-  await runAction(() => alertApi.reviewAlert(id, { reviewer: '刘志明' }), '复核通过，事件已关闭')
+  // 复核人不写死：后端以会话主体作为审计兜底
+  await runAction(() => alertApi.reviewAlert(id), '复核通过，事件已关闭')
   reviewVisible.value = false
 }
 

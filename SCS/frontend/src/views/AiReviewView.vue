@@ -15,7 +15,8 @@ import { ApiError } from '@/api/http'
 import { useLiveStore } from '@/stores/live'
 import { AI_EVENT_TYPES, REVIEW_STATUSES, type AiEvent, type EdgeScenario } from '@/types/ai'
 
-const CURRENT_REVIEWER = '李娜'
+// 复核人不在此写死：后端以会话主体（真实登录人）作为审计兜底。
+// 前端若传人名会覆盖真实身份，因此所有写操作只传业务参数。
 
 // ---------- 列表 / 指标（主数据来自后端，不再使用 mock/aiEvents.ts） ----------
 const events = ref<AiEvent[]>([])
@@ -134,7 +135,7 @@ function confirmViolation(): void {
     confirmButtonText: '确认违规', cancelButtonText: '取消', type: 'warning',
   }).then(async () => {
     try {
-      applyChanged(await aiEventApi.confirmAiEvent(id, CURRENT_REVIEWER))
+      applyChanged(await aiEventApi.confirmAiEvent(id))
       ElMessage.success('事件已确认违规，已生成安全告警')
     } catch (error) {
       reportError(error, '确认违规失败')
@@ -147,7 +148,7 @@ function openFalseDialog(): void { falseDialogOpen.value = true }
 async function submitFalse(reason: string): Promise<void> {
   if (!selectedEvent.value) return
   try {
-    applyChanged(await aiEventApi.markFalsePositive(selectedEvent.value.id, reason, CURRENT_REVIEWER))
+    applyChanged(await aiEventApi.markFalsePositive(selectedEvent.value.id, reason))
     ElMessage.success('事件已标记为误报')
   } catch (error) {
     reportError(error, '标记误报失败')
@@ -157,7 +158,7 @@ async function submitFalse(reason: string): Promise<void> {
 async function markUncertain(): Promise<void> {
   if (!selectedEvent.value) return
   try {
-    applyChanged(await aiEventApi.markUncertain(selectedEvent.value.id, CURRENT_REVIEWER))
+    applyChanged(await aiEventApi.markUncertain(selectedEvent.value.id))
     ElMessage.info('该事件已进入人工复核队列')
   } catch (error) {
     reportError(error, '操作失败')
@@ -169,7 +170,7 @@ function openAssignDialog(): void { assignDialogOpen.value = true }
 async function submitAssign(payload: { assignee: string; priority: '普通' | '紧急'; note: string }): Promise<void> {
   if (!selectedEvent.value) return
   try {
-    applyChanged(await aiEventApi.assignAiEvent(selectedEvent.value.id, { ...payload, reviewer: CURRENT_REVIEWER }))
+    applyChanged(await aiEventApi.assignAiEvent(selectedEvent.value.id, payload))
     ElMessage.success(`已派单至${payload.assignee}`)
   } catch (error) {
     reportError(error, '派单失败')
@@ -179,7 +180,7 @@ async function submitAssign(payload: { assignee: string; priority: '普通' | '�
 async function markProcessing(): Promise<void> {
   if (!selectedEvent.value) return
   try {
-    applyChanged(await aiEventApi.processAiEvent(selectedEvent.value.id, CURRENT_REVIEWER))
+    applyChanged(await aiEventApi.processAiEvent(selectedEvent.value.id))
     ElMessage.success('事件已进入处理中')
   } catch (error) {
     reportError(error, '操作失败')
@@ -189,7 +190,7 @@ async function markProcessing(): Promise<void> {
 async function closeEvent(): Promise<void> {
   if (!selectedEvent.value) return
   try {
-    applyChanged(await aiEventApi.closeAiEvent(selectedEvent.value.id, CURRENT_REVIEWER))
+    applyChanged(await aiEventApi.closeAiEvent(selectedEvent.value.id))
     ElMessage.success('事件已关闭')
   } catch (error) {
     reportError(error, '关闭失败')

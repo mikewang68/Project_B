@@ -25,7 +25,7 @@ const cards = computed(() => [
   { label: '今日完成', value: store.closedToday, tone: 'green' },
 ])
 
-const userName = computed(() => store.home?.userName ?? '王建国')
+const userName = computed(() => store.home?.userName ?? '')
 const userMeta = computed(() => {
   const h = store.home
   return h ? `${h.role} · ${h.team} · ${h.shift}班 22:00-06:00` : '安全员 · 装卸一班 · 夜班 22:00-06:00'

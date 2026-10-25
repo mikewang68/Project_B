@@ -186,7 +186,7 @@ function simulateFailure(): void {
 async function confirmTakeover(): Promise<void> {
   takeoverOpen.value = false
   try {
-    const res = await collisionApi.takeover(selectedCurrentId.value, '王建国', '现场人工急停确认')
+    const res = await collisionApi.takeover(selectedCurrentId.value, '', '现场人工急停确认')
     controlFailure.value = false
     takeoverDone.value = true
     deviceStopped.value = true
@@ -222,7 +222,7 @@ function releaseRisk(): void {
   ElMessageBox.confirm('确认提交设备运行限制解除申请？此操作仅用于 Demo 展示。', '申请解除限制', { confirmButtonText: '确认申请', cancelButtonText: '取消', type: 'warning' })
     .then(async () => {
       try {
-        const res = await collisionApi.releaseRequest(selectedCurrentId.value, '王建国', releaseChecks.value.filter((c) => c.passed).map((c) => c.label))
+        const res = await collisionApi.releaseRequest(selectedCurrentId.value, '', releaseChecks.value.filter((c) => c.passed).map((c) => c.label))
         applyResult(await collisionApi.simulate(selectedCurrentId.value, 'reset'))
         deviceStopped.value = false; takeoverDone.value = false
         await loadTrend()
