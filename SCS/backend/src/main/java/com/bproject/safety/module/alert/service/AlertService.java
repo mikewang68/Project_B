@@ -834,8 +834,15 @@ public class AlertService {
         alert.slaRemainingSec = Duration.between(OffsetDateTime.now(clock), alert.slaDeadline).getSeconds();
     }
 
+    /**
+     * 审计操作人：请求体显式指定优先；否则取当前会话主体（真实登录人）；
+     * 无请求上下文（定时任务 / 测试 / Demo）才回落到演示用户。
+     */
     private String pickOperator(String explicit) {
-        return firstNonBlank(explicit, demoUser.name());
+        return firstNonBlank(
+                explicit,
+                com.bproject.safety.config.ScsRequestActor.displayName().orElse(null),
+                demoUser.name());
     }
 
     private static String firstNonBlank(String... values) {

@@ -194,6 +194,8 @@ public class SecurityInterceptor implements HandlerInterceptor {
                     }
                 }
                 request.setAttribute("SCS_ACTOR",actor);
+                // 审计兜底：请求体未指定操作人时，Service 层取此会话主体而非演示用户
+                ScsRequestActor.set(actor.subject(), actor.username());
                 if (path.equals("/api/v1/auth/sso/logout")) {
                     request.setAttribute(ATTR_USER_SUB, actor.subject());
                     return true;
@@ -306,6 +308,8 @@ public class SecurityInterceptor implements HandlerInterceptor {
         request.setAttribute(ATTR_USER_SUB, principal.sub());
         request.setAttribute(ATTR_USER_ROLES, principal.roles());
         request.setAttribute(ATTR_USER_PERMISSIONS, principal.permissions());
+        // JWT 模式同样记录操作人（sub 即主体标识）
+        ScsRequestActor.set(principal.sub(), principal.sub());
         log.debug("鉴权通过: user={}, kind={}, path={}, method={}", principal.sub(), credentialKind, path, request.getMethod());
         return true;
     }
@@ -422,6 +426,15 @@ public class SecurityInterceptor implements HandlerInterceptor {
         );
 
         response.getWriter().write(objectMapper.writeValueAsString(error));
+    }
+
+    /**
+     * 请求结束必须清理审计主体：Tomcat 线程池会复用线程，残留的 ThreadLocal
+     * 会让下一个请求把操作记到上一个用户名下。
+     */
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        ScsRequestActor.clear();
     }
 
     /**

@@ -793,11 +793,17 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
         return ResponseEntity.notFound().build();
     }
 
+    /**
+     * 审计操作人：请求体显式指定优先；否则取当前会话主体（真实登录人）；
+     * 无请求上下文（定时任务 / 测试 / Demo）才回落到演示用户。
+     */
     private String pick(String explicit) {
         if (explicit != null && !explicit.isBlank()) {
             return explicit;
         }
-        return Optional.ofNullable(demoUser).map(DemoUserProperties::name).orElse("李娜");
+        return com.bproject.safety.config.ScsRequestActor.displayName()
+                .or(() -> Optional.ofNullable(demoUser).map(DemoUserProperties::name))
+                .orElse("李娜");
     }
 
     private String nowHms() {
