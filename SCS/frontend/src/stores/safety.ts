@@ -56,12 +56,18 @@ export const useSafetyStore = defineStore('safety', () => {
   }
 
   async function mutate(path: string, body: unknown): Promise<void> {
+    const currentGeneration=generation
     error.value = undefined
     try {
-      snapshot.value = await postJson<SafetySnapshot>(path, body)
+      const next=await postJson<SafetySnapshot>(path, body)
+      // 登出/授权版本变更（dispose）后到达的写响应不得覆盖已清空的状态
+      if(currentGeneration!==generation)return
+      snapshot.value=next
       usingFallback.value = false
     } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : '操作失败'
+      if(currentGeneration===generation){
+        error.value = cause instanceof Error ? cause.message : '操作失败'
+      }
       throw cause
     }
   }

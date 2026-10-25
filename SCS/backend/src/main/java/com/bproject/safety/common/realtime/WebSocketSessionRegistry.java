@@ -64,6 +64,24 @@ public class WebSocketSessionRegistry {
         try{session.close(org.springframework.web.socket.CloseStatus.POLICY_VIOLATION);}catch(Exception ignored){}
     }
 
+    /** 向单个在线连接发送（pong 等回执），复用注册表里的并发装饰器，与广播路径同一把锁。 */
+    public boolean sendTo(String sessionId, TextMessage message) {
+        WebSocketSession session = sessions.get(sessionId);
+        if (session == null) {
+            return false;
+        }
+        try {
+            synchronized (session) {
+                session.sendMessage(message);
+            }
+            return true;
+        } catch (IOException | RuntimeException ex) {
+            log.warn("WS send failed to {}: {}", sessionId, ex.getMessage());
+            sessions.remove(sessionId);
+            return false;
+        }
+    }
+
     private void send(WebSocketSession session, TextMessage message) {
         if (!session.isOpen()) {
             sessions.remove(session.getId());

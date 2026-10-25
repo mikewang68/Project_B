@@ -44,3 +44,10 @@ app:
   opengemini:
     enabled: ${OPENGEMINI_ENABLED:true}
     base-url: ${OPENGEMINI_URL}
+
+# review-#8：生产关闭 API 文档端点（/v3/api-docs 与 /swagger-ui 匿名可枚举全部接口契约）
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

@@ -21,7 +21,8 @@ public class ScsLocalPolicy {
           ||!Set.of("ADMIN","OPERATOR","VIEWER").contains(role)||!c.path("readOnly").isBoolean())
         throw new IllegalArgumentException("No business mapping");
       for(String scope:List.of("company","org","domain","zone"))
-        if(!c.path(scope).asText().equals(b.path(scope).asText())||!c.path(scope).asText().isBlank())
+        // 票据 claims 与绑定文件两边一致即放行；非空 scope 是合法输入（IAM 契约：空=无范围），不得按非空拒绝
+        if(!c.path(scope).asText().equals(b.path(scope).asText()))
           throw new IllegalArgumentException("Unsupported data scope");
       boolean readOnly=c.path("readOnly").asBoolean()||role.equals("VIEWER");
       boolean admin=role.equals("ADMIN")&&(c.path("superAdmin").asBoolean(false)||c.path("applicationAdmin").asBoolean(false))&&!readOnly;

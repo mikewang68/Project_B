@@ -87,7 +87,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
             @Value("${app.security.jwt-clock-skew-seconds:60}") long clockSkewSeconds,
             @Value("${app.security.iam-base-url:}") String iamBaseUrl,
             @Value("${app.security.iam-service-token:}") String iamServiceToken,
-            @Value("${app.security.iam-audience:}") String iamAudience,
+            @Value("${app.security.iam-audience:scs}") String iamAudience,
             @Value("${app.security.iam-timeout-ms:3000}") long iamTimeoutMs,
             ObjectMapper objectMapper,
             @Value("${app.security.jwt-public-key-pem:}") String jwtPublicKeyPem,
