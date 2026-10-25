@@ -1,4 +1,6 @@
-# IAM 后端（iam-backend）
+# IAM 后端（iam-backend）· 1.1.0
+
+统一身份、系统范围及管理对象归属的增量迁移见 [1.1.0 升级说明](../docs/upgrade-1.1.0.md)。下述基础 `IamMigration` 命令不自动执行 033–036，集成增量必须由授权迁移操作单独应用。
 
 本说明默认面向 TRUST＋IAM **独立联调实例**。部署入口是 [联合部署、权限与回退说明](../../TRUST/docs/identity-delivery.md)，模块概览见 [IAM README](../README.md)。旧共享库/SYS 联合部署流程不适用于本实例，历史适用范围见文末。
 

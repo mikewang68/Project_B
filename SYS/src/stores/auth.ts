@@ -2,9 +2,9 @@
  * 认证与权限 Store（SYS 独立系统）
  *
  * 已接入统一认证中心：
- * - 登录/登出调用 IAM（/api/v1/iam/auth/*），JWT 由 IAM 签发
- * - 刷新页面通过 SYS /api/v1/sys/auth/me 恢复会话（SYS 本地验签 + 跨库读 IAM 权限）
- * - 仅 token 存 localStorage，业务数据不再落本地
+ * - 统一入口使用原生 Cookie；旧开发登录仍保留 IAM Bearer 兼容流程
+ * - 刷新通过 SYS /api/v1/sys/auth/me 恢复身份、当前权限与只读状态
+ * - Cookie 会话不依赖 localStorage token，业务数据通过 REST 获取
  */
 
 import { defineStore } from 'pinia'

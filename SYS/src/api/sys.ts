@@ -1,7 +1,7 @@
 /**
  * SYS 后端 REST API 封装。
- * - 登录/登出走 IAM 认证中心（/api/v1/iam/auth/*），token 由 IAM 签发
- * - 会话恢复与业务接口走 SYS（/api/v1/sys/*），SYS 本地验签并跨库读取 IAM 权限
+ * - 统一会话通过 SYS 原生 Cookie 恢复，Cookie 写请求校验 CSRF
+ * - 保留旧 IAM Bearer 登录兼容；退出按实际会话类型选择平台退出端点
  */
 import { createClient } from './request'
 import type { DictItem, DictType, SysConfigItem, SysLog } from '@/sys/types'
