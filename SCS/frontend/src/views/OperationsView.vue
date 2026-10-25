@@ -101,14 +101,28 @@ let riskSeq = 0
 let riskPoolIdx = 0
 
 /* ---------- KPI ---------- */
-const cameraCat = computed(() => categories.value.find((c) => c.kind === '摄像头')!)
-const radarCat = computed(() => categories.value.find((c) => c.kind === '雷达')!)
-const stationCat = computed(() => categories.value.find((c) => c.kind === '定位基站')!)
+// 设备台账接口失败时 categories 为空数组；此处必须返回 null 而不是非空断言，
+// 否则模板取 .devices / .total 会抛 TypeError 导致整页白屏。
+const cameraCat = computed(() => categories.value.find((c) => c.kind === '摄像头') ?? null)
+const radarCat = computed(() => categories.value.find((c) => c.kind === '雷达') ?? null)
+const stationCat = computed(() => categories.value.find((c) => c.kind === '定位基站') ?? null)
 const pendingCount = computed(() => queue.value.filter((e) => e.status === '待补传' || e.status === '补传中').length)
 const avgSuccess = computed(() => {
   const cloud = interfaces.value.filter((i) => i.cloudSide)
+  if (cloud.length === 0) return '—'
   return (cloud.reduce((s, i) => s + i.successRate, 0) / cloud.length).toFixed(2)
 })
+
+/** 分类在线数文案：台账缺失时显示占位符，不参与除法/取值 */
+function catOnline(cat: DeviceCategory | null): string {
+  if (!cat) return '—'
+  return `${onlineCount(cat.devices)} / ${cat.total} 在线`
+}
+type KpiTone = 'warning' | 'danger' | 'primary' | 'success' | 'muted'
+function catTone(cat: DeviceCategory | null): KpiTone {
+  if (!cat) return 'muted'
+  return onlineCount(cat.devices) < cat.total ? 'warning' : 'success'
+}
 
 const kpis = computed<OpsKpi[]>(() => {
   const disconnected = link.value === 'disconnected'
@@ -128,18 +142,18 @@ const kpis = computed<OpsKpi[]>(() => {
     },
     {
       key: 'camera', label: '摄像头',
-      value: `${onlineCount(cameraCat.value.devices)} / ${cameraCat.value.total} 在线`,
-      hint: '2 台画面质量降级', tone: onlineCount(cameraCat.value.devices) < cameraCat.value.total ? 'warning' : 'success', icon: 'camera',
+      value: catOnline(cameraCat.value),
+      hint: cameraCat.value ? '2 台画面质量降级' : '设备台账暂不可用', tone: catTone(cameraCat.value), icon: 'camera',
     },
     {
       key: 'radar', label: '雷达',
-      value: `${onlineCount(radarCat.value.devices)} / ${radarCat.value.total} 在线`,
-      hint: '毫米波雷达全部正常', tone: 'success', icon: 'radar',
+      value: catOnline(radarCat.value),
+      hint: radarCat.value ? '毫米波雷达全部正常' : '设备台账暂不可用', tone: catTone(radarCat.value), icon: 'radar',
     },
     {
       key: 'station', label: '定位基站',
-      value: `${onlineCount(stationCat.value.devices)} / ${stationCat.value.total} 在线`,
-      hint: 'UWB 基站全部正常', tone: 'success', icon: 'station',
+      value: catOnline(stationCat.value),
+      hint: stationCat.value ? 'UWB 基站全部正常' : '设备台账暂不可用', tone: catTone(stationCat.value), icon: 'station',
     },
     {
       key: 'api', label: '接口成功率',
