@@ -199,6 +199,10 @@ public class SecurityInterceptor implements HandlerInterceptor {
                     return true;
                 }
                 return finish(new AuthPrincipal(actor.subject(),actor.roles(),actor.permissions(),"scs",false,actor.readOnly()),request,response,path,"native SSO");
+            }catch(ScsIamTicketValidator.IamUnavailableException unavailable){
+                // IAM 抖动不能当成"会话失效"：返回 503 而不是 401，前端只在 401 时清会话，
+                // 否则一次 IAM 超时就会把全站用户打回登录页。
+                sendServiceUnavailable(request,response,"统一身份服务暂不可用，请稍后重试");return false;
             }catch(ScsIamTicketValidator.InvalidTicketException denied){sendUnauthorized(request,response,"统一身份或业务映射不可用");return false;}
         }
         // 3. 边缘节点机器凭据检查 (X-API-Key，常量时间等值比较)
@@ -418,6 +422,26 @@ public class SecurityInterceptor implements HandlerInterceptor {
         );
 
         response.getWriter().write(objectMapper.writeValueAsString(error));
+    }
+
+    /**
+     * IAM 暂时不可用：503 而非 401。前端约定"仅 401 清会话"，用 401 会把瞬时故障
+     * 变成全站登出；503 让前端保留会话并在下一次轮询时重试。
+     */
+    private void sendServiceUnavailable(HttpServletRequest request, HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        String traceId = MDC.get(TraceIdFilter.MDC_KEY);
+        if (traceId == null || traceId.isBlank()) {
+            traceId = request.getHeader(TraceIdFilter.HEADER);
+        }
+        if (traceId == null || traceId.isBlank()) {
+            traceId = UUID.randomUUID().toString();
+        }
+        response.setHeader("X-Trace-Id", traceId);
+        response.getWriter().write(objectMapper.writeValueAsString(
+                ApiError.of(ErrorCodes.SERVICE_UNAVAILABLE, message, traceId, null)));
     }
 
     private void sendForbidden(HttpServletRequest request, HttpServletResponse response, String errorCode, String message, Map<String, Object> details) throws IOException {

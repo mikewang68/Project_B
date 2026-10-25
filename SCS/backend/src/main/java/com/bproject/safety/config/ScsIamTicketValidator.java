@@ -30,6 +30,19 @@ public final class ScsIamTicketValidator {
     }
   }
 
+  /**
+   * IAM 侧不可达 / 超时 / 5xx —— <b>无法判定</b>会话是否仍然有效，与"明确被撤销"必须区分。
+   *
+   * <p>调用方（实时广播、会话撤销扫描）遇到本异常时不得据此注销会话：IAM 抖动若被当成撤销，
+   * 会把全部在线连接踢掉并触发重连风暴。调用方应保持现状（fail-open 到"暂时维持"），
+   * 下一次探测再做判断；真正的撤销仍由 IAM 明确返回的"会话失效"驱动。
+   */
+  public static class IamUnavailableException extends InvalidTicketException {
+    public IamUnavailableException(String message) {
+      super(message);
+    }
+  }
+
   private final String baseUrl;
   private final String serviceToken;
   private final String audience;
@@ -88,9 +101,12 @@ public final class ScsIamTicketValidator {
     try {
       response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
     } catch (Exception e) {
-      throw new InvalidTicketException("IAM 验票不可达");
+      throw new IamUnavailableException("IAM 验票不可达");
     }
 
+    if (response.statusCode() >= 500) {
+      throw new IamUnavailableException("IAM 验票服务异常（HTTP " + response.statusCode() + "）");
+    }
     if (response.statusCode() != 200) {
       throw new InvalidTicketException("IAM 拒绝票据（HTTP " + response.statusCode() + "）");
     }
@@ -129,19 +145,41 @@ public final class ScsIamTicketValidator {
     return result;
   }
 
+  /**
+   * 查询 IAM 侧会话是否仍有效并取回最新授权。
+   *
+   * <p>失败语义分两类，调用方必须区别对待：
+   * <ul>
+   *   <li>{@link IamUnavailableException}：IAM 不可达 / 超时 / 5xx —— <b>无法判定</b>，不得据此注销会话；</li>
+   *   <li>{@link InvalidTicketException}：IAM 明确返回"会话已失效 / 主体或受众不符" —— 可以撤销。</li>
+   * </ul>
+   */
   public Map<String,Object> current(String subject,String sid){
+    HttpResponse<String> response;
+    JsonNode root;
     try{
       var req=HttpRequest.newBuilder(URI.create(baseUrl+"/auth/sso/session/introspect")).timeout(timeout)
           .header("Content-Type","application/json").header("X-SSO-Service-Token",serviceToken)
           .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(Map.of("subject",subject,"sessionId",sid,"audience",audience)))).build();
-      var response=http.send(req,HttpResponse.BodyHandlers.ofString());var root=mapper.readTree(response.body());var data=root.path("data");
-      if(response.statusCode()!=200||root.path("code").asInt(-1)!=0||!data.path("active").asBoolean()
-          ||!subject.equals(data.path("subject").asText())||!sid.equals(data.path("sessionId").asText())
-          ||!audience.equals(data.path("audience").asText()))throw new InvalidTicketException("IAM会话已失效");
-      Map<String,Object> result=mapper.convertValue(data,new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});
-      result.put("sub",subject);result.put("scope",audience);return result;
-    }catch(InvalidTicketException e){throw e;}catch(InterruptedException e){Thread.currentThread().interrupt();throw new InvalidTicketException("IAM暂不可用");}
-    catch(Exception e){throw new InvalidTicketException("IAM暂不可用");}
+      response=http.send(req,HttpResponse.BodyHandlers.ofString());
+    }catch(InterruptedException e){Thread.currentThread().interrupt();throw new IamUnavailableException("IAM暂不可用");}
+    catch(Exception e){throw new IamUnavailableException("IAM暂不可用");}
+
+    if(response.statusCode()>=500)throw new IamUnavailableException("IAM暂不可用（HTTP "+response.statusCode()+"）");
+    if(response.statusCode()==401||response.statusCode()==403)throw new InvalidTicketException("IAM会话已失效");
+    if(response.statusCode()!=200)throw new IamUnavailableException("IAM暂不可用（HTTP "+response.statusCode()+"）");
+
+    try{
+      root=mapper.readTree(response.body());
+    }catch(Exception e){throw new IamUnavailableException("IAM响应不可解析");}
+    if(root.path("code").asInt(-1)!=0)throw new InvalidTicketException("IAM会话已失效");
+
+    var data=root.path("data");
+    if(!data.path("active").asBoolean()
+        ||!subject.equals(data.path("subject").asText())||!sid.equals(data.path("sessionId").asText())
+        ||!audience.equals(data.path("audience").asText()))throw new InvalidTicketException("IAM会话已失效");
+    Map<String,Object> result=mapper.convertValue(data,new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});
+    result.put("sub",subject);result.put("scope",audience);return result;
   }
 
   public void logout(String subject, String sid) {

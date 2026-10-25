@@ -14,6 +14,8 @@ public final class ErrorCodes {
     public static final String STATE_CONFLICT = "STATE_CONFLICT";
     public static final String UNPROCESSABLE_ENTITY = "UNPROCESSABLE_ENTITY";
     public static final String INTERNAL_ERROR = "INTERNAL_ERROR";
+    /** 依赖的统一身份服务暂时不可用：可重试，不代表会话失效（前端不得据此登出）。 */
+    public static final String SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE";
 
     private ErrorCodes() {
     }
