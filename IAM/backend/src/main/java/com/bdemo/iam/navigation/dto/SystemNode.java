@@ -8,11 +8,15 @@ import java.util.List;
  * children 必须至少包含 1 个已授权二级页面；无授权功能页时该一级节点在投影中自动裁剪。
  */
 public class SystemNode {
+  private boolean ssoEnabled;
+  public boolean isSsoEnabled() { return ssoEnabled; }
+  public void setSsoEnabled(boolean value) { ssoEnabled = value; }
 
   private String appCode;
   private String displayName;
   private int sortOrder;
   private String entryBasePath;
+  private String entryBaseUrl;
   private List<PageLeafNode> children = new ArrayList<>();
 
   public SystemNode() {}
@@ -56,6 +60,10 @@ public class SystemNode {
   public void setEntryBasePath(String entryBasePath) {
     this.entryBasePath = entryBasePath;
   }
+
+  /** Optional configured external entry; authentication remains the target application's responsibility. */
+  public String getEntryBaseUrl() { return entryBaseUrl; }
+  public void setEntryBaseUrl(String entryBaseUrl) { this.entryBaseUrl = entryBaseUrl; }
 
   public List<PageLeafNode> getChildren() {
     return children;

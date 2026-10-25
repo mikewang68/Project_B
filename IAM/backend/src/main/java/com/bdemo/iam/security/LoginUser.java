@@ -17,6 +17,9 @@ public class LoginUser {
     private String accessMode = "SCOPED_USER";
     private Set<String> roles = new HashSet<>();
     private Set<String> scopedApps = new HashSet<>();
+    private Set<String> adminApps=Set.of();
+    public Set<String> getAdminAppCodes(){return adminApps;}
+    public void setAdminAppCodes(Set<String> value){adminApps=Set.copyOf(value);}
     private Set<String> permissions = new HashSet<>();
 
     public LoginUser() {
@@ -61,6 +64,12 @@ public class LoginUser {
 
     public Set<String> getScopedApps() {
         return Collections.unmodifiableSet(scopedApps);
+    }
+
+    public Set<String> getAllowedAppCodes() { return getScopedApps(); }
+
+    public boolean mayEnter(String app) {
+        return app != null && scopedApps.contains(app.toUpperCase(java.util.Locale.ROOT));
     }
 
     public void setScopedApps(Set<String> scopedApps) {

@@ -20,6 +20,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final LoginUserLoader loader;
+    private com.bdemo.iam.sso.SsoAuthorizationService nativeAuthorization;
+    public JwtAuthFilter withNativeAuthorization(com.bdemo.iam.sso.SsoAuthorizationService service) {
+        nativeAuthorization=service;return this;
+    }
 
     public JwtAuthFilter(JwtService jwtService, LoginUserLoader loader) {
         this.jwtService = jwtService;
@@ -38,6 +42,30 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
+        var nativeSession=request.getSession(false);
+        if(nativeAuthorization!=null&&nativeSession!=null
+            &&nativeSession.getAttribute("IAM_NATIVE_SUBJECT") instanceof String subject
+            &&nativeSession.getAttribute("IAM_NATIVE_SID") instanceof String sid){
+            try{
+                nativeAuthorization.current(subject,sid,"iam");
+                if(!java.util.Set.of("GET","HEAD","OPTIONS").contains(request.getMethod())){
+                    Object expected=nativeSession.getAttribute("IAM_NATIVE_CSRF");String actual=request.getHeader("X-IAM-CSRF");
+                    if(!(expected instanceof String value)||actual==null||!java.security.MessageDigest.isEqual(
+                        value.getBytes(java.nio.charset.StandardCharsets.UTF_8),actual.getBytes(java.nio.charset.StandardCharsets.UTF_8))){
+                        response.setStatus(403);response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"code\":403,\"message\":\"CSRF校验失败\"}");return;
+                    }
+                }
+                LoginUser user=loader.load(subject);
+                if(user==null)throw new com.bdemo.iam.sso.SsoTicketService.SsoTicketException("账号不可用");
+                request.setAttribute("iam.sessionId",sid);
+                SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user,null,AuthorityUtils.NO_AUTHORITIES));
+                filterChain.doFilter(request,response);return;
+            }catch(com.bdemo.iam.sso.SsoTicketService.SsoTicketException denied){
+                nativeSession.invalidate();response.setStatus(401);response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"code\":401,\"message\":\"会话或授权已失效\"}");return;
+            }
+        }
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7).trim();
             try {

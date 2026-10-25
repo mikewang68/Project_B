@@ -18,4 +18,9 @@ public interface SessionMapper {
       "UPDATE iam.iam_session SET revoked_at=CURRENT_TIMESTAMP WHERE user_id=#{user} AND revoked_at"
           + " IS NULL")
   void revokeUser(String user);
+
+  /** Return exactly the sessions atomically revoked by global logout, including expired sessions. */
+  @Select(value = "UPDATE iam.iam_session SET revoked_at=CURRENT_TIMESTAMP"
+      + " WHERE user_id=#{user} AND revoked_at IS NULL RETURNING id", affectData = true)
+  java.util.List<String> revokeUserAndReturnIds(@Param("user") String user);
 }

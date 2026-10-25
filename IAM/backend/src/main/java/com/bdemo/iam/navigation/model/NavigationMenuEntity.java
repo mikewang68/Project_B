@@ -1,6 +1,12 @@
 package com.bdemo.iam.navigation.model;
 
 public class NavigationMenuEntity {
+  private String featureStatus = "READY";
+  private String unavailableReason = "";
+  public String getFeatureStatus() { return featureStatus; }
+  public void setFeatureStatus(String value) { featureStatus = value; }
+  public String getUnavailableReason() { return unavailableReason; }
+  public void setUnavailableReason(String value) { unavailableReason = value; }
   private String stableMenuKey;
   private String navigationAppCode;
   private String sourceAppCode;

@@ -18,16 +18,16 @@ public interface ConfigMapper {
             unit, remark, sort_order AS sortOrder, editable, updated_at AS updatedAt
             """;
 
-    @Select("SELECT " + COLS + " FROM sys_config ORDER BY sort_order, id")
+    @Select("<script>SELECT " + COLS + " FROM sys_config WHERE 1=1 <if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> ORDER BY sort_order, id</script>")
     List<SysConfigItem> selectAll();
 
-    @Select("SELECT " + COLS + " FROM sys_config WHERE config_key = #{key}")
+    @Select("<script>SELECT " + COLS + " FROM sys_config WHERE config_key = #{key} <if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if></script>")
     SysConfigItem selectByKey(@Param("key") String key);
 
     @Update("""
-            UPDATE sys_config
+            <script>UPDATE sys_config
             SET config_value = #{value}, updated_at = #{now}
-            WHERE config_key = #{key} AND editable = 1
+            WHERE config_key = #{key} AND editable = 1 <if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if></script>
             """)
     int updateValue(@Param("key") String key, @Param("value") String value,
                     @Param("now") LocalDateTime now);

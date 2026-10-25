@@ -65,6 +65,9 @@ public class SsoSubjectGuard {
     Map<String, Object> binding = bindings.find(userId, audience.trim().toLowerCase());
     return binding == null ? "" : str(binding.get("local_subject"));
   }
+  public java.util.List<String> projects(String subject,String audience){
+    var values=bindings.projects(subject,audience);return values==null?java.util.List.of():java.util.List.copyOf(values);
+  }
 
   private static boolean isEnabled(Map<String, Object> binding) {
     Object enabled = binding.get("enabled");

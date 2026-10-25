@@ -83,6 +83,7 @@ public class NavigationFailClosedSecurityTest {
 
   @BeforeEach
   void setUp() throws Exception {
+    org.mockito.Mockito.when(roleMapper.selectAllowedApps(org.mockito.ArgumentMatchers.anyString())).thenReturn(java.util.List.of("IAM","SYS","WMS","PSMS","SCS","EHMS","EMCS","TRUST"));
     org.mockito.Mockito.when(menuMapper.selectNavEligibleMenus(org.mockito.ArgumentMatchers.any())).thenReturn(java.util.Collections.emptyList());
     org.mockito.Mockito.when(menuMapper.selectViewPermissionRules()).thenReturn(java.util.Collections.emptyList());
 
