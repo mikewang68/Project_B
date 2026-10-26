@@ -9,7 +9,7 @@ INSERT INTO iam.iam_navigation_menu
   feature_status,unavailable_reason)
 SELECT 'TRUST:'||v.page,'TRUST','TRUST',v.page,'trust','APP:TRUST',
  'TRUST.NATIVE.'||v.page,2,2,v.ordering,v.title,v.title,'PAGE','PAGE_KEY','/',
- '/?navTab='||v.page,v.page,'IMPLEMENTED',
+ '/trust/?navTab='||v.page,v.page,'IMPLEMENTED',
  'TRUST/frontend/src/app/pageLocation.ts; TRUST/frontend/src/app/navigation.ts',
  repeat('0',64),'SYSTEM_MIGRATION','CATALOG_MIGRATION','NATIVE_READ_CATALOG_V1',
  'READY','Native page requires release verification'
