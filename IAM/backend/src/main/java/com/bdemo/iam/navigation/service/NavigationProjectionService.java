@@ -299,6 +299,7 @@ public class NavigationProjectionService {
         if (externalAddressesEnabled) {
           NavigationAppEntity configuredApp = addressApps.get(app.name());
           sysNode.setSsoEnabled(configuredApp != null && configuredApp.isSsoEnabled());
+          if (configuredApp != null) sysNode.setAddressVersion(configuredApp.getAddressVersion());
           try {
             sysNode.setEntryBaseUrl(NavigationAddressResolver.resolve(configuredApp));
             if (configuredApp != null && configuredApp.getEntryBasePath() != null
