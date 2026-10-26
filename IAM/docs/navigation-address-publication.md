@@ -1,5 +1,7 @@
 # Versioned navigation addresses
 
+The request and response contract is documented in [navigation-address-openapi.yaml](navigation-address-openapi.yaml).
+
 Apply `backend/db/isolated/037-navigation-address-publication.sql` with a migration account before deploying this feature. The IAM application account needs SELECT/INSERT/UPDATE on `iam.iam_navigation_address_revision` and its existing navigation permissions; it does not need DDL privileges. Back up navigation rows and record the applied migration.
 
 Only a platform administrator without a read-only restriction can use `/system/addresses` or `/navigation/addresses`. Dedicated IAM administrators cannot change platform destinations. New hostnames must match `iam.navigation.address.allowed-host-suffixes`; list the deployment's actual DNS zones in private configuration. IP fallback is limited to the application's registered origin IP and requires a trusted HTTPS endpoint.
