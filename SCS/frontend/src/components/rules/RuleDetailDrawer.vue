@@ -6,6 +6,7 @@ import RuleStatusBadge from './RuleStatusBadge.vue'
 import EdgeSyncPanel from './EdgeSyncPanel.vue'
 import RuleVersionHistory from './RuleVersionHistory.vue'
 import { ruleActionsOf, type SafetyRule } from '@/types/rule'
+import { ruleActionPermission } from '@/permissions'
 
 defineProps<{ modelValue: boolean; rule: SafetyRule | undefined }>()
 const emit = defineEmits<{
@@ -90,7 +91,7 @@ const emit = defineEmits<{
       <footer class="rule-drawer-footer">
         <button v-permission="'safety:module:rule:execute'" type="button" class="rule-btn ghost" @click="emit('simulate', rule)">模拟测试</button>
         <div class="rule-drawer-footer__right">
-          <button v-for="a in ruleActionsOf(rule.status)" :key="a" type="button"
+          <button v-for="a in ruleActionsOf(rule.status)" :key="a" v-permission="ruleActionPermission(a)" type="button"
             class="rule-btn" :class="{ primary: ['提交评审', '批准', '发布', '重新下发'].includes(a), danger: a === '回滚' }"
             @click="emit('action', a, rule)">{{ a }}</button>
         </div>

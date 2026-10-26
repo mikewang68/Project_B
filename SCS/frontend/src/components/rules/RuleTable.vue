@@ -58,7 +58,7 @@ function rowClass({ row }: { row: SafetyRule }): string {
           <button type="button" class="rule-table__op" @click.stop="emit('detail', row)">
             <el-icon><View /></el-icon>详情
           </button>
-          <button type="button" class="rule-table__op" @click.stop="emit('simulate', row)">
+          <button v-permission="'safety:module:rule:execute'" type="button" class="rule-table__op" @click.stop="emit('simulate', row)">
             <el-icon><VideoPlay /></el-icon>仿真
           </button>
         </template>

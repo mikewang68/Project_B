@@ -27,7 +27,10 @@ const EXPECTED_PATHS = [
 async function mountSidebar() {
   router=createAppRouter()
   const pinia=createPinia(); setActivePinia(pinia)
-  const user={id:'scs-admin',name:'SCS Admin',role:'ADMIN',team:'',shift:'day',online:true,permissions:Object.values(pagePermissions)}
+  // 分组权限码（docs/scs_module_menu.csv）：真实账号需由 IAM 一并授予，否则整组不渲染
+  const GROUP_PERMISSIONS = ['safety:work:view', 'safety:event:view', 'safety:sys:view']
+  const user={id:'scs-admin',name:'SCS Admin',role:'ADMIN',team:'',shift:'day',online:true,
+    permissions:[...Object.values(pagePermissions), ...GROUP_PERMISSIONS]}
   const auth=useAuthStore(); auth.setCurrentUser(user)
   vi.spyOn(auth,'ensureLoaded').mockResolvedValue(user)
   await router.push('/overview')
