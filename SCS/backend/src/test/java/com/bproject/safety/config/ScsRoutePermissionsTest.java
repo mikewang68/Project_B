@@ -14,6 +14,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -101,8 +102,14 @@ class ScsRoutePermissionsTest {
   @Test
   @DisplayName("源码里出现的每个 safety:* 权限码都必须在 IAM 迁移目录登记")
   void everyReferencedCodeIsRegisteredInIamCatalog() throws IOException {
+    // 该断言需要同一仓库里的 IAM/ 目录（本地 _gh_work、CI 全仓库检出都有）。
+    // 服务器上只部署 SCS/ 子树时没有 IAM/，此时跳过而不是误报失败。
+    Path iam = iamIsolatedDir();
+    Assumptions.assumeTrue(iam != null,
+        "未找到同级 IAM/ 迁移目录（仅 SCS 子树的构建环境），跳过跨仓库登记断言");
+
     Set<String> registered = new TreeSet<>();
-    try (Stream<Path> files = Files.walk(iamIsolatedDir())) {
+    try (Stream<Path> files = Files.walk(iam)) {
       for (Path p : files.filter(f -> f.toString().endsWith(".sql")).toList()) {
         Matcher m = Pattern.compile("'(safety:[a-z:]+)'")
             .matcher(Files.readString(p, StandardCharsets.UTF_8));
@@ -155,12 +162,11 @@ class ScsRoutePermissionsTest {
     return p;
   }
 
-  private static Path iamIsolatedDir() throws IOException {
+  /** @return IAM 迁移目录；不存在时返回 null（调用方用 assume 跳过）。 */
+  private static Path iamIsolatedDir() {
     // SCS/backend → SCS → Project_B 根 → IAM/backend/db/isolated
-    Path scs = scsRoot();
-    Path iam = scs.getParent().resolve("IAM/backend/db/isolated");
-    assertTrue(Files.isDirectory(iam), "找不到 IAM 迁移目录: " + iam);
-    return iam;
+    Path iam = scsRoot().getParent().resolve("IAM/backend/db/isolated");
+    return Files.isDirectory(iam) ? iam : null;
   }
 
   private static Path scsConfigDir() {
