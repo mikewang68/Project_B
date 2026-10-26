@@ -41,7 +41,7 @@ export async function readBusinessPage(collection: BusinessCollection, scopes: r
   try {
     await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     const total = (await db.query(`SELECT count(*)::int AS total FROM public.${q.table} WHERE ${q.where}`, q.values)).rows[0].total;
-    const items = (await db.query(`SELECT ${q.columns} FROM public.${q.table} WHERE ${q.where}
+    const items = (await db.query(`SELECT ${q.columns},updated_at::text AS row_version FROM public.${q.table} WHERE ${q.where}
       ORDER BY updated_at DESC,id LIMIT $${q.values.length + 1} OFFSET $${q.values.length + 2}`,
       [...q.values, q.pageSize, (q.page - 1) * q.pageSize])).rows;
     await db.query('COMMIT');

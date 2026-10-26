@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { canReadCollection, equipmentFreshness, loadBusinessPage, type BusinessRow } from './business';
+import { canReadCollection, canRunBusinessAction,businessActions,equipmentFreshness, loadBusinessPage, type BusinessRow } from './business';
 afterEach(()=>vi.unstubAllGlobals());
 describe('native business list adapter',()=>{
   it('keeps nonempty actual records and their database status without demo state remapping',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({ok:true,data:{collection:'work-orders',
-      items:[{id:'WO-1',status:'ASSIGNED',updated_at:'2026-10-26T00:00:00Z'}],total:3,page:1,pageSize:50,generatedAt:'2026-10-26T00:00:00Z'}}))));
+      items:[{id:'WO-1',status:'ASSIGNED',updated_at:'2026-10-26T00:00:00Z',row_version:'v1'}],total:3,page:1,pageSize:50,generatedAt:'2026-10-26T00:00:00Z'}}))));
     const result=await loadBusinessPage('work-orders',{page:'1'});
     expect(result.total).toBe(3);expect(result.items[0].status).toBe('ASSIGNED');
   });
@@ -25,5 +25,8 @@ describe('native business list adapter',()=>{
     const actor={actorId:'a',roleCode:'AUDITOR' as const,dataScope:['*'],online:true,demoTime:'now',fullAdmin:true,readOnly:true,permissions:['pps:api:plans:read']};
     expect(canReadCollection(actor,'work-orders')).toBe(false);
     expect(canReadCollection({...actor,permissions:['pps:api:monitor:read']},'equipment')).toBe(true);
+    expect(canRunBusinessAction(actor,businessActions('work-orders','ASSIGNED')[0])).toBe(false);
+    expect(canRunBusinessAction({...actor,fullAdmin:false,readOnly:false,permissions:['pps:api:work-orders:write']},
+      businessActions('work-orders','ASSIGNED')[0])).toBe(false);
   });
 });

@@ -1,9 +1,10 @@
-import { Alert, Button, Card, Descriptions, Drawer, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Descriptions, Drawer, Form, Input, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { loadCurrentDemoSession, type SessionContext } from '../auth';
 import PageIdentity from '../features/plan-entry/components/PageIdentity';
 import { LiveApiError } from './client';
 import { canReadCollection, equipmentFreshness, liveBusinessPages, loadBusinessPage,
+  businessActions,canRunBusinessAction,runBusinessAction,type BusinessAction,
   type BusinessPage, type BusinessRow, type LiveBusinessPageId, type LiveCollection } from './business';
 
 const labels: Record<string, string> = {
@@ -16,6 +17,7 @@ const labels: Record<string, string> = {
   enter_time:'入场时间', exit_time:'离场时间', queue_number:'排队号', gate_no:'闸口', parking_bay:'停车位',
   exception_id:'异常编号', severity:'等级', title:'标题', assigned_to:'处理人', acknowledged_by:'认领人',
   acknowledged_at:'认领时间', resolution:'处理结果', resolved_at:'解决时间', closed_at:'关闭时间',
+  row_version:'记录版本',
 };
 const config: Record<LiveCollection, { title:string; columns:string[]; statuses:string[] }> = {
   'work-orders': {title:'作业工单',columns:['id','plan_id','work_area','equipment_id','status','order_type','priority','description'],
@@ -37,6 +39,9 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
   const [page,setPage]=useState(1), [area,setArea]=useState<string>(), [status,setStatus]=useState<string>();
   const [reload,setReload]=useState(0), [data,setData]=useState<BusinessPage>(), [error,setError]=useState('');
   const [loading,setLoading]=useState(true), [selected,setSelected]=useState<BusinessRow>();
+  const [command,setCommand]=useState<{row:BusinessRow;action:BusinessAction}>(),[submitting,setSubmitting]=useState(false);
+  const [commandError,setCommandError]=useState('');
+  const [form]=Form.useForm<{reason:string;equipmentId?:string}>();
   const allowed=canReadCollection(session,collection), global=session.dataScope.some(s=>['*','GLOBAL'].includes(s));
   const spec=config[collection];
   useEffect(()=>{
@@ -46,7 +51,7 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
     if(area)query.workArea=area;if(status)query.status=status;
     void loadBusinessPage(collection,query,controller.signal).then(result=>{if(active){setData(result);setError('');}})
       .catch(e=>{if(active){setError(e instanceof Error?e.message:'查询失败');
-        if(e instanceof LiveApiError&&[401,403].includes(e.status)){setData(undefined);setSelected(undefined);}}})
+        if(e instanceof LiveApiError&&[401,403].includes(e.status)){setData(undefined);setSelected(undefined);setCommand(undefined);}}})
       .finally(()=>{if(active)setLoading(false);});
     return()=>{active=false;controller.abort();};
   },[collection,page,area,status,reload,allowed]);
@@ -56,7 +61,11 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
     ...(collection==='equipment'?[{title:'采集时效',key:'freshness',render:(_:unknown,row:BusinessRow)=>{
       const fresh=data?equipmentFreshness(row,data.generatedAt):'UNKNOWN';
       return <Tag color={fresh==='FRESH'?'green':'warning'}>{fresh==='FRESH'?'采集及时':fresh==='STALE'?'采集过期':'尚无采集时间'}</Tag>;
-    }}]:[]),{title:'详情',key:'detail',render:(_:unknown,row:BusinessRow)=><Button onClick={()=>setSelected(row)}>查看</Button>}];
+    }}]:[]),{title:'操作',key:'detail',render:(_:unknown,row:BusinessRow)=><Space wrap>
+      <Button onClick={()=>setSelected(row)}>查看</Button>
+      {businessActions(collection,row.status).map(action=><Button key={action.code} disabled={!canRunBusinessAction(session,action)||submitting}
+        onClick={()=>{setCommandError('');form.resetFields();setCommand({row,action});}}>{action.label}</Button>)}
+    </Space>}];
   return <Card title={spec.title} style={{marginBottom:20}} data-business-collection={collection}>
     <Space wrap style={{marginBottom:16}}>
       {collection!=='appointments'&&<Select aria-label={spec.title+'作业区'} value={area} allowClear placeholder="授权作业区"
@@ -68,12 +77,32 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
       {data&&<Typography.Text data-business-total={collection}>符合条件 {data.total} 条</Typography.Text>}
     </Space>
     {error&&<Alert showIcon type="error" title={error} description={data?'查询失败，以下保留上次成功结果；请重试。':undefined} style={{marginBottom:16}}/>}
+    {commandError&&<Alert showIcon type="error" title={commandError} closable onClose={()=>setCommandError('')} style={{marginBottom:16}}/>}
     <Table<BusinessRow> rowKey="id" loading={loading} dataSource={data?.items??[]} columns={columns} scroll={{x:'max-content'}}
       locale={{emptyText:error?'查询未成功':loading?'查询中':'查询成功，当前条件下无记录'}}
       pagination={{current:page,pageSize:50,total:data?.total??0,showSizeChanger:false,onChange:setPage}}/>
     <Drawer title={spec.title+'详情'} open={!!selected} onClose={()=>setSelected(undefined)} size="large">
       {selected&&<Descriptions column={1} items={Object.entries(selected).map(([key,value])=>({key,label:labels[key]??key,children:display(value)}))}/>}
     </Drawer>
+    <Modal title={command?.action.label} open={!!command} confirmLoading={submitting} destroyOnHidden
+      onCancel={()=>{if(!submitting)setCommand(undefined);}} onOk={async()=>{
+        if(!command||submitting)return;
+        let values:{reason:string;equipmentId?:string};
+        try{values=await form.validateFields();}catch{return;}
+        setSubmitting(true);
+        try{await runBusinessAction(collection,command.row,command.action,values);setCommand(undefined);setSelected(undefined);setError('');setReload(v=>v+1);}
+        catch(e){setCommand(undefined);setCommandError(e instanceof LiveApiError?e.message:'操作回执未取得，可能已经提交；请刷新记录和审计核对后再决定是否重试');
+          setSelected(undefined);setReload(v=>v+1);}
+        finally{setSubmitting(false);}
+      }}>
+      <Typography.Paragraph>记录：{command?.row.id}。请核对当前状态并填写操作原因；提交后将写入业务记录和审计。</Typography.Paragraph>
+      <Form form={form} layout="vertical" preserve={false}>
+        {command?.action.equipment&&<Form.Item name="equipmentId" label="设备编号" rules={[{required:true,whitespace:true,max:160}]}>
+          <Input maxLength={160} placeholder="选择同作业区且采集及时的设备"/></Form.Item>}
+        <Form.Item name="reason" label="操作原因或处理结果" rules={[{required:true,whitespace:true,max:1000}]}>
+          <Input.TextArea maxLength={1000} rows={3}/></Form.Item>
+      </Form>
+    </Modal>
   </Card>;
 }
 export default function BusinessDataPage({pageId}:{pageId:LiveBusinessPageId}) {
@@ -81,6 +110,6 @@ export default function BusinessDataPage({pageId}:{pageId:LiveBusinessPageId}) {
   return <main aria-label={pageId+' '+spec.title} style={{padding:24}}>
     <PageIdentity pageId={pageId} name={spec.title} path={window.location.pathname}/>
     <Alert type="info" showIcon title="业务库实时查询" style={{margin:'16px 0'}}
-      description="每15秒更新当前查询。业务状态和采集时间按实际记录显示；本批次开放查询与详情，操作流程继续接入。"/>
+      description="每15秒更新当前查询。操作须经权限、记录版本和业务状态检查；设备采集过期时不能派工或开始作业。"/>
     {spec.collections.map(collection=><BusinessTable key={pageId+collection} collection={collection} session={session}/>)}</main>;
 }

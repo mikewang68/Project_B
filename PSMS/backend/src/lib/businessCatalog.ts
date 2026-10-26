@@ -18,3 +18,13 @@ export function isBusinessCollection(value: string): value is BusinessCollection
 export function businessReadPermission(collection: BusinessCollection): string {
   return `pps:api:${collection === 'equipment' || collection === 'tasks' ? 'monitor' : collection}:read`;
 }
+export function businessCommandPermission(collection: BusinessCollection, action: unknown): string | undefined {
+  if(typeof action !== 'string')return undefined;
+  const operations:Record<string,Record<string,string>>={
+    'work-orders':{assign:'write',accept:'execute',start:'execute',pause:'execute',complete:'execute',cancel:'execute'},
+    appointments:{approve:'approve',checkin:'write',call:'execute',enter:'execute',complete:'execute'},
+    exceptions:{acknowledge:'write',resolve:'write',close:'write'},
+  };
+  const operation=Object.hasOwn(operations,collection)&&Object.hasOwn(operations[collection],action)?operations[collection][action]:undefined;
+  return operation?`pps:api:${collection}:${operation}`:undefined;
+}
