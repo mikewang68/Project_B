@@ -9,3 +9,10 @@ export const pagePermissions: Record<string,string> = {
 export function pagePermission(path:string):string|undefined {
   return pagePermissions[path] ?? (path.startsWith('/mobile/') ? pagePermissions['/mobile'] : undefined)
 }
+
+export function ruleActionPermission(action: string): string | undefined {
+  if (['批准', '驳回'].includes(action)) return 'safety:module:rule:approve'
+  if (['发布', '重新下发', '回滚'].includes(action)) return 'safety:module:rule:execute'
+  if (['编辑', '提交评审', '新建版本', '停用'].includes(action)) return 'safety:module:rule:edit'
+  return undefined
+}

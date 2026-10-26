@@ -6,7 +6,7 @@ defineEmits<{ toggle: [] }>()
 </script>
 
 <template>
-  <button class="mock-risk-button" :class="{ 'is-active': active }" type="button" @click="$emit('toggle')">
+  <button v-permission="'safety:home:map:edit'" class="mock-risk-button" :class="{ 'is-active': active }" type="button" @click="$emit('toggle')">
     <el-icon><component :is="active ? RefreshLeft : Warning" /></el-icon>
     <span>{{ active ? '恢复正常' : '模拟风险' }}</span>
   </button>
