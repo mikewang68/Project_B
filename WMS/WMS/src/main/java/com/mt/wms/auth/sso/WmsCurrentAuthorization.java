@@ -11,13 +11,14 @@ public final class WmsCurrentAuthorization {
     public static WmsPrincipal apply(WmsPrincipal local, JsonNode current) {
         if (!current.path("readOnly").isBoolean() || !current.path("permissions").isArray())
             throw new SecurityException("Missing current IAM grants");
-        boolean readOnly=current.path("readOnly").asBoolean();
-        boolean full=current.path("superAdmin").asBoolean(false)&&!readOnly;
+        boolean readOnly=local.readOnly() || current.path("readOnly").asBoolean();
+        boolean localAdmin=local.roles().stream().anyMatch("ADMIN"::equalsIgnoreCase);
+        boolean full=current.path("superAdmin").asBoolean(false) && localAdmin && !readOnly;
         Set<String> central=new HashSet<>();current.path("permissions").forEach(v->central.add(v.asText()));
         Set<String> permissions=new HashSet<>(local.permissions());
         if (!full) permissions.removeIf(p->!central.contains(p)&&!central.contains("wms:"+p));
         if (readOnly) permissions.removeIf(p->!p.endsWith(":read")&&!p.endsWith(":view")&&!p.equals("tenant:all"));
         return new WmsPrincipal(local.userId(),local.companyId(),local.companyCode(),local.companyName(),
-                local.username(),local.displayName(),local.roles(),Set.copyOf(permissions),local.passwordChangeRequired());
+                local.username(),local.displayName(),local.roles(),Set.copyOf(permissions),local.passwordChangeRequired(),readOnly);
     }
 }

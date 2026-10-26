@@ -5,7 +5,7 @@ import AgentView from './AgentView.vue'
 
 const mocks = vi.hoisted(() => ({ status: vi.fn(), chat: vi.fn(), utilization: vi.fn(), history: vi.fn(), alerts: vi.fn(), schedules: vi.fn(), mails: vi.fn() }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ query: { tab: 'alerts' } }) }))
-vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPermission: () => true, user: { tenant: { currentWarehouse: { name: '测试仓库' }, currentOwner: { name: '测试货主' } } } }) }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPermission: () => true, canWrite: () => true, user: { tenant: { currentWarehouse: { name: '测试仓库' }, currentOwner: { name: '测试货主' } } } }) }))
 vi.mock('@/api/agent', () => ({ agentStatus: mocks.status, agentChat: mocks.chat, agentUtilization: mocks.utilization,
   agentHistory: mocks.history, agentAlerts: mocks.alerts, agentSchedules: mocks.schedules, agentMails: mocks.mails,
   readAgentAlert: vi.fn(), saveAgentSchedule: vi.fn(), runAgentSchedule: vi.fn(), retryAgentMail: vi.fn(), agentWeights: vi.fn(), saveAgentWeight: vi.fn() }))

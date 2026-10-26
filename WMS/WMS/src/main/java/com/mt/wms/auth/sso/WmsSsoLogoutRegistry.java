@@ -112,6 +112,10 @@ public class WmsSsoLogoutRegistry {
     return wmsSessionId == null ? null : BINDINGS.get(wmsSessionId);
   }
 
+  public static void revokeLocalSession(String wmsSessionId) {
+    if (wmsSessionId != null && !wmsSessionId.isBlank()) REVOKED_WMS_SESSIONS.add(wmsSessionId);
+  }
+
   /**
    * 撤销某 IAM sid 对应的**全部**本地会话。
    *

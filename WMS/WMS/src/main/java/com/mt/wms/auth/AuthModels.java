@@ -52,7 +52,9 @@ public final class AuthModels {
             Set<String> permissions,
             boolean passwordChangeRequired,
             List<MenuItem> menus,
-            TenantView tenant) {
+            TenantView tenant,
+            boolean readOnly,
+            String authorizationVersion) {
     }
 
     public record CsrfView(String headerName, String parameterName, String token) {

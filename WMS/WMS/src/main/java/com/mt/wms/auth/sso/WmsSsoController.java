@@ -182,6 +182,7 @@ public class WmsSsoController {
     body.put("enabled", properties.isUsable());
     body.put("audience", properties.getAudience());
     body.put("contractVersion", "1.1");
+    body.put("authorizationContractVersion", "1.3");
     body.put("consumptionPoint", "CENTRALIZED_IAM");
     body.put("mode", "server-to-server");
     return ApiResponse.ok(body, requestId(request));

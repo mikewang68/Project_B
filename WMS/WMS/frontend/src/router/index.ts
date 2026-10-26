@@ -38,7 +38,12 @@ const router = createRouter({ history: createWebHashHistory(), routes })
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
-  await auth.restoreSession()
+  try { await auth.restoreSession() }
+  catch {
+    // A service outage is not an expired session. Keep the current view rather than loop.
+    if (auth.authenticated) return false
+    return to.name === 'login' ? true : { name: 'login', query: { redirect: to.fullPath } }
+  }
   if (to.meta.public) return auth.authenticated && to.name === 'login' ? { name: 'dashboard' } : true
   if (!auth.authenticated) return { name: 'login', query: { redirect: to.fullPath } }
   if (!auth.hasPermission(to.meta.permission)) return { name: 'forbidden' }

@@ -17,6 +17,8 @@ export interface CurrentUser {
   companyCode: string
   companyName: string
   roles: string[]
+  readOnly?: boolean
+  authorizationVersion?: string
   permissions: string[]
   passwordChangeRequired: boolean
   menus: MenuItem[]
