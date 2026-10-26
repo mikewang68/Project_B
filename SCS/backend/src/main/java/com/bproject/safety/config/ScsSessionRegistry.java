@@ -1,8 +1,5 @@
 package com.bproject.safety.config;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpSession;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
@@ -96,19 +93,6 @@ public final class ScsSessionRegistry {
     }
     Session s = SESSIONS.get(localSessionId);
     return s != null && REVOKED_IAM_SIDS.contains(s.iamSid());
-  }
-
-  /** 从 servlet 会话读取本地 session id；不存在返回 null。 */
-  public static String sessionIdOf(HttpSession session) {
-    return session == null ? null : session.getId();
-  }
-
-  /** 解析 IAM 断言中的 sid（票据里的 sessionId）。 */
-  public static String sidOf(JsonNode claims) {
-    if (claims == null) {
-      return "";
-    }
-    return claims.path("sessionId").asText("");
   }
 
   private static String nullToEmpty(String v) {

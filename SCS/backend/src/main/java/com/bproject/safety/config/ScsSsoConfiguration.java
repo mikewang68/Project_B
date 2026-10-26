@@ -24,4 +24,16 @@ public class ScsSsoConfiguration {
       ObjectMapper objectMapper) {
     return new ScsIamTicketValidator(iamBaseUrl, iamServiceToken, iamAudience, iamTimeoutMs, objectMapper);
   }
+
+  /** 会话销毁（登出/超时）时同步解除注册表绑定，避免会话表只增不减。 */
+  @Bean
+  public org.springframework.boot.web.servlet.ServletListenerRegistrationBean<jakarta.servlet.http.HttpSessionListener> scsSessionCleanupListener() {
+    return new org.springframework.boot.web.servlet.ServletListenerRegistrationBean<>(
+        new jakarta.servlet.http.HttpSessionListener() {
+          @Override
+          public void sessionDestroyed(jakarta.servlet.http.HttpSessionEvent event) {
+            ScsSessionRegistry.unbind(event.getSession().getId());
+          }
+        });
+  }
 }

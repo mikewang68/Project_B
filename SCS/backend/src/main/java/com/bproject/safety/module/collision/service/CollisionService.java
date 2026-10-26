@@ -306,6 +306,7 @@ public class CollisionService {
 
     @Transactional
     public synchronized TakeoverResult takeover(String deviceId, String operator, String note) {
+        // 空操作人交给 AlertService 的审计兜底（会话主体），不要在这里写死演示人名
         PairState pair = resolvePair(deviceId);
         // Phase B：Alert 接管写 + 广播缓冲，save 全部成功后统一发布。
         gate.buffer(() -> {
@@ -326,8 +327,12 @@ public class CollisionService {
     public ReleaseResult releaseRequest(String deviceId, List<String> checks, String operator) {
         requireDevice(deviceId);
         String requestId = "REL-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        // 申请人：显式指定优先，否则取当前会话主体（真实登录人）
+        String applicant = operator != null && !operator.isBlank()
+                ? operator
+                : com.bproject.safety.config.ScsRequestActor.displayName().orElse("安全员");
         return new ReleaseResult(requestId, "待审批", deviceId,
-                operator == null ? "安全员" : operator, checks == null ? List.of() : checks,
+                applicant, checks == null ? List.of() : checks,
                 OffsetDateTime.now(clock).toString());
     }
 

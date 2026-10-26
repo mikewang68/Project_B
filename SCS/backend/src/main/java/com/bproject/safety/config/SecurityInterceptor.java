@@ -87,7 +87,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
             @Value("${app.security.jwt-clock-skew-seconds:60}") long clockSkewSeconds,
             @Value("${app.security.iam-base-url:}") String iamBaseUrl,
             @Value("${app.security.iam-service-token:}") String iamServiceToken,
-            @Value("${app.security.iam-audience:}") String iamAudience,
+            @Value("${app.security.iam-audience:scs}") String iamAudience,
             @Value("${app.security.iam-timeout-ms:3000}") long iamTimeoutMs,
             ObjectMapper objectMapper,
             @Value("${app.security.jwt-public-key-pem:}") String jwtPublicKeyPem,
@@ -194,11 +194,17 @@ public class SecurityInterceptor implements HandlerInterceptor {
                     }
                 }
                 request.setAttribute("SCS_ACTOR",actor);
+                // 审计兜底：请求体未指定操作人时，Service 层取此会话主体而非演示用户
+                ScsRequestActor.set(actor.subject(), actor.username());
                 if (path.equals("/api/v1/auth/sso/logout")) {
                     request.setAttribute(ATTR_USER_SUB, actor.subject());
                     return true;
                 }
                 return finish(new AuthPrincipal(actor.subject(),actor.roles(),actor.permissions(),"scs",false,actor.readOnly()),request,response,path,"native SSO");
+            }catch(ScsIamTicketValidator.IamUnavailableException unavailable){
+                // IAM 抖动不能当成"会话失效"：返回 503 而不是 401，前端只在 401 时清会话，
+                // 否则一次 IAM 超时就会把全站用户打回登录页。
+                sendServiceUnavailable(request,response,"统一身份服务暂不可用，请稍后重试");return false;
             }catch(ScsIamTicketValidator.InvalidTicketException denied){sendUnauthorized(request,response,"统一身份或业务映射不可用");return false;}
         }
         // 3. 边缘节点机器凭据检查 (X-API-Key，常量时间等值比较)
@@ -302,6 +308,8 @@ public class SecurityInterceptor implements HandlerInterceptor {
         request.setAttribute(ATTR_USER_SUB, principal.sub());
         request.setAttribute(ATTR_USER_ROLES, principal.roles());
         request.setAttribute(ATTR_USER_PERMISSIONS, principal.permissions());
+        // JWT 模式同样记录操作人（sub 即主体标识）
+        ScsRequestActor.set(principal.sub(), principal.sub());
         log.debug("鉴权通过: user={}, kind={}, path={}, method={}", principal.sub(), credentialKind, path, request.getMethod());
         return true;
     }
@@ -418,6 +426,35 @@ public class SecurityInterceptor implements HandlerInterceptor {
         );
 
         response.getWriter().write(objectMapper.writeValueAsString(error));
+    }
+
+    /**
+     * 请求结束必须清理审计主体：Tomcat 线程池会复用线程，残留的 ThreadLocal
+     * 会让下一个请求把操作记到上一个用户名下。
+     */
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        ScsRequestActor.clear();
+    }
+
+    /**
+     * IAM 暂时不可用：503 而非 401。前端约定"仅 401 清会话"，用 401 会把瞬时故障
+     * 变成全站登出；503 让前端保留会话并在下一次轮询时重试。
+     */
+    private void sendServiceUnavailable(HttpServletRequest request, HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        String traceId = MDC.get(TraceIdFilter.MDC_KEY);
+        if (traceId == null || traceId.isBlank()) {
+            traceId = request.getHeader(TraceIdFilter.HEADER);
+        }
+        if (traceId == null || traceId.isBlank()) {
+            traceId = UUID.randomUUID().toString();
+        }
+        response.setHeader("X-Trace-Id", traceId);
+        response.getWriter().write(objectMapper.writeValueAsString(
+                ApiError.of(ErrorCodes.SERVICE_UNAVAILABLE, message, traceId, null)));
     }
 
     private void sendForbidden(HttpServletRequest request, HttpServletResponse response, String errorCode, String message, Map<String, Object> details) throws IOException {

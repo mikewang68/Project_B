@@ -194,27 +194,6 @@ public class ScsSsoController {
         b.getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
-  private static Set<String> toStringSet(Object value) {
-    Set<String> out = new HashSet<>();
-    if (value instanceof Iterable<?> it) {
-      for (Object o : it) {
-        if (o != null) {
-          String s = String.valueOf(o).trim();
-          if (!s.isEmpty()) {
-            out.add(s);
-          }
-        }
-      }
-    } else if (value instanceof String s) {
-      for (String part : s.split(",")) {
-        if (!part.trim().isEmpty()) {
-          out.add(part.trim());
-        }
-      }
-    }
-    return out;
-  }
-
   private ResponseEntity<Map<String, Object>> ok(Object data, HttpServletRequest request) {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("code", 0);

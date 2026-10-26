@@ -145,7 +145,8 @@ export const useIncidentStore = defineStore('incident', () => {
   }
 
   async function reviewClose(id: string): Promise<void> {
-    await alertApi.reviewAlert(id, { reviewer: '刘志明' })
+    // 复核人不写死：后端以会话主体作为审计兜底
+    await alertApi.reviewAlert(id)
     await loadDetail(id)
   }
 

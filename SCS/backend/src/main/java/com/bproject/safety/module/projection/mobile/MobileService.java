@@ -42,8 +42,10 @@ public class MobileService {
                         && !AlertStatuses.CLOSED.equals(a.statusCode)).count();
         int closed = (int) all.stream().filter(a -> AlertStatuses.CLOSED.equals(a.statusCode)).count();
 
+        // 展示的处置人以当前会话主体为准；无请求上下文（测试/Demo）才回落演示用户
+        String userName = com.bproject.safety.config.ScsRequestActor.displayName().orElse("王建国");
         return new MobileHome(
-                "王建国", "安全员", "装卸一班", "夜班",
+                userName, "安全员", "装卸一班", "夜班",
                 pending.size(), handling.size(), urgent, closed,
                 pending.stream().map(this::toItem).toList(),
                 handling.stream().map(this::toItem).toList());

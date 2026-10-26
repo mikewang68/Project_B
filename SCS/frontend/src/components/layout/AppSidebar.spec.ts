@@ -5,6 +5,10 @@ import { useAuthStore } from '@/stores/auth'
 import { pagePermissions } from '@/permissions'
 import AppSidebar from './AppSidebar.vue'
 import { createAppRouter } from '@/router'
+// 侧边栏测试只验证导航渲染，真实视图（echarts 等重依赖）在 jsdom 里导入过慢且与本用例无关
+vi.mock('@/views/OverviewView.vue', () => ({ default: { render: () => null } }))
+vi.mock('@/views/AlertCenterView.vue', () => ({ default: { render: () => null } }))
+vi.mock('@/views/ForbiddenView.vue', () => ({ default: { render: () => null } }))
 let router:ReturnType<typeof createAppRouter>
 
 const EXPECTED_PATHS = [

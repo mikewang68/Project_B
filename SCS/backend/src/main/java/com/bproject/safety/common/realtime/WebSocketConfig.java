@@ -35,7 +35,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
             ObjectMapper objectMapper,
             Clock clock,
             SecurityInterceptor securityInterceptor,
-            @Value("${app.security.ws-auth-enabled:false}") boolean wsAuthEnabled,
+            @Value("${app.security.ws-auth-enabled:true}") boolean wsAuthEnabled,
             @Value("${app.cors.allowed-origins}") String allowedOrigins) {
         this.registry = registry;
         this.objectMapper = objectMapper;

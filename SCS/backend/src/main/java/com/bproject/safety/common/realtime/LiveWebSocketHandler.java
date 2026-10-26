@@ -45,7 +45,8 @@ public class LiveWebSocketHandler extends TextWebSocketHandler {
             Map<String, Object> pong = Map.of(
                     "type", LiveEventTypes.PONG,
                     "ts", OffsetDateTime.now(clock.withZone(ZONE)).toString());
-            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(pong)));
+            // 经注册表的并发装饰器回送，避免与广播并发写同一连接（装饰器锁对象与广播一致）
+            registry.sendTo(session.getId(), new TextMessage(objectMapper.writeValueAsString(pong)));
         }
         // 其他客户端消息忽略：实时链路为“服务端推送 + REST 权威读取”
     }

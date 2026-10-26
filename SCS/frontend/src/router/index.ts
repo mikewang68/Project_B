@@ -88,9 +88,13 @@ export function createAppRouter(){
 const router=createRouter({ history: createWebHistory(), routes })
 router.beforeEach(async to=>{
   const auth=useAuthStore()
-  if(!await auth.ensureLoaded(true))return to.path==='/forbidden'?true:'/forbidden'
-  const permission=pagePermission(to.path)
-  if(to.path!=='/forbidden' && (!permission || !auth.can(permission)))return '/forbidden'
+  // 常规导航使用缓存会话；会话失效由 401 事件与 App.vue 的定时刷新负责感知，
+  // 避免每次路由切换都阻塞在 /auth/me 上。
+  if(!await auth.ensureLoaded())return to.path==='/forbidden'?true:'/forbidden'
+  // 尾斜杠深链（如 /overview/）与权限表精确匹配不一致，先归一化再鉴权
+  const path=to.path.replace(/\/+$/,'')||'/'
+  const permission=pagePermission(path)
+  if(path!=='/forbidden' && (!permission || !auth.can(permission)))return '/forbidden'
   return true
 })
 return router

@@ -74,6 +74,7 @@ function buildListParams() {
 
 const listGuard = createLatestGuard()
 const metricsGuard = createLatestGuard()
+const detailGuard = createLatestGuard()
 
 async function loadMetrics(): Promise<void> {
   const token = metricsGuard.next()
@@ -123,16 +124,22 @@ async function loadOptions(): Promise<void> {
 }
 
 async function openDetail(row: AlertEvent): Promise<void> {
+  // 详情竞态守卫：快速连点两行时，先发后到的响应不得覆盖当前选中项，
+  // 否则后续「复核通过 / 驳回 / 升级」会作用在错误的事件上。
+  const token = detailGuard.next()
   drawerVisible.value = true
   detailLoading.value = true
   current.value = row
   try {
-    current.value = mapAlertEvent(await alertApi.getAlertDetail(row.id))
+    const detail = mapAlertEvent(await alertApi.getAlertDetail(row.id))
+    if (!detailGuard.isLatest(token)) return
+    current.value = detail
   } catch (cause) {
+    if (!detailGuard.isLatest(token)) return
     current.value = undefined
     ElMessage.error(errorMessage(cause, '告警详情加载失败'))
   } finally {
-    detailLoading.value = false
+    if (detailGuard.isLatest(token)) detailLoading.value = false
   }
 }
 
@@ -142,8 +149,12 @@ async function refreshAlertContext(flags: { metrics?: boolean; list?: boolean; d
   if (flags.metrics !== false) tasks.push(loadMetrics())
   if (flags.list !== false) tasks.push(loadList())
   if (flags.detail && current.value?.id) {
+    const id = current.value.id
+    const token = detailGuard.next()
     tasks.push(
-      alertApi.getAlertDetail(current.value.id).then((dto) => {
+      alertApi.getAlertDetail(id).then((dto) => {
+        // 刷新期间用户可能已切到另一条；只在仍停留在同一事件时回写
+        if (!detailGuard.isLatest(token) || current.value?.id !== id) return
         current.value = mapAlertEvent(dto)
       }),
     )
@@ -235,7 +246,8 @@ async function onReviewApprove(): Promise<void> {
     return
   }
   const id = current.value.id
-  await runAction(() => alertApi.reviewAlert(id, { reviewer: '刘志明' }), '复核通过，事件已关闭')
+  // 复核人不写死：后端以会话主体作为审计兜底
+  await runAction(() => alertApi.reviewAlert(id), '复核通过，事件已关闭')
   reviewVisible.value = false
 }
 

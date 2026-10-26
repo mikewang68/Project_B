@@ -1,0 +1,58 @@
+# SCS 持续集成：与 deploy/scripts/build-server.sh 的门禁保持一致
+# 后端：mvn verify（449 项测试）；前端：typecheck + vitest + 生产构建
+# 版本钉子与 build-server.sh 相同：Java 17 / Maven 3.9.16 / Node 24.18.0 / pnpm 10.34.5
+name: SCS CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'SCS/**'
+      - '.github/workflows/scs-ci.yml'
+  pull_request:
+    paths:
+      - 'SCS/**'
+      - '.github/workflows/scs-ci.yml'
+
+concurrency:
+  group: scs-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: 后端 mvn verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          maven-version: '3.9.16'
+          cache: maven
+      - name: Test & package
+        working-directory: SCS/backend
+        run: mvn -B -gs .mvn/settings.xml -s .mvn/settings.xml verify
+
+  frontend:
+    name: 前端 typecheck + test + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - name: Enable pnpm 10.34.5 (corepack, per packageManager field)
+        run: corepack enable && corepack prepare pnpm@10.34.5 --activate
+      - name: Install (frozen lockfile)
+        working-directory: SCS
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        working-directory: SCS/frontend
+        run: pnpm typecheck
+      - name: Unit tests
+        working-directory: SCS/frontend
+        run: pnpm test
+      - name: Production build
+        working-directory: SCS/frontend
+        run: pnpm build

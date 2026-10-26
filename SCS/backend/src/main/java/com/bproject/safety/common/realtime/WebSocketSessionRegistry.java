@@ -37,6 +37,11 @@ public class WebSocketSessionRegistry {
 
     public void disconnect(WebSocketSession session) {
         sessions.remove(session.getId());
+        // 连接关闭后清理该会话缓存的最近授权，避免缓存随会话数无限增长
+        var value = session.getAttributes().get("SCS_WS_BINDING");
+        if (value instanceof com.bproject.safety.config.ScsSessionRegistry.Session binding && authorization != null) {
+            authorization.forget(binding.localSessionId());
+        }
         log.debug("WS disconnected: {} (online={})", session.getId(), sessions.size());
     }
 
@@ -44,24 +49,58 @@ public class WebSocketSessionRegistry {
         return sessions.size();
     }
 
-    /** 向全部在线连接广播文本消息；单个连接失败不影响其他连接。 */
+    /**
+     * 向全部在线连接广播文本消息；单个连接失败不影响其他连接。
+     *
+     * <p>IAM 抖动（{@link LiveSessionAuthorization.DeliverySuspendedException}）只跳过本次投递，
+     * <b>不关闭连接</b>——否则一次 IAM 超时会把全部客户端踢下线并触发重连风暴。
+     */
     public void broadcast(TextMessage message) {
         String type;
         try{type=json.readTree(message.getPayload()).path("type").asText();}catch(Exception invalid){return;}
         for(var session:sessions.values())try{
             var actor=authorization==null?null:authorization.current(session);
             if(authorization==null || authorization.permits(actor,type))send(session,message);
+        }catch(LiveSessionAuthorization.DeliverySuspendedException suspended){
+            log.debug("IAM 暂不可用，跳过本次投递 session={}", session.getId());
         }catch(Exception revoked){closeUnauthorized(session);}
     }
 
+    /** 周期扫描：只有明确撤销/绑定失效才断连；IAM 不可用时保持连接等下一轮。 */
     @org.springframework.scheduling.annotation.Scheduled(fixedDelay=5000)
     public void sweepRevoked(){
         if(authorization==null)return;
-        for(var session:sessions.values())try{authorization.current(session);}catch(Exception revoked){closeUnauthorized(session);}
+        for(var session:sessions.values())try{
+            authorization.current(session);
+        }catch(LiveSessionAuthorization.DeliverySuspendedException suspended){
+            log.debug("IAM 暂不可用，保留连接 session={}", session.getId());
+        }catch(Exception revoked){closeUnauthorized(session);}
     }
     private void closeUnauthorized(WebSocketSession session){
         sessions.remove(session.getId());
+        var value = session.getAttributes().get("SCS_WS_BINDING");
+        if (value instanceof com.bproject.safety.config.ScsSessionRegistry.Session binding && authorization != null) {
+            authorization.forget(binding.localSessionId());
+        }
         try{session.close(org.springframework.web.socket.CloseStatus.POLICY_VIOLATION);}catch(Exception ignored){}
+    }
+
+    /** 向单个在线连接发送（pong 等回执），复用注册表里的并发装饰器，与广播路径同一把锁。 */
+    public boolean sendTo(String sessionId, TextMessage message) {
+        WebSocketSession session = sessions.get(sessionId);
+        if (session == null) {
+            return false;
+        }
+        try {
+            synchronized (session) {
+                session.sendMessage(message);
+            }
+            return true;
+        } catch (IOException | RuntimeException ex) {
+            log.warn("WS send failed to {}: {}", sessionId, ex.getMessage());
+            sessions.remove(sessionId);
+            return false;
+        }
     }
 
     private void send(WebSocketSession session, TextMessage message) {

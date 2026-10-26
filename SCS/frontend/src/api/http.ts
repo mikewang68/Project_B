@@ -34,6 +34,39 @@ async function buildError(response: Response, requestTraceId: string): Promise<A
   }
 }
 
+// 会话级 CSRF 缓存：写请求不再逐次预检 /auth/me；401/403 时失效并在下次写请求重新获取
+let csrfToken: string | null = null
+let csrfInflight: Promise<string> | null = null
+
+function invalidateCsrf():void { csrfToken = null; csrfInflight = null }
+
+async function loadCsrfToken(): Promise<string> {
+  if (csrfToken !== null) return csrfToken
+  if (!csrfInflight) {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 8_000)
+    csrfInflight = fetch(`${API_BASE}/auth/me`, { credentials:'same-origin', cache:'no-store', signal:controller.signal })
+      .then(async (sessionResponse) => {
+        if (sessionResponse.status === 401) window.dispatchEvent(new CustomEvent('scs:unauthenticated'))
+        if (!sessionResponse.ok) throw await buildError(sessionResponse, traceId())
+        const session = await sessionResponse.json() as { csrfToken?: string }
+        csrfToken = typeof session.csrfToken === 'string' ? session.csrfToken : ''
+        return csrfToken
+      })
+      .finally(() => {
+        window.clearTimeout(timeout)
+        csrfInflight = null
+      })
+  }
+  return csrfInflight
+}
+
+/** 合并调用方传入的取消信号与请求超时信号；环境不支持 AbortSignal.any 时退化为仅超时信号 */
+function mergeSignal(external: AbortSignal | null | undefined, timeoutSignal: AbortSignal): AbortSignal {
+  const anyAbort = AbortSignal as { any?: (signals: AbortSignal[]) => AbortSignal }
+  return external && anyAbort.any ? anyAbort.any([external, timeoutSignal]) : timeoutSignal
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), 8_000)
@@ -46,13 +79,11 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 
   try {
     if (init.method && !['GET','HEAD','OPTIONS'].includes(init.method.toUpperCase())) {
-      const sessionResponse = await fetch(`${API_BASE}/auth/me`, { credentials:'same-origin', cache:'no-store', signal:controller.signal })
-      if (sessionResponse.status === 401) window.dispatchEvent(new CustomEvent('scs:unauthenticated'))
-      if (!sessionResponse.ok) throw await buildError(sessionResponse, requestTraceId)
-      const session = await sessionResponse.json()
-      if (session.csrfToken) headers.set('X-SCS-CSRF', session.csrfToken)
+      const csrf = await loadCsrfToken()
+      if (csrf) headers.set('X-SCS-CSRF', csrf)
     }
-    const response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials:'same-origin', signal: controller.signal })
+    const response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials:'same-origin', signal: mergeSignal(init.signal, controller.signal) })
+    if (response.status === 401 || response.status === 403) invalidateCsrf()
     if (response.status === 401) window.dispatchEvent(new CustomEvent('scs:unauthenticated'))
     if (!response.ok) throw await buildError(response, requestTraceId)
     return (await response.json()) as T
