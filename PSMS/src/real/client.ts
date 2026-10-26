@@ -21,16 +21,44 @@ export async function liveApi(path: string, init: RequestInit = {}) {
 
 export function planProjection(raw: Record<string, unknown>) {
   const supplements = (raw.supplements ?? {}) as Record<string, unknown>;
+  const instant = new Date(String(raw.arriveTime));
+  if (!Number.isFinite(instant.getTime())) throw new Error('计划到达时间格式无效');
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',
+    day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(instant).map(p=>[p.type,p.value]));
+  const arrival = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}+08:00`;
   return do001Schema.parse({ id: raw._id, planBatchNo: raw.planBatchNo, trainNo: raw.trainNo,
-    arrivalDepartureTime: raw.arriveTime, workArea: z.string().min(1).parse(raw.workArea),
+    arrivalDepartureTime: arrival, workArea: z.string().min(1).parse(raw.workArea),
     trackNo: raw.trackNo, cargoType: raw.cargoType, status: raw.status,
     sourceSystem: supplements.sourceSystem ?? '', sourceTime: raw.createdAt, missingFields: [], conflicts: [],
     version: new Date(String(raw.updatedAt)).getTime(), createdAt: raw.createdAt, updatedAt: raw.updatedAt });
 }
 
 export async function loadLivePlans() {
-  const result = await liveApi('/plans?pageSize=200');
-  const plans = (result.data.items as Record<string, unknown>[]).map(planProjection);
-  if (result.data.total > plans.length) throw new Error('当前台账超过单页上限，请接入服务端分页后继续；未截断展示全部数据');
+  const plans: ReturnType<typeof planProjection>[] = [];
+  const seen = new Set<string>();
+  for (let page = 1; ; page++) {
+    const result = await liveApi(`/plans?pageSize=200&page=${page}`);
+    const items = z.array(z.record(z.string(), z.unknown())).parse(result.data.items).map(planProjection);
+    const total = z.number().int().nonnegative().parse(result.data.total);
+    for (const item of items) {
+      if (seen.has(item.id)) throw new Error('台账在分页期间发生变化，请刷新后重试');
+      seen.add(item.id); plans.push(item);
+    }
+    if (plans.length === total) break;
+    if (!items.length || plans.length > total || plans.length >= 20000)
+      throw new Error('台账分页结果不完整，请缩小查询范围后重试');
+  }
   return plans;
+}
+
+const metric = z.number().nonnegative();
+const overviewSchema = z.object({ workArea: z.string(), date: z.string(), generatedAt: z.string(),
+  kpis: z.object({ totalPlans: metric, pendingConfirmPlans: metric, confirmedPlans: metric, blockedPlans: metric,
+    completedWorkOrders: metric, waitingVehicles: metric.nullable(), availableResourceRate: metric.nullable(), openExceptions: metric }),
+  availability: z.object({ waitingVehicles: z.string(), availableResourceRate: z.string(), yardLayout: z.string() }),
+  planRange: z.object({ earliest: z.string().nullable(), latest: z.string().nullable(), total: metric }),
+  risks: z.array(z.object({id:z.string(),source:z.enum(['EXCEPTION','INTERLOCK','OFFLINE']),type:z.string(),status:z.string(),level:z.string()})),
+  waitingVehicleScope: z.string().nullable() });
+export async function loadLiveOverview(date: string, workArea: string) {
+  return overviewSchema.parse((await liveApi('/overview?' + new URLSearchParams({date, workArea}))).data);
 }

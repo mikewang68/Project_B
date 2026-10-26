@@ -21,6 +21,7 @@ const healthPresentation = {
   DEGRADED: { label: '降级', badge: 'warning' },
   UNAVAILABLE: { label: '不可用', badge: 'error' },
   CIRCUIT_OPEN: { label: '已熔断', badge: 'error' },
+  UNVERIFIED: { label: '尚未核验', badge: 'default' },
 } as const;
 
 function gatedButton(

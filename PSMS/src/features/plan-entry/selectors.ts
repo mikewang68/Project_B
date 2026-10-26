@@ -321,6 +321,8 @@ export function selectOverviewKpis(
   query: PlanEntryQuery,
   workflow: PlanEntryWorkflowState,
 ): OverviewKpisViewModel {
+  if (state.liveOverview?.date === query.date && state.liveOverview.workArea === query.workArea
+      && queryAllowsPlans(state, query)) return deepFreeze({ ...state.liveOverview.kpis });
   if (!queryAllowsPlans(state, query)) {
     return deepFreeze({
       totalPlans: 0,
@@ -405,6 +407,7 @@ export function selectOpenRisks(
   query: PlanEntryQuery,
 ): readonly OpenRiskViewModel[] {
   if (!sessionAllowsArea(state, query.workArea)) return deepFreeze([]);
+  if(state.liveOverview?.workArea===query.workArea)return deepFreeze([...state.liveOverview.risks]);
   const risks: OpenRiskViewModel[] = [];
   const fault = state.scenario.activeFault;
   if (fault.type !== 'NONE') {
@@ -457,6 +460,8 @@ export function selectInterfaceHealth(
   state: DemoRootState,
   workflow: PlanEntryWorkflowState,
 ): InterfaceHealthViewModel {
+  if(state.liveOverview)return deepFreeze({status:'UNVERIFIED',retryCount:0,circuitOpen:false,recoveryVisible:false,
+    sourceLabel:'外部计划接入状态未核验',description:'当前显示业务库查询结果，尚未取得外部计划接收服务的实际运行状态。'});
   const fault = state.scenario.activeFault;
   const status = workflow.circuitOpen
     ? 'CIRCUIT_OPEN'

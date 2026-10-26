@@ -148,7 +148,8 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
     // Scope limits form a ceiling; current business grants are still required below.
     // Restricted scopes use only the plan adapter until other row-level adapters exist.
     const all=user.dataScope.some(scope=>['*','GLOBAL'].includes(scope));
-    if (!all && req.path !== '/api/auth/me' && req.path !== '/api/plans' && !req.path.startsWith('/api/plans/')) {
+    if (!all && req.path !== '/api/auth/me' && req.path !== '/api/overview'
+        && req.path !== '/api/plans' && !req.path.startsWith('/api/plans/')) {
       fail(res, 403, 'SSO_ROUTE_NOT_ADAPTED'); return;
     }
     req.user = { userId: user._id, actorId: user.actorId, roleCode: user.roleCode, dataScope: [...user.dataScope] };
