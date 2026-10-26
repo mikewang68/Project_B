@@ -4,7 +4,7 @@ afterEach(()=>vi.unstubAllGlobals());
 describe('native business list adapter',()=>{
   it('keeps nonempty actual records and their database status without demo state remapping',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({ok:true,data:{collection:'work-orders',
-      items:[{id:'WO-1',status:'ASSIGNED',updated_at:'2026-10-26T00:00:00Z',row_version:'v1'}],total:3,page:1,pageSize:50,generatedAt:'2026-10-26T00:00:00Z'}}))));
+      items:[{id:'WO-1',status:'ASSIGNED',updated_at:'2026-10-26T00:00:00Z',record_version:'v1'}],total:3,page:1,pageSize:50,generatedAt:'2026-10-26T00:00:00Z'}}))));
     const result=await loadBusinessPage('work-orders',{page:'1'});
     expect(result.total).toBe(3);expect(result.items[0].status).toBe('ASSIGNED');
   });
@@ -17,7 +17,7 @@ describe('native business list adapter',()=>{
     await expect(loadBusinessPage('work-orders',{})).rejects.toThrow('不一致');
   });
   it('does not describe an old ONLINE row as current healthy telemetry',()=>{
-    const record={id:'E1',status:'ONLINE',updated_at:'2026-08-27T00:00:00Z',last_heartbeat:'2026-08-27T00:00:00Z'} as BusinessRow;
+    const record={id:'E1',status:'ONLINE',record_version:'v1',updated_at:'2026-08-27T00:00:00Z',last_heartbeat:'2026-08-27T00:00:00Z'} as BusinessRow;
     expect(equipmentFreshness(record,'2026-10-26T00:00:00Z')).toBe('STALE');
     expect(equipmentFreshness({...record,last_heartbeat:null},'2026-10-26T00:00:00Z')).toBe('UNKNOWN');
   });

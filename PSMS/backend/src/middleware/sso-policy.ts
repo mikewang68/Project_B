@@ -4,6 +4,8 @@ type CurrentAuthorization = { readOnly: boolean; superAdmin: boolean; applicatio
 export function mayWriteBusinessRoute(current:CurrentAuthorization,path:string,action?:unknown):boolean {
   if(current.readOnly)return false;
   if(path.startsWith('/api/business/')) {
+    if(path==='/api/business/work-orders')return current.superAdmin || current.applicationAdmin===true
+      || current.permissions.includes('pps:api:work-orders:write');
     const match=/^\/api\/business\/([^/]+)\/[^/]+\/actions$/.exec(path);
     if(!match||!isBusinessCollection(match[1]))return false;
     const permission=businessCommandPermission(match[1],action);

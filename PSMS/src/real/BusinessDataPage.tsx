@@ -1,8 +1,9 @@
 import { Alert, Button, Card, Descriptions, Drawer, Form, Input, Modal, Select, Space, Table, Tag, Typography } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useState,useRef } from 'react';
 import { loadCurrentDemoSession, type SessionContext } from '../auth';
 import PageIdentity from '../features/plan-entry/components/PageIdentity';
-import { LiveApiError } from './client';
+import { LiveApiError,liveApi } from './client';
+import { useDemoSelector } from '../runtime';
 import { canReadCollection, equipmentFreshness, liveBusinessPages, loadBusinessPage,
   businessActions,canRunBusinessAction,runBusinessAction,type BusinessAction,
   type BusinessPage, type BusinessRow, type LiveBusinessPageId, type LiveCollection } from './business';
@@ -17,7 +18,7 @@ const labels: Record<string, string> = {
   enter_time:'入场时间', exit_time:'离场时间', queue_number:'排队号', gate_no:'闸口', parking_bay:'停车位',
   exception_id:'异常编号', severity:'等级', title:'标题', assigned_to:'处理人', acknowledged_by:'认领人',
   acknowledged_at:'认领时间', resolution:'处理结果', resolved_at:'解决时间', closed_at:'关闭时间',
-  row_version:'记录版本',
+  record_version:'记录版本',
 };
 const config: Record<LiveCollection, { title:string; columns:string[]; statuses:string[] }> = {
   'work-orders': {title:'作业工单',columns:['id','plan_id','work_area','equipment_id','status','order_type','priority','description'],
@@ -42,6 +43,9 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
   const [command,setCommand]=useState<{row:BusinessRow;action:BusinessAction}>(),[submitting,setSubmitting]=useState(false);
   const [commandError,setCommandError]=useState('');
   const [form]=Form.useForm<{reason:string;equipmentId?:string}>();
+  const [creating,setCreating]=useState(false),[createForm]=Form.useForm();
+  const inFlight=useRef(false);
+  const plans=useDemoSelector(state=>state.plan.plans);
   const allowed=canReadCollection(session,collection), global=session.dataScope.some(s=>['*','GLOBAL'].includes(s));
   const spec=config[collection];
   useEffect(()=>{
@@ -74,6 +78,8 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
       <Select aria-label={spec.title+'状态'} value={status} allowClear placeholder="全部业务状态" style={{width:200}}
         options={spec.statuses.map(value=>({value,label:value}))} onChange={value=>{setStatus(value);setPage(1);setData(undefined);}}/>
       <Button loading={loading} onClick={()=>setReload(v=>v+1)}>刷新</Button>
+      {collection==='work-orders'&&<Button type="primary" disabled={!canRunBusinessAction(session,{code:'create',label:'新建工单',permission:'pps:api:work-orders:write'})}
+        onClick={()=>{createForm.resetFields();setCreating(true);setCommandError('');}}>新建工单</Button>}
       {data&&<Typography.Text data-business-total={collection}>符合条件 {data.total} 条</Typography.Text>}
     </Space>
     {error&&<Alert showIcon type="error" title={error} description={data?'查询失败，以下保留上次成功结果；请重试。':undefined} style={{marginBottom:16}}/>}
@@ -86,14 +92,14 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
     </Drawer>
     <Modal title={command?.action.label} open={!!command} confirmLoading={submitting} destroyOnHidden
       onCancel={()=>{if(!submitting)setCommand(undefined);}} onOk={async()=>{
-        if(!command||submitting)return;
+        if(!command||inFlight.current)return;inFlight.current=true;
         let values:{reason:string;equipmentId?:string};
-        try{values=await form.validateFields();}catch{return;}
+        try{values=await form.validateFields();}catch{inFlight.current=false;return;}
         setSubmitting(true);
         try{await runBusinessAction(collection,command.row,command.action,values);setCommand(undefined);setSelected(undefined);setError('');setReload(v=>v+1);}
         catch(e){setCommand(undefined);setCommandError(e instanceof LiveApiError?e.message:'操作回执未取得，可能已经提交；请刷新记录和审计核对后再决定是否重试');
           setSelected(undefined);setReload(v=>v+1);}
-        finally{setSubmitting(false);}
+        finally{inFlight.current=false;setSubmitting(false);}
       }}>
       <Typography.Paragraph>记录：{command?.row.id}。请核对当前状态并填写操作原因；提交后将写入业务记录和审计。</Typography.Paragraph>
       <Form form={form} layout="vertical" preserve={false}>
@@ -101,6 +107,26 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
           <Input maxLength={160} placeholder="选择同作业区且采集及时的设备"/></Form.Item>}
         <Form.Item name="reason" label="操作原因或处理结果" rules={[{required:true,whitespace:true,max:1000}]}>
           <Input.TextArea maxLength={1000} rows={3}/></Form.Item>
+      </Form>
+    </Modal>
+    <Modal title="新建工单" open={creating} destroyOnHidden confirmLoading={submitting}
+      onCancel={()=>{if(!submitting)setCreating(false);}} onOk={async()=>{
+        if(inFlight.current)return;inFlight.current=true;let values:Record<string,string>;
+        try{values=await createForm.validateFields();}catch{inFlight.current=false;return;}
+        setSubmitting(true);
+        try{await liveApi('/business/work-orders',{method:'POST',body:JSON.stringify(values)});setCreating(false);setReload(v=>v+1);}
+        catch(e){setCreating(false);setCommandError(e instanceof LiveApiError?e.message:'创建回执未取得，请按计划和说明查询，避免重复创建');}
+        finally{inFlight.current=false;setSubmitting(false);}
+      }}>
+      <Form form={createForm} layout="vertical" preserve={false} initialValues={{priority:'MEDIUM',orderType:'UNLOADING'}}>
+        <Form.Item name="planId" label="关联计划" rules={[{required:true}]}><Select options={plans.filter(p=>p.status!=='CANCELLED')
+          .map(p=>({value:p.id,label:p.planBatchNo+' · '+p.trainNo}))}/></Form.Item>
+        <Form.Item name="orderType" label="作业类型" rules={[{required:true}]}><Select options={[
+          {value:'LOADING',label:'装车'},{value:'UNLOADING',label:'卸车'},{value:'TRANSFER',label:'转运'},
+          {value:'MAINTENANCE',label:'维护'},{value:'OTHER',label:'其他'}]}/></Form.Item>
+        <Form.Item name="priority" label="优先级" rules={[{required:true}]}><Select options={[
+          {value:'HIGH',label:'高'},{value:'MEDIUM',label:'中'},{value:'LOW',label:'低'}]}/></Form.Item>
+        <Form.Item name="description" label="作业说明" rules={[{required:true,whitespace:true,max:1000}]}><Input.TextArea rows={3} maxLength={1000}/></Form.Item>
       </Form>
     </Modal>
   </Card>;

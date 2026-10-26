@@ -22,7 +22,9 @@
 
 ## 受控业务操作
 
-`POST /api/business/:collection/:id/actions` 请求包含 `action`、最近查询返回的 `row_version` 作为 `expectedVersion`、必填 `reason`；分配设备另含 `equipmentId`。动作权限按表中资源的 `write`、`approve` 或 `execute` 独立判定，且服从本地角色、数据范围与只读限制。任务和设备本身不开放这个写入接口。
+`POST /api/business/work-orders` 根据授权范围内的计划创建草稿工单，接收 `planId`、`orderType`、`priority`、`description`。作业区与计划批次由服务端读取，不接受浏览器指定；创建本身不确认计划、不派工或执行设备。
+
+`POST /api/business/:collection/:id/actions` 请求包含 `action`、最近查询返回的 `record_version` 作为 `expectedVersion`、必填 `reason`；分配设备另含 `equipmentId`。动作权限按表中资源的 `write`、`approve` 或 `execute` 独立判定，且服从本地角色、数据范围与只读限制。任务和设备本身不开放这个写入接口。
 
 - 工单：分配设备、接单、开始、暂停、完成、取消。派工和开始前检查计划已确认、设备同区在线且有及时采集、没有触发中的相关联锁。未完成关联任务时禁止直接完成工单。
 - 预约：待审→审核通过→签到排队→叫号→入场→完成离场。签到分配队列号时锁定预约表，禁止跳过当前业务状态。

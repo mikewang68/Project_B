@@ -22,6 +22,27 @@ export function businessTransition(collection:string,action:string,status:string
   if(!transition.from.includes(status))throw new AppError(409,'INVALID_STATE','记录状态已变化或不允许此操作，请刷新核对');
   return transition.to;
 }
+export async function createBusinessWorkOrder(input:unknown,
+    actor:{actorId:string;roleCode:string;dataScope:string[];subject:string},connect=connectClient){
+  const parsed=z.object({planId:z.string().min(1).max(160),orderType:z.enum(['LOADING','UNLOADING','TRANSFER','MAINTENANCE','OTHER']),
+    priority:z.enum(['HIGH','MEDIUM','LOW']),description:z.string().trim().min(1).max(1000)}).strict().safeParse(input);
+  if(!parsed.success)throw new AppError(400,'INVALID_COMMAND','工单字段格式无效');
+  if(!['admin','super_admin','scheduler','dispatcher'].includes(actor.roleCode))throw new AppError(403,'LOCAL_ROLE_DENIED','当前本地角色不能创建工单');
+  const q=businessReadQuery('work-orders',actor.dataScope,{}),db=await connect(),id='WO-'+randomUUID(),auditId=randomUUID(),traceId=randomUUID();
+  try{
+    await db.query('BEGIN');
+    const plan=(await db.query(`SELECT id,plan_batch_no,work_area,status FROM public.plans WHERE ${q.where}
+      AND id=$${q.values.length+1} FOR SHARE`,[...q.values,parsed.data.planId])).rows[0];
+    if(!plan||['CANCELLED','COMPLETED'].includes(plan.status))throw new AppError(409,'PLAN_UNAVAILABLE','计划不在授权范围或已结束');
+    const item=(await db.query(`INSERT INTO public.work_orders(id,plan_id,plan_batch_no,work_area,status,order_type,priority,description)
+      VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7) RETURNING id,status,updated_at,updated_at::text AS record_version`,
+      [id,plan.id,plan.plan_batch_no,plan.work_area,parsed.data.orderType,parsed.data.priority,parsed.data.description])).rows[0];
+    await db.query(`INSERT INTO public.audit_logs(id,actor_id,actor_role,operator_terminal,action,object_type,object_id,
+      before_state,after_state,reason,trace_id,occurred_at) VALUES($1,$2,$3,'WEB-BACKEND','work-orders:create','work-orders',$4,'{}'::jsonb,$5::jsonb,$6,$7,CURRENT_TIMESTAMP)`,
+      [auditId,actor.subject,actor.roleCode,id,JSON.stringify(item),parsed.data.description,traceId]);
+    await db.query('COMMIT');return{item,auditLogId:auditId,traceId};
+  }catch(error){try{await db.query('ROLLBACK');}catch{/* preserve failure */}throw error;}finally{db.release();}
+}
 export async function executeBusinessCommand(collection:BusinessCollection,id:string,input:unknown,
     actor:{actorId:string;roleCode:string;dataScope:string[];subject:string},connect=connectClient){
   const parsed=inputSchema.safeParse(input);
@@ -35,10 +56,10 @@ export async function executeBusinessCommand(collection:BusinessCollection,id:st
     await db.query('BEGIN');
     // Serialize queue-number allocation with other commands on this table.
     if(collection==='appointments'&&action==='checkin')await db.query('LOCK TABLE public.appointments IN SHARE ROW EXCLUSIVE MODE');
-    const before=(await db.query(`SELECT *,updated_at::text AS row_version FROM public.${q.table}
+    const before=(await db.query(`SELECT *,updated_at::text AS record_version FROM public.${q.table}
       WHERE ${q.where} AND id=$${q.values.length+1} FOR UPDATE`,[...q.values,id])).rows[0];
     if(!before)throw new AppError(404,'BUSINESS_OBJECT_NOT_FOUND','记录不存在或不在授权范围');
-    if(before.row_version!==expectedVersion)throw new AppError(409,'VERSION_CONFLICT','记录已被更新，请刷新后重新确认');
+    if(before.record_version!==expectedVersion)throw new AppError(409,'VERSION_CONFLICT','记录已被更新，请刷新后重新确认');
     const next=businessTransition(collection,action,before.status),changes:Record<string,unknown>={status:next};
     if(collection==='work-orders'){
       if(['assign','start'].includes(action)){
@@ -86,10 +107,10 @@ export async function executeBusinessCommand(collection:BusinessCollection,id:st
     }
     const columns=Object.keys(changes),values=Object.values(changes);
     const after=(await db.query(`UPDATE public.${q.table} SET ${columns.map((c,i)=>c+'=$'+(i+1)).join(',')},updated_at=clock_timestamp()
-      WHERE id=$${values.length+1} AND valid=1 RETURNING id,status,updated_at,updated_at::text AS row_version`,[...values,id])).rows[0];
+      WHERE id=$${values.length+1} AND valid=1 RETURNING id,status,updated_at,updated_at::text AS record_version`,[...values,id])).rows[0];
     await db.query(`INSERT INTO public.audit_logs(id,actor_id,actor_role,operator_terminal,action,object_type,object_id,
       before_state,after_state,reason,trace_id,occurred_at) VALUES($1,$2,$3,'WEB-BACKEND',$4,$5,$6,$7::jsonb,$8::jsonb,$9,$10,CURRENT_TIMESTAMP)`,
-      [auditId,actor.subject,actor.roleCode,collection+':'+action,collection,id,JSON.stringify({status:before.status,rowVersion:before.row_version}),JSON.stringify(after),reason,traceId]);
+      [auditId,actor.subject,actor.roleCode,collection+':'+action,collection,id,JSON.stringify({status:before.status,rowVersion:before.record_version}),JSON.stringify(after),reason,traceId]);
     await db.query('COMMIT');return{item:after,auditLogId:auditId,traceId};
   }catch(error){try{await db.query('ROLLBACK');}catch{/* keep original error */}throw error;}finally{db.release();}
 }

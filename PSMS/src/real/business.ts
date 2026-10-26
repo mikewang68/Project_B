@@ -14,7 +14,7 @@ export function canReadCollection(session: SessionContext, collection: LiveColle
   const resource = collection === 'tasks' || collection === 'equipment' ? 'monitor' : collection;
   return (session.fullAdmin && !session.readOnly) || session.permissions?.includes(`pps:api:${resource}:read`) === true;
 }
-const row = z.object({ id: z.string().min(1), status: z.string().min(1), updated_at: z.string().min(1),row_version:z.string().min(1) }).catchall(z.unknown());
+const row = z.object({ id: z.string().min(1), status: z.string().min(1), updated_at: z.string().min(1),record_version:z.string().min(1) }).catchall(z.unknown());
 const pageSchema = z.object({ collection: z.enum(['work-orders','tasks','equipment','appointments','exceptions']),
   items: z.array(row), total: z.number().int().nonnegative(), page: z.number().int().positive(),
   pageSize: z.number().int().positive(), generatedAt: z.string().min(1) });
@@ -39,7 +39,7 @@ export function canRunBusinessAction(session:SessionContext,action:BusinessActio
 }
 export async function runBusinessAction(collection:LiveCollection,row:BusinessRow,action:BusinessAction,values:{reason:string;equipmentId?:string}){
   return liveApi('/business/'+collection+'/'+encodeURIComponent(row.id)+'/actions',{
-    method:'POST',body:JSON.stringify({...values,action:action.code,expectedVersion:row.row_version}),
+    method:'POST',body:JSON.stringify({...values,action:action.code,expectedVersion:row.record_version}),
   });
 }
 export async function loadBusinessPage(collection: LiveCollection, filters: Record<string, string>, signal?: AbortSignal) {
