@@ -11,6 +11,7 @@ import StockoutView from '@/views/StockoutView.vue'
 import FinanceView from '@/views/FinanceView.vue'
 import IntegrationView from '@/views/IntegrationView.vue'
 import { useAuthStore } from '@/stores/auth'
+import { nativeEntryUrl } from './entry'
 const AgentView = () => import('@/views/AgentView.vue')
 
 export interface WmsRouteMeta {
@@ -34,6 +35,8 @@ const routes: RouteRecordRaw[] = [
   { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { title: '页面不存在' } },
 ]
 
+const entry = nativeEntryUrl(window.location.pathname, window.location.search, window.location.hash, routes.map(route => route.path))
+if (entry) window.history.replaceState(window.history.state, '', entry)
 const router = createRouter({ history: createWebHashHistory(), routes })
 
 router.beforeEach(async (to) => {
