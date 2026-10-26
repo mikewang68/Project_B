@@ -15,6 +15,7 @@ import { authRouter } from './routes/auth.routes.js';
 import { ssoRouter, ssoGuard } from './middleware/sso.js';
 import { plansRouter } from './routes/plans.routes.js';
 import { overviewRouter } from './routes/overview.routes.js';
+import { businessRouter } from './routes/business.routes.js';
 import { workOrdersRouter } from './routes/workOrders.routes.js';
 import { appointmentsRouter } from './routes/appointments.routes.js';
 import { monitorRouter } from './routes/monitor.routes.js';
@@ -63,6 +64,7 @@ app.use(ssoGuard);
 app.use('/api/auth', authRouter);
 app.use('/api/plans', plansRouter);
 app.use('/api/overview', overviewRouter);
+app.use('/api/business', businessRouter);
 app.use('/api/work-orders', workOrdersRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/monitor', monitorRouter);
@@ -151,7 +153,7 @@ async function start(): Promise<void> {
   }
 
   // 4. 按保留期清理审计日志（关系库没有 TTL，改为启动期主动清理）
-  await purgeAuditLogs(AUDIT_RETENTION_DAYS_DEFAULT).catch((err) =>
+  if(env.AUDIT_MAINTENANCE_ENABLED) await purgeAuditLogs(AUDIT_RETENTION_DAYS_DEFAULT).catch((err) =>
     logger.warn({ err }, '审计清理失败（不影响启动）'),
   );
 

@@ -3,6 +3,9 @@ import { do001Schema } from '../contracts';
 import { withAppBasePath } from '../runtime/appBasePath';
 
 let csrf = '';
+export class LiveApiError extends Error {
+  constructor(message: string, public readonly status: number) { super(message); }
+}
 export async function liveApi(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers); headers.set('Accept', 'application/json');
   if (init.body) headers.set('Content-Type', 'application/json');
@@ -15,7 +18,7 @@ export async function liveApi(path: string, init: RequestInit = {}) {
     csrf = ''; window.location.replace('/sso/start?page=PSMS%3Aui-002'); throw new Error('正在恢复统一登录');
   }
   const result = await response.json();
-  if (!response.ok || result.ok !== true) throw new Error(result.message || `业务接口返回 ${response.status}`);
+  if (!response.ok || result.ok !== true) throw new LiveApiError(result.message || `业务接口返回 ${response.status}`, response.status);
   return result;
 }
 

@@ -144,12 +144,16 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
       superAdmin: current.superAdmin && ['super_admin','admin'].includes(user.roleCode),
       applicationAdmin: current.applicationAdmin && ['super_admin','admin'].includes(user.roleCode), permissions: current.permissions};
     res.locals.platformAuthorization = effective;
+    res.locals.platformSubject = session.subject;
     if([current.company,current.org,current.domain,current.zone].some(value=>value?.trim())){fail(res,403,'SSO_SCOPE_UNSUPPORTED');return;}
     // Scope limits form a ceiling; current business grants are still required below.
     // Restricted scopes use only the plan adapter until other row-level adapters exist.
     const all=user.dataScope.some(scope=>['*','GLOBAL'].includes(scope));
     if (!all && req.path !== '/api/auth/me' && req.path !== '/api/overview'
-        && req.path !== '/api/plans' && !req.path.startsWith('/api/plans/')) {
+        && req.path !== '/api/plans' && !req.path.startsWith('/api/plans/')
+        && !(req.method === 'GET' && /^\/api\/business\/(work-orders|tasks|equipment|exceptions)$/.test(req.path))
+        && !(req.method==='POST' && (req.path==='/api/business/work-orders'
+          || /^\/api\/business\/(work-orders|exceptions)\/[^/]+\/actions$/.test(req.path)))) {
       fail(res, 403, 'SSO_ROUTE_NOT_ADAPTED'); return;
     }
     req.user = { userId: user._id, actorId: user.actorId, roleCode: user.roleCode, dataScope: [...user.dataScope] };
@@ -158,7 +162,7 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
     }
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
       if (effective.readOnly) { fail(res, 403, 'READ_ONLY'); return; }
-      if(!mayWriteBusinessRoute(effective,req.path)){
+      if(!mayWriteBusinessRoute(effective,req.path,req.body?.action)){
         fail(res,403,'OPERATION_PERMISSION_DENIED');return;
       }
       if (req.header('X-PSMS-CSRF') !== session.csrf) { fail(res, 403, 'CSRF_REJECTED'); return; }

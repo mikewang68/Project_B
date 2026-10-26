@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { DemoRootState } from '../stores';
 import type { DemoScenario } from '../mocks/fixtures';
 import type { CommandResult } from '../commands';
-import { setVerifiedLiveSession, type SessionContext } from '../auth';
+import { setVerifiedLiveSession,loadCurrentDemoSession, type SessionContext } from '../auth';
 import { createDemoRuntime, type DemoRuntime } from '../runtime';
 import { liveApi as api, loadLivePlans as loadPlans, loadLiveOverview } from './client';
 import { parsePlanEntryQuery } from '../features/plan-entry/query';
@@ -65,7 +65,17 @@ export default function LiveApp(){
     const timer=window.setInterval(async()=>{
       if(pending||document.visibilityState==='hidden')return;
       pending=true;
-      try{await runtime.gateway.getOverview();if(!disposed)setRefreshError('');}
+      try{
+        const current=userSchema.parse((await api('/auth/me')).data),old=loadCurrentDemoSession();
+        const signature=(permissions:readonly string[],scope:readonly string[],readOnly:boolean,admin:boolean)=>JSON.stringify([
+          [...permissions].sort(),[...scope].sort(),readOnly,admin]);
+        if(signature(current.permissions,current.dataScope,current.readOnly,current.superAdmin||current.applicationAdmin===true)
+          !==signature(old.permissions??[],old.dataScope,old.readOnly===true,old.fullAdmin===true)){
+          setVerifiedLiveSession({...old,permissions:[],readOnly:true,fullAdmin:false,dataScope:[]});
+          window.location.reload();return;
+        }
+        await runtime.gateway.getOverview();if(!disposed)setRefreshError('');
+      }
       catch(e){if(!disposed)setRefreshError(e instanceof Error?e.message:'业务刷新失败');}
       finally{pending=false;}
     },15000);
