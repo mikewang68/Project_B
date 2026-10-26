@@ -1,0 +1,239 @@
+openapi: 3.0.3
+info:
+  title: IAM navigation address publication
+  version: 1.2.0
+  description: >-
+    Paths are relative to the IAM servlet context, normally /api/v1/iam.
+    Management requires a platform administrator without a read-only restriction.
+    Native Cookie writes additionally require X-IAM-CSRF from /auth/sso/csrf.
+    BP_IAM_SESSION is an example Cookie name; use the configured servlet Cookie.
+    Readiness checks verify TLS, an audience-bound proof and the module HTML page;
+    allow sixty seconds for bounded network retries. Runtime configuration and
+    credentials belong in private deployment files.
+servers:
+  - url: /api/v1/iam
+security:
+  - bearerAuth: []
+  - nativeSession: []
+paths:
+  /navigation/addresses:
+    get:
+      summary: List the active address and version for each registered system
+      responses:
+        '200':
+          description: Standard envelope with an array of database address rows
+        '403':
+          description: Dedicated administrators and read-only users cannot manage platform destinations
+  /navigation/addresses/{app}/history:
+    parameters:
+      - $ref: '#/components/parameters/App'
+    get:
+      summary: List immutable publication history and draft validation state
+      responses:
+        '200':
+          description: Standard envelope with revision rows, newest first
+        '403':
+          description: Platform management permission required
+  /navigation/addresses/{app}/draft:
+    parameters:
+      - $ref: '#/components/parameters/App'
+    post:
+      summary: Create a draft without changing the active address
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, address]
+              properties:
+                expectedVersion:
+                  type: integer
+                  format: int64
+                  minimum: 1
+                address:
+                  $ref: '#/components/schemas/Address'
+      responses:
+        '200':
+          description: Standard envelope with a DRAFT revision; no active address change
+        '400':
+          description: Invalid transport, insecure browser entry or unregistered host
+        '403':
+          description: Management or CSRF permission denied
+        '409':
+          description: The active version differs from expectedVersion
+  /navigation/addresses/revisions/{id}/validate:
+    parameters:
+      - $ref: '#/components/parameters/Revision'
+    post:
+      summary: Validate a draft destination
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          description: >-
+            Standard envelope with a VALIDATED or FAILED revision and
+            validation_message. FAILED leaves the active address unchanged.
+        '409':
+          description: This revision cannot be validated in its current state
+  /navigation/addresses/revisions/{id}/publish:
+    parameters:
+      - $ref: '#/components/parameters/Revision'
+    post:
+      summary: Revalidate and atomically publish a validated draft
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          $ref: '#/components/responses/PublishedAddress'
+        '409':
+          description: Draft not validated or based on a superseded active version
+        '502':
+          description: Destination revalidation failed; the active address remains unchanged
+  /navigation/addresses/revisions/{id}/rollback:
+    parameters:
+      - $ref: '#/components/parameters/Revision'
+    post:
+      summary: Validate a historical address and publish it as a new version
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+      responses:
+        '200':
+          $ref: '#/components/responses/PublishedAddress'
+        '400':
+          description: Revision was never published
+        '502':
+          description: Historical destination is no longer ready
+  /auth/sso/navigation-address:
+    post:
+      summary: Read the address version bound to an application's service identity
+      security:
+        - serviceIdentity: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [audience]
+              properties:
+                audience:
+                  type: string
+                  enum: [iam, sys, wms, psms, scs, ehms, emcs, trust]
+                version:
+                  type: integer
+                  format: int64
+                  minimum: 1
+                  nullable: true
+                  description: Omit for active version; superseded versions remain usable for 180 seconds
+      responses:
+        '200':
+          $ref: '#/components/responses/PublishedAddress'
+        '403':
+          description: Missing service identity or credential bound to another audience
+        '409':
+          description: Requested transaction version is unavailable or expired
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    nativeSession:
+      type: apiKey
+      in: cookie
+      name: BP_IAM_SESSION
+      description: Example only; the Cookie name is configured by the servlet deployment
+    serviceIdentity:
+      type: apiKey
+      in: header
+      name: X-SSO-Service-Token
+      description: Server-side credential registered for exactly one audience
+  parameters:
+    App:
+      in: path
+      name: app
+      required: true
+      schema:
+        type: string
+        enum: [IAM, SYS, WMS, PSMS, SCS, EHMS, EMCS, TRUST]
+    Revision:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Csrf:
+      in: header
+      name: X-IAM-CSRF
+      required: false
+      description: Mandatory when authenticating with a native servlet session Cookie
+      schema:
+        type: string
+  schemas:
+    Address:
+      type: object
+      required: [originIp, originPort, modulePath]
+      properties:
+        domainName:
+          type: string
+          description: DNS hostname without scheme, port or path; empty uses the registered IPv4 fallback
+        publicScheme:
+          type: string
+          enum: [https]
+          default: https
+        publicPort:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          nullable: true
+        originScheme:
+          type: string
+          enum: [http, https]
+          description: Proxy transport; IPv4 browser fallback must use trusted HTTPS
+        originIp:
+          type: string
+          format: ipv4
+        originPort:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        modulePath:
+          type: string
+          description: Absolute application base path, without query, fragment or dot traversal
+    RuntimeAddress:
+      type: object
+      required: [appCode, version, baseUrl, origin, modulePath]
+      properties:
+        appCode:
+          type: string
+        version:
+          type: integer
+          format: int64
+        baseUrl:
+          type: string
+          format: uri
+        origin:
+          type: string
+          format: uri
+        modulePath:
+          type: string
+  responses:
+    PublishedAddress:
+      description: Active or transaction-pinned address in the standard IAM response envelope
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data]
+            properties:
+              code:
+                type: integer
+                enum: [0]
+              message:
+                type: string
+              data:
+                $ref: '#/components/schemas/RuntimeAddress'

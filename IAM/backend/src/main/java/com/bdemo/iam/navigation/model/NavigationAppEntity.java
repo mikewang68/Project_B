@@ -17,6 +17,9 @@ public class NavigationAppEntity {
   private String originIp;
   private Integer originPort;
   private String modulePath;
+  private long addressVersion = 1;
+  public long getAddressVersion() { return addressVersion; }
+  public void setAddressVersion(long value) { addressVersion = value; }
   private int inNavScope;
   private int enabled;
   private int valid;

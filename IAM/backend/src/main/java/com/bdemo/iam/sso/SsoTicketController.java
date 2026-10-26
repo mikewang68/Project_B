@@ -43,6 +43,17 @@ public class SsoTicketController {
   @org.springframework.beans.factory.annotation.Autowired
   private SsoAuthorizationService authorization;
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bdemo.iam.navigation.service.NavigationAddressPublicationService addresses;
+
+  public record AddressRequest(String audience, Long version) {}
+  @PostMapping("/navigation-address")
+  public R<Map<String,Object>> address(@RequestBody AddressRequest request,
+      @RequestHeader(value="X-SSO-Service-Token",required=false)String credential) {
+    if(!services.authorize(request.audience(),credential))throw new SsoServiceDeniedException("服务身份校验失败");
+    return R.ok(addresses.runtime(request.audience(),request.version()));
+  }
+
   public SsoTicketController(
       SsoTicketService tickets, SsoSubjectGuard subjects, SsoServiceIdentity services) {
     this.tickets = tickets;

@@ -24,16 +24,18 @@ interface NavItem {
   icon: string
   path: string
   perm: string
+  platformOnly?: boolean
 }
 
 const navMenu: NavItem[] = [
+  { id: 'iam-addresses', label: '系统访问地址', icon: 'Link', path: '/system/addresses', perm: 'iam:menu:tree:view', platformOnly: true },
   { id: 'iam-users', label: '用户管理', icon: 'UserFilled', path: '/system/users', perm: 'iam:user:list:view' },
   { id: 'iam-roles', label: '角色管理', icon: 'Avatar', path: '/system/roles', perm: 'iam:role:list:view' },
   { id: 'iam-menus', label: '菜单与权限', icon: 'Menu', path: '/system/menus', perm: 'iam:menu:tree:view' },
   { id: 'iam-health', label: '权限健康', icon: 'DataAnalysis', path: '/system/health', perm: 'iam:role:list:view' },
 ]
 
-const filteredMenu = computed(() => navMenu.filter((item) => auth.permCodes.has(item.perm)))
+const filteredMenu = computed(() => navMenu.filter((item) => auth.permCodes.has(item.perm) && (!item.platformOnly || auth.isSuperAdmin)))
 const activeMenu = computed(() => route.path)
 
 function handleSelect(path: string) {
