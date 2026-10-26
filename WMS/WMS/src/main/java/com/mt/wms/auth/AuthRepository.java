@@ -37,7 +37,16 @@ public class AuthRepository {
                 .optional();
     }
 
-    List<String> findRoles(long userId) {
+    /** 按公司编码查 id，供 SSO 建立本地会话时使用（不信任前端传来的 company）。 */
+    public java.util.Optional<Long> findCompanyId(String companyCode) {
+        if (companyCode == null || companyCode.isBlank()) return java.util.Optional.empty();
+        return jdbc.sql("SELECT id FROM auth_company WHERE code = :code AND status = 'ENABLED' LIMIT 1")
+                .param("code", companyCode)
+                .query(Long.class)
+                .optional();
+    }
+
+    public List<String> findRoles(long userId) {
         return jdbc.sql("""
                         SELECT r.code FROM auth_role r
                         JOIN auth_user_role ur ON ur.role_id = r.id
@@ -49,7 +58,7 @@ public class AuthRepository {
                 .list();
     }
 
-    Set<String> findPermissions(long userId) {
+    public Set<String> findPermissions(long userId) {
         return jdbc.sql("""
                         SELECT DISTINCT p.code FROM auth_permission p
                         JOIN auth_role_permission rp ON rp.permission_id = p.id
@@ -76,7 +85,7 @@ public class AuthRepository {
                 .toList();
     }
 
-    List<AuthModels.TenantOption> findWarehouses(long userId, long companyId, boolean all) {
+    public List<AuthModels.TenantOption> findWarehouses(long userId, long companyId, boolean all) {
         String sql = all
                 ? """
                   SELECT w.id, w.code, w.name FROM wms_warehouse w
@@ -96,7 +105,7 @@ public class AuthRepository {
         return statement.query(AuthModels.TenantOption.class).list();
     }
 
-    List<AuthModels.TenantOption> findOwners(long userId, long companyId, boolean all) {
+    public List<AuthModels.TenantOption> findOwners(long userId, long companyId, boolean all) {
         String sql = all
                 ? """
                   SELECT o.id, o.code, o.name FROM wms_owner o

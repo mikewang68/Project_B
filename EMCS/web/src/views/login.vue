@@ -71,7 +71,7 @@ import { encrypt, decrypt } from "@/utils/jsencrypt";
 import useUserStore from '@/store/modules/user'
 import defaultSettings from '@/settings'
 
-const title = import.meta.env.VITE_APP_TITLE;
+const title = import.meta.env.VITE_APP_TITLE || '能源管理与控制系统';
 const footerContent = defaultSettings.footerContent
 const userStore = useUserStore();
 const route = useRoute();

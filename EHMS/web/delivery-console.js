@@ -78,6 +78,6 @@ async function downloadAuditPackage(){
 }
 
 const baseRenderPageDelivery=renderPage;renderPage=function(){if(!DELIVERY_PAGES.has(state.page))return baseRenderPageDelivery();$('#pageView').innerHTML=renderDeliveryConsole();syncNav();$('#content').scrollTop=0;bindPageEvents();};
-const baseSetPageDelivery=setPage;setPage=function(page){baseSetPageDelivery(page);if(DELIVERY_PAGES.has(page))loadDeliveryConsole();};
+const baseSetPageDelivery=setPage;setPage=function(page,options){baseSetPageDelivery(page,options);if(DELIVERY_PAGES.has(page))loadDeliveryConsole();};
 const baseHandleActionDelivery=handleAction;handleAction=function(event){const action=event.currentTarget.dataset.action;if(action==='reloadDelivery')return loadDeliveryConsole(true);if(action==='downloadAuditPackage')return downloadAuditPackage();return baseHandleActionDelivery(event);};
 const baseBindPageEventsDelivery=bindPageEvents;bindPageEvents=function(){baseBindPageEventsDelivery();const selector=$('#deliveryRoleSelect');if(selector)selector.onchange=()=>{state.delivery.demoRole=selector.value;toast(`“${selector.value}”仅用于权限设计预览，不改变真实会话身份或后端权限。`);};};

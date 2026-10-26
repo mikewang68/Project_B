@@ -9,7 +9,7 @@
   function renderSamples(){const s=state.samples,d=s.status;const rows=MENU.flatMap(g=>g.children.map(([id,label])=>{const t=stage(id);return `<tr><td>${esc(g.label)}</td><td>${gotoButton(esc(label),id)}</td><td>${tag(t[0],t[1])}</td><td>${esc(limitation(id))}</td></tr>`;})).join('');
     return `<div class="page">${pageHead('演示数据与功能验收','虚拟数据真实保存到当前验收数据库；与现场数据、真实AI和链上证据明确区分。',button('刷新状态','sampleReload'))}${s.error?`<div class="callout warning">${esc(s.error)}</div>`:''}${panel('演示场景',`<p>8台虚拟设备、24个测点、24小时虚拟趋势、告警与多状态工单、78条虚拟评估历史，以及BOM、模板、校准、变更、待办、交接、点检、知识库和备件场景。</p><p>标识统一使用 <code>SAMPLE-</code> 或“[虚拟]”。样例只用于演示和测试，不证明真实采集、寿命模型精度或上链。</p><p>导入：${d?.imported?'已安装':'未安装'}；功能开关：${d?.enabled?'已启用':'关闭'}；业务存储：${esc(d?.storageAdapter||'未知')}；时序适配：${esc(d?.telemetryAdapter||'未知')}。</p><div class="inline-actions">${button('安装虚拟演示场景','sampleInstall','primary')}${button('生成一轮虚拟采样','sampleTick')}${gotoButton('查看设备台账','fleet')}${gotoButton('查看日志与回执','audit-logs')}</div><p class="muted">不会覆盖已有设备、清空日志、修改账号或向区块链发送样例。已安装的样例不会自动重新生成或覆盖；虚拟采样需手动触发，时间久后会正常显示过期。</p>`)}<section class="panel"><div class="panel-head"><h2>全部菜单能力边界（${MENU.reduce((n,g)=>n+g.children.length,0)}项）</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>模块</th><th>功能入口</th><th>当前实现范围</th><th>说明 / 未完成项</th></tr></thead><tbody>${rows}</tbody></table></div></section></div>`;
   }
-  async function reload(){try{state.samples.status=await apiRequest('/system/sample-data');state.samples.error='';if(state.samples.status.imported&&state.spares.warehouseCode==='MAIN')state.spares.warehouseCode='SAMPLE-WH';}catch(e){state.samples.error=e.message;}if(state.page==='sample-workbench')renderPage();}
+  async function reload(){const auth=window.EhmAuth;if(!auth.user||auth.mode==='iam'&&!auth.canWrite()&&!auth.globalRead){state.samples.status=null;return;}try{state.samples.status=await apiRequest('/system/sample-data');state.samples.error='';if(state.samples.status.imported&&state.spares.warehouseCode==='MAIN')state.spares.warehouseCode='SAMPLE-WH';}catch(e){state.samples.error=e.message;}if(state.page==='sample-workbench')renderPage();}
   const oldLoad=loadBackendData;loadBackendData=async function(...args){await oldLoad(...args);const code='SAMPLE-GT-01';if(!EQUIPMENT.some(x=>x.code===code))return;
     if(!EQUIPMENT.some(x=>x.code===state.asset)||state.asset==='GT-01')state.asset=code;
     for(const key of ['healthFlow','maintenanceProgram','visual'])if(state[key]&&(!EQUIPMENT.some(x=>x.code===state[key].assetCode)||state[key].assetCode==='GT-01'))state[key].assetCode=code;
@@ -23,7 +23,7 @@
       $('#pageView').querySelectorAll('[aria-label]').forEach(el=>el.setAttribute('aria-label',el.getAttribute('aria-label').replace(/openGemini/g,'虚拟样本库')));
     }
   };
-  const oldPage=setPage;setPage=function(page){oldPage(page);if(page==='sample-workbench')reload();};
+  const oldPage=setPage;setPage=function(page,options){const result=oldPage(page,options);if(page==='sample-workbench')reload();return result;};
   const oldAction=handleAction;handleAction=function(event){const a=event.currentTarget.dataset.action;if(a==='sampleReload')return reload();
     if(a==='sampleInstall'||a==='sampleTick'){
       if(state.samples.busy)return;if(!window.EhmAuth.canWrite())return toast('仅超级管理员可管理样例');

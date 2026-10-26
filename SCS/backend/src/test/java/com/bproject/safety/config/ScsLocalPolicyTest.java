@@ -46,7 +46,7 @@ class ScsLocalPolicyTest {
   }
 
   @Test
-  void nonBlankDataScopesMatchingBindingsAreAccepted() throws Exception {
+  void nonBlankDataScopesWithoutObjectFilteringAreRejected() throws Exception {
     var policy = policy();
     var claims = new HashMap<String,Object>(claims(List.of("safety:fence:list:view"), false, false));
     claims.put("company","c-01");claims.put("org","o-02");claims.put("domain","d-03");claims.put("zone","");
@@ -56,8 +56,7 @@ class ScsLocalPolicyTest {
         "company", "c-01", "org", "o-02", "domain", "d-03", "zone", "",
         "permissions", List.of("safety:fence:list:view")))));
     var scoped = new ScsLocalPolicy(bindings, path.toString());
-    var actor = scoped.resolve(claims);
-    assertTrue(policy.permits(actor, "GET", "/api/v1/auth/me"));
+    assertThrows(ScsIamTicketValidator.InvalidTicketException.class, () -> scoped.resolve(claims));
     var mismatched = new HashMap<String,Object>(claims);
     mismatched.put("company","c-99");
     assertThrows(ScsIamTicketValidator.InvalidTicketException.class, () -> scoped.resolve(mismatched));

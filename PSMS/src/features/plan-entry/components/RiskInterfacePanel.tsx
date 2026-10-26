@@ -13,6 +13,7 @@ const healthPresentation = {
   DEGRADED: { label: '降级', status: 'warning' },
   UNAVAILABLE: { label: '不可用', status: 'error' },
   CIRCUIT_OPEN: { label: '已熔断', status: 'error' },
+  UNVERIFIED: { label: '尚未核验', status: 'default' },
 } as const;
 
 function formatLastSuccess(value?: string): string {
@@ -32,9 +33,9 @@ export default function RiskInterfacePanel({ health, risks }: RiskInterfacePanel
         <section>
           <div className="interface-health-heading">
             <div>
-              <Typography.Text strong>计划接口</Typography.Text>
+              <Typography.Text strong>{health.sourceLabel||'计划接口'}</Typography.Text>
               <Typography.Paragraph type="secondary">
-                95306 / 铁路计划接入通道
+                {health.description||'95306 / 铁路计划接入通道'}
               </Typography.Paragraph>
             </div>
             <Badge status={presentation.status} text={presentation.label} />

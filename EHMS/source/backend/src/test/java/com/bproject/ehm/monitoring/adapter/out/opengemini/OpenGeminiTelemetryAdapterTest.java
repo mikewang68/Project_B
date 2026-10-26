@@ -40,7 +40,7 @@ class OpenGeminiTelemetryAdapterTest {
 
         String line = adapter.lineProtocol(sample);
 
-        assertTrue(line.startsWith("ehm_point_value,point_code=GT\\ 01\\,VIB\\=RMS,asset_code=GT-01"));
+        assertTrue(line.startsWith("ehm_point_value,project_id=UNASSIGNED,point_code=GT\\ 01\\,VIB\\=RMS,asset_code=GT-01"));
         assertTrue(line.contains(" value=6.8,quality=\"GOOD\",unit=\"mm/s\""));
         assertTrue(line.endsWith("1789002123123456789"));
     }

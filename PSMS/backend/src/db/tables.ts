@@ -71,6 +71,7 @@ const userDataScopes: ChildSpec = {
   columns: { scope: 'scope' },
   keyColumns: ['actor_id', 'scope'],
   orderBy: 'scope',
+  transform: (items) => items.map((item) => item.scope).filter((scope): scope is string => typeof scope === 'string' && scope.length > 0),
 };
 
 const planCargoItems: ChildSpec = {

@@ -41,7 +41,11 @@ public class WorkOrderController {
     }
 
     @PatchMapping("/{orderNo}/status")
-    public WorkOrderView changeStatus(@PathVariable String orderNo, @Valid @RequestBody StatusRequest request) {
+    public WorkOrderView changeStatus(@PathVariable String orderNo, @Valid @RequestBody StatusRequest request,
+                                      jakarta.servlet.http.HttpServletRequest http) {
+        if(com.bproject.ehm.platform.audit.adapter.in.web.IamAuditIdentityFilter.actor(http) instanceof com.bproject.ehm.platform.security.EhmSsoSessions.Actor actor
+            && !com.bproject.ehm.platform.security.EhmBusinessPermissions.permitsWorkOrderStatus(actor,request.status()))
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN,"Work order transition is not authorized");
         return workOrders.transition(orderNo, request.status(), request.operator(), request.reason());
     }
 

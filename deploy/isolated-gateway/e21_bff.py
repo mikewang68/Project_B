@@ -24,6 +24,8 @@ import hmac
 import hashlib
 import base64
 import uuid
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cross_domain_sso import CentralBridge, request_json as sso_request_json
 
 # Load 0600 secrets if present
 SECRETS_FILE = os.path.expanduser(os.environ.get("E12_SECRETS_FILE", "~/.secrets/bff_secrets.env"))
@@ -35,7 +37,7 @@ if os.path.exists(SECRETS_FILE):
                 if s_line and not s_line.startswith("#") and "=" in s_line:
                     k, v = s_line.split("=", 1)
                     clean_val = v.strip().strip("'").strip('"')
-                    os.environ[k.strip()] = clean_val
+                    os.environ.setdefault(k.strip(), clean_val)
     except Exception as e:
         print(f"Warning: could not read secrets file {SECRETS_FILE}: {e}")
 
@@ -54,7 +56,10 @@ IAM_PORT = int(_env("IAM_PORT", "18086"))
 SYS_PORT = int(_env("SYS_PORT", "18082"))
 WMS_BASE_URL = _env("WMS_BASE_URL", "http://127.0.0.1:18084").rstrip("/")
 EHMS_BASE_URL = _env("EHMS_BASE_URL", "http://127.0.0.1:18083").rstrip("/")
-SCS_API_BASE_URL = _env("SCS_API_BASE_URL", "http://127.0.0.1:18080").rstrip("/")
+EHMS_SSO_ENABLED = _env("EHMS_SSO_ENABLED", "false").lower() == "true"
+PSMS_API_BASE_URL = _env("PSMS_API_BASE_URL", "").rstrip("/")
+PSMS_FE_BASE_URL = _env("PSMS_FE_BASE_URL", "http://127.0.0.1:18300").rstrip("/")
+SCS_API_BASE_URL = _env("SCS_API_BASE_URL", "").rstrip("/")
 SCS_FE_BASE_URL = _env("SCS_FE_BASE_URL", "http://127.0.0.1:18088").rstrip("/")
 TRUST_BASE = _env("TRUST_BASE", "http://127.0.0.1:28185").rstrip("/")
 EMCS_BASE = _env("EMCS_BASE", "http://127.0.0.1:18095").rstrip("/")
@@ -96,11 +101,50 @@ AUDIT_LOG_FILE = os.path.join(LOG_DIR, "network_audit.log")
 # Extra origins accepted by the CSRF gate, comma separated (host:port).
 CSRF_EXTRA_ORIGINS = [o.strip() for o in _env("CSRF_EXTRA_ORIGINS", "").split(",") if o.strip()]
 
-SESSION_COOKIE_NAME = "b_session_id"
+SESSION_COOKIE_NAME = _env("BFF_SESSION_COOKIE_NAME", "b_session_id")
 SESSION_MAX_AGE = 43200       # 12 hours
 SESSION_IDLE_TIMEOUT = 7200   # 2 hours
 SESSIONS = {}
 SESSION_LOCK = threading.Lock()
+_sso_registry = _env('SSO_APPLICATIONS_FILE', '')
+CROSS_DOMAIN_SSO = None
+if _sso_registry:
+    with open(_sso_registry, encoding='utf-8') as _sso_file:
+        _sso_apps = json.load(_sso_file)
+    def _sso_navigation(session):
+        result, _ = sso_request_json(IAM_BASE_URL + IAM_CONTEXT_PATH + '/navigation/tree',
+            headers={'Authorization': 'Bearer ' + session['token']})
+        if result.get('code') != 0 or not isinstance(result.get('data'), dict):
+            from cross_domain_sso import Denied
+            raise Denied(403, 'Navigation authorization rejected')
+        return result['data']
+    def _sso_current_session(handler):
+        sid, session = handler.get_client_session()
+        if not session:
+            return None
+        from cross_domain_sso import Denied
+        try:
+            sso_request_json(IAM_BASE_URL + IAM_CONTEXT_PATH + '/auth/me',
+                headers={'Authorization': 'Bearer ' + session['token']})
+            return session
+        except Denied as failure:
+            if failure.status in (401, 403):
+                revoke_session(sid)
+                return None
+            raise
+    def _sso_issue_ticket(session, audience):
+        from cross_domain_sso import Denied
+        try:
+            return request_iam_ticket(session['token'], audience)
+        except SsoTicketError:
+            raise Denied(403, 'Application identity is unavailable') from None
+    _address_source = None
+    if _env('SSO_DATABASE_ADDRESSES', 'false').lower() == 'true':
+        from cross_domain_sso import DatabaseAddressSource
+        _address_source = DatabaseAddressSource(IAM_BASE_URL + IAM_CONTEXT_PATH + '/auth/sso/navigation-address',
+            {aud: app['credential'] for aud, app in _sso_apps.items()})
+    CROSS_DOMAIN_SSO = CentralBridge(_sso_apps, _sso_current_session,
+        _sso_navigation, _sso_issue_ticket, address_provider=_address_source)
 
 def log_network(method, path, status, detail=""):
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
@@ -240,6 +284,9 @@ class ThreadingGatewayServer(socketserver.ThreadingMixIn, http.server.HTTPServer
     allow_reuse_address = True
 
 class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *_):
+        # Structured application audit excludes credentials and SSO callback queries.
+        pass
     protocol_version = "HTTP/1.1"
 
     def get_client_session(self):
@@ -256,19 +303,26 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
 
     def send_cors_headers(self):
         origin = self.headers.get("Origin")
-        if origin:
+        parsed = urllib.parse.urlsplit(origin or "")
+        allowed_hosts = [f"127.0.0.1:{BFF_PORT}", f"localhost:{BFF_PORT}"] + CSRF_EXTRA_ORIGINS
+        if origin and parsed.scheme in ("http", "https") and not parsed.username and parsed.netloc in allowed_hosts:
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Access-Control-Allow-Credentials", "true")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
             self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN, X-Gateway-Route")
-            self.send_header("Access-Control-Expose-Headers", "Set-Cookie, Authorization")
+            self.send_header("Vary", "Origin")
 
     def check_csrf(self):
         if self.command in ["POST", "PUT", "DELETE", "PATCH"]:
             origin = self.headers.get("Origin")
             if origin:
                 allowed_hosts = [f"127.0.0.1:{BFF_PORT}", f"localhost:{BFF_PORT}"] + CSRF_EXTRA_ORIGINS
-                allowed = any(origin.endswith(h) for h in allowed_hosts)
+                parsed = urllib.parse.urlsplit(origin)
+                public_origin = _env("BFF_PUBLIC_ORIGIN", "").rstrip("/")
+                if public_origin and origin.rstrip("/") == public_origin and not parsed.username and not parsed.password:
+                    return True
+                allowed = (parsed.scheme in ("http", "https") and not parsed.username
+                           and not parsed.password and parsed.netloc in allowed_hosts)
                 if not allowed:
                     return False
         return True
@@ -298,7 +352,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
             if sess.get("wms_session"):
                 return sess["wms_session"]["cookie"], sess["wms_session"].get("csrf")
 
-            username = sess["user"].get("username") or "admin"
+            username = sess["user"].get("username") or "unknown"
             raw_company = sess["user"].get("company")
             company = map_iam_user_to_wms_company(username, raw_company)
 
@@ -322,6 +376,8 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
 
                 with urllib.request.urlopen(exchange_req, timeout=15) as resp:
                     resp_body = json.loads(resp.read().decode("utf-8"))
+                    if resp_body.get("code") != "OK":
+                        return None, None
                     set_cookies = resp.headers.get_all("Set-Cookie") or []
                     cookies = []
                     csrf_token = ""
@@ -356,6 +412,8 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
                 return None, None
 
     def do_GET(self):
+        if CROSS_DOMAIN_SSO and CROSS_DOMAIN_SSO.dispatch(self):
+            return
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
@@ -372,8 +430,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
                         "permissions": sess["permissions"],
                         "superAdmin": sess["superAdmin"],
                         "accessMode": sess.get("accessMode"),
-                        "readOnly": sess.get("readOnly", False),
-                        "token": sess["token"]
+                        "readOnly": sess.get("readOnly", False)
                     }
                 })
                 log_network("GET", path, 200, f"Session active: user={sess['user'].get('username')}")
@@ -398,9 +455,13 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
         elif path.startswith("/ehm/api/"):
             self.forward_request("GET", EHMS_BASE_URL, path.replace("/ehm", "", 1))
         elif path.startswith("/api/ehm/"):
-            self.forward_request("GET", EHMS_BASE_URL, path)
+            self.forward_ehms_request("GET", self.path)
+        elif path.startswith("/production-dispatch/api/"):
+            self.forward_sso_request("psms", PSMS_API_BASE_URL, self.path.replace("/production-dispatch", "", 1), "/api/auth/sso/exchange")
         elif path.startswith("/safety/api/"):
-            self.forward_request("GET", SCS_API_BASE_URL, path.replace("/safety", "", 1))
+            self.forward_sso_request("scs", SCS_API_BASE_URL, self.path.replace("/safety", "", 1), "/api/v1/auth/sso/exchange")
+        elif path.startswith("/emcs-api/"):
+            self.proxy_passthrough(EMCS_BASE, self.path, html_rewrite=False)
         elif self._is_wms_api_path(path):
             target_path = self.path.replace("/api/v1/wms", "/api/v1") if path.startswith("/api/v1/wms") else self.path
             self.forward_wms_request("GET", WMS_BASE_URL, target_path)
@@ -411,13 +472,29 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
             self.serve_static()
 
     def do_POST(self):
+        if CROSS_DOMAIN_SSO and CROSS_DOMAIN_SSO.dispatch(self):
+            return
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        if not self.check_csrf():
+            self.drain_body()
+            self.send_json(403, {"code": 40302, "message": "跨站请求已被拦截"})
+            return
         # E19 Gate3：写方法先过授权门禁（只读主体在此被拒）
         if self.enforce_candidate_gate(path):
             return
 
-        # FINAL: SCS 写方法代理到 18088（必须先于兜底，且必须读取 body）
+        if path.startswith("/production-dispatch/api/"):
+            self.forward_sso_request("psms", PSMS_API_BASE_URL, self.path.replace("/production-dispatch", "", 1), "/api/auth/sso/exchange")
+            return
+        if path.startswith("/safety/api/"):
+            self.forward_sso_request("scs", SCS_API_BASE_URL, self.path.replace("/safety", "", 1), "/api/v1/auth/sso/exchange")
+            return
+        if path.startswith("/emcs-api/"):
+            self.proxy_passthrough(EMCS_BASE, self.path, html_rewrite=False)
+            return
+
+        # SCS 静态服务器不再接收业务 API。
         if path.startswith("/safety/"):
             upstream = "/" + path[len("/safety/"):] if path != "/safety/" else "/"
             self.proxy_passthrough(SCS_FE_BASE_URL, upstream, prefix_rewrite=None, html_rewrite=False)
@@ -449,7 +526,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
         elif path.startswith("/api/v1/sys/"):
             self.forward_request("POST", f"http://127.0.0.1:{SYS_PORT}", self.path)
         elif path.startswith("/api/ehm/"):
-            self.forward_request("POST", EHMS_BASE_URL, path)
+            self.forward_ehms_request("POST", self.path)
         elif self._is_wms_api_path(path):
             target_path = self.path.replace("/api/v1/wms", "/api/v1") if path.startswith("/api/v1/wms") else self.path
             self.forward_wms_request("POST", WMS_BASE_URL, target_path)
@@ -462,7 +539,20 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
     def do_PUT(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        if not self.check_csrf():
+            self.drain_body()
+            self.send_json(403, {"code": 40302, "message": "跨站请求已被拦截"})
+            return
         if self.enforce_candidate_gate(path):
+            return
+        if path.startswith("/production-dispatch/api/"):
+            self.forward_sso_request("psms", PSMS_API_BASE_URL, self.path.replace("/production-dispatch", "", 1), "/api/auth/sso/exchange")
+            return
+        if path.startswith("/safety/api/"):
+            self.forward_sso_request("scs", SCS_API_BASE_URL, self.path.replace("/safety", "", 1), "/api/v1/auth/sso/exchange")
+            return
+        if path.startswith("/emcs-api/"):
+            self.proxy_passthrough(EMCS_BASE, self.path, html_rewrite=False)
             return
         # E19 Gate2: 原生系统同源代理（写方法同样保留上游自身的 CSRF/认证校验）
         if path.startswith("/trust/") or path.startswith("/emcs/"):
@@ -479,7 +569,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
         elif path.startswith("/api/v1/sys/"):
             self.forward_request("PUT", f"http://127.0.0.1:{SYS_PORT}", self.path)
         elif path.startswith("/api/ehm/"):
-            self.forward_request("PUT", EHMS_BASE_URL, path)
+            self.forward_ehms_request("PUT", self.path)
         elif self._is_wms_api_path(path):
             target_path = self.path.replace("/api/v1/wms", "/api/v1") if path.startswith("/api/v1/wms") else self.path
             self.forward_wms_request("PUT", WMS_BASE_URL, target_path)
@@ -487,10 +577,37 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
             self.drain_body()
             self.send_json(404, {"code": 40401, "message": "Not Found"})
 
+    def do_PATCH(self):
+        path = urllib.parse.urlparse(self.path).path
+        if not self.check_csrf():
+            self.drain_body()
+            self.send_json(403, {"code": 40302, "message": "Cross-site request denied"})
+            return
+        if self.enforce_candidate_gate(path):
+            return
+        if path.startswith("/production-dispatch/api/"):
+            self.forward_sso_request("psms", PSMS_API_BASE_URL, self.path.replace("/production-dispatch", "", 1), "/api/auth/sso/exchange")
+            return
+        self.drain_body()
+        self.send_json(405, {"code": 405, "message": "Method not supported"})
+
     def do_DELETE(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        if not self.check_csrf():
+            self.drain_body()
+            self.send_json(403, {"code": 40302, "message": "跨站请求已被拦截"})
+            return
         if self.enforce_candidate_gate(path):
+            return
+        if path.startswith("/production-dispatch/api/"):
+            self.forward_sso_request("psms", PSMS_API_BASE_URL, self.path.replace("/production-dispatch", "", 1), "/api/auth/sso/exchange")
+            return
+        if path.startswith("/safety/api/"):
+            self.forward_sso_request("scs", SCS_API_BASE_URL, self.path.replace("/safety", "", 1), "/api/v1/auth/sso/exchange")
+            return
+        if path.startswith("/emcs-api/"):
+            self.proxy_passthrough(EMCS_BASE, self.path, html_rewrite=False)
             return
         # E19 Gate2: 原生系统同源代理（写方法同样保留上游自身的 CSRF/认证校验）
         if path.startswith("/trust/") or path.startswith("/emcs/"):
@@ -538,7 +655,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
                     roles = data.get("roles", [])
                     permissions = data.get("permissions", [])
                     role_codes = [str(r.get("code") or "").lower() for r in roles if isinstance(r, dict)]
-                    super_admin = "super_admin" in role_codes
+                    super_admin = any(c in ("super_admin", "platform_admin_full") for c in role_codes)
                     read_only = any(c in ("auditor", "auditor_readonly", "readonly_auditor",
                                           "platform_auditor_readonly") for c in role_codes)
                     access_mode = "READONLY_AUDITOR" if read_only else ("FULL_ADMIN" if super_admin else "SCOPED_USER")
@@ -547,9 +664,17 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
                     sid, sess = create_session(token, user, roles_out, permissions, super_admin,
                                                access_mode=access_mode, read_only=read_only)
                     # Bridge WMS session asynchronously
-                    threading.Thread(target=self.get_or_create_wms_session, args=(sess,), daemon=True).start()
+                    if CROSS_DOMAIN_SSO is None:
+                        threading.Thread(target=self.get_or_create_wms_session, args=(sess,), daemon=True).start()
                     cookie_val = f"{SESSION_COOKIE_NAME}={sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_MAX_AGE}"
+                    if _env('BFF_PUBLIC_ORIGIN', '').startswith('https://'):
+                        cookie_val += '; Secure'
 
+                    public_data = dict(data)
+                    public_data.pop("token", None)
+                    public_data.pop("refreshToken", None)
+                    public_data["authenticated"] = True
+                    resp_bytes = json.dumps({**res_json, "data": public_data}, ensure_ascii=False).encode("utf-8")
                     self.send_response(200)
                     self.send_cors_headers()
                     self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -557,7 +682,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
                     self.send_header("Content-Length", str(len(resp_bytes)))
                     self.end_headers()
                     self.wfile.write(resp_bytes)
-                    log_network("POST", "/auth/login", 200, f"Unified login SUCCESS: user={user.get('username')}, sid={sid[:8]}...")
+                    log_network("POST", "/auth/login", 200, f"Unified login SUCCESS: user={user.get('username')}")
                     return
 
                 self.send_response(resp.status)
@@ -588,9 +713,17 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
                 try:
                     req = urllib.request.Request(f"http://127.0.0.1:{IAM_PORT}/api/v1/iam/auth/logout", method="POST")
                     req.add_header("Authorization", f"Bearer {sess['token']}")
-                    urllib.request.urlopen(req, timeout=5)
+                    with urllib.request.urlopen(req, timeout=5) as response:
+                        result = json.loads(response.read())
+                        if result.get("code") != 0:
+                            raise ValueError("Global logout was not acknowledged")
+                except urllib.error.HTTPError as failure:
+                    if failure.code != 401:
+                        self.send_json(503, {"code": 503, "message": "统一退出暂未完成，请重试"})
+                        return
                 except Exception:
-                    pass
+                    self.send_json(503, {"code": 503, "message": "统一退出暂未完成，请重试"})
+                    return
             if sess and sess.get("wms_session"):
                 try:
                     wms_cookie = sess["wms_session"]["cookie"]
@@ -605,8 +738,10 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
             revoke_session(sid)
 
         expired_cookie = f"{SESSION_COOKIE_NAME}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax"
+        if _env("BFF_PUBLIC_ORIGIN", "").startswith("https://"):
+            expired_cookie += "; Secure"
         self.send_json(200, {"code": 0, "message": "退出登录成功"}, extra_headers={"Set-Cookie": expired_cookie})
-        log_network("POST", "/auth/logout", 200, f"Session revoked: sid={sid[:8] if sid else 'none'}")
+        log_network("POST", "/auth/logout", 200, "Portal session revoked")
 
     def forward_request(self, method, upstream_base, path):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -623,7 +758,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
                 has_auth = True
             req.add_header(header_name, header_val)
 
-        if not has_auth:
+        if not has_auth and upstream_base in (f"http://127.0.0.1:{IAM_PORT}", f"http://127.0.0.1:{SYS_PORT}"):
             sid, sess = self.get_client_session()
             if sess and sess.get("token"):
                 req.add_header("Authorization", f"Bearer {sess['token']}")
@@ -657,6 +792,70 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             self.send_json(502, {"code": 50201, "message": f"后端微服务连接失败 ({upstream_url}): {str(e)}"})
 
+    def forward_ehms_request(self, method, path):
+        if EHMS_SSO_ENABLED:
+            self.forward_sso_request("ehms", EHMS_BASE_URL, path, "/api/ehm/v1/auth/sso/exchange")
+        else:
+            self.forward_request(method, EHMS_BASE_URL, path)
+
+    def forward_sso_request(self, audience, base, path, exchange_path):
+        """Exchange once per Portal session; keep each downstream cookie server-side."""
+        if not base:
+            self.drain_body()
+            self.send_json(503, {"code": "SSO_NOT_CONFIGURED", "message": "认证版上游未配置"})
+            return
+        _sid, sess = self.get_client_session()
+        if not sess:
+            self.drain_body()
+            self.send_json(401, {"code": "SSO_NO_SESSION"})
+            return
+        length = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(length) if length else None
+        try:
+            with sess["wms_lock"]:
+                downstream = sess.setdefault("downstream_sessions", {})
+                if audience not in downstream:
+                    ticket = request_iam_ticket(sess.get("token"), audience)
+                    req = urllib.request.Request(base + exchange_path,
+                        data=json.dumps({"ticket": ticket}).encode(), method="POST",
+                        headers={"Content-Type": "application/json"})
+                    with urllib.request.urlopen(req, timeout=10) as response:
+                        result = json.loads(response.read())
+                        successful = result.get("code") in (0, "0", "OK") or result.get("ok") is True
+                        cookies = response.headers.get_all("Set-Cookie") or []
+                        cookie = "; ".join(value.split(";", 1)[0] for value in cookies)
+                        if not successful or not cookie:
+                            raise SsoTicketError("SSO_EXCHANGE_REJECTED", "目标系统未建立会话")
+                        downstream[audience] = {"cookie": cookie, "csrf": result.get("data", {}).get("csrf")}
+                cookie = downstream[audience]["cookie"]
+            headers = {key: value for key, value in self.headers.items()
+                       if key.lower() in ("content-type", "accept", "x-ehm-csrf", "x-xsrf-token")}
+            headers["Cookie"] = cookie
+            if audience == "psms" and downstream[audience].get("csrf"):
+                headers["X-PSMS-CSRF"] = downstream[audience]["csrf"]
+            req = urllib.request.Request(base + path, data=body, method=self.command, headers=headers)
+            try:
+                response = urllib.request.urlopen(req, timeout=25)
+            except urllib.error.HTTPError as error:
+                response = error
+            with response:
+                content = response.read()
+                if response.code == 401:
+                    sess.get("downstream_sessions", {}).pop(audience, None)
+                self.send_response(response.code)
+                self.send_cors_headers()
+                self.send_header("Content-Type", response.headers.get("Content-Type", "application/json"))
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+        except SsoTicketError as error:
+            self.send_json(403 if error.code == "SSO_NO_MAPPING" else 502,
+                           {"code": error.code, "message": "身份交换被拒绝"})
+        except urllib.error.HTTPError as error:
+            self.send_json(error.code, {"code": "SSO_EXCHANGE_REJECTED", "message": "目标系统拒绝身份交换"})
+        except Exception as error:
+            self.send_json(502, {"code": "SSO_UPSTREAM_ERROR", "message": type(error).__name__})
+
     # ---- U-GATE patch: single source of truth for WMS API prefixes ----
     _WMS_API_PREFIXES = (
         "/api/v1/wms/", "/api/v1/inventory/", "/api/v1/master-data/",
@@ -684,7 +883,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
         req = urllib.request.Request(upstream_url, data=body, method=method)
 
         for header_name, header_val in self.headers.items():
-            if header_name.lower() in ["host", "content-length", "origin", "referer", "cookie"]:
+            if header_name.lower() in ["host", "content-length", "origin", "referer", "cookie", "authorization", "x-forwarded-for", "forwarded", "x-sso-ticket", "x-sso-service-token"]:
                 continue
             req.add_header(header_name, header_val)
 
@@ -707,6 +906,18 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 resp_data = resp.read()
+                if sess and sess.get("wms_session"):
+                    cached = sess["wms_session"]
+                    cookies = dict(part.strip().split("=", 1) for part in cached["cookie"].split(";") if "=" in part)
+                    for value in resp.headers.get_all("Set-Cookie") or []:
+                        pair = value.split(";", 1)[0]
+                        if "=" in pair:
+                            key, value = pair.split("=", 1)
+                            if key in ("JSESSIONID", "XSRF-TOKEN"):
+                                cookies[key] = value
+                                if key == "XSRF-TOKEN":
+                                    cached["csrf"] = urllib.parse.unquote(value)
+                    cached["cookie"] = "; ".join(key + "=" + value for key, value in cookies.items())
                 self.send_response(resp.status)
                 self.send_cors_headers()
                 for h, val in resp.headers.items():
@@ -892,6 +1103,8 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
             try:
                 with urllib.request.urlopen(wms_static_url, timeout=10) as r:
                     content = r.read()
+                    if is_spa_index:
+                        content = content.replace(b'src="/assets/', b'src="/wms/assets/').replace(b'href="/assets/', b'href="/wms/assets/')
                     self.send_response(200)
                     self.send_cors_headers()
                     ct = r.headers.get("Content-Type", "text/html; charset=utf-8")
@@ -982,7 +1195,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
 
         # E15: PSMS 真实前端（18300 静态服务）与业务 API 转发
         if clean_path.startswith("/production-dispatch/") or clean_path == "/production-dispatch":
-            psms_url = f"http://127.0.0.1:18300{self.path}"
+            psms_url = f"{PSMS_FE_BASE_URL}{self.path}"
             _req = urllib.request.Request(psms_url, method=self.command)
             for _h in ("content-type", "authorization", "x-xsrf-token", "cookie", "origin"):
                 _v = self.headers.get(_h)
@@ -1098,7 +1311,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
                 data = self.rfile.read(int(cl))
             req = urllib.request.Request(upstream_url, data=data, method=self.command)
             for h in ("content-type", "accept", "accept-language", "cookie", "x-csrf-token",
-                      "authorization", "origin", "referer", "x-requested-with", "user-agent"):
+                      "authorization", "origin", "referer", "x-requested-with", "user-agent", "x-ehm-csrf"):
                 v = self.headers.get(h)
                 if v:
                     req.add_header(h, v)
@@ -1180,7 +1393,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
             html = html.replace('src="/assets/', 'src="/safety/assets/')
             html = html.replace('href="/assets/', 'href="/safety/assets/')
             if "<base " not in html:
-                html = re.sub(r"(<head[^>]*>)", r'<base href="/safety/">', html, count=1, flags=re.I)
+                html = re.sub(r"(<head[^>]*>)", r'\1<base href="/safety/">', html, count=1, flags=re.I)
         return html.encode("utf-8")
 
     def serve_file(self, filepath):
@@ -1211,6 +1424,7 @@ class LinuxGatewayHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(500, f"Error reading file: {str(e)}")
 
 def main():
+    os.makedirs(os.path.join(BASE_DIR, "run"), mode=0o700, exist_ok=True)
     pid_file = os.path.join(BASE_DIR, "run", "bff_verify.pid")
     with open(pid_file, "w") as f:
         f.write(str(os.getpid()))

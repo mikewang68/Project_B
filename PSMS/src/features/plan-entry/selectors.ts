@@ -38,7 +38,7 @@ function sessionAllowsArea(state: DemoRootState, workArea: string): boolean {
 }
 
 function queryAllowsPlans(state: DemoRootState, query: PlanEntryQuery): boolean {
-  return query.workArea === PLAN_WORK_AREA && sessionAllowsArea(state, PLAN_WORK_AREA);
+  return sessionAllowsArea(state, query.workArea);
 }
 
 function resolvedFieldsFor(
@@ -250,7 +250,8 @@ function projectPlan(
 function plansForQuery(state: DemoRootState, query: PlanEntryQuery): readonly Plan[] {
   if (!queryAllowsPlans(state, query)) return [];
   return state.plan.plans.filter(
-    ({ arrivalDepartureTime }) => arrivalDepartureTime.startsWith(query.date),
+    ({ arrivalDepartureTime, workArea }) => arrivalDepartureTime.startsWith(query.date)
+      && (workArea ?? PLAN_WORK_AREA) === query.workArea,
   );
 }
 
@@ -320,6 +321,8 @@ export function selectOverviewKpis(
   query: PlanEntryQuery,
   workflow: PlanEntryWorkflowState,
 ): OverviewKpisViewModel {
+  if (state.liveOverview?.date === query.date && state.liveOverview.workArea === query.workArea
+      && queryAllowsPlans(state, query)) return deepFreeze({ ...state.liveOverview.kpis });
   if (!queryAllowsPlans(state, query)) {
     return deepFreeze({
       totalPlans: 0,
@@ -333,9 +336,7 @@ export function selectOverviewKpis(
     });
   }
 
-  const plans = state.plan.plans.filter(({ arrivalDepartureTime }) =>
-    arrivalDepartureTime.startsWith(query.date),
-  );
+  const plans = plansForQuery(state, query);
   const planIds = new Set(plans.map(({ id }) => id));
   const resources = state.resource.resources.filter(({ workArea }) => workArea === query.workArea);
   const availableResources = resources.filter(({ status }) => status === 'AVAILABLE').length;
@@ -406,6 +407,7 @@ export function selectOpenRisks(
   query: PlanEntryQuery,
 ): readonly OpenRiskViewModel[] {
   if (!sessionAllowsArea(state, query.workArea)) return deepFreeze([]);
+  if(state.liveOverview?.workArea===query.workArea)return deepFreeze([...state.liveOverview.risks]);
   const risks: OpenRiskViewModel[] = [];
   const fault = state.scenario.activeFault;
   if (fault.type !== 'NONE') {
@@ -458,6 +460,8 @@ export function selectInterfaceHealth(
   state: DemoRootState,
   workflow: PlanEntryWorkflowState,
 ): InterfaceHealthViewModel {
+  if(state.liveOverview)return deepFreeze({status:'UNVERIFIED',retryCount:0,circuitOpen:false,recoveryVisible:false,
+    sourceLabel:'外部计划接入状态未核验',description:'当前显示业务库查询结果，尚未取得外部计划接收服务的实际运行状态。'});
   const fault = state.scenario.activeFault;
   const status = workflow.circuitOpen
     ? 'CIRCUIT_OPEN'
@@ -578,7 +582,7 @@ export function selectPlanDetails(
   workflow: PlanEntryWorkflowState,
 ): PlanDetailsViewModel | undefined {
   if (!queryAllowsPlans(state, query)) return undefined;
-  const plan = state.plan.plans.find(({ id }) => id === planId);
+  const plan = plansForQuery(state, query).find(({ id }) => id === planId);
   if (!plan) return undefined;
   const row = projectPlan(state, plan, workflow);
   const errorCode = issueErrorCode(state);

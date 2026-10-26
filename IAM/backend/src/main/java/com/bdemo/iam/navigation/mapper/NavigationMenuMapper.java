@@ -17,7 +17,7 @@ public interface NavigationMenuMapper {
              sort_order AS sortOrder, entry_base_path AS entryBasePath,
              domain_name AS domainName, public_scheme AS publicScheme, public_port AS publicPort,
              origin_scheme AS originScheme, origin_ip AS originIp, origin_port AS originPort,
-             module_path AS modulePath, sso_enabled AS ssoEnabled,
+             module_path AS modulePath, sso_enabled AS ssoEnabled, address_version AS addressVersion,
              in_nav_scope AS inNavScope, enabled, valid,
              mapping_status AS mappingStatus, approval_status AS approvalStatus
       FROM iam.iam_navigation_app
