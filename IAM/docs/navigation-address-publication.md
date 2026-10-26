@@ -6,6 +6,8 @@ Only a platform administrator without a read-only restriction can use `/system/a
 
 The workflow is draft → readiness validation → publication. Validation checks the application's signed readiness proof and a successful HTML response at the configured module path, with redirects disabled and bounded response sizes/timeouts. A failed validation keeps the active configuration unchanged and records the reason. Each publication checks the base version, updates the database address and its version in one transaction, and writes an operation log. Rollback validates a historical destination and publishes it as a new version; it does not erase history. The navigation response also includes each system's `addressVersion`; authenticated feature checks remain mandatory after publication.
 
+Each public probe has an eight-second request timeout and at most three attempts for transport failures or server errors. Certificate failures, invalid proofs, and client errors fail immediately. Administrative clients should allow up to sixty seconds for a validation/publication request; retries never change the active version by themselves.
+
 Public addresses and proxy transport addresses are distinct. HTTPS domain URLs use the configured public port. With no domain, the registered IP, origin protocol, port and module path form the fallback. A browser SSO entry cannot silently downgrade to HTTP. Changing a proxy's physical destination, DNS or a Cloudflare tunnel remains an explicit deployment operation; prepare that route before publishing the browser address.
 
 ## Gateway configuration

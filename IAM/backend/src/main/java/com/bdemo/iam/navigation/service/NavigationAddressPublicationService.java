@@ -81,13 +81,25 @@ public class NavigationAddressPublicationService {
     log(user,"draft",key,"创建访问地址草稿 "+id);return revision(id);
   }
   /** Public readiness challenge proves the endpoint has this application's service key; no key is sent to a proposed host. */
+  private HttpResponse<byte[]> fetchProbe(URI target,int limit)throws java.io.IOException,InterruptedException{
+    var request=HttpRequest.newBuilder(target).timeout(Duration.ofSeconds(8))
+        .header("User-Agent","Mozilla/5.0 ProjectB-Address-Readiness").GET().build();
+    for(int attempt=0;;attempt++){
+      try{
+        var response=http.send(request,info->new BoundedReadinessBody(limit));
+        if(response.statusCode()<500||attempt==2)return response;
+      }catch(java.io.IOException transientFailure){
+        // Certificate failures never become an insecure fallback or an indefinite retry.
+        if(transientFailure instanceof javax.net.ssl.SSLException||attempt==2)throw transientFailure;
+      }
+      Thread.sleep(200L*(attempt+1));
+    }
+  }
   public void probe(String code,Address proposed){
     try {
       String aud=app(code).toLowerCase(Locale.ROOT),nonce=UUID.randomUUID().toString();
       URI target=URI.create(proposed.baseUrl()).resolve("/sso/readiness?challenge="+nonce);
-      var request=HttpRequest.newBuilder(target).timeout(Duration.ofSeconds(8))
-          .header("User-Agent","Mozilla/5.0 ProjectB-Address-Readiness").GET().build();
-      var response=http.send(request,info->new BoundedReadinessBody(16384));
+      var response=fetchProbe(target,16384);
       byte[] bytes=response.body();
       if(response.statusCode()!=200||bytes.length>16384)throw new IllegalArgumentException();
       var body=json.readTree(bytes);String key=services.tokenFor(aud);
@@ -95,9 +107,7 @@ public class NavigationAddressPublicationService {
       var mac=Mac.getInstance("HmacSHA256");mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8),"HmacSHA256"));
       byte[] expected=mac.doFinal((aud+"\n"+nonce).getBytes(StandardCharsets.UTF_8));
       if(!MessageDigest.isEqual(expected,Base64.getUrlDecoder().decode(body.path("proof").asText())))throw new IllegalArgumentException();
-      var pageRequest=HttpRequest.newBuilder(URI.create(proposed.baseUrl())).timeout(Duration.ofSeconds(8))
-          .header("User-Agent","Mozilla/5.0 ProjectB-Address-Readiness").GET().build();
-      var page=http.send(pageRequest,info->new BoundedReadinessBody(1024*1024));
+      var page=fetchProbe(URI.create(proposed.baseUrl()),1024*1024);
       if(page.statusCode()!=200||!page.headers().firstValue("Content-Type").orElse("").toLowerCase(Locale.ROOT).contains("text/html"))
         throw new IllegalArgumentException();
     }catch(Exception failure){if(failure instanceof InterruptedException)Thread.currentThread().interrupt();
