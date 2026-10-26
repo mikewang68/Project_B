@@ -17,6 +17,9 @@ public class SystemNode {
   private int sortOrder;
   private String entryBasePath;
   private String entryBaseUrl;
+  private long addressVersion = 1;
+  public long getAddressVersion() { return addressVersion; }
+  public void setAddressVersion(long value) { addressVersion = value; }
   private List<PageLeafNode> children = new ArrayList<>();
 
   public SystemNode() {}

@@ -15,6 +15,12 @@ const routes: RouteRecordRaw[] = [
     redirect: '/system/users',
     children: [
       {
+        path: 'system/addresses',
+        name: 'system-addresses',
+        component: () => import('@/views/system/NavigationAddressView.vue'),
+        meta: { title: '系统访问地址', platformAdminOnly: true },
+      },
+      {
         path: 'system/users',
         name: 'system-users',
         component: () => import('@/views/system/UserManageView.vue'),
@@ -87,7 +93,7 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   // 已登录：校验路由级权限（meta.perm）；超级管理员在 permCodes 中已动态拥有全部权限
-  if (to.meta.perm && !auth.permCodes.has(to.meta.perm as string)) {
+  if ((to.meta.platformAdminOnly && !auth.isSuperAdmin) || (to.meta.perm && !auth.permCodes.has(to.meta.perm as string))) {
     next('/403')
     return
   }

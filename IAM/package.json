@@ -1,7 +1,7 @@
 {
   "name": "iam-admin",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "B项目 统一身份与权限管理系统（IAM）——独立部署工程",
   "engines": {

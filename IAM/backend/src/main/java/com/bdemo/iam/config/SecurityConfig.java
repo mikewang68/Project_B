@@ -60,7 +60,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                     .permitAll()
                     // SSO 服务间校验端点：鉴权由票据签名 + 一次性消费完成，
                     // 不依赖 IAM 登录态（调用方是目标业务系统的后端）。
-                    .requestMatchers("/auth/sso/verify-and-consume", "/auth/sso/session/introspect", "/auth/sso/session/logout", "/auth/sso/exchange", "/auth/sso/native/revoke")
+                    .requestMatchers("/auth/sso/verify-and-consume", "/auth/sso/session/introspect", "/auth/sso/session/logout", "/auth/sso/exchange", "/auth/sso/native/revoke", "/auth/sso/navigation-address")
                     .permitAll()
                     // 诊断端点：只返回契约版本、受众列表与是否已配置服务身份，
                     // 不含任何密钥或凭据。
