@@ -8,7 +8,7 @@
 
 | 节点 | 路径 / 服务 | 用途 |
 |---|---|---|
-| node6 | `/home/bpoc-data/projects/Project_B/WMS/WMS/simulator` | 公共 WMS 源码目录，本目录可供负责人员查看维护 |
+| node6 | `/home/bpoc-data/projects/Project_B/WMS/simulator` | 公共 WMS 源码目录（2026-10-27 已扁平化）；原部署批次不变 |
 | node6 | `/opt/project-b/wms-simulator/releases/20261019-v2`；`current` 链接 | 独立 Python 运行代码，非 Java JAR |
 | node6 | `/etc/systemd/system/project-b-wms-simulator.service` | 以专用 Linux 用户 `wms-sim` 运行；开机自启 |
 | node6 | `/etc/project-b/WMS/simulator/config.local.json` | 私有服务器配置：实际订单 / 明细 ID、数据域、CA、批准计划 |
@@ -63,7 +63,7 @@ sudo python3 -B /opt/project-b/wms-simulator/current/deploy/check_lab.py \
 ## 再次部署或新建批次
 
 1. 先备份 WMS 数据库、当前服务/配置与运行代码；不要清空旧业务表，不要重启共享数据库。
-2. 在代码副本执行单元测试，核对唯一修改范围 `WMS/WMS/simulator/`。发布到新的独立运行目录，维护 node6 公共源码副本与运行副本的对应 SHA-256。
+2. 在代码副本执行单元测试，核对唯一修改范围 `WMS/simulator/`。发布到新的独立运行目录，维护 node6 公共源码副本与运行副本的对应 SHA-256。
 3. 首次安装时由 WMS 维护者在 **WMS 数据库** 审查运行 `simulator-role.sql`，仅新增专用角色及三项权限；它不是公共 IAM 权限变更。此角色拥有对应数据域的收货权限，SIM 前缀 / 有限计划由客户端保护，**不是服务器行级安全策略**，因此专用凭据仍必须受限。
 4. 由获准管理员通过 stdin 私密通道调用 `prepare_lab.py --authorize-lab-writes`，传入 JSON `{username,password}`，不得把真实值写进命令行、仓库或共享文档。参数需明确批次、HTTPS URL、CA、公司、仓库、货主、私有输出目录、新状态目录。
 5. 准备器通过原生 API 创建 / 检查独立 SIM 主数据和待收货单；订单来源使用现有枚举 `CUSTOM`（不能自造 `SIMULATOR` 来源）。不改现有真实货品单位、不覆盖已有收货、不自动重试结果不确定的 setup POST。发现既有凭据或已收货订单会停止，先核对再继续。

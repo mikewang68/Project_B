@@ -1,5 +1,18 @@
 # MT-WMS 重构项目
 
+## 源码目录（2026-10-27 起）
+
+仓库已去掉重复的一层 `WMS`，项目根目录现在为 `Project_B/WMS`。
+从仓库根目录执行 `cd WMS` 后运行构建脚本；`pom.xml`、`frontend/`、
+`src/`、`database/`、`scripts/` 和 `simulator/` 均在这一层。
+原 `Project_B/WMS/WMS` 路径不再使用，历史验收记录中的旧路径仅表示当时位置。
+
+node6 公共源码对应 `/home/bpoc-data/projects/Project_B/WMS`。
+目录调整不改变独立发布目录、站点入口、服务端口或 node4 数据库；
+不能仅因为源码移动就把 `target/mt-wms.jar` 覆盖为正式运行制品。
+其他成员更新后请修改 IDE 项目根目录及自己脚本里的旧路径；有未提交代码时，
+先备份再合并目录重命名，不要整目录覆盖或直接删除旧工作目录。
+
 本目录是旧项目 `mt-wms-demo` 与 `mt-wms-demo-frontend` 的重写工程。旧项目保持只读，用于行为对照和迁移验收。
 
 实施基线是仓库根目录的《MT-WMS重构实施计划.md》。当前只迁移旧系统已经存在的功能，不以其他需求规格说明书扩展范围。

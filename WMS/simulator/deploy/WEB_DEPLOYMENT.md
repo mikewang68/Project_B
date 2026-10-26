@@ -8,8 +8,8 @@
 
 | 节点 | 文件 / 路径 | 用途 |
 |---|---|---|
-| node6 | `/home/bpoc-data/projects/Project_B/WMS/WMS/frontend/src/views/StockinView.vue` | 入库页入口按钮 |
-| node6 | `/home/bpoc-data/projects/Project_B/WMS/WMS/simulator` | Python / HTML / 测试公共源码 |
+| node6 | `/home/bpoc-data/projects/Project_B/WMS/frontend/src/views/StockinView.vue` | 入库页入口按钮（2026-10-27 源码路径更新） |
+| node6 | `/home/bpoc-data/projects/Project_B/WMS/simulator` | Python / HTML / 测试公共源码 |
 | node6 | `/opt/project-b/wms-simulator/releases/20261021-web-v1`；`current` 指向此目录 | 实际运行版本，`web_gateway.py` 启动 |
 | node6 | `/opt/project-b/wms-frontend/releases/20261021-web-v1` | 新 WMS 静态前端，包括既有换肤、智能助手和登录提示 |
 | node6 | `/etc/nginx/conf.d/bdemo-44e32a9.conf` 的 **18444 WMS server 块** | 静态前端、`/simulator/` 代理，其余仍走 node4 |
