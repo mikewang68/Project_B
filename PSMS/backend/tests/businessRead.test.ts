@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PoolClient } from 'pg';
 vi.mock('../src/db/openGaussClient.js', () => ({ connectClient:vi.fn() }));
+vi.mock('../src/lib/logger.js', () => ({ logger:{error:vi.fn()} }));
 import { businessReadQuery, readBusinessPage } from '../src/services/business-read.service.js';
 import { businessCollections } from '../src/lib/businessCatalog.js';
 import { mayReadBusinessRoute, mayWriteBusinessRoute } from '../src/middleware/sso-policy.js';
