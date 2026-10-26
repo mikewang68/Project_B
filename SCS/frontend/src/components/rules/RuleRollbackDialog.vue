@@ -65,7 +65,7 @@ function doConfirm(): void {
 
     <template #footer>
       <button type="button" class="rule-btn ghost" @click="emit('update:modelValue', false)">取消</button>
-      <button type="button" class="rule-btn danger" :disabled="!target || (rule?.highRisk && !acknowledged)"
+      <button v-permission="'safety:module:rule:execute'" type="button" class="rule-btn danger" :disabled="!target || (rule?.highRisk && !acknowledged)"
         @click="doConfirm">确认回滚</button>
     </template>
   </ElDialog>
