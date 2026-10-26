@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link, Outlet, matchPath, useLocation } from 'react-router-dom';
 import { authorizePage, loadCurrentDemoSession } from '../auth';
+import {connectedLivePageIds}from'../auth/livePagePolicy';
 import { routeCatalog, type RouteGroup } from '../app/routeCatalog';
 import {
   LAYOUT_OPTIONS,
@@ -96,7 +97,7 @@ export default function SkeletonLayout() {
       .filter((route) => route.group === group)
       .map((route) => ({
         key: route.id,
-        disabled: import.meta.env.VITE_PSMS_REAL_API === 'true' && !['UI-001','UI-002'].includes(route.id),
+        disabled: import.meta.env.VITE_PSMS_REAL_API === 'true' && !(connectedLivePageIds as readonly string[]).includes(route.id),
         // 折叠态（64px 窄栏）下 antd 只渲染 icon，故每个页面都带独立图标
         icon: navIcon(route.id),
         title: `${route.id} ${route.name}`,
@@ -111,7 +112,7 @@ export default function SkeletonLayout() {
   /** 顶部横向菜单：antd 的 horizontal 模式不支持分组，需扁平化 */
   const flatItems: MenuProps['items'] = visibleRoutes.map((route) => ({
     key: route.id,
-    disabled: import.meta.env.VITE_PSMS_REAL_API === 'true' && !['UI-001','UI-002'].includes(route.id),
+    disabled: import.meta.env.VITE_PSMS_REAL_API === 'true' && !(connectedLivePageIds as readonly string[]).includes(route.id),
     title: `${route.id} ${route.name}`,
     label: (
       <Link to={navigationPath(route)} aria-label={`${route.id} ${route.name}`}>
