@@ -92,6 +92,9 @@ node6 公共源码对应 `/home/bpoc-data/projects/Project_B/WMS`。
 
 ## Android 设备模拟终端
 
+2026-10-27：旧服务器Python网页模拟终端停止使用，原自动发送服务停用，已有业务数据和队列保留。
+当前设备模拟入口改为下述Android项目；[模拟工具总说明](simulator/README.md)已区分当前入口和历史工具。
+
 [Android C 设备模拟终端0.5.0](simulator/android-terminal/README.md)提供摄像头二维码、
 扫码持久队列、称重、工艺测点以及EE600/VEGA只读协议参考；包含源码、电脑端参考采集工具、
 单元测试及可下载的Android安装包。它不等同于WMS业务客户端，也不表示已完成真实网关、
