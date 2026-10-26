@@ -10,6 +10,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
+    alias: import.meta.env.BASE_URL === '/' ? '/iam' : undefined,
     component: () => import('@/layouts/AdminLayout.vue'),
     meta: { requiresAuth: true },
     redirect: '/system/users',
@@ -59,7 +60,7 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 })
 
