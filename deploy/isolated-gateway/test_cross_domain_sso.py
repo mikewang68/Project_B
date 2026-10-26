@@ -3,8 +3,25 @@ import http.server
 import json
 import threading
 import unittest
+from unittest.mock import patch
 import urllib.parse
 from cross_domain_sso import CentralBridge, EdgeBridge, OneUseStore, Denied, challenge, reply
+from cross_domain_sso import DatabaseAddressSource
+
+
+class PublishedAddressResponseTests(unittest.TestCase):
+    def test_invalid_address_service_payloads_fail_closed(self):
+        source=DatabaseAddressSource('http://127.0.0.1:19080/address',{'wms':'test-only-service-credential-000000'})
+        valid={'appCode':'WMS','version':1,'baseUrl':'https://warehouse.example.test/','origin':'https://warehouse.example.test'}
+        payloads=[[],{'code':0,'data':[]},{'code':0,'data':{**valid,'version':True}},
+            {'code':0,'data':{**valid,'baseUrl':123}},
+            {'code':0,'data':{**valid,'origin':'invalid'}},
+            {'code':0,'data':{**valid,'baseUrl':'https://warehouse.example.test:bad/'}},
+            {'code':0,'data':{**valid,'baseUrl':'https://warehouse.example.test/../'}}]
+        for payload in payloads:
+            with self.subTest(payload=payload),patch('cross_domain_sso.request_json',return_value=(payload,[])):
+                with self.assertRaises(Denied)as failure:source('wms')
+                self.assertEqual(503,failure.exception.status)
 
 
 class StoreTests(unittest.TestCase):
@@ -107,6 +124,53 @@ class BrowserFlowTests(unittest.TestCase):
         code=urllib.parse.parse_qs(urllib.parse.urlsplit(headers['Location']).query)['code'][0]
         self.assertEqual(403,self.request(self.central_url+'/sso/code/exchange',body={'audience':'wms','code':code,'verifier':'v'*43},headers={'X-SSO-Service-Token':self.secret})[0])
         self.assertFalse(self.exchanges)
+
+    def dynamic_addresses(self):
+        self.address_version = 1
+        def published(audience, version=None):
+            selected = self.address_version if version is None else version
+            if selected not in (1, 2):
+                from cross_domain_sso import Denied
+                raise Denied(409, 'Address version expired')
+            return {'appCode':'WMS', 'version':selected, 'origin':self.edge_url,
+                'baseUrl':self.edge_url+('/' if selected == 1 else '/updated/')}
+        self.edge.address_provider = published
+        self.central.address_provider = published
+
+    def test_published_address_change_does_not_retarget_an_inflight_login(self):
+        self.dynamic_addresses()
+        authorization,cookie = self.begin()
+        self.assertEqual(['1'], urllib.parse.parse_qs(urllib.parse.urlsplit(authorization).query)['addressVersion'])
+        self.address_version = 2
+        _,headers,_ = self.request(authorization)
+        status,headers,_ = self.request(headers['Location'],cookie)
+        self.assertEqual(303,status)
+        self.assertEqual(self.edge_url+'/#/inventory/balances',headers['Location'])
+
+    def test_new_logins_use_published_address_without_restarting_bridges(self):
+        self.dynamic_addresses();self.address_version = 2
+        authorization,cookie = self.begin()
+        _,headers,_ = self.request(authorization)
+        status,headers,_ = self.request(headers['Location'],cookie)
+        self.assertEqual(303,status)
+        self.assertEqual(self.edge_url+'/updated/#/inventory/balances',headers['Location'])
+
+    def test_address_source_failure_cannot_fall_back_to_stale_static_origin(self):
+        from cross_domain_sso import Denied
+        def unavailable(*_):raise Denied(503,'Address service unavailable')
+        self.edge.address_provider = unavailable
+        self.assertEqual(503,self.request(self.edge_url+'/sso/start?page=WMS%3Abalances')[0])
+        self.assertFalse(self.minted)
+
+    def test_readiness_proves_application_key_without_sending_it_to_the_candidate(self):
+        import base64,hashlib,hmac
+        nonce='readiness-challenge-only-0001'
+        status,_,body=self.request(self.edge_url+'/sso/readiness?challenge='+nonce)
+        self.assertEqual(200,status)
+        value=json.loads(body)
+        expected=base64.urlsafe_b64encode(hmac.new(self.secret.encode(),('wms\n'+nonce).encode(),hashlib.sha256).digest()).decode().rstrip('=')
+        self.assertEqual(expected,value['proof'])
+        self.assertNotIn(self.secret,body.decode())
 
 
 if __name__=='__main__':unittest.main()

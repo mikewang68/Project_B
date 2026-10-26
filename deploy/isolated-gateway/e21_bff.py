@@ -138,8 +138,13 @@ if _sso_registry:
             return request_iam_ticket(session['token'], audience)
         except SsoTicketError:
             raise Denied(403, 'Application identity is unavailable') from None
+    _address_source = None
+    if _env('SSO_DATABASE_ADDRESSES', 'false').lower() == 'true':
+        from cross_domain_sso import DatabaseAddressSource
+        _address_source = DatabaseAddressSource(IAM_BASE_URL + IAM_CONTEXT_PATH + '/auth/sso/navigation-address',
+            {aud: app['credential'] for aud, app in _sso_apps.items()})
     CROSS_DOMAIN_SSO = CentralBridge(_sso_apps, _sso_current_session,
-        _sso_navigation, _sso_issue_ticket)
+        _sso_navigation, _sso_issue_ticket, address_provider=_address_source)
 
 def log_network(method, path, status, detail=""):
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]

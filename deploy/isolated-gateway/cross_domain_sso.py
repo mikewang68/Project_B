@@ -133,11 +133,15 @@ def read_json(handler):
 
 
 class CentralBridge:
-    def __init__(self, applications, session, navigation, ticket, allow_http=False):
+    def __init__(self, applications, session, navigation, ticket, allow_http=False, address_provider=None):
         self.apps, self.session, self.navigation, self.ticket = applications, session, navigation, ticket
+        self.address_provider = address_provider
         self.codes = OneUseStore()
         for app in applications.values():
-            app["origin"] = origin(app["origin"], allow_http)
+            if "origin" in app:
+                app["origin"] = origin(app["origin"], allow_http)
+            elif address_provider is None:
+                raise ValueError("An application address source is required")
             app["allowHttp"] = allow_http
             if len(app.get("credential", "")) < 32:
                 raise ValueError("Each application needs its own service credential")
@@ -174,6 +178,12 @@ class CentralBridge:
             app = self.apps.get(aud)
             if not app:
                 raise Denied(403, "Application not registered")
+            address = None
+            if self.address_provider:
+                version = one(q, "addressVersion")
+                if not re.fullmatch(r"[1-9][0-9]{0,18}", version):
+                    raise Denied(400, "Invalid address version")
+                address = self.address_provider(aud, int(version))
             session = self.session(handler)
             if not session:
                 # Parameters contain only public app/page/state/challenge; no credentials.
@@ -190,8 +200,9 @@ class CentralBridge:
             leaf = next((p for p in leaves(system.get("children", [])) if p.get("stableMenuKey") == page), None) if system else None
             if not leaf or leaf.get("canLaunch") is False:
                 raise Denied(403, "Function is unavailable or not authorized")
-            base = urllib.parse.urlsplit(system.get("entryBaseUrl", ""))
-            if origin(urllib.parse.urlunsplit((base.scheme, base.netloc, "", "", "")), app.get("allowHttp", False)) != app["origin"]:
+            base = urllib.parse.urlsplit(address["baseUrl"] if address else system.get("entryBaseUrl", ""))
+            registered_origin = address["origin"] if address else app["origin"]
+            if origin(urllib.parse.urlunsplit((base.scheme, base.netloc, "", "", "")), app.get("allowHttp", False)) != registered_origin:
                 raise Denied(503, "Application registration mismatch")
             source = urllib.parse.urlsplit(leaf.get("entryPath", ""))
             if any(re.search(r"(?:password|token|ticket|secret|session|authorization)", key, re.I)
@@ -206,7 +217,7 @@ class CentralBridge:
                 raise Denied(403, "Invalid function path")
             target = urllib.parse.urlunsplit((base.scheme, base.netloc, target_path, source.query, source.fragment))
             code = self.codes.put({"audience": aud, "page": page, "target": target, "challenge": pkce, "session": session})
-            callback = app["origin"] + "/sso/callback?" + urllib.parse.urlencode({"code": code, "state": state})
+            callback = registered_origin + "/sso/callback?" + urllib.parse.urlencode({"code": code, "state": state})
             reply(handler, 303, location=callback)
         except Denied as failure:
             reply(handler, failure.status, {"message": failure.message})
@@ -214,11 +225,12 @@ class CentralBridge:
 
 
 class EdgeBridge:
-    def __init__(self, audience, public_origin, central_origin, credential, exchange_url, allow_http=False, central_exchange_url=None, success_codes=(0,)):
+    def __init__(self, audience, public_origin, central_origin, credential, exchange_url, allow_http=False, central_exchange_url=None, success_codes=(0,), address_provider=None):
         self.audience, self.public = audience, origin(public_origin, allow_http)
         self.central, self.credential = origin(central_origin, allow_http), credential
         self.exchange_url, self.transactions = exchange_url, OneUseStore(ttl=180)
         self.success_codes = tuple(success_codes)
+        self.address_provider = address_provider
         self.central_exchange_url = central_exchange_url or self.central + "/sso/code/exchange"
         endpoint = urllib.parse.urlsplit(self.central_exchange_url)
         if endpoint.username or endpoint.password or endpoint.fragment or endpoint.query or endpoint.path != "/sso/code/exchange" \
@@ -233,20 +245,34 @@ class EdgeBridge:
 
     def dispatch(self, handler):
         parsed = urllib.parse.urlsplit(handler.path)
-        if parsed.path not in ("/sso/start", "/sso/callback"):
+        if parsed.path not in ("/sso/start", "/sso/callback", "/sso/readiness"):
             return False
         try:
             if handler.command != "GET":
                 raise Denied(405, "GET required")
             q = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+            if parsed.path == "/sso/readiness":
+                nonce = one(q, "challenge")
+                if not re.fullmatch(r"[A-Za-z0-9_-]{16,80}", nonce):
+                    raise Denied(400, "Invalid readiness challenge")
+                proof = base64.urlsafe_b64encode(hmac.new(self.credential.encode(),
+                    (self.audience + "\n" + nonce).encode(), hashlib.sha256).digest()).decode().rstrip("=")
+                reply(handler, 200, {"audience": self.audience, "challenge": nonce, "proof": proof})
+                return True
             if parsed.path == "/sso/start":
                 page = one(q, "page")
                 if not re.fullmatch(r"[A-Za-z0-9_:.\-]{1,160}", page):
                     raise Denied(400, "Invalid page identifier")
                 state, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
-                transaction = self.transactions.put({"state": state, "verifier": verifier, "page": page})
-                location = self.central + "/sso/authorize?" + urllib.parse.urlencode({"app": self.audience,
-                    "page": page, "state": state, "code_challenge": challenge(verifier)})
+                address = self.address_provider(self.audience) if self.address_provider else None
+                public = address["origin"] if address else self.public
+                if address and handler.headers.get("Host", "").lower() != urllib.parse.urlsplit(public).netloc.lower():
+                    reply(handler, 303, location=public + "/sso/start?" + urllib.parse.urlencode({"page": page}))
+                    return True
+                transaction = self.transactions.put({"state": state, "verifier": verifier, "page": page, "origin": public})
+                parameters = {"app": self.audience, "page": page, "state": state, "code_challenge": challenge(verifier)}
+                if address: parameters["addressVersion"] = address["version"]
+                location = self.central + "/sso/authorize?" + urllib.parse.urlencode(parameters)
                 reply(handler, 303, location=location, cookies=[self.cookie(transaction, 180)])
                 return True
             cookie = http.cookies.SimpleCookie()
@@ -261,7 +287,7 @@ class EdgeBridge:
                 {"audience": self.audience, "code": code, "verifier": record["verifier"]},
                 {"X-SSO-Service-Token": self.credential})
             target = result.get("target", "")
-            if result.get("page") != record["page"] or not target.startswith(self.public + "/"):
+            if result.get("page") != record["page"] or not target.startswith(record["origin"] + "/"):
                 raise Denied(403, "Unregistered callback target")
             native, cookies = request_json(self.exchange_url, {"ticket": result["ticket"]},
                 {"X-SSO-Service-Token": self.credential})
@@ -287,12 +313,49 @@ class EdgeBridge:
         return True
 
 
+class DatabaseAddressSource:
+    def __init__(self, url, credentials, allow_http=False):
+        parsed = urllib.parse.urlsplit(url)
+        if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.scheme not in ("http", "https") \
+                or (parsed.scheme == "http" and parsed.hostname not in ("127.0.0.1", "::1") and not allow_http):
+            raise ValueError("Address source must use HTTPS or an explicit loopback endpoint")
+        self.url, self.credentials, self.allow_http = url, credentials, allow_http
+
+    def __call__(self, audience, version=None):
+        if audience not in self.credentials: raise Denied(403, "Address audience not registered")
+        query = {"audience": audience}
+        if version is not None: query["version"] = version
+        value, _ = request_json(self.url, query, {"X-SSO-Service-Token": self.credentials[audience]})
+        if not isinstance(value, dict) or not isinstance(value.get("data"), dict):
+            raise Denied(503, "Invalid published address configuration")
+        address = value["data"]
+        if value.get("code") != 0 or not isinstance(address.get("appCode"), str) or address["appCode"].lower() != audience \
+                or type(address.get("version")) is not int or address["version"] < 1:
+            raise Denied(503, "Invalid published address configuration")
+        if not isinstance(address.get("baseUrl"), str) or not isinstance(address.get("origin"), str):
+            raise Denied(503, "Invalid published address configuration")
+        try:
+            parsed = urllib.parse.urlsplit(address["baseUrl"])
+            published_origin = origin(address["origin"], self.allow_http)
+            parsed.port  # Validate malformed and out-of-range ports before redirecting.
+        except ValueError:
+            raise Denied(503, "Invalid published address configuration") from None
+        if parsed.query or parsed.fragment or not parsed.path.endswith("/") or parsed.username or parsed.password \
+                or published_origin != urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "", "", "")) \
+                or re.search(r"[\\\x00-\x20\x7f%]", parsed.path) or any(p in (".", "..") for p in parsed.path.split("/")):
+            raise Denied(503, "Published address does not match its origin")
+        if version is not None and address["version"] != version:
+            raise Denied(409, "Address transaction version is unavailable")
+        return address
+
+
 def main():
     with open(os.environ["SSO_EDGE_CONFIG"], encoding="utf-8") as f:
         config = json.load(f)
+    addresses = DatabaseAddressSource(config["addressSourceUrl"], {config["audience"]: config["credential"]}) if config.get("addressSourceUrl") else None
     bridge = EdgeBridge(config["audience"], config["origin"], config["centralOrigin"],
         config["credential"], config["exchangeUrl"], central_exchange_url=config.get("centralExchangeUrl"),
-        success_codes=config.get("successCodes", [0]))
+        success_codes=config.get("successCodes", [0]), address_provider=addresses)
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, *_):
             pass  # Callback query strings and cookies must never enter access logs.
