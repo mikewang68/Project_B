@@ -24,4 +24,13 @@ class WmsCurrentAuthorizationTest {
     @Test void missingPolicyFailsClosed() throws Exception {
         assertThatThrownBy(()->WmsCurrentAuthorization.apply(local,json.readTree("{}"))).isInstanceOf(SecurityException.class);
     }
+    @Test void fullCentralAdminCannotBypassLocalBusinessPermissionIntersection() throws Exception {
+        var business=new WmsPrincipal(1L,1L,"test","test","user","User",List.of("MANAGER"),Set.of("inventory:read","master:write"),false);
+        var result=WmsCurrentAuthorization.apply(business,json.readTree("{\"readOnly\":false,\"superAdmin\":true,\"permissions\":[\"inventory:read\"]}"));
+        assertThat(result.permissions()).containsExactly("inventory:read");
+    }
+    @Test void applicationAdminFlagAloneDoesNotRegrantRemovedCentralPermission() throws Exception {
+        var result=WmsCurrentAuthorization.apply(local,json.readTree("{\"readOnly\":false,\"applicationAdmin\":true,\"permissions\":[\"inventory:read\"]}"));
+        assertThat(result.permissions()).containsExactly("inventory:read");
+    }
 }

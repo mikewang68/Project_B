@@ -6,6 +6,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -29,10 +30,13 @@ class WebTests(unittest.TestCase):
                         preferredLocationCode=o['location_code'])]) for o in [self.cfg['order'], *self.cfg['additional_orders']]}
         self.posts = 0
         self.uncertain = False
+        self.auth_error = None
         fixture = self
         class Client:
             def call(self, method, path, body=None):
                 if path == '/api/v1/auth/me':
+                    if fixture.auth_error:
+                        raise fixture.auth_error
                     return copy.deepcopy(fixture.user)
                 if path == '/api/v1/master-data/goods':
                     return [dict(code=o['good_code'], unit=o['unit'], status='ENABLED') for o in [fixture.cfg['order'], *fixture.cfg['additional_orders']]]
@@ -99,27 +103,96 @@ class WebTests(unittest.TestCase):
         self.user['permissions'] = ['stockin:write']
         self.assertEqual(self.request()[0], 403)
 
-    def test_readonly_role_blocks_delegated_writes_even_with_write_permission(self):
-        # A valid session and CSRF are intentional: this is an authorization
-        # rejection, not a CSRF failure or a missing stockin:write permission.
-        self.assertIn('stockin:write', self.user['permissions'])
-        for role in ('AUDITOR', 'readonly', 'ROLE_READONLY', 'READONLY_AUDITOR', 'PLATFORM_AUDITOR_READONLY'):
-            with self.subTest(role=role):
-                self.user['roles'] = [role]
-                status, state = self.request()
-                self.assertEqual(status, 200)
-                self.assertFalse(state['user']['can_write'])
-                body = self.spec()
-                body.update(auto=True, auto_confirm=True, device='SIM-PDA-01', epc=self.cfg['order']['tags'][0],
-                            selected=self.session.active_task, gross='2', tare='1')
-                for endpoint in ('batches','task','scan','weigh','confirm','tick','flush','settings'):
-                    status, data = self.request('POST', '/api/'+endpoint, body)
+    def test_effective_read_only_and_roles_cannot_delegate_any_write(self):
+        paths = ('/api/batches', '/api/task', '/api/scan', '/api/weigh', '/api/confirm',
+                 '/api/tick', '/api/flush', '/api/settings')
+        policies = [{'readOnly': True}, *({'roles': [role.lower()]} for role in web.READ_ONLY_ROLES)]
+        for policy in policies:
+            with self.subTest(policy=policy):
+                self.user.pop('readOnly', None)
+                self.user.pop('roles', None)
+                self.user.update(policy)
+                self.assertFalse(self.request()[1]['user']['can_write'])
+                for path in paths:
+                    status, data = self.request('POST', path, {
+                        **self.spec(), 'auto': True, 'auto_confirm': True, 'online': True})
                     self.assertEqual((status, data['code']), (403, 'AUTH_READONLY'))
-        self.assertEqual(self.posts, 0)
-        self.assertEqual(self.session.snapshot()['events'], [])
-        self.assertEqual(self.session.snapshot()['jobs'], [])
-        self.assertFalse(self.session.auto)
-        self.assertFalse(self.session.auto_confirm)
+                self.assertFalse(self.session.auto)
+                self.assertFalse(self.session.auto_confirm)
+                self.assertEqual(self.session.snapshot()['events'], [])
+                self.assertEqual(self.posts, 0)
+
+    def test_effective_policy_rechecked_for_every_request(self):
+        self.assertTrue(self.request()[1]['user']['can_write'])
+        self.user['readOnly'] = True
+        self.assertEqual(self.request('POST', '/api/settings', {
+            'task_id': self.session.active_task, 'auto': True})[1]['code'], 'AUTH_READONLY')
+        self.user['readOnly'] = False
+        self.assertEqual(self.request('POST', '/api/settings', {
+            'task_id': self.session.active_task, 'auto': True})[0], 200)
+        self.assertTrue(self.session.auto)
+
+    def test_read_only_boolean_does_not_coerce_string(self):
+        self.assertFalse(web.is_read_only({'readOnly': 'false'}))
+        self.assertFalse(web.is_read_only({'readOnly': False, 'roles': ['OPERATOR']}))
+        self.assertTrue(web.is_read_only({'readOnly': False, 'roles': ['AUDITOR']}))
+
+    def prepare_background(self):
+        self.session.scan('SIM-PDA-01', self.cfg['order']['tags'][0])
+        self.session.confirm()
+        self.assertEqual(self.request('POST', '/api/settings', {
+            'task_id': self.session.active_task, 'auto': True, 'auto_confirm': True})[0], 200)
+
+    def test_background_rechecks_before_each_task_send(self):
+        self.prepare_background()
+        with patch.object(self.session.current, 'process_once', return_value=True) as send:
+            self.gateway.background_once()
+            send.assert_called_once()
+        self.assertIsNotNone(self.gateway._delegation)
+        self.assertNotIn('JSESSIONID', json.dumps(self.request()[1]))
+
+    def test_revocation_readonly_scope_and_service_failure_pause_queued_sends(self):
+        variants = ('readonly', 'role', 'revoked', 'scope', 'permission', 'actor', '503', 'network')
+        for variant in variants:
+            with self.subTest(variant=variant):
+                self.auth_error = None
+                self.user.pop('roles', None)
+                self.user['readOnly'] = False
+                self.user['id'] = 10
+                self.user['permissions'] = ['stockin:read', 'stockin:write']
+                self.user['tenant']['currentOwner']['code'] = 'default'
+                if not self.session.current.store.snapshot()['jobs']:
+                    self.prepare_background()
+                else:
+                    self.request('POST', '/api/settings', {
+                        'task_id': self.session.active_task, 'auto': True, 'auto_confirm': True})
+                before = self.session.current.store.snapshot()['jobs']
+                if variant == 'readonly': self.user['readOnly'] = True
+                elif variant == 'role': self.user['roles'] = ['AUDITOR']
+                elif variant == 'scope': self.user['tenant']['currentOwner']['code'] = 'other'
+                elif variant == 'permission': self.user['permissions'] = ['stockin:read']
+                elif variant == 'actor': self.user['id'] = 11
+                elif variant == 'revoked': self.auth_error = sim.WmsHttpError(401, 'AUTH_UNAUTHENTICATED')
+                elif variant == '503': self.auth_error = sim.WmsHttpError(503, 'SSO_UNAVAILABLE')
+                elif variant == 'network': self.auth_error = sim.RetryLater('unavailable')
+                with patch.object(self.session, 'tick') as tick, patch.object(self.session.current, 'process_once') as send:
+                    self.gateway.background_once()
+                    tick.assert_not_called()
+                    send.assert_not_called()
+                self.assertFalse(self.session.auto)
+                self.assertFalse(self.session.auto_confirm)
+                self.assertIsNone(self.gateway._delegation)
+                self.assertEqual(self.session.current.store.snapshot()['jobs'], before)
+
+    def test_restarted_web_worker_does_not_drain_without_browser_authorization(self):
+        self.prepare_background()
+        restored = sim.Simulation(self.cfg)
+        gateway = web.WebGateway(restored, self.factory)
+        with patch.object(restored.current, 'process_once') as send:
+            gateway.background_once()
+            send.assert_not_called()
+        self.assertIsNone(gateway._delegation)
+        self.assertEqual(restored.current.store.snapshot()['job_counts'], {'PENDING': 1})
 
     def test_csrf_origin_host_and_duplicate_cookies(self):
         for header in ({'X-XSRF-TOKEN':''}, {'Origin':'https://evil.example'}, {'Host':'evil.example'},

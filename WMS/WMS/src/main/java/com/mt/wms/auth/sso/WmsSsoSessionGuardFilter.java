@@ -3,6 +3,8 @@ package com.mt.wms.auth.sso;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mt.wms.common.api.ApiResponse;
 import com.mt.wms.common.web.RequestIdFilter;
+import com.mt.wms.auth.WmsPrincipal;
+import com.mt.wms.auth.WmsReadOnlyPolicy;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -51,10 +53,12 @@ public class WmsSsoSessionGuardFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     // 使用 requestURI：Boot 3 的 getServletPath() 在部分配置下可能为空字符串。
-    String path = request.getRequestURI();
+    String path = WmsReadOnlyPolicy.requestPath(request);
     return !path.startsWith("/api/")
         || path.equals("/api/v1/auth/login")
         || path.equals("/api/v1/auth/csrf")
+        // LogoutFilter still enforces CSRF. Its handler performs central logout and always clears locally.
+        || (path.equals("/api/v1/auth/logout") && "POST".equals(request.getMethod()))
         || path.startsWith("/api/v1/auth/sso/");
   }
 
@@ -97,12 +101,19 @@ public class WmsSsoSessionGuardFilter extends OncePerRequestFilter {
 
     if(binding!=null&&authorization!=null){
       try{
-        var current=authorization.currentAuthorization(binding.iamSubject(),binding.iamSessionId());
+        WmsPrincipal established = null;
+        Object saved = session.getAttribute(org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+        if (saved instanceof org.springframework.security.core.context.SecurityContext context
+            && context.getAuthentication() != null && context.getAuthentication().getPrincipal() instanceof WmsPrincipal principal)
+          established = principal;
+        if (established == null) {
+          destroyAndReject(session, request, response, "SSO 本地身份缺失，请重新登录");
+          return;
+        }
+        var current=authorization.currentAuthorization(binding.iamSubject(),binding.iamSessionId(),established);
         request.setAttribute("WMS_IAM_AUTHORIZATION",current);
         request.setAttribute("WMS_IAM_READONLY",current.path("readOnly").asBoolean());
-        if(current.path("readOnly").asBoolean() && (!java.util.Set.of("GET","HEAD","OPTIONS").contains(request.getMethod())
-            ||request.getRequestURI().toLowerCase(java.util.Locale.ROOT).matches(".*/(export|download)(/.*)?"))
-            &&!request.getRequestURI().equals("/api/v1/auth/logout")){
+        if(current.path("readOnly").asBoolean() && WmsReadOnlyPolicy.denies(request.getMethod(),WmsReadOnlyPolicy.requestPath(request))){
           response.setStatus(403);response.setContentType("application/json;charset=UTF-8");
           mapper.writeValue(response.getOutputStream(),ApiResponse.error("AUTH_READONLY","统一身份为只读",null));return;
         }
@@ -118,15 +129,7 @@ public class WmsSsoSessionGuardFilter extends OncePerRequestFilter {
   private void destroyAndReject(
       HttpSession session, HttpServletRequest request, HttpServletResponse response, String message)
       throws IOException {
-    String sid = session.getId();
-    try {
-      session.invalidate();
-    } catch (IllegalStateException alreadyInvalidated) {
-      // 已被并发请求销毁，属于正常竞态
-    } catch (RuntimeException e) {
-      log.error("销毁已撤销会话失败: sid={}", mask(sid), e);
-    }
-    WmsSsoLogoutRegistry.unbind(sid);
+    WmsLocalLogout.clear(request, response);
 
     response.setStatus(401);
     response.setContentType("application/json;charset=UTF-8");

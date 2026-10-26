@@ -75,6 +75,7 @@ public class LiveSessionAuthorization {
     } catch (ScsIamTicketValidator.IamUnavailableException unavailable) {
       CachedActor cached = lastKnown.get(localId);
       long now = System.currentTimeMillis();
+      // graceMillis=0 表示不启用宽限：此时不得沿用任何缓存（<= 会让 0 宽限也命中）
       if (graceMillis > 0 && cached != null && now - cached.atMillis() < graceMillis) {
         log.debug("IAM 暂不可用，按最近授权继续投递 localSession={}", localId);
         return cached.actor();

@@ -62,11 +62,30 @@ public class SecurityConfiguration {
                         .addLogoutHandler((request,response,authentication)->{
                             var session=request.getSession(false);
                             var binding=session==null?null:com.mt.wms.auth.sso.WmsSsoLogoutRegistry.get(session.getId());
-                            if(binding!=null)ssoAuthorization.globalLogout(binding.iamSubject(),binding.iamSessionId());
+                            try {
+                                if(binding!=null)ssoAuthorization.globalLogout(binding.iamSubject(),binding.iamSessionId());
+                            } catch (RuntimeException unavailable) {
+                                request.setAttribute("WMS_GLOBAL_LOGOUT_INCOMPLETE", Boolean.TRUE);
+                            } finally {
+                                boolean cleared = com.mt.wms.auth.sso.WmsLocalLogout.clear(request,response);
+                                if (!cleared) request.setAttribute("WMS_LOCAL_LOGOUT_INCOMPLETE", Boolean.TRUE);
+                            }
                         })
                         .logoutSuccessHandler((request, response, authentication) -> {
-                            response.setStatus(HttpServletResponse.SC_OK);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            if (Boolean.TRUE.equals(request.getAttribute("WMS_LOCAL_LOGOUT_INCOMPLETE"))) {
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                                objectMapper.writeValue(response.getOutputStream(), ApiResponse.error("AUTH_LOCAL_LOGOUT_INCOMPLETE",
+                                        "本地会话清理异常，请关闭页面并联系管理员", String.valueOf(request.getAttribute(RequestIdFilter.ATTRIBUTE))));
+                                return;
+                            }
+                            if (Boolean.TRUE.equals(request.getAttribute("WMS_GLOBAL_LOGOUT_INCOMPLETE"))) {
+                                response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+                                objectMapper.writeValue(response.getOutputStream(), ApiResponse.error("SSO_GLOBAL_LOGOUT_INCOMPLETE",
+                                        "WMS 已退出，但统一身份服务未确认全局退出，请稍后从门户退出", String.valueOf(request.getAttribute(RequestIdFilter.ATTRIBUTE))));
+                                return;
+                            }
+                            response.setStatus(HttpServletResponse.SC_OK);
                             objectMapper.writeValue(response.getOutputStream(), ApiResponse.ok(null,
                                     String.valueOf(request.getAttribute(RequestIdFilter.ATTRIBUTE))));
                         }))

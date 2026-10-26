@@ -12,7 +12,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -100,57 +99,22 @@ public class WmsSsoExchangeService {
       if (assertion.isMissingNode() || assertion.isNull()) {
         return Result.fail("SSO_BAD_ASSERTION", "IAM 响应缺少断言");
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return Result.fail("SSO_IAM_UNAVAILABLE", "无法连接 IAM 校验服务");
     } catch (Exception e) {
       // IAM 不可达也拒绝，绝不降级为本地放行
       return Result.fail("SSO_IAM_UNAVAILABLE", "无法连接 IAM 校验服务");
     }
 
+    final WmsSsoSubjectRepository.Binding b;
+    try {
+      b = validateScope(assertion, null, null, null);
+    } catch (AssertionRejected denied) {
+      return Result.fail(denied.code, denied.getMessage());
+    }
     String subject = text(assertion, "subject");
     String sid = text(assertion, "sessionId");
-    if (subject == null || subject.isBlank()) {
-      return Result.fail("SSO_BAD_ASSERTION", "断言缺少 subject");
-    }
-    if (!subject.matches("[a-fA-F0-9]{32}|[a-fA-F0-9]{8}(-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
-        || sid == null || sid.isBlank() || WmsSsoLogoutRegistry.isRevoked(sid)) {
-      return Result.fail("SSO_BAD_ASSERTION", "断言缺少有效的稳定主体或活跃会话");
-    }
-    String returnedAudience = text(assertion, "audience");
-    if (!"wms".equals(returnedAudience) && !"[wms]".equals(returnedAudience)) {
-      return Result.fail("SSO_BAD_ASSERTION", "断言受众不匹配");
-    }
-
-    // 2) 本地显式映射：无映射 / 停用 / 账号不可用 → 拒绝
-    Optional<WmsSsoSubjectRepository.Binding> binding = subjects.findActive(subject);
-    if (binding.isEmpty()) {
-      subjects.recordExchange(subject, 0L, sid, "NO_MAPPING");
-      return Result.fail("SSO_NO_LOCAL_MAPPING", "该 IAM 主体在 WMS 无可用映射");
-    }
-    WmsSsoSubjectRepository.Binding b = binding.get();
-    if (!b.localUsername().equals(text(assertion, "localSubject"))) {
-      return Result.fail("SSO_NO_LOCAL_MAPPING", "IAM 与 WMS 显式映射不一致");
-    }
-    String claimedCompany = text(assertion, "company");
-    if (claimedCompany != null && !claimedCompany.isBlank() && !claimedCompany.equals(b.companyCode())) {
-      return Result.fail("SSO_SCOPE_MISMATCH", "票据公司与本地绑定不一致");
-    }
-
-    // 2b) Zone 范围 fail-closed。
-    // 业务层当前没有 zone 维度的数据模型（隔离维度是 company/warehouse/owner），
-    // 因此映射里一旦声明了非空 zone_code，就无法在查询中兑现该范围。
-    // 与其"记下 zone 但不执行"，不如直接拒绝——否则等于给用户一个它没有的范围承诺。
-    String claimedZone = text(assertion, "zone");
-    for (String field : List.of("org", "domain")) {
-      String scope = text(assertion, field);
-      if (scope != null && !scope.isBlank()) {
-        return Result.fail("SSO_SCOPE_MISMATCH", "WMS 无法执行所声明的 " + field + " 范围");
-      }
-    }
-    if ((b.zoneCode() != null && !b.zoneCode().isBlank()) || (claimedZone != null && !claimedZone.isBlank())) {
-      subjects.recordExchange(subject, b.localUserId(), sid, "ZONE_UNSUPPORTED");
-      return Result.fail(
-          "SSO_ZONE_UNSUPPORTED",
-          "该主体映射了 zone_code，但 WMS 尚无 zone 维度数据模型，拒绝以更大范围放行");
-    }
 
     // 3) 用**本地主体自己的**角色与权限构造 principal（不继承、不提权）
     List<String> roles = List.copyOf(authRepository.findRoles(b.localUserId()));
@@ -174,12 +138,22 @@ public class WmsSsoExchangeService {
         permissions,
         b.passwordChangeRequired());
 
+    try {
+      // The first response must be just as restricted as subsequent requests.
+      principal = WmsCurrentAuthorization.apply(principal, assertion);
+    } catch (SecurityException denied) {
+      return Result.fail("SSO_BAD_ASSERTION", "IAM 响应缺少有效授权");
+    }
     subjects.recordExchange(subject, b.localUserId(), sid, "OK");
     return new Result(true, null, null, principal, subject, sid);
   }
 
   /** Validate the live IAM session even if a logout notification has not arrived. */
   public JsonNode currentAuthorization(String subject, String sid) {
+    return currentAuthorization(subject, sid, null);
+  }
+
+  public JsonNode currentAuthorization(String subject, String sid, WmsPrincipal established) {
     if (!properties.isUsable()) throw new IllegalStateException("SSO is not configured");
     try {
       var request = HttpRequest.newBuilder(URI.create(properties.getIamBaseUrl()+"/auth/sso/session/introspect"))
@@ -191,17 +165,71 @@ public class WmsSsoExchangeService {
       if(response.statusCode()==401||response.statusCode()==403)throw new SecurityException("IAM session inactive");
       if(response.statusCode()!=200)throw new IllegalStateException("IAM unavailable");
       var root=mapper.readTree(response.body());var data=root.path("data");
-      if(root.path("code").asInt(-1)!=0||!data.path("active").asBoolean()
+      if(!root.path("code").isIntegralNumber()||root.path("code").asInt(-1)!=0
+          ||!data.path("active").isBoolean()||!data.path("active").asBoolean()
           ||!subject.equals(data.path("subject").asText())||!sid.equals(data.path("sessionId").asText())
           ||!"wms".equals(data.path("audience").asText())||!data.path("readOnly").isBoolean())
         throw new SecurityException("IAM authorization rejected");
-      var local=subjects.findActive(subject).orElseThrow(()->new SecurityException("Mapping disabled"));
-      if(!local.localUsername().equals(data.path("localSubject").asText())
-          ||!local.companyCode().equals(data.path("company").asText()))throw new SecurityException("Scope changed");
+      validateScope(data, subject, sid, established);
+      // Also reject malformed permissions before the request reaches a business handler.
+      if (!data.path("permissions").isArray()) throw new SecurityException("Missing current IAM grants");
       return data;
     } catch(SecurityException|IllegalStateException e){throw e;}
     catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException("IAM unavailable");}
     catch(Exception e){throw new IllegalStateException("IAM unavailable");}
+  }
+
+  /** The same enforceable scope rules apply at exchange and every later introspection. */
+  private WmsSsoSubjectRepository.Binding validateScope(JsonNode assertion, String expectedSubject,
+                                                       String expectedSid, WmsPrincipal established) {
+    String subject = text(assertion, "subject");
+    String sid = text(assertion, "sessionId");
+    if (subject == null || !subject.matches("[a-fA-F0-9]{32}|[a-fA-F0-9]{8}(-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}")
+        || sid == null || sid.isBlank() || WmsSsoLogoutRegistry.isRevoked(sid)
+        || (expectedSubject != null && !expectedSubject.equals(subject))
+        || (expectedSid != null && !expectedSid.equals(sid))
+        || !"wms".equals(text(assertion, "audience"))) {
+      throw new AssertionRejected("SSO_BAD_ASSERTION", "断言主体、会话或受众不匹配");
+    }
+    var local = subjects.findActive(subject).orElseThrow(() ->
+        new AssertionRejected("SSO_NO_LOCAL_MAPPING", "该 IAM 主体在 WMS 无可用映射"));
+    if (!local.localUsername().equals(text(assertion, "localSubject"))) {
+      throw new AssertionRejected("SSO_NO_LOCAL_MAPPING", "IAM 与 WMS 显式映射不一致");
+    }
+    if (local.companyCode() == null || local.companyCode().isBlank()
+        || !local.companyCode().equals(text(assertion, "company"))) {
+      throw new AssertionRejected("SSO_SCOPE_MISMATCH", "断言公司缺失或与本地绑定不一致");
+    }
+    for (String field : List.of("org", "domain")) {
+      JsonNode value = assertion.get(field);
+      if (value != null && !value.isNull() && (!value.isTextual() || !value.asText().isBlank())) {
+        throw new AssertionRejected("SSO_SCOPE_MISMATCH", "WMS 无法执行所声明的 " + field + " 范围");
+      }
+    }
+    JsonNode zone = assertion.get("zone");
+    if ((local.zoneCode() != null && !local.zoneCode().isBlank())
+        || (zone != null && !zone.isNull() && (!zone.isTextual() || !zone.asText().isBlank()))) {
+      throw new AssertionRejected("SSO_ZONE_UNSUPPORTED", "WMS 无法执行 zone 范围，拒绝扩大范围放行");
+    }
+    // WMS has company/warehouse/owner isolation, not a project dimension. A supplied restriction
+    // cannot safely be translated to company-wide access (absent/null/empty means unrestricted here).
+    JsonNode projects = assertion.get("projectIds");
+    if (projects != null && !projects.isNull() && (!projects.isArray() || !projects.isEmpty())) {
+      throw new AssertionRejected("SSO_SCOPE_MISMATCH", "WMS 尚不能执行 projectIds 范围");
+    }
+    // Changing an explicit mapping may never move an existing session to a different local identity.
+    if (established != null && (established.userId() != local.localUserId()
+        || !local.localUsername().equals(established.username())
+        || !local.companyCode().equals(established.companyCode())
+        || !java.util.Objects.equals(established.companyId(), companyIdOf(local.companyCode())))) {
+      throw new AssertionRejected("SSO_SCOPE_MISMATCH", "既有会话的本地主体或公司映射已变更，请重新登录");
+    }
+    return local;
+  }
+
+  private static final class AssertionRejected extends SecurityException {
+    final String code;
+    AssertionRejected(String code, String message) { super(message); this.code = code; }
   }
   public void globalLogout(String subject,String sid){
     try{
@@ -210,7 +238,8 @@ public class WmsSsoExchangeService {
           .header("X-SSO-Service-Token",properties.getServiceToken())
           .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(java.util.Map.of("subject",subject,"sessionId",sid,"audience","wms")))).build();
       var response=http.send(request,HttpResponse.BodyHandlers.ofString());
-      if(response.statusCode()!=200||mapper.readTree(response.body()).path("code").asInt(-1)!=0)throw new IllegalStateException("Global logout unavailable");
+      var result=mapper.readTree(response.body()).path("code");
+      if(response.statusCode()!=200||!result.isIntegralNumber()||result.asInt(-1)!=0)throw new IllegalStateException("Global logout unavailable");
     }catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException("Global logout unavailable");}
     catch(Exception e){throw new IllegalStateException("Global logout unavailable");}
   }

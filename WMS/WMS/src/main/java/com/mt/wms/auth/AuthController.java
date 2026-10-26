@@ -84,7 +84,7 @@ public class AuthController {
         authService.changePassword(principal, body.currentPassword(), body.newPassword());
         WmsPrincipal updated = new WmsPrincipal(principal.userId(), principal.companyId(), principal.companyCode(),
                 principal.companyName(), principal.username(), principal.displayName(), principal.roles(),
-                principal.permissions(), false);
+                principal.permissions(), false, principal.readOnly());
         Authentication updatedAuthentication = UsernamePasswordAuthenticationToken.authenticated(
                 updated, null, updated.getAuthorities());
         SecurityContext context = securityContextHolderStrategy.createEmptyContext();

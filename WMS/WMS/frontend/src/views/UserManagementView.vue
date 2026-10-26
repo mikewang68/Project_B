@@ -51,7 +51,7 @@ onMounted(load)
 
 <template>
   <div class="page-stack">
-    <header class="page-heading"><div><p class="eyebrow">SYSTEM</p><h1>用户管理</h1><p>维护公司内账号、角色以及可访问的仓库和货主。</p></div><el-button v-if="auth.hasPermission('system:user:write')" type="primary" @click="openCreate">新建用户</el-button></header>
+    <header class="page-heading"><div><p class="eyebrow">SYSTEM</p><h1>用户管理</h1><p>维护公司内账号、角色以及可访问的仓库和货主。</p></div><el-button :disabled="!auth.canWrite('system:user:write')" v-if="auth.hasPermission('system:user:write')" type="primary" @click="openCreate">新建用户</el-button></header>
     <section class="panel table-panel">
       <el-table v-loading="loading" :data="users" stripe>
         <el-table-column prop="username" label="账号" min-width="120" />
@@ -60,7 +60,7 @@ onMounted(load)
         <el-table-column label="角色" min-width="160"><template #default="scope"><el-tag v-for="role in scope.row.roles" :key="role" class="role-tag">{{ role }}</el-tag></template></el-table-column>
         <el-table-column label="状态" width="110"><template #default="scope"><el-tag :type="scope.row.status === 'ENABLED' && scope.row.loginEnabled ? 'success' : 'info'">{{ scope.row.status === 'ENABLED' && scope.row.loginEnabled ? '启用' : '停用' }}</el-tag></template></el-table-column>
         <el-table-column label="数据范围" min-width="180"><template #default="scope">{{ scope.row.warehouses.join('、') }} / {{ scope.row.owners.join('、') }}</template></el-table-column>
-        <el-table-column v-if="auth.hasPermission('system:user:write')" label="操作" width="150" fixed="right"><template #default="scope"><el-button link type="primary" @click="openEdit(scope.row)">编辑</el-button><el-button link type="danger" :disabled="scope.row.id===auth.user?.id" @click="remove(scope.row)">删除</el-button></template></el-table-column>
+        <el-table-column v-if="auth.hasPermission('system:user:write')" label="操作" width="150" fixed="right"><template #default="scope"><el-button :disabled="!auth.canWrite('system:user:write')" link type="primary" @click="openEdit(scope.row)">编辑</el-button><el-button link type="danger" :disabled="!auth.canWrite('system:user:write') || (scope.row.id===auth.user?.id)" @click="remove(scope.row)">删除</el-button></template></el-table-column>
       </el-table>
     </section>
 
@@ -72,7 +72,7 @@ onMounted(load)
         <div class="form-grid"><el-form-item label="可访问仓库"><el-select v-model="form.warehouseCodes" multiple style="width:100%"><el-option v-for="item in auth.user?.tenant.warehouses" :key="item.id" :label="item.name" :value="item.code" /></el-select></el-form-item><el-form-item label="可访问货主"><el-select v-model="form.ownerCodes" multiple style="width:100%"><el-option v-for="item in auth.user?.tenant.owners" :key="item.id" :label="item.name" :value="item.code" /></el-select></el-form-item></div>
         <div class="form-grid"><el-form-item label="账号状态"><el-select v-model="form.status" style="width:100%"><el-option label="启用" value="ENABLED" /><el-option label="停用" value="DISABLED" /></el-select></el-form-item><el-form-item label="允许登录"><el-switch v-model="form.loginEnabled" /></el-form-item></div>
       </el-form>
-      <template #footer><el-button @click="dialog = false">取消</el-button><el-button type="primary" :loading="saving" @click="submit">保存</el-button></template>
+      <template #footer><el-button @click="dialog = false">取消</el-button><el-button :disabled="!auth.canWrite('system:user:write')" type="primary" :loading="saving" @click="submit">保存</el-button></template>
     </el-dialog>
   </div>
 </template>

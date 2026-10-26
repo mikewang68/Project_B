@@ -13,6 +13,7 @@ export class ApiError extends Error {
     readonly code: string,
     message: string,
     readonly requestId?: string,
+    readonly localLogoutComplete = false,
   ) {
     super(message)
   }
@@ -40,11 +41,16 @@ export async function apiFetch<T>(path: string, config: AxiosRequestConfig = {})
     if (reason instanceof ApiError) throw reason
     if (reason instanceof AxiosError) {
       const body = reason.response?.data as Partial<ApiEnvelope<unknown>> | undefined
+      if ((reason.response?.status === 401 || reason.response?.status === 403) &&
+          !path.startsWith('/api/v1/auth/') && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('wms-session-check'))
+      }
       throw new ApiError(
         reason.response?.status ?? 0,
         body?.code ?? 'COMMON_NETWORK_ERROR',
         body?.message ?? '网络请求失败',
         body?.requestId,
+        reason.response?.headers['x-wms-local-logout'] === 'complete',
       )
     }
     throw reason

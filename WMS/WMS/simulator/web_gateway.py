@@ -28,14 +28,14 @@ import simulator as sim
 LOG = logging.getLogger("wms-simulator")
 HERE = Path(__file__).resolve().parent
 HOSTS = {"bpoc-node6:18444", "192.168.101.74:18444", "100.65.200.125:18444"}
-# Keep this deny policy aligned with WMS's native WmsReadOnlyFilter. The gateway
-# delegates receipt jobs to a service account, so checking permissions alone
-# would bypass the native guard for an accidentally over-granted read-only user.
 READ_ONLY_ROLES = frozenset({"AUDITOR", "READONLY", "ROLE_READONLY", "READONLY_AUDITOR", "PLATFORM_AUDITOR_READONLY"})
 
 
 def is_read_only(user):
-    return any(isinstance(role, str) and role.upper() in READ_ONLY_ROLES for role in user.get("roles", []))
+    # Explicit effective policy from WMS wins even if local permissions were mis-granted.
+    # Do not truth-coerce strings such as "false" into booleans.
+    return user.get("readOnly") is True or any(
+        isinstance(role, str) and role.upper() in READ_ONLY_ROLES for role in user.get("roles", []))
 
 
 class WebError(Exception):
@@ -66,6 +66,9 @@ class WebGateway:
             raise sim.SimError("服务器面板仅用于明确批准的实验室 WMS")
         self.session = session
         self.factory = browser_factory or BrowserWms
+        # Ephemeral delegation only. Never persist browser cookies to config, SQLite, or logs.
+        self._delegation = None
+        self.delegation_state = "等待获准用户操作；后台队列已保留但暂停发送"
         self.catalog = {o["good_code"]: copy.deepcopy(o) for o in [session.cfg["order"], *session.cfg.get("additional_orders", [])]}
         self.registry = next(iter(session.engines.values())).store
         with self.registry.db() as db:
@@ -83,7 +86,7 @@ class WebGateway:
         client = self.factory(self.session.cfg, cookie, csrf)
         user = client.call("GET", "/api/v1/auth/me")
         if write and is_read_only(user):
-            raise WebError(403, "只读账号不能通过模拟终端执行入库作业", "AUTH_READONLY")
+            raise WebError(403, "只读账号不能通过模拟终端委托入库", "AUTH_READONLY")
         permissions = set(user.get("permissions", []))
         if "stockin:read" not in permissions or (write and "stockin:write" not in permissions):
             raise WebError(403, "没有入库查看 / 作业权限", "AUTH_FORBIDDEN")
@@ -110,10 +113,62 @@ class WebGateway:
         state["actual"] = next(t["actual"] for t in state["tasks"] if t["id"] == state["active_task"])
         state["user"] = {"id": user["id"], "name": user.get("displayName") or user.get("username"),
                          "can_write": "stockin:write" in user.get("permissions", []) and not is_read_only(user)}
+        state["delegation_state"] = self.delegation_state
         state["scope"] = {k: self.session.cfg["target"][k] for k in ("company_code", "warehouse_code", "owner_code")}
         state["catalog"] = [{"code": o["good_code"], "name": o["good_name"], "unit": o["unit"],
                               "measurement_mode": sim.measurement_mode(o)} for o in self.catalog.values()]
         return state
+
+    def delegate(self, cookie, csrf, user):
+        # Called only after current /me, permission, scope, Origin and CSRF validation.
+        self._delegation = (cookie, csrf, user["id"])
+        self.delegation_state = "后台发送前将重新校验当前会话、只读策略及业务范围"
+
+    def validate_delegation(self):
+        if self._delegation is None:
+            self.session.auto = self.session.auto_confirm = False
+            return False
+        cookie, csrf, actor = self._delegation
+        try:
+            _, user = self.authenticate(cookie, csrf, write=True)
+            if user["id"] != actor:
+                raise WebError(403, "后台授权身份已变更", "AUTH_FORBIDDEN")
+            return True
+        except Exception:
+            # Includes 401/403, readOnly, changed scope, IAM 503 and transport failures.
+            # Fail closed, retain every queue/idempotency key; no privileged-account fallback.
+            self._delegation = None
+            self.session.auto = self.session.auto_confirm = False
+            self.delegation_state = "授权已失效或暂不可验证；自动采集已关闭，未发送队列保留，须获准用户重新操作"
+            return False
+
+    def background_once(self):
+        with self.session.operation_lock:
+            if self.session.auto and time.monotonic() - self.session.last_tick >= self.session.cfg.get("interval_seconds", 10):
+                if not self.validate_delegation():
+                    return
+                self.session.tick()
+                self.session.last_tick = time.monotonic()
+            for engine in self.session.engines.values():
+                with engine.store.db() as db:
+                    due = db.execute("""SELECT 1 FROM jobs WHERE
+                        (status IN ('PENDING','RETRY','REVIEW') AND next_at<=?) OR
+                        (status='IN_FLIGHT' AND lease_until<?) LIMIT 1""", (time.time(), time.time())).fetchone()
+                if not due:
+                    continue
+                # Each task send rechecks the initiating browser's authorization.
+                if not self.validate_delegation():
+                    return
+                engine.online = self.session.online
+                engine.process_once()
+
+    def run(self):
+        while not self.session.stop_event.is_set():
+            try:
+                self.background_once()
+            except Exception:
+                LOG.error("web worker paused; task queues retained")
+            self.session.stop_event.wait(1)
 
     def register(self, order):
         key = sim.task_id(order)
@@ -304,7 +359,9 @@ def make_web_server(gateway, port, allowed_hosts=None, allow_http=False):
                 body = json.loads(self.rfile.read(length))
                 if not isinstance(body, dict):
                     raise sim.SimError("请求必须为对象")
-                result = gateway.action(self.path, client, user, body)
+                with gateway.session.operation_lock:
+                    result = gateway.action(self.path, client, user, body)
+                    gateway.delegate(cookie, csrf, user)
                 LOG.info("web actor=%s action=%s trace=%s", user["id"], self.path, self.trace_id)
                 self.send(200, result)
             except WebError as exc:
@@ -352,7 +409,7 @@ def main(argv=None):
         server.timeout = 0.5
         for sig in (signal.SIGINT, signal.SIGTERM):
             signal.signal(sig, lambda *_: session.stop_event.set())
-        worker = threading.Thread(target=session.run, daemon=True)
+        worker = threading.Thread(target=gateway.run, daemon=True)
         worker.start()
         LOG.info("web panel ready on loopback; automatic acquisition/confirmation disabled at startup")
         try:

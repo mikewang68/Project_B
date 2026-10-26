@@ -31,7 +31,7 @@ onMounted(load)
 
 <template>
   <div class="page-stack">
-    <header class="page-heading"><div><p class="eyebrow">MASTER DATA</p><h1>仓库基础资料</h1><p>资料按当前公司、仓库和货主自动隔离；切换业务范围后显示对应数据。</p></div><el-button v-if="auth.hasPermission('master:write')" type="primary" @click="create">新建{{ currentLabel }}</el-button></header>
+    <header class="page-heading"><div><p class="eyebrow">MASTER DATA</p><h1>仓库基础资料</h1><p>资料按当前公司、仓库和货主自动隔离；切换业务范围后显示对应数据。</p></div><el-button :disabled="!auth.canWrite('master:write')" v-if="auth.hasPermission('master:write')" type="primary" @click="create">新建{{ currentLabel }}</el-button></header>
     <section class="panel master-panel">
       <el-tabs v-model="active" @tab-change="load"><el-tab-pane v-for="tab in tabs" :key="tab.key" :label="tab.label" :name="tab.key" /></el-tabs>
       <el-table v-loading="loading" :data="items" stripe>
@@ -43,7 +43,7 @@ onMounted(load)
         <el-table-column v-if="active==='components'" prop="quantity" label="组件数量" min-width="110" />
         <el-table-column v-if="showContact" prop="contact" label="联系人" min-width="110" /><el-table-column v-if="showContact" prop="telephone" label="联系电话" min-width="130" />
         <el-table-column label="状态" width="90"><template #default="scope"><el-tag :type="scope.row.status==='ENABLED'?'success':'info'">{{ scope.row.status==='ENABLED'?'启用':'停用' }}</el-tag></template></el-table-column>
-        <el-table-column v-if="auth.hasPermission('master:write')" label="操作" width="150" fixed="right"><template #default="scope"><el-button link type="primary" @click="edit(scope.row)">编辑</el-button><el-button link type="danger" @click="remove(scope.row)">删除</el-button></template></el-table-column>
+        <el-table-column v-if="auth.hasPermission('master:write')" label="操作" width="150" fixed="right"><template #default="scope"><el-button :disabled="!auth.canWrite('master:write')" link type="primary" @click="edit(scope.row)">编辑</el-button><el-button :disabled="!auth.canWrite('master:write')" link type="danger" @click="remove(scope.row)">删除</el-button></template></el-table-column>
       </el-table>
     </section>
 
@@ -60,7 +60,7 @@ onMounted(load)
         <template v-if="showContact"><div class="form-grid"><el-form-item label="联系人"><el-input v-model="form.contact" /></el-form-item><el-form-item label="联系电话"><el-input v-model="form.telephone" /></el-form-item></div><el-form-item label="地址"><el-input v-model="form.address" /></el-form-item></template>
         <div class="form-grid"><el-form-item label="状态"><el-select v-model="form.status" style="width:100%"><el-option label="启用" value="ENABLED" /><el-option label="停用" value="DISABLED" /></el-select></el-form-item><el-form-item v-if="active==='locations'" label="最大承重（kg）"><el-input-number v-model="form.quantity" :min="0" style="width:100%" /></el-form-item></div>
         <el-form-item label="备注"><el-input v-model="form.remark" type="textarea" /></el-form-item></el-form>
-      <template #footer><el-button @click="dialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="submit">保存</el-button></template>
+      <template #footer><el-button @click="dialog=false">取消</el-button><el-button :disabled="!auth.canWrite('master:write')" type="primary" :loading="saving" @click="submit">保存</el-button></template>
     </el-dialog>
   </div>
 </template>
