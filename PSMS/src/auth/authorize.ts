@@ -1,11 +1,13 @@
 import { isWithinDataScope } from './dataScope';
 import { loadCurrentDemoSession } from './sessionBootstrap';
+import {livePageAllowed}from'./livePagePolicy';
 import {
   actionPolicies,
   isPageId,
   isPermissionCode,
   isRoleCode,
   routePolicies,
+  routeRequiredPermissions,
   type PermissionCode,
 } from './permissionCatalog';
 import type { PermissionDecision, PolicyContext } from './types';
@@ -104,6 +106,10 @@ export function authorizePage(
   session: PolicyContext['session'],
   pageId: PolicyContext['pageId'],
 ): PermissionDecision {
+  if(session.permissions){
+    if(pageId===undefined||!isPageId(pageId))return deny('PAGE','功能标识无效');
+    return livePageAllowed(session,pageId,routeRequiredPermissions[pageId])?{allow:true}:deny('PAGE','当前功能未获平台授权');
+  }
   if (session.fullAdmin || session.readOnly) return { allow: true };
   const role = session.roleCode as string;
   if (!isRoleCode(role)) return deny('PAGE', `Unknown role: ${role}`);

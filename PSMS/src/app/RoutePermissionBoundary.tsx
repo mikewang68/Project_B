@@ -17,12 +17,12 @@ export default function RoutePermissionBoundary({
   children,
 }: RoutePermissionBoundaryProps) {
   const session = suppliedSession ?? loadCurrentDemoSession();
-  if (import.meta.env.VITE_PSMS_REAL_API === 'true' && Object.hasOwn(liveBusinessPages, route.id))
+  const decision = authorizePage(session, route.id);
+  if (decision.allow && import.meta.env.VITE_PSMS_REAL_API === 'true' && Object.hasOwn(liveBusinessPages, route.id))
     return createC03Element(BusinessDataPage, {pageId:route.id as LiveBusinessPageId});
-  if (import.meta.env.VITE_PSMS_REAL_API === 'true' && !['UI-001','UI-002'].includes(route.id))
+  if (decision.allow && import.meta.env.VITE_PSMS_REAL_API === 'true' && !['UI-001','UI-002'].includes(route.id))
     return createC03Element(Alert, {type:'info', title:route.name+' · 待接入',
       description:'该功能保留原有页面，业务数据与操作接口尚未完成当前版本验收，暂不可启动。'});
-  const decision = authorizePage(session, route.id);
   if (decision.allow) return children;
 
   const firstAllowedPath =
