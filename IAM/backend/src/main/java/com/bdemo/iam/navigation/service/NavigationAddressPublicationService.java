@@ -81,7 +81,7 @@ public class NavigationAddressPublicationService {
     log(user,"draft",key,"创建访问地址草稿 "+id);return revision(id);
   }
   /** Public readiness challenge proves the endpoint has this application's service key; no key is sent to a proposed host. */
-  private HttpResponse<byte[]> fetchProbe(URI target,int limit)throws java.io.IOException,InterruptedException{
+  HttpResponse<byte[]> fetchProbe(URI target,int limit)throws java.io.IOException,InterruptedException{
     var request=HttpRequest.newBuilder(target).timeout(Duration.ofSeconds(8))
         .header("User-Agent","Mozilla/5.0 ProjectB-Address-Readiness").GET().build();
     for(int attempt=0;;attempt++){
