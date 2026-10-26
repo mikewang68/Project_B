@@ -797,12 +797,15 @@
       // 目标页面导航按钮点击拦截 (防止脱离控制)
       if (btnNavigateEntry) {
         btnNavigateEntry.addEventListener('click', e => {
-          if (!activePageNode) return;
-          const targetUrl = btnNavigateEntry.getAttribute('href');
+          e.preventDefault();
+          if (!activePageNode || btnNavigateEntry.disabled) return;
+          const targetUrl = btnNavigateEntry.dataset.targetUrl;
           if (!RouteAdapter.isAllowedNavigationTarget(activeSystemNode, activePageNode, targetUrl)) {
             e.preventDefault();
             alert('目标服务实例未部署或网关尚未接通，无法跳转。');
+            return;
           }
+          window.location.assign(targetUrl);
         });
       }
 
@@ -1026,6 +1029,7 @@
             pName.className = 'page-name';
             pName.textContent = node.menuName;
             if (node.canLaunch === false) {
+              pageBtn.disabled = true;
               pageBtn.setAttribute('aria-disabled', 'true');
               pageBtn.style.opacity = '0.55';
               pName.textContent += node.featureStatus === 'PLANNED' ? ' · 待接入' : ' · 待验证';
@@ -1048,7 +1052,7 @@
             });
 
             container.append(pageBtn);
-            if (!firstPageToSelect) {
+            if (!firstPageToSelect && node.canLaunch !== false) {
               firstPageToSelect = node;
               firstSystemOfPage = sys;
             }
@@ -1076,7 +1080,7 @@
       for (const n of nodes || []) {
         const isDir = (n.nodeType || 'PAGE').toUpperCase() === 'DIRECTORY'
           || (Array.isArray(n.children) && n.children.length > 0);
-        if (!isDir) return n;
+        if (!isDir && n.canLaunch !== false) return n;
         const inner = this.findFirstPage(n.children || []);
         if (inner) return inner;
       }
@@ -1114,9 +1118,13 @@
       cardPageName.textContent = pageLeaf.menuName;
       cardDestBadge.textContent = destInfo.badgeText;
       cardDestBadge.className = destInfo.badgeClass;
-      cardEntryPath.textContent = destInfo.entryPath;
+      const launchable = pageLeaf.canLaunch !== false && !!destInfo.entryPath && destInfo.entryPath !== '#';
+      cardEntryPath.textContent = launchable ? destInfo.entryPath : '尚未发布';
       cardDestDesc.textContent = destInfo.desc;
-      btnNavigateEntry.setAttribute('href', destInfo.entryPath);
+      btnNavigateEntry.disabled = !launchable;
+      btnNavigateEntry.setAttribute('aria-disabled', String(!launchable));
+      if (launchable) btnNavigateEntry.dataset.targetUrl = destInfo.entryPath;
+      else delete btnNavigateEntry.dataset.targetUrl;
 
       // 5. 只读状态展示
       const isReadOnly = Boolean(activeNavigationData?.userContext?.readOnly);
