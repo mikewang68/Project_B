@@ -153,7 +153,7 @@ async function start(): Promise<void> {
   }
 
   // 4. 按保留期清理审计日志（关系库没有 TTL，改为启动期主动清理）
-  await purgeAuditLogs(AUDIT_RETENTION_DAYS_DEFAULT).catch((err) =>
+  if(env.AUDIT_MAINTENANCE_ENABLED) await purgeAuditLogs(AUDIT_RETENTION_DAYS_DEFAULT).catch((err) =>
     logger.warn({ err }, '审计清理失败（不影响启动）'),
   );
 

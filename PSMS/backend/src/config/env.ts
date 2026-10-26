@@ -30,6 +30,7 @@ const envSchema = z.object({
   PSMS_SSO_SERVICE_TOKEN: z.string().default(''),
   PSMS_SSO_BINDINGS_FILE: z.string().default(''),
   PSMS_COOKIE_SECURE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  AUDIT_MAINTENANCE_ENABLED: z.enum(['true','false']).default('false').transform(v=>v==='true'),
   // OpenAI-compatible provider; credentials stay on the backend.
   AI_BASE_URL: z.string().default(''),
   AI_MODEL: z.string().default(''),
