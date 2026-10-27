@@ -97,7 +97,7 @@ onUnmounted(() => {
     <template #footer>
       <template v-if="stage === 'confirm'">
         <button type="button" class="rule-btn ghost" @click="emit('update:modelValue', false)">取消</button>
-        <button type="button" class="rule-btn primary" :disabled="rule?.highRisk && !acknowledged" @click="startPublish">确认发布</button>
+        <button v-permission="'safety:module:rule:execute'" type="button" class="rule-btn primary" :disabled="rule?.highRisk && !acknowledged" @click="startPublish">确认发布</button>
       </template>
       <template v-else-if="stage === 'syncing'">
         <button type="button" class="rule-btn ghost" disabled>下发中…</button>

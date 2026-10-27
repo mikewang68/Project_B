@@ -123,7 +123,7 @@ public class AiEventController {
 
     @PostMapping("/ai-events/ingest")
     @Operation(summary = "边缘 AI 视觉事件接入（Python YOLO 推理端点上报，自动落库并广播）")
-    public DemoAiEvent ingest(@RequestBody AiIngestRequest body,
+    public DemoAiEvent ingest(@jakarta.validation.Valid @RequestBody AiIngestRequest body,
                               @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
         return service.ingest(body, idemKey);
     }

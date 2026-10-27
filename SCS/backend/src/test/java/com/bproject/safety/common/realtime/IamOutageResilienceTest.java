@@ -99,6 +99,19 @@ class IamOutageResilienceTest {
   }
 
   @Test
+  void defaultAuthorizationNeverDeliversUsingStalePermissions() {
+    var actor = new ScsLocalPolicy.Actor("user-1", "operator", Set.of("OPERATOR"), Set.of(), false, false);
+    when(iam.current(anyString(), anyString())).thenReturn(Map.of("sub", "user-1"));
+    when(policy.resolve(anyMap())).thenReturn(actor);
+    var service = new LiveSessionAuthorization(iam, policy, true);
+    assertNotNull(service.current(socket));
+    when(iam.current(anyString(), anyString()))
+        .thenThrow(new ScsIamTicketValidator.IamUnavailableException("IAM unavailable"));
+    assertThrows(LiveSessionAuthorization.DeliverySuspendedException.class, () -> service.current(socket));
+    assertNeverClosed(socket);
+  }
+
+  @Test
   @DisplayName("IAM 明确判定会话失效：仍然抛撤销异常（可断连）")
   void explicitRevocationStillCloses() {
     when(iam.current(anyString(), anyString()))

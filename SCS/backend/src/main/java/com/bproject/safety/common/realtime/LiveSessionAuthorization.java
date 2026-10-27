@@ -45,16 +45,16 @@ public class LiveSessionAuthorization {
       ScsIamTicketValidator iam,
       ScsLocalPolicy policy,
       @Value("${app.security.browser-sso-only:${app.security.enabled:true}}") boolean required,
-      @Value("${app.security.iam-outage-grace-seconds:600}") long graceSeconds) {
+      @Value("${app.security.iam-outage-grace-seconds:0}") long graceSeconds) {
     this.iam = iam;
     this.policy = policy;
     this.required = required;
     this.graceMillis = Math.max(0, graceSeconds) * 1000L;
   }
 
-  /** 兼容既有测试与装配（默认 10 分钟宽限）。 */
+  /** 默认暂停未能重新授权的投递，保持连接以避免重连风暴。 */
   public LiveSessionAuthorization(ScsIamTicketValidator iam, ScsLocalPolicy policy, boolean required) {
-    this(iam, policy, required, 600);
+    this(iam, policy, required, 0);
   }
 
   public ScsLocalPolicy.Actor current(WebSocketSession session) {
@@ -76,7 +76,7 @@ public class LiveSessionAuthorization {
       CachedActor cached = lastKnown.get(localId);
       long now = System.currentTimeMillis();
       // graceMillis=0 表示不启用宽限：此时不得沿用任何缓存（<= 会让 0 宽限也命中）
-      if (cached != null && graceMillis > 0 && now - cached.atMillis() < graceMillis) {
+      if (graceMillis > 0 && cached != null && now - cached.atMillis() < graceMillis) {
         log.debug("IAM 暂不可用，按最近授权继续投递 localSession={}", localId);
         return cached.actor();
       }

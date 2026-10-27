@@ -146,8 +146,19 @@ class ScsRoutePermissionsTest {
     Path csv = scsRoot().resolve("docs/scs_module_menu.csv");
     assertTrue(Files.exists(csv), "找不到菜单定义文件: " + csv);
     String text = Files.readString(csv, StandardCharsets.UTF_8);
+    Set<String> registered = new LinkedHashSet<>();
+    Path iam = iamIsolatedDir();
+    org.junit.jupiter.api.Assumptions.assumeTrue(iam != null, "SCS-only checkout has no IAM permission catalog");
+    try (Stream<Path> files = Files.walk(iam)) {
+      for (Path p : files.filter(f -> f.toString().endsWith(".sql")).toList()) {
+        Matcher matcher = Pattern.compile("'(safety:[a-z:]+)'")
+            .matcher(Files.readString(p, StandardCharsets.UTF_8));
+        while (matcher.find()) registered.add(matcher.group(1));
+      }
+    }
     for (String code : Set.of("safety:work:view", "safety:event:view", "safety:sys:view")) {
       assertTrue(text.contains(code), "菜单 CSV 缺少分组权限码: " + code);
+      assertTrue(registered.contains(code), "IAM 目录缺少菜单分组权限码: " + code);
     }
   }
 

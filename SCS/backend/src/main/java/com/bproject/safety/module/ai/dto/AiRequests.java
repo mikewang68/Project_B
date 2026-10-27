@@ -1,6 +1,10 @@
 package com.bproject.safety.module.ai.dto;
 
-/** AI 模块写操作请求体（全部允许为空，Demo 用户兜底）。 */
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Size;
+
+/** AI 模块请求。操作主体由服务端会话确定，设备接入字段按持久化边界校验。 */
 public final class AiRequests {
 
     private AiRequests() {
@@ -39,22 +43,22 @@ public final class AiRequests {
      * 边端真实 AI 视觉检测上报请求体（来自 Python/C++ 边缘计算节点）。
      */
     public record AiIngestRequest(
-            String eventType,
-            String cameraCode,
-            String cameraName,
-            String areaCode,
-            Double confidence,
-            Double threshold,
-            Double durationSec,
-            String modelCode,
-            String riskCode,
-            String sceneType,
-            String ruleCode,
-            String judgeText,
-            String snapshotUrl,
-            java.util.List<com.bproject.safety.module.ai.model.AiBox> boxes,
-            String relatedPerson,
-            String relatedDevice,
+            @Size(max=48) String eventType,
+            @Size(max=32) String cameraCode,
+            @Size(max=96) String cameraName,
+            @Size(max=48) String areaCode,
+            @DecimalMin("0") @DecimalMax("100") Double confidence,
+            @DecimalMin("0") @DecimalMax("100") Double threshold,
+            @DecimalMin("0") @DecimalMax("999999.99") Double durationSec,
+            @Size(max=64) String modelCode,
+            @Size(max=32) String riskCode,
+            @Size(max=128) String sceneType,
+            @Size(max=40) String ruleCode,
+            @Size(max=4096) String judgeText,
+            @Size(max=2048) String snapshotUrl,
+            @Size(max=128) java.util.List<com.bproject.safety.module.ai.model.AiBox> boxes,
+            @Size(max=32) String relatedPerson,
+            @Size(max=32) String relatedDevice,
             java.time.OffsetDateTime occurredAt
     ) {
     }
