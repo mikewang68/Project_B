@@ -31,6 +31,8 @@ public class SecurityConfig {
                         .requestMatchers("/login", "/captchaImage", "/error", "/actuator/health/**",
                                 "/transport/crypto/frontend-config", "/transport/crypto/public-key").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST,"/collection/events").permitAll()
+                        .requestMatchers("/collection/**").hasAnyRole("admin","energy_mgr","ops","dispatch","PLATFORM_AUDITOR_READONLY")
                         .requestMatchers(HttpMethod.POST,"/auth/sso/exchange","/auth/sso/revoke").permitAll()
                         .requestMatchers("/system/**").hasAnyRole("admin", "PLATFORM_AUDITOR_READONLY")
                         .requestMatchers("/monitor/**").hasAnyRole("admin", "PLATFORM_AUDITOR_READONLY")
