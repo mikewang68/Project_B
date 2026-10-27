@@ -24,6 +24,15 @@ class StockinService {
 
     List<StockinModels.OrderSummary> list(WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);return repository.orders(s.c,s.w,s.o);}
     StockinModels.OrderDetail detail(long id,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);return detail(id,s);}
+    @Transactional(readOnly=true)
+    StockinModels.ScanPreview scanPreview(long id,String barcode,WmsPrincipal principal,HttpSession session){
+        String normalized=barcode==null?"":barcode.trim();
+        if(normalized.isEmpty()||normalized.length()>128)throw new IllegalArgumentException("条码长度必须为1到128个字符");
+        StockinModels.OrderDetail order=detail(id,principal,session);
+        List<StockinModels.LineView> matches=order.lines().stream().filter(line->normalized.equals(line.barcode())).toList();
+        if(matches.isEmpty())throw new IllegalArgumentException("条码未匹配当前入库单明细");
+        return new StockinModels.ScanPreview(order.id(),order.orderCode(),order.state(),normalized,matches);
+    }
     List<StockinModels.ReceiptView> receipts(long id,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);repository.order(id,s.c,s.w,s.o);return repository.receipts(id,s.c,s.w,s.o);}
     List<StockinModels.LocationSuggestion> locationSuggestions(String goodCode,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);StockinRepository.GoodRow good=repository.good(s.c,s.o,goodCode.trim());return repository.locationSuggestions(s.c,s.w,s.o,good.id());}
 

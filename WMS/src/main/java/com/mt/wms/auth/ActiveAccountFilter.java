@@ -19,7 +19,7 @@ public class ActiveAccountFilter extends OncePerRequestFilter {
     public ActiveAccountFilter(AuthRepository repository,ObjectMapper mapper) { this.repository=repository;this.mapper=mapper; }
 
     @Override protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path=request.getServletPath();
+        String path=WmsReadOnlyPolicy.requestPath(request);
         return !path.startsWith("/api/") || path.equals("/api/v1/auth/login") || path.equals("/api/v1/auth/csrf");
     }
 
@@ -28,15 +28,23 @@ public class ActiveAccountFilter extends OncePerRequestFilter {
         if(authentication!=null && authentication.getPrincipal() instanceof WmsPrincipal previous) {
             var refreshed=repository.refreshPrincipal(previous);
             if(refreshed.isEmpty()) {
-                SecurityContextHolder.clearContext();
-                var session=request.getSession(false);
-                if(session!=null) session.invalidate();
+                com.mt.wms.auth.sso.WmsLocalLogout.clear(request,response);
                 response.setStatus(401);
                 response.setContentType("application/json;charset=UTF-8");
                 mapper.writeValue(response.getOutputStream(),ApiResponse.error("AUTH_UNAUTHENTICATED","账号已停用或删除，请重新登录",String.valueOf(request.getAttribute(RequestIdFilter.ATTRIBUTE))));
                 return;
             }
             WmsPrincipal principal=refreshed.get();
+            if (request.getAttribute("WMS_IAM_AUTHORIZATION") instanceof com.fasterxml.jackson.databind.JsonNode current) {
+                try {
+                    principal=com.mt.wms.auth.sso.WmsCurrentAuthorization.apply(principal,current);
+                } catch (SecurityException invalid) {
+                    com.mt.wms.auth.sso.WmsLocalLogout.clear(request,response);
+                    response.setStatus(401);response.setContentType("application/json;charset=UTF-8");
+                    mapper.writeValue(response.getOutputStream(),ApiResponse.error("AUTH_SESSION_REVOKED","当前授权无效，请重新登录",null));
+                    return;
+                }
+            }
             // Use a new context to avoid mutating one shared by concurrent requests on the same session.
             var context=SecurityContextHolder.createEmptyContext();
             context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(principal,null,principal.getAuthorities()));

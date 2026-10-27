@@ -33,6 +33,8 @@ public final class StockinModels {
                               String locationCode,BigDecimal quantity,String batchCode,String qualityType,
                               String lpn,int serialCount,String operatorName,String remark,
                               OffsetDateTime createdAt) {}
+    /** Barcode lookup can return multiple batches; it never receives stock. */
+    public record ScanPreview(Long orderId,String orderCode,String state,String barcode,List<LineView> matches) {}
     public record LocationSuggestion(String locationCode,String locationName,String reason) {}
 
     public record LineRequest(@NotBlank String goodCode,
