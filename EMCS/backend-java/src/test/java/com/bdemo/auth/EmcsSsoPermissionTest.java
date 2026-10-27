@@ -12,16 +12,20 @@ import org.junit.jupiter.api.io.TempDir;
 
 class EmcsSsoPermissionTest {
   @TempDir Path directory;
+  Path bindingFile() throws Exception {
+    var path=directory.resolve("active.json");
+    Files.writeString(path,"{\"subject-a\":{\"enabled\":true,\"userId\":42}}");return path;
+  }
   @Test
   void dedicatedApplicationAdminRequiresCurrentGrantAndReadonlyStillWins() throws Exception {
     var users=mock(SystemUserMapper.class);
     when(users.findById(42)).thenReturn(Optional.of(new UserAccount(42,7L,"operator","Operator","","", "0","0")));
     when(users.findRoleKeys(42)).thenReturn(List.of("lw_emcs_admin"));
     when(users.findPermissions(42)).thenReturn(List.of());
-    var service=new EmcsSsoSessions(users,"http://127.0.0.1:1","test-service-identity-at-least-32-characters","unused",true);
+    var service=new EmcsSsoSessions(users,"http://127.0.0.1:1","test-service-identity-at-least-32-characters",bindingFile().toString(),true);
     var assertion=new ObjectMapper().readTree("""
         {"subject":"subject-a","sessionId":"sid-a","localSubject":"operator","audience":"emcs",
-         "readOnly":false,"superAdmin":false,"applicationAdmin":true,"permissions":[]}
+         "allowedAppCodes":["EMCS"],"readOnly":false,"superAdmin":false,"applicationAdmin":true,"permissions":[]}
         """);
     var resolve=EmcsSsoSessions.class.getDeclaredMethod("resolve",EmcsSsoSessions.Binding.class,com.fasterxml.jackson.databind.JsonNode.class);resolve.setAccessible(true);
     var b=new EmcsSsoSessions.Binding("subject-a","sid-a",42,"operator");
@@ -43,10 +47,10 @@ class EmcsSsoPermissionTest {
     when(users.findById(42)).thenReturn(Optional.of(new UserAccount(42,7L,"operator","Operator","","", "0","0")));
     when(users.findRoleKeys(42)).thenReturn(List.of("admin","dispatch"));
     when(users.findPermissions(42)).thenReturn(List.of("energy:alert:list","energy:alert:edit"));
-    var service=new EmcsSsoSessions(users,"http://127.0.0.1:1","test-service-identity-at-least-32-characters","unused",true);
+    var service=new EmcsSsoSessions(users,"http://127.0.0.1:1","test-service-identity-at-least-32-characters",bindingFile().toString(),true);
     var assertion=new ObjectMapper().readTree("""
         {"subject":"subject-a","sessionId":"sid-a","localSubject":"operator","audience":"emcs",
-         "readOnly":true,"superAdmin":true,"permissions":["ems:energy:alert:list","ems:energy:alert:edit"]}
+         "allowedAppCodes":["EMCS"],"readOnly":true,"superAdmin":true,"permissions":["ems:energy:alert:list","ems:energy:alert:edit"]}
         """);
     var resolve=EmcsSsoSessions.class.getDeclaredMethod("resolve",EmcsSsoSessions.Binding.class,com.fasterxml.jackson.databind.JsonNode.class);
     resolve.setAccessible(true);

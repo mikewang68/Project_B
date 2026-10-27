@@ -47,14 +47,15 @@ public class EmcsSsoSessions {
     catch(Exception e){throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);}
   }
   public void exchange(String ticket,HttpServletRequest request){
-    if(ticket==null||ticket.length()>8192)throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+    if(ticket==null||ticket.isBlank()||ticket.length()>8192)throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
     var a=call("verify-and-consume",Map.of("ticket",ticket,"audience","emcs"));String sub=a.path("subject").asText();
     long userId;
     try{var b=json.readTree(java.nio.file.Files.readString(java.nio.file.Path.of(file))).path(sub);if(!b.path("enabled").asBoolean(false))throw new IllegalArgumentException();userId=b.path("userId").asLong(-1);}
     catch(Exception e){throw new ResponseStatusException(HttpStatus.FORBIDDEN);}
     var binding=new Binding(sub,a.path("sessionId").asText(),userId,a.path("localSubject").asText());resolve(binding,a);
-    var old=request.getSession(false);if(old!=null)old.invalidate();var session=request.getSession(true);
-    if(sessions.size()>10000)throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
+    sessions.entrySet().removeIf(e->{try{e.getValue().getCreationTime();return false;}catch(IllegalStateException gone){return true;}});
+    if(sessions.size()>=10000)throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
+    var old=request.getSession(false);if(old!=null){sessions.remove(old.getId());old.invalidate();}var session=request.getSession(true);
     session.setAttribute("EMCS_SSO",binding);session.setAttribute("EMCS_CSRF",UUID.randomUUID().toString()+UUID.randomUUID());sessions.put(session.getId(),session);
   }
   public Current current(Binding binding){return resolve(binding,call("session/introspect",Map.of("subject",binding.subject(),"sessionId",binding.sid(),"audience","emcs")));}
@@ -62,6 +63,7 @@ public class EmcsSsoSessions {
     if(Set.of("GET","HEAD").contains(method)&&Set.of("/getInfo","/getRouters","/auth/sso/csrf",
         "/transport/crypto/frontend-config","/transport/crypto/public-key").contains(path))return true;
     if(method.equals("POST")&&path.equals("/logout"))return true;
+    if(current.readOnly()&&(!Set.of("GET","HEAD","OPTIONS").contains(method)||path.matches(".*/(export|download)(/.*)?")))return false;
     if(current.permissions().contains("*:*:*")&&!current.readOnly())return true;
     if(current.permissions().contains("EMCS_APPLICATION_ADMIN")&&!current.readOnly())return true;
     try{
@@ -71,6 +73,17 @@ public class EmcsSsoSessions {
     }catch(Exception ignored){}return false;
   }
   private Current resolve(Binding b,JsonNode a){
+    // Re-read the only local mapping authority on every request, including admin fast paths.
+    try {
+      var mapping=json.readTree(java.nio.file.Files.readString(java.nio.file.Path.of(file))).path(b.subject());
+      if(!mapping.path("enabled").asBoolean(false)||!mapping.path("userId").canConvertToLong()
+          ||mapping.path("userId").asLong()!=b.userId())throw new IllegalArgumentException();
+    }catch(Exception unavailable){throw new ResponseStatusException(HttpStatus.FORBIDDEN);}
+    boolean appAllowed=false;
+    if(a.path("allowedAppCodes").isArray())for(var app:a.path("allowedAppCodes"))if(app.isTextual()&&"EMCS".equals(app.asText()))appAllowed=true;
+    if(!appAllowed||!b.sid().equals(a.path("sessionId").asText())||!a.path("permissions").isArray())
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+
     var user=users.findById(b.userId()).filter(u->"0".equals(u.status())&&"0".equals(u.delFlag())).orElseThrow(()->new ResponseStatusException(HttpStatus.UNAUTHORIZED));
     if(b.subject().isBlank()||b.sid().isBlank()||!b.local().equals(user.userName())||!b.subject().equals(a.path("subject").asText())
         ||!b.local().equals(a.path("localSubject").asText())||!"emcs".equals(a.path("audience").asText())

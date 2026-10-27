@@ -51,7 +51,8 @@ service.interceptors.request.use(async config => {
     const response = await fetch(apiBase + '/auth/sso/csrf', { credentials:'same-origin', cache:'no-store' })
     if (!response.ok) throw new Error('无法核验统一登录会话')
     const session = await response.json()
-    if (session.csrfToken) config.headers['X-EMCS-CSRF'] = session.csrfToken
+    if (session.code !== 200 || typeof session.csrfToken !== 'string' || !session.csrfToken) throw new Error('统一登录CSRF凭据缺失')
+    config.headers['X-EMCS-CSRF'] = session.csrfToken
   }
   if (!isRepeatSubmit && (config.method === 'post' || config.method === 'put')) {
     const requestObj = {

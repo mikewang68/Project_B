@@ -33,11 +33,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String authorization = request.getHeader("Authorization");
+        String endpoint=request.getRequestURI().substring(request.getContextPath().length());
+        // Service-authenticated exchange/revoke must not be blocked by a stale browser cookie.
+        if("POST".equals(request.getMethod())&&java.util.Set.of("/auth/sso/exchange","/auth/sso/revoke").contains(endpoint)){
+            chain.doFilter(request,response);return;
+        }
         var session=request.getSession(false);
         if(session!=null&&session.getAttribute("EMCS_SSO") instanceof EmcsSsoSessions.Binding binding){
             try{
                 var current=sso.getObject().current(binding);
-                boolean write=!java.util.Set.of("GET","HEAD","OPTIONS").contains(request.getMethod());String path=request.getRequestURI();
+                boolean write=!java.util.Set.of("GET","HEAD","OPTIONS").contains(request.getMethod());String path=request.getRequestURI().substring(request.getContextPath().length());
                 if(current.readOnly()&&(write||path.matches(".*/(export|download)(/.*)?"))&&!path.equals("/logout")){
                     response.setStatus(403);response.setContentType("application/json;charset=UTF-8");response.getWriter().write("{\"code\":403,\"msg\":\"只读账号禁止此操作\"}");return;
                 }

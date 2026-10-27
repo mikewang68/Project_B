@@ -70,6 +70,8 @@ class NativeSessionHttpTest {
     assertStableRead(send("GET", "/native-test/read", cookie, false));
     when(sessions.current(any())).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED));
     assertEquals(401, send("GET", "/native-test/read", cookie, false).statusCode());
+    // The exchange controller independently validates service identity and the new ticket.
+    assertNotEquals(cookie, exchange(cookie));
   }
 
   private void assertStableRead(HttpResponse<String> response) {
