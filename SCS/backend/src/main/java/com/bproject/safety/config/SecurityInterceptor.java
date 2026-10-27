@@ -205,6 +205,11 @@ public class SecurityInterceptor implements HandlerInterceptor {
                 // IAM 抖动不能当成"会话失效"：返回 503 而不是 401，前端只在 401 时清会话，
                 // 否则一次 IAM 超时就会把全站用户打回登录页。
                 sendServiceUnavailable(request,response,"统一身份服务暂不可用，请稍后重试");return false;
+            }catch(ScsLocalPolicy.UnsupportedDataScopeException unsupported){
+                // 票据合法但 SCS 尚无对象过滤：403 并说明真实原因，
+                // 不能笼统报成"票据无效"（会让排障误判为 IAM 侧问题）。
+                sendForbidden(request,response,ErrorCodes.FORBIDDEN_SCOPE_MISMATCH,
+                        unsupported.getMessage(),Map.of());return false;
             }catch(ScsIamTicketValidator.InvalidTicketException denied){sendUnauthorized(request,response,"统一身份或业务映射不可用");return false;}
         }
         // 3. 边缘节点机器凭据检查 (X-API-Key，常量时间等值比较)
