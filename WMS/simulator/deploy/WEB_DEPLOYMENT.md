@@ -1,5 +1,7 @@
 # WMS 网页模拟终端部署与维护
 
+> 2026-10-27 状态更新：旧服务器网页模拟终端已退役，服务停止并屏蔽启动，`/simulator/` 返回410。已有业务数据及队列保留。当前使用[Android设备模拟终端](../android-terminal/README.md)，本文保留历史部署与审计用途，不得依据旧命令直接恢复现网发送。
+
 核实日期：2026-10-22（北京时间）。发布标识 `20261021-web-v1` 沿用任务启动日期，不代表验收日期。仅修改 WMS，不改 IAM、Portal、其他模块、共享数据库基础服务或 MQ。
 
 ## 入口及路径
@@ -8,8 +10,8 @@
 
 | 节点 | 文件 / 路径 | 用途 |
 |---|---|---|
-| node6 | `/home/bpoc-data/projects/Project_B/WMS/WMS/frontend/src/views/StockinView.vue` | 入库页入口按钮 |
-| node6 | `/home/bpoc-data/projects/Project_B/WMS/WMS/simulator` | Python / HTML / 测试公共源码 |
+| node6 | `/home/bpoc-data/projects/Project_B/WMS/frontend/src/views/StockinView.vue` | 入库页入口按钮（2026-10-27 源码路径更新） |
+| node6 | `/home/bpoc-data/projects/Project_B/WMS/simulator` | Python / HTML / 测试公共源码 |
 | node6 | `/opt/project-b/wms-simulator/releases/20261021-web-v1`；`current` 指向此目录 | 实际运行版本，`web_gateway.py` 启动 |
 | node6 | `/opt/project-b/wms-frontend/releases/20261021-web-v1` | 新 WMS 静态前端，包括既有换肤、智能助手和登录提示 |
 | node6 | `/etc/nginx/conf.d/bdemo-44e32a9.conf` 的 **18444 WMS server 块** | 静态前端、`/simulator/` 代理，其余仍走 node4 |

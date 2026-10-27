@@ -1,5 +1,7 @@
 # 实验室 WMS 模拟采集部署与验收（原始批次 2026-10-19）
 
+> 2026-10-27 状态更新：旧Python网页/自动发送服务已停止并屏蔽启动，旧网页入口关闭，已有库存、入库单和队列未删除。当前设备模拟入口为[Android终端](../android-terminal/README.md)。下文为原始批次记录，不再作为现网启用指令。
+
 **当前更新：2026-10-22 已新增服务器网页入口。** “入库管理 → 模拟手持终端”，相对路径 `/simulator/`；运行版本改为 `/opt/project-b/wms-simulator/releases/20261021-web-v1`，WMS 前端现由 node6 独立静态目录发布，node4 JAR 和业务 API 沿用。动态网页任务及重建/回退详见 [WEB_DEPLOYMENT.md](WEB_DEPLOYMENT.md)。下文六单数量、旧运行版本和轮询行为是 10 月 19 日历史快照，不是当前任务总量。
 
 本文件只描述 WMS 的模拟手持终端 / 称重程序，不是其他模块的部署脚本。没有安装真实 RFID 或地磅驱动，没有改统一 IAM、Portal、共享消息队列或其他模块。
@@ -8,7 +10,7 @@
 
 | 节点 | 路径 / 服务 | 用途 |
 |---|---|---|
-| node6 | `/home/bpoc-data/projects/Project_B/WMS/WMS/simulator` | 公共 WMS 源码目录，本目录可供负责人员查看维护 |
+| node6 | `/home/bpoc-data/projects/Project_B/WMS/simulator` | 公共 WMS 源码目录（2026-10-27 已扁平化）；原部署批次不变 |
 | node6 | `/opt/project-b/wms-simulator/releases/20261019-v2`；`current` 链接 | 独立 Python 运行代码，非 Java JAR |
 | node6 | `/etc/systemd/system/project-b-wms-simulator.service` | 以专用 Linux 用户 `wms-sim` 运行；开机自启 |
 | node6 | `/etc/project-b/WMS/simulator/config.local.json` | 私有服务器配置：实际订单 / 明细 ID、数据域、CA、批准计划 |
@@ -63,7 +65,7 @@ sudo python3 -B /opt/project-b/wms-simulator/current/deploy/check_lab.py \
 ## 再次部署或新建批次
 
 1. 先备份 WMS 数据库、当前服务/配置与运行代码；不要清空旧业务表，不要重启共享数据库。
-2. 在代码副本执行单元测试，核对唯一修改范围 `WMS/WMS/simulator/`。发布到新的独立运行目录，维护 node6 公共源码副本与运行副本的对应 SHA-256。
+2. 在代码副本执行单元测试，核对唯一修改范围 `WMS/simulator/`。发布到新的独立运行目录，维护 node6 公共源码副本与运行副本的对应 SHA-256。
 3. 首次安装时由 WMS 维护者在 **WMS 数据库** 审查运行 `simulator-role.sql`，仅新增专用角色及三项权限；它不是公共 IAM 权限变更。此角色拥有对应数据域的收货权限，SIM 前缀 / 有限计划由客户端保护，**不是服务器行级安全策略**，因此专用凭据仍必须受限。
 4. 由获准管理员通过 stdin 私密通道调用 `prepare_lab.py --authorize-lab-writes`，传入 JSON `{username,password}`，不得把真实值写进命令行、仓库或共享文档。参数需明确批次、HTTPS URL、CA、公司、仓库、货主、私有输出目录、新状态目录。
 5. 准备器通过原生 API 创建 / 检查独立 SIM 主数据和待收货单；订单来源使用现有枚举 `CUSTOM`（不能自造 `SIMULATOR` 来源）。不改现有真实货品单位、不覆盖已有收货、不自动重试结果不确定的 setup POST。发现既有凭据或已收货订单会停止，先核对再继续。
