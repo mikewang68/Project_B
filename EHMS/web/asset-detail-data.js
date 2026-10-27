@@ -21,6 +21,6 @@
     const records=[...calibrations.map(c=>({at:c.calibratedAt,type:'校准',id:c.calibrationNo,summary:`${c.pointCode||c.sensorCode} · ${c.result}`,operator:c.operator})),...changes.map(c=>({at:c.effectiveAt||c.approvedAt||c.requestedAt,type:'配置变更',id:c.changeNo,summary:`${c.changeType} · ${c.status} · ${c.reason}`,operator:c.executor||c.approver||c.applicant})),...WORK_ORDERS.filter(w=>w.deviceCode===asset.code).map(w=>({at:w.updatedAt||w.createdAt,type:'维保工单',id:w.orderNo,summary:`${w.title} · ${w.status}`,operator:w.assignee}))].sort((a,b)=>new Date(b.at)-new Date(a.at));
     return panel('本设备数字履历',table(['保存时间','事件类型','记录编号','内容 / 状态','责任人'],records.map(r=>[visualDate(r.at),r.type,r.id,r.summary,r.operator])),button('刷新关联档案','reloadAssetRelated'),'<span>按当前已保存记录汇聚；采购、安装、部件替换等未登记事件不会自动补造。操作审计另在日志页查看。</span>');
   };
-  const basePage=setPage;setPage=function(page){basePage(page);if(page==='asset-detail')loadRelated();};
+  const basePage=setPage;setPage=function(page,options){basePage(page,options);if(page==='asset-detail')loadRelated();};
   const baseAction=handleAction;handleAction=function(event){if(event.currentTarget.dataset.action==='reloadAssetRelated')return loadRelated();return baseAction(event);};
 })();

@@ -89,10 +89,10 @@ defineEmits<{
         <button v-if="isEditingExisting" type="button" @click="$emit('cancel')">
           <el-icon><Close /></el-icon>取消编辑
         </button>
-        <button type="button" @click="$emit('save')">
+        <button v-permission="'safety:fence:edit'" type="button" @click="$emit('save')">
           {{ isEditingExisting ? '保存修改' : '保存草稿' }}
         </button>
-        <button type="button" class="primary" @click="$emit('review')">
+        <button v-permission="'safety:fence:edit'" type="button" class="primary" @click="$emit('review')">
           <el-icon><Check /></el-icon>{{ isEditingExisting ? '保存并提交' : '提交评审' }}
         </button>
       </div>
@@ -140,7 +140,7 @@ defineEmits<{
       <div v-if="fence.status === '版本不一致'" class="edge-warning">
         <b>EDGE-03 版本不一致</b>
         <p>当前规则版本与平台不一致，请重新下发。</p>
-        <button type="button" @click="$emit('retry')">
+        <button v-permission="'safety:fence:publish'" type="button" @click="$emit('retry')">
           <el-icon><RefreshRight /></el-icon>重新下发
         </button>
       </div>
@@ -153,14 +153,14 @@ defineEmits<{
       </div>
 
       <div class="fence-panel-actions">
-        <button type="button" @click="$emit('edit')">
+        <button v-permission="'safety:fence:edit'" type="button" @click="$emit('edit')">
           <el-icon><Edit /></el-icon>编辑围栏
         </button>
-        <button v-if="fence.status === '已生效'" type="button" @click="$emit('fail')">模拟下发失败</button>
-        <button v-if="fence.status === '草稿'" type="button" class="primary" @click="$emit('review')">
+        <button v-if="fence.status === '已生效'" v-permission="'safety:fence:edit'" type="button" @click="$emit('fail')">模拟下发失败</button>
+        <button v-if="fence.status === '草稿'" v-permission="'safety:fence:edit'" type="button" class="primary" @click="$emit('review')">
           <el-icon><Check /></el-icon>提交评审
         </button>
-        <button v-else-if="['待发布','待评审'].includes(fence.status)" type="button" class="primary" @click="$emit('publish')">
+        <button v-else-if="['待发布','待评审'].includes(fence.status)" v-permission="'safety:fence:publish'" type="button" class="primary" @click="$emit('publish')">
           <el-icon><UploadFilled /></el-icon>发布
         </button>
       </div>

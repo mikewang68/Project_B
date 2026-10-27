@@ -44,11 +44,24 @@ public class AuthService {
                 user.username(), user.displayName(), roles, permissions, user.passwordChangeRequired());
     }
 
-    AuthModels.CurrentUserView currentUser(WmsPrincipal principal, jakarta.servlet.http.HttpSession session) {
+    public AuthModels.CurrentUserView currentUser(WmsPrincipal principal, jakarta.servlet.http.HttpSession session) {
         return new AuthModels.CurrentUserView(principal.userId(), principal.username(), principal.displayName(),
                 principal.companyCode(), principal.companyName(), principal.roles(), principal.permissions(),
                 principal.passwordChangeRequired(), repository.findMenus(principal.permissions()),
-                tenantContextService.current(principal, session));
+                tenantContextService.current(principal, session), principal.readOnly(), authorizationVersion(principal));
+    }
+
+    private static String authorizationVersion(WmsPrincipal principal) {
+        // Stable, non-secret change detector. It is not an authorization token.
+        String grants = principal.userId() + "|" + principal.companyId() + "|" + principal.readOnly() + "|"
+                + String.join(",", new java.util.TreeSet<>(principal.roles())) + "|"
+                + String.join(",", new java.util.TreeSet<>(principal.permissions()));
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(grants.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("运行环境不支持SHA-256", exception);
+        }
     }
 
     @Transactional

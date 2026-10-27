@@ -24,14 +24,46 @@ const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPas
 const isLogin = computed(() => route.name === 'login')
 const agentUnread = ref(0)
 let agentTimer: ReturnType<typeof setInterval> | undefined
+let authorizationTimer: ReturnType<typeof setInterval> | undefined
+let lastFailureCheck = 0
+const scopeKey = computed(() => [auth.user?.id, auth.user?.tenant.currentWarehouse.code, auth.user?.tenant.currentOwner.code].join(':'))
+async function syncAuthorization(force = false): Promise<void> {
+  if (!auth.authenticated && !auth.sessionError) return
+  try { await auth.refreshSession({ force }) } catch { return }
+  if (!auth.authenticated && !route.meta.public) {
+    await router.replace({ name: 'login', query: { redirect: route.fullPath } })
+  } else if (auth.authenticated && !auth.hasPermission(route.meta.permission) && route.name !== 'forbidden') {
+    await router.replace({ name: 'forbidden' })
+  }
+}
+function focusAuthorization(): void { if (document.visibilityState !== 'hidden') void syncAuthorization() }
+function failedAuthorization(): void {
+  if (Date.now() - lastFailureCheck < 15_000) return
+  lastFailureCheck = Date.now()
+  void syncAuthorization(true)
+}
 async function refreshAgentAlerts() {
   if (!auth.authenticated || !auth.hasPermission('agent:read')) { agentUnread.value = 0; return }
   try { agentUnread.value = (await agentAlerts()).filter(x => x.state === 'OPEN' && !x.read_at).length }
   catch { /* 新功能故障不阻塞原有页面。 */ }
 }
 watch(() => auth.user?.tenant, refreshAgentAlerts)
-onMounted(() => { agentTimer = setInterval(refreshAgentAlerts, 60_000); window.addEventListener('wms-agent-alerts', refreshAgentAlerts); void refreshAgentAlerts() })
-onUnmounted(() => { clearInterval(agentTimer); window.removeEventListener('wms-agent-alerts', refreshAgentAlerts) })
+onMounted(() => {
+  agentTimer = setInterval(refreshAgentAlerts, 60_000)
+  authorizationTimer = setInterval(focusAuthorization, 30_000)
+  window.addEventListener('focus', focusAuthorization)
+  window.addEventListener('wms-session-check', failedAuthorization)
+  document.addEventListener('visibilitychange', focusAuthorization)
+  window.addEventListener('wms-agent-alerts', refreshAgentAlerts)
+  void refreshAgentAlerts()
+})
+onUnmounted(() => {
+  clearInterval(agentTimer); clearInterval(authorizationTimer)
+  window.removeEventListener('focus', focusAuthorization)
+  window.removeEventListener('wms-session-check', failedAuthorization)
+  document.removeEventListener('visibilitychange', focusAuthorization)
+  window.removeEventListener('wms-agent-alerts', refreshAgentAlerts)
+})
 
 watch(() => auth.user?.tenant, (tenant) => {
   if (!tenant) return
@@ -70,12 +102,18 @@ async function savePassword(): Promise<void> {
 }
 
 async function signOut(): Promise<void> {
-  await auth.signOut()
-  await router.replace('/login')
+  try { await auth.signOut() }
+  catch (reason) {
+    const localOnly = reason instanceof ApiError && reason.code === 'SSO_GLOBAL_LOGOUT_INCOMPLETE' && reason.localLogoutComplete
+    if (localOnly) ElMessage.warning('已退出本系统，但统一入口注销未完成；请到统一入口再次退出。')
+    else ElMessage.error(reason instanceof ApiError ? reason.message : '退出请求失败，请重试；尚不能确认服务器已注销。')
+  }
+  if (!auth.authenticated) await router.replace('/login')
 }
 </script>
 
 <template>
+  <el-alert v-if="auth.sessionError" :title="auth.sessionError" type="warning" :closable="false" show-icon><el-button link @click="syncAuthorization(true)">重试权限同步</el-button></el-alert>
   <RouterView v-if="isLogin" />
   <div v-else class="app-shell admin-layout" :data-layout="prefs.layout" :class="{ collapsed: isSideCollapsed }">
     <aside v-if="prefs.layout !== 'top'" class="sidebar" aria-label="仓储管理系统导航">
@@ -90,12 +128,13 @@ async function signOut(): Promise<void> {
         <div class="topbar-actions">
           <el-badge v-if="auth.hasPermission('agent:read')" :value="agentUnread" :hidden="!agentUnread"><el-button plain @click="router.push({ path: '/agent', query: { tab: 'alerts' } })">站内预警</el-button></el-badge>
           <el-button class="pref-btn" plain @click="prefVisible = true">外观设置</el-button>
-          <button class="tenant" type="button" @click="tenantDialog = true">{{ auth.user?.tenant.currentWarehouse.name }} · {{ auth.user?.tenant.currentOwner.name }}</button>
+          <el-tag v-if="auth.readOnly" type="info">只读账号</el-tag>
+          <button class="tenant" type="button" :disabled="!auth.canWrite()" @click="tenantDialog = true">{{ auth.user?.tenant.currentWarehouse.name }} · {{ auth.user?.tenant.currentOwner.name }}</button>
           <el-dropdown trigger="click"><button class="user-trigger" type="button">{{ auth.user?.displayName }} ▾</button><template #dropdown><el-dropdown-menu><el-dropdown-item @click="passwordDialog = true">修改密码</el-dropdown-item><el-dropdown-item divided @click="signOut">退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown>
         </div>
       </header>
       <nav v-if="prefs.layout === 'top'" class="top-menu" aria-label="仓储管理系统顶部导航"><RouterLink v-for="menu in auth.user?.menus" :key="menu.code" :to="menu.path" :class="{ active: route.path === menu.path }"><NavigationIcon :path="menu.path" /><span>{{ menu.name }}</span></RouterLink></nav>
-      <section class="content"><RouterView /></section>
+      <section class="content"><RouterView :key="scopeKey" /></section>
     </main>
 
     <el-drawer v-model="prefVisible" title="外观设置" size="min(420px, 100vw)" class="preference-drawer">
@@ -125,7 +164,7 @@ async function signOut(): Promise<void> {
         <el-form-item label="当前仓库"><el-select v-model="tenantForm.warehouseCode" style="width:100%"><el-option v-for="item in auth.user?.tenant.warehouses" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.code" /></el-select></el-form-item>
         <el-form-item label="当前货主"><el-select v-model="tenantForm.ownerCode" style="width:100%"><el-option v-for="item in auth.user?.tenant.owners" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.code" /></el-select></el-form-item>
       </el-form>
-      <template #footer><el-button @click="tenantDialog = false">取消</el-button><el-button type="primary" :loading="tenantSaving" @click="saveTenant">确定切换</el-button></template>
+      <template #footer><el-button @click="tenantDialog = false">取消</el-button><el-button type="primary" :disabled="!auth.canWrite()" :loading="tenantSaving" @click="saveTenant">确定切换</el-button></template>
     </el-dialog>
 
     <el-dialog v-model="passwordDialog" title="修改登录密码" width="460px" :close-on-click-modal="!auth.user?.passwordChangeRequired" :close-on-press-escape="!auth.user?.passwordChangeRequired" :show-close="!auth.user?.passwordChangeRequired">

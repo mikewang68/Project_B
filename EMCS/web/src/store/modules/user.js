@@ -1,7 +1,7 @@
 import router from '@/router'
 import { ElMessageBox } from 'element-plus'
 import { login, logout, getInfo } from '@/api/login'
-import { getToken, setToken, removeToken } from '@/utils/auth'
+import { getToken, setToken, removeToken, setNativeSession } from '@/utils/auth'
 import { isHttp, isEmpty } from "@/utils/validate"
 import defAva from '@/assets/images/profile.jpg'
 
@@ -38,6 +38,9 @@ const useUserStore = defineStore(
       getInfo() {
         return new Promise((resolve, reject) => {
           getInfo().then(res => {
+            if (res.authenticationMode === 'SSO') {
+              removeToken(); setNativeSession(true); this.token = ''
+            }
             const user = res.user
             let avatar = user.avatar || ""
             if (!isHttp(avatar)) {

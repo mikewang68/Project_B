@@ -144,7 +144,7 @@ function openVisualSample(code){const p=state.visual.points.find(p=>p.pointCode=
 const baseVisualRender=renderPage;
 renderPage=function(){if(state.page==='realtime'||state.page==='area-map'){$('#pageView').innerHTML=state.page==='realtime'?renderVisualMonitor():`<div class="page">${pageHead('区域与设备分布','按数据库活动台账统计，而不是固定布局或虚构设备数。',button('刷新统计','reloadVisual'))}${visualOverviewBody()}</div>`;syncNav();bindPageEvents();return;}return baseVisualRender();};
 const baseVisualSetPage=setPage;
-setPage=function(page){baseVisualSetPage(page);if(VISUAL_PAGES.has(page)&&(!state.visual.overview||VISUAL_REPORT_PAGES.has(page)))loadVisualOverview();if(['realtime','diagnosis'].includes(page))loadVisualPoints();};
+setPage=function(page,options){baseVisualSetPage(page,options);if(VISUAL_PAGES.has(page)&&(!state.visual.overview||VISUAL_REPORT_PAGES.has(page)))loadVisualOverview();if(['realtime','diagnosis'].includes(page))loadVisualPoints();};
 const baseVisualAction=handleAction;
 handleAction=function(event){const b=event.currentTarget,a=b.dataset.action;
   if(a==='reloadVisual')return Promise.all([loadBackendData(),loadVisualOverview(true)]);

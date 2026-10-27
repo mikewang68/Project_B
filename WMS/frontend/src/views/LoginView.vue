@@ -10,6 +10,8 @@ const router = useRouter()
 const auth = useAuthStore()
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
+// This public hint is opt-in for lab demos. Never commit a real password here.
+const demoLoginHint = import.meta.env.VITE_DEMO_LOGIN_HINT?.trim()
 const form = reactive({ company: 'default', username: 'admin', password: '' })
 const rules: FormRules = {
   company: [{ required: true, message: '请输入公司代码', trigger: 'blur' }],
@@ -50,7 +52,7 @@ async function submit(): Promise<void> {
         <el-form-item label="密码" prop="password"><el-input v-model="form.password" type="password" autocomplete="current-password" show-password placeholder="请输入密码" @keyup.enter="submit" /></el-form-item>
         <el-button type="primary" native-type="submit" :loading="submitting" class="login-submit">登录</el-button>
       </el-form>
-      <el-alert title="本地初始账号：admin，初始密码：Admin@123456" type="info" :closable="false" show-icon />
+      <el-alert :title="demoLoginHint || '请使用管理员分配的账号和密码。'" type="info" :closable="false" show-icon />
     </section>
   </main>
 </template>

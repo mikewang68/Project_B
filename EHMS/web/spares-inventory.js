@@ -97,5 +97,5 @@ async function seedSpareDemo(){
 }
 
 const baseRenderPageSpares=renderPage;renderPage=function(){if(state.page!=='spares')return baseRenderPageSpares();$('#pageView').innerHTML=renderSpareInventory();syncNav();$('#content').scrollTop=0;bindPageEvents();};
-const baseSetPageSpares=setPage;setPage=function(page){baseSetPageSpares(page);if(page==='spares')loadSpares();};
+const baseSetPageSpares=setPage;setPage=function(page,options){baseSetPageSpares(page,options);if(page==='spares')loadSpares();};
 const baseHandleActionSpares=handleAction;handleAction=function(event){const button=event.currentTarget,action=button.dataset.action;if(action==='reloadSpares')return loadSpares(true);if(action==='newSparePart')return openNewSparePart();if(action==='seedSpareDemo')return seedSpareDemo();if(action==='receiveSpare')return openReceiveSpare(button.dataset.id);if(action==='reserveSpare')return openReserveSpare(button.dataset.id);if(action==='issueSpare')return openIssueSpare(button.dataset.id);if(action==='releaseSpare')return openReleaseSpare(button.dataset.id);if(action==='returnSpare')return openReturnSpare(button.dataset.id);return baseHandleActionSpares(event);};

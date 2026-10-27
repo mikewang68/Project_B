@@ -19,6 +19,9 @@ export type PageId =
   | 'UI-013';
 
 export type SessionContext = {
+  readOnly?: boolean;
+  fullAdmin?: boolean;
+  permissions?: readonly string[];
   actorId: string;
   roleCode: RoleCode;
   dataScope: readonly string[];

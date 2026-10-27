@@ -1,10 +1,13 @@
 import { isWithinDataScope } from './dataScope';
+import { loadCurrentDemoSession } from './sessionBootstrap';
+import {livePageAllowed}from'./livePagePolicy';
 import {
   actionPolicies,
   isPageId,
   isPermissionCode,
   isRoleCode,
   routePolicies,
+  routeRequiredPermissions,
   type PermissionCode,
 } from './permissionCatalog';
 import type { PermissionDecision, PolicyContext } from './types';
@@ -29,6 +32,14 @@ function deny(
 }
 
 export function authorize(context: PolicyContext): PermissionDecision {
+  if (import.meta.env.VITE_PSMS_REAL_API === 'true') context = { ...context, session: loadCurrentDemoSession() };
+  if (context.session.permissions) {
+    const permission = String(context.permission);
+    if (context.session.readOnly && !permission.endsWith(':view')) return deny('ACTION', '当前账号只读，禁止业务变更');
+    if (context.session.fullAdmin) return { allow: true };
+    if (!context.session.permissions.includes(permission) && !context.session.permissions.includes('pps:' + permission))
+      return deny('ACTION', '当前操作未获平台授权');
+  }
   const role = context.session.roleCode as string;
 
   if (context.pageId !== undefined) {
@@ -95,6 +106,11 @@ export function authorizePage(
   session: PolicyContext['session'],
   pageId: PolicyContext['pageId'],
 ): PermissionDecision {
+  if(session.permissions){
+    if(pageId===undefined||!isPageId(pageId))return deny('PAGE','功能标识无效');
+    return livePageAllowed(session,pageId,routeRequiredPermissions[pageId])?{allow:true}:deny('PAGE','当前功能未获平台授权');
+  }
+  if (session.fullAdmin || session.readOnly) return { allow: true };
   const role = session.roleCode as string;
   if (!isRoleCode(role)) return deny('PAGE', `Unknown role: ${role}`);
   if (pageId === undefined || !isPageId(pageId)) {

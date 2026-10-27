@@ -28,6 +28,6 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
     <div v-if="fence" class="publish-fence-summary"><small>即将发布</small><b>{{ fence.id }} {{ fence.name }}</b><span>版本 {{ fence.version }}</span></div>
     <div class="publish-node-list"><div v-for="(node, index) in nodes" :key="node"><span>{{ node }}</span><em v-if="index < synced"><el-icon><Check /></el-icon>成功</em><em v-else-if="syncing && index === synced" class="syncing"><el-icon class="is-loading"><Loading /></el-icon>下发中</em><em v-else>等待</em></div></div>
     <div class="publish-progress"><span :style="{ width: `${synced * 25}%` }"></span></div><p class="publish-status">{{ statusText }}</p>
-    <template #footer><button type="button" :disabled="syncing" @click="$emit('update:modelValue', false)">取消</button><button type="button" class="primary" :disabled="syncing || synced === 4" @click="publish">确认发布</button></template>
+    <template #footer><button type="button" :disabled="syncing" @click="$emit('update:modelValue', false)">取消</button><button v-permission="'safety:fence:publish'" type="button" class="primary" :disabled="syncing || synced === 4" @click="publish">确认发布</button></template>
   </ElDialog>
 </template>

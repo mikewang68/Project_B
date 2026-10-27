@@ -25,6 +25,12 @@ function resolveFromRoot(value: string): string {
  * 变量命名与 SCS / EHMS 保持一致（OPENGAUSS_* / OPENGEMINI_*）。
  */
 const envSchema = z.object({
+  PSMS_SSO_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  PSMS_IAM_BASE_URL: z.string().default(''),
+  PSMS_SSO_SERVICE_TOKEN: z.string().default(''),
+  PSMS_SSO_BINDINGS_FILE: z.string().default(''),
+  PSMS_COOKIE_SECURE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  AUDIT_MAINTENANCE_ENABLED: z.enum(['true','false']).default('false').transform(v=>v==='true'),
   // OpenAI-compatible provider; credentials stay on the backend.
   AI_BASE_URL: z.string().default(''),
   AI_MODEL: z.string().default(''),
@@ -88,6 +94,7 @@ const envSchema = z.object({
 
   // ---------- Server ----------
   PORT: z.coerce.number().int().min(1).max(65535).default(3100),
+  HOST: z.string().default('127.0.0.1'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z

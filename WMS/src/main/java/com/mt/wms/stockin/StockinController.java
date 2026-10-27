@@ -22,6 +22,8 @@ class StockinController {
     ApiResponse<List<StockinModels.OrderSummary>> list(Authentication auth,HttpSession session,HttpServletRequest request){return ApiResponse.ok(service.list(principal(auth),session),id(request));}
     @GetMapping("/{orderId}") @PreAuthorize("hasAuthority('stockin:read')")
     ApiResponse<StockinModels.OrderDetail> detail(@PathVariable long orderId,Authentication auth,HttpSession session,HttpServletRequest request){return ApiResponse.ok(service.detail(orderId,principal(auth),session),id(request));}
+    @GetMapping("/{orderId}/scan-preview") @PreAuthorize("hasAuthority('stockin:read')")
+    ApiResponse<StockinModels.ScanPreview> scanPreview(@PathVariable long orderId,@RequestParam String barcode,Authentication auth,HttpSession session,HttpServletRequest request){return ApiResponse.ok(service.scanPreview(orderId,barcode,principal(auth),session),id(request));}
     @GetMapping("/{orderId}/receipts") @PreAuthorize("hasAuthority('stockin:read')")
     ApiResponse<List<StockinModels.ReceiptView>> receipts(@PathVariable long orderId,Authentication auth,HttpSession session,HttpServletRequest request){return ApiResponse.ok(service.receipts(orderId,principal(auth),session),id(request));}
     @GetMapping("/location-suggestions") @PreAuthorize("hasAuthority('stockin:read')")

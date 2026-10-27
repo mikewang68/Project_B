@@ -1,5 +1,5 @@
-import { Card, Progress, Space, Tag, Typography, message, theme } from 'antd';
-import { useState } from 'react';
+import { Alert, Card, Progress, Space, Tag, Typography, message, theme } from 'antd';
+import { useEffect, useState } from 'react';
 import { Link, createSearchParams, useLocation, useNavigate } from 'react-router-dom';
 
 import type { PolicyContext, RoleCode } from '../../auth';
@@ -28,6 +28,7 @@ import {
 } from '../../features/plan-entry';
 import '../../features/plan-entry/plan-entry.css';
 import type { DemoScenario } from '../../mocks/fixtures';
+import LiveQueryFilters from '../../real/LiveQueryFilters';
 import { businessLabel } from '../../presentation/businessCopy';
 import { useDemoRuntime, useDemoSelector, usePlanEntryWorkflow } from '../../runtime';
 import { selectActiveScenario, selectSession } from '../../stores';
@@ -97,6 +98,9 @@ export default function OverviewPage({ viewState, errorCode }: OverviewPageProps
     enabled: viewState === undefined,
   });
   const query = parsePlanEntryQuery(location.search);
+  useEffect(()=>{
+    if(import.meta.env.VITE_PSMS_REAL_API==='true')void refresh({showLoading:false});
+  },[query.date,query.workArea,refresh]);
   const rootState = useDemoSelector((state) => state);
   const workflow = usePlanEntryWorkflow((state) => state);
   const session = useDemoSelector(selectSession);
@@ -171,6 +175,11 @@ export default function OverviewPage({ viewState, errorCode }: OverviewPageProps
   return (
     <main className="dispatch-overview-page" style={overviewStyle}>
       {messageContext}
+      <LiveQueryFilters/>
+      {rootState.liveOverview && <Alert type="info" title={`统计范围：${rootState.liveOverview.workArea} · ${rootState.liveOverview.date}（北京时间）`}
+        description={`计划和完成工单按所选日期统计，设备和异常为当前状态${rootState.liveOverview.waitingVehicleScope==='GLOBAL'?'，车辆等待为全场汇总':''}。最近读取：${rootState.liveOverview.generatedAt}。`
+          +(rootState.liveOverview.planRange.total>0&&rootState.liveOverview.kpis.totalPlans===0
+            ?`该日期暂无计划；当前授权作业区已有计划的日期为 ${rootState.liveOverview.planRange.earliest} 至 ${rootState.liveOverview.planRange.latest}。`:'')}/>}
       <header className="overview-page-header">
         <PageIdentity pageId="UI-001" name="调度总览" path="/dispatch/overview" />
         <DemoScenarioBar
@@ -306,7 +315,9 @@ export default function OverviewPage({ viewState, errorCode }: OverviewPageProps
         <RiskInterfacePanel health={projections.health} risks={projections.risks} />
           </div>
 
-          <YardSchematic yard={projections.yard} />
+          {rootState.liveOverview?.availability.yardLayout==='NOT_CONNECTED'
+            ?<Alert type="warning" title="场区平面数据尚未接入" description="设备统计已从业务库读取；股道占用和车辆位置尚无可核验的位置数据。"/>
+            :<YardSchematic yard={projections.yard} />}
         </>
       )}
     </main>

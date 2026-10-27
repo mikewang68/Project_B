@@ -62,4 +62,4 @@ handleAction=function(event){
   return auditHandleAction(event);
 };
 const auditSetPage=setPage;
-setPage=function(page){auditSetPage(page);if(page==='audit-logs')loadAuditBrowser();};
+setPage=function(page,options){auditSetPage(page,options);if(page==='audit-logs')loadAuditBrowser();};

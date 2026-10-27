@@ -3,11 +3,15 @@ import express from 'express';
 import type { Server } from 'node:http';
 
 const fake = vi.hoisted(() => ({
-  count: vi.fn(), insert: vi.fn(), scope: ['AREA-A'],
+  count: vi.fn(), insert: vi.fn(), scope: ['AREA-A'], localEnabled: true,
   env: { AI_BASE_URL: 'https://model.example/v1', AI_MODEL: 'test-model', AI_API_KEY: 'test-credential' },
 }));
 vi.mock('../src/config/env.js', () => ({ env: fake.env }));
-vi.mock('../src/db/tables.js', () => ({ Plan: { countDocuments: fake.count, insertMany: fake.insert }, Equipment: {} }));
+vi.mock('../src/db/tables.js', () => ({ Plan: { countDocuments: fake.count, insertMany: fake.insert }, Equipment: {},
+  User: { findById: () => ({ lean: async () => fake.localEnabled
+    ? { _id: 'local-dispatcher', username: 'dispatcher', actorId: 'TEST', roleCode: 'dispatcher', dataScope: fake.scope }
+    : null }) },
+}));
 vi.mock('../src/services/plan.service.js', () => ({}));
 vi.mock('../src/services/workOrder.service.js', () => ({}));
 vi.mock('../src/middleware/audit.js', () => ({ auditOperation: () => (_req: unknown, _res: unknown, next: () => void) => next() }));
@@ -15,7 +19,7 @@ vi.mock('../src/middleware/auth.js', () => ({
   optionalAuth: (_req: unknown, _res: unknown, next: () => void) => next(),
   authenticate: (req: any, res: any, next: () => void) => {
     if (req.headers.authorization !== 'Bearer test-session') { res.status(401).json({ message: '未登录' }); return; }
-    req.user = { actorId: 'TEST', roleCode: 'dispatcher', dataScope: fake.scope }; next();
+    req.user = { userId: 'local-dispatcher', actorId: 'TEST', roleCode: 'dispatcher', dataScope: fake.scope }; next();
   },
 }));
 import { plansRouter } from '../src/routes/plans.routes.js';
@@ -25,7 +29,7 @@ const nativeFetch = globalThis.fetch;
 let server: Server;
 let base: string;
 beforeEach(async () => {
-  fake.scope = ['AREA-A']; fake.count.mockReset().mockResolvedValue(0);
+  fake.scope = ['AREA-A']; fake.localEnabled = true; fake.count.mockReset().mockResolvedValue(0);
   fake.insert.mockReset().mockImplementation(async (docs) => docs);
   const app = express(); app.use(express.json()); app.use('/api/plans', plansRouter); app.use('/api/ai', aiRouter);
   server = await new Promise<Server>((resolve) => { const instance = app.listen(0, '127.0.0.1', () => resolve(instance)); });
@@ -54,6 +58,11 @@ describe('database import and AI API', () => {
     fake.scope = ['AREA-B'];
     expect((await post('/api/plans/import', { plans: [plan] })).status).toBe(403);
     expect((await post('/api/ai/assist', {})).status).toBe(403);
+    expect(fake.insert).not.toHaveBeenCalled();
+  });
+  it('rejects a previously authenticated import when the local account no longer exists', async () => {
+    fake.localEnabled = false;
+    expect((await post('/api/plans/import', { plans: [plan] })).status).toBe(403);
     expect(fake.insert).not.toHaveBeenCalled();
   });
   it('sends a bounded business snapshot to the configured model and labels its source', async () => {

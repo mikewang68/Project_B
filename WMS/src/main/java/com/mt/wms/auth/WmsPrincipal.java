@@ -19,7 +19,20 @@ public record WmsPrincipal(
         String displayName,
         List<String> roles,
         Set<String> permissions,
-        boolean passwordChangeRequired) implements UserDetails, Serializable {
+        boolean passwordChangeRequired,
+        boolean readOnly) implements UserDetails, Serializable {
+
+    /** Retains the existing local-auth constructor and never loses the local role veto. */
+    public WmsPrincipal(Long userId, Long companyId, String companyCode, String companyName,
+                        String username, String displayName, List<String> roles,
+                        Set<String> permissions, boolean passwordChangeRequired) {
+        this(userId, companyId, companyCode, companyName, username, displayName, roles, permissions,
+                passwordChangeRequired, WmsReadOnlyPolicy.hasReadOnlyRole(roles));
+    }
+
+    public WmsPrincipal {
+        readOnly = readOnly || WmsReadOnlyPolicy.hasReadOnlyRole(roles);
+    }
 
     @Serial
     private static final long serialVersionUID = 1L;
