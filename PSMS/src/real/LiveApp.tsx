@@ -16,7 +16,8 @@ async function bootstrap(): Promise<DemoRuntime> {
   const me=userSchema.parse((await api('/auth/me')).data);
   const admin = me.superAdmin || me.applicationAdmin === true;
   const session:SessionContext={actorId:me.actorId,roleCode:me.readOnly?'AUDITOR':admin?'SYS_ADMIN':'DISPATCHER',
-    dataScope:me.dataScope,online:true,demoTime:new Date().toISOString(),readOnly:me.readOnly,fullAdmin:admin,permissions:me.permissions};
+    dataScope:me.dataScope,online:true,demoTime:new Date().toISOString(),readOnly:me.readOnly,fullAdmin:admin,
+    platformSuperAdmin:me.superAdmin,permissions:me.permissions};
   setVerifiedLiveSession(session);
   const plans=await loadPlans();
   const canReadOverview = admin || ['pps:api:overview:read','overview:view','pps:overview:view'].some(p=>me.permissions.includes(p));

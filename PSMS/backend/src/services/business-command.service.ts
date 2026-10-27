@@ -38,8 +38,8 @@ export async function createBusinessWorkOrder(input:unknown,
       VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7) RETURNING id,status,updated_at,updated_at::text AS record_version`,
       [id,plan.id,plan.plan_batch_no,plan.work_area,parsed.data.orderType,parsed.data.priority,parsed.data.description])).rows[0];
     await db.query(`INSERT INTO public.audit_logs(id,actor_id,actor_role,operator_terminal,action,object_type,object_id,
-      before_state,after_state,reason,trace_id,occurred_at) VALUES($1,$2,$3,'WEB-BACKEND','work-orders:create','work-orders',$4,'{}'::jsonb,$5::jsonb,$6,$7,CURRENT_TIMESTAMP)`,
-      [auditId,actor.subject,actor.roleCode,id,JSON.stringify(item),parsed.data.description,traceId]);
+      before_state,after_state,reason,trace_id,occurred_at,work_area) VALUES($1,$2,$3,'WEB-BACKEND','work-orders:create','work-orders',$4,'{}'::jsonb,$5::jsonb,$6,$7,CURRENT_TIMESTAMP,$8)`,
+      [auditId,actor.subject,actor.roleCode,id,JSON.stringify(item),parsed.data.description,traceId,plan.work_area]);
     await db.query('COMMIT');return{item,auditLogId:auditId,traceId};
   }catch(error){try{await db.query('ROLLBACK');}catch{/* preserve failure */}throw error;}finally{db.release();}
 }
@@ -109,8 +109,8 @@ export async function executeBusinessCommand(collection:BusinessCollection,id:st
     const after=(await db.query(`UPDATE public.${q.table} SET ${columns.map((c,i)=>c+'=$'+(i+1)).join(',')},updated_at=clock_timestamp()
       WHERE id=$${values.length+1} AND valid=1 RETURNING id,status,updated_at,updated_at::text AS record_version`,[...values,id])).rows[0];
     await db.query(`INSERT INTO public.audit_logs(id,actor_id,actor_role,operator_terminal,action,object_type,object_id,
-      before_state,after_state,reason,trace_id,occurred_at) VALUES($1,$2,$3,'WEB-BACKEND',$4,$5,$6,$7::jsonb,$8::jsonb,$9,$10,CURRENT_TIMESTAMP)`,
-      [auditId,actor.subject,actor.roleCode,collection+':'+action,collection,id,JSON.stringify({status:before.status,rowVersion:before.record_version}),JSON.stringify(after),reason,traceId]);
+      before_state,after_state,reason,trace_id,occurred_at,work_area) VALUES($1,$2,$3,'WEB-BACKEND',$4,$5,$6,$7::jsonb,$8::jsonb,$9,$10,CURRENT_TIMESTAMP,$11)`,
+      [auditId,actor.subject,actor.roleCode,collection+':'+action,collection,id,JSON.stringify({status:before.status,rowVersion:before.record_version}),JSON.stringify(after),reason,traceId,before.work_area??null]);
     await db.query('COMMIT');return{item:after,auditLogId:auditId,traceId};
   }catch(error){try{await db.query('ROLLBACK');}catch{/* keep original error */}throw error;}finally{db.release();}
 }

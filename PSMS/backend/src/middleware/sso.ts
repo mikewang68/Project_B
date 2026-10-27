@@ -125,6 +125,7 @@ ssoRouter.post('/revoke', (req, res) => {
 
 export async function ssoGuard(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!enabled || !req.path.startsWith('/api/')) { next(); return; }
+  if (/^\/api\/demo(?:\/|$)/.test(req.path)) { fail(res,403,'DEMO_DISABLED_IN_REAL_MODE');return; }
   sweep();
   const cookie = req.headers.cookie?.split(';').map((v) => v.trim()).find((v) => v.startsWith('PSMS_SSO='))?.slice(9);
   const session = cookie && /^[\w-]{43}$/.test(cookie) ? sessions.get(digest(cookie)) : undefined;
@@ -151,6 +152,7 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
     const all=user.dataScope.some(scope=>['*','GLOBAL'].includes(scope));
     if (!all && req.path !== '/api/auth/me' && req.path !== '/api/overview'
         && req.path !== '/api/plans' && !req.path.startsWith('/api/plans/')
+        && !/^\/api\/governance\/(interlocks|interlock-requests|offline|reports|settings|audit-logs)(\/|$)/.test(req.path)
         && !(req.method === 'GET' && /^\/api\/business\/(work-orders|tasks|equipment|exceptions)$/.test(req.path))
         && !(req.method==='POST' && (req.path==='/api/business/work-orders'
           || /^\/api\/business\/(work-orders|exceptions)\/[^/]+\/actions$/.test(req.path)))) {
@@ -162,7 +164,11 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
     }
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
       if (effective.readOnly) { fail(res, 403, 'READ_ONLY'); return; }
-      if(!mayWriteBusinessRoute(effective,req.path,req.body?.action)){
+      // Retired demo commands lack atomic version/scope checks. Keep read contracts, route real writes to the adapter.
+      if (/^\/api\/(interlocks|offline|settings)(\/|$)/.test(req.path)) {
+        fail(res,409,'USE_GOVERNANCE_COMMAND');return;
+      }
+      if(!mayWriteBusinessRoute(effective,req.path,req.body?.action??req.body?.command)){
         fail(res,403,'OPERATION_PERMISSION_DENIED');return;
       }
       if (req.header('X-PSMS-CSRF') !== session.csrf) { fail(res, 403, 'CSRF_REJECTED'); return; }
