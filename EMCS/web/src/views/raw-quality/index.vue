@@ -10,6 +10,7 @@
 -->
 <template>
   <div class="rq-dark cockpit-page">
+    <DeviceCollectionPanel />
     <!-- ============ 顶栏筛选 + 演示态签名 ============ -->
     <div class="rq-filters">
       <div class="fg">
@@ -313,6 +314,7 @@
 </template>
 
 <script setup>
+import DeviceCollectionPanel from './DeviceCollectionPanel.vue'
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts/core'
