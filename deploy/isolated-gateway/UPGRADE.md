@@ -11,13 +11,13 @@
 | IAM | `IAM/backend`: `mvn test package` | `IAM`: `pnpm install --frozen-lockfile`、`pnpm build` |
 | SYS | `SYS/backend`: `mvn test package` | `SYS`: `pnpm install --frozen-lockfile`、`pnpm build` |
 | TRUST | `TRUST/backend`: `mvn test package` | `TRUST/frontend`: `pnpm install --frozen-lockfile`、`pnpm build` |
-| WMS | `WMS/WMS`: `mvn test package` | `WMS/WMS/frontend`: `pnpm install --frozen-lockfile`、`pnpm typecheck`、`pnpm build` |
+| WMS | `WMS`: `mvn test package` | `WMS/frontend`: `pnpm install --frozen-lockfile`、`pnpm typecheck`、`pnpm build` |
 | SCS | `SCS/backend`: `mvn test package` | `SCS/frontend`: `pnpm install --frozen-lockfile`、`pnpm build` |
 | EHMS | `EHMS/source/backend`: `mvn test package` | `EHMS/web` 是静态资源，完整发布该目录 |
 | EMCS | `EMCS/backend-java`: `mvn test package` | `EMCS/web`: `pnpm install --frozen-lockfile`、`pnpm build:prod` |
 | PSMS | `PSMS/backend`: `pnpm install --frozen-lockfile`、`pnpm exec tsc -p tsconfig.json` | `PSMS`: `pnpm install --frozen-lockfile`、`pnpm exec tsc --noEmit`、`VITE_PSMS_REAL_API=true pnpm build` |
 
-WMS 前端构建目标是 `WMS/WMS/target/classes/static`，不能假定为 `frontend/dist`；打包后端前应先完成前端构建。PSMS 必须使用业务构建开关，保持原有完整路由框架；未完成业务适配的页面保留目录并禁止启动。TRUST 的 Fabric、IPFS 和身份供给配置仍按本模块文档部署，不由统一登录替代。
+WMS 前端构建目标是 `WMS/target/classes/static`，不能假定为 `frontend/dist`；打包后端前应先完成前端构建。PSMS 必须使用业务构建开关，保持原有完整路由框架；未完成业务适配的页面保留目录并禁止启动。TRUST 的 Fabric、IPFS 和身份供给配置仍按本模块文档部署，不由统一登录替代。
 
 网关检查在 `deploy/isolated-gateway` 执行 `python -m unittest test_cross_domain_sso test_gateway_routes`。Python 网关、门户静态资源、各目标桥及原生后端须使用同一版本。
 
@@ -38,7 +38,7 @@ PSMS 后端回归在 `PSMS` 执行 `pnpm exec vitest run --config vitest.backend
    EHMS 业务目录执行 `032-ehms-feature-view-mappings.sql`，为待办、设备、告警、工单等功能登记独立查看映射候选及只读授权。该迁移不批准发布、不改变菜单可启动状态，也不授予写入或导出权限；须按实际页面、接口及数据范围分别验收后审批。
 5. EHMS 聚合项目维度：`EHMS/sql/027_project_scope.sql`。历史数据先进入 `UNASSIGNED`，依据明确归属回填；迁移后旧版不带项目条件的后端不能继续写入。
 6. EMCS 令牌撤销：`EMCS/sql/026_token_revocations.sql`。撤销记录必须保留到令牌过期。
-7. WMS 显式主体映射：`WMS/WMS/db/sso/001-wms-sso-subject-map.sql`，随后执行 `002-gauss-empty-zone.sql`；已有映射须核对并保留。Gauss A 模式把空字符串视为 NULL，未声明区域的字段必须允许 NULL，公司范围仍须非空且与本地用户一致。
+7. WMS 显式主体映射：`WMS/db/sso/001-wms-sso-subject-map.sql`，随后执行 `002-gauss-empty-zone.sql`；已有映射须核对并保留。Gauss A 模式把空字符串视为 NULL，未声明区域的字段必须允许 NULL，公司范围仍须非空且与本地用户一致。
 8. SCS 旧数据库兼容字段：`SCS/backend/src/main/resources/db/migration/001-legacy-runtime-columns.sql`。该脚本只补齐当前规范中已定义的围栏缓冲距离及主数据软删除字段；不能用完整建表草案覆盖现有业务库。
 
 EHMS 完整目录脚本 `deploy/isolated-gateway/sql/025-ehms-feature-catalog.sql` 依赖既有导航表。它添加目录与候选功能，不授予发布资格。`022-psms-read-permissions.sql` 同样只登记查看映射候选，不代替审核。

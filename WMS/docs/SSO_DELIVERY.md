@@ -78,7 +78,7 @@ git status --short
 git apply --check --ignore-space-change WMS_SSO_COMPLETE_FROM_MAIN.patch
 git apply --ignore-space-change WMS_SSO_COMPLETE_FROM_MAIN.patch
 git diff --check
-cd WMS/WMS
+cd WMS
 mvn test package
 python -m unittest discover -s simulator/tests
 ```
