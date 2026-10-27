@@ -1065,8 +1065,23 @@
         systemNav.append(group);
       }
 
-      // 6. 默认选中首个页面
-      if (firstPageToSelect) {
+      // 重新载入导航后只恢复新授权树中仍然存在的选择。
+      // 不复用旧节点，避免撤权后保留旧地址或旧放行状态。
+      const selectedKey = activePageNode?.stableMenuKey;
+      const selectedApp = activeSystemNode?.appCode;
+      const selectedSystem = sortedSystems.find(sys => sys.appCode === selectedApp);
+      const findSelected = nodes => {
+        for (const node of nodes || []) {
+          if (node.stableMenuKey === selectedKey && node.nodeType !== 'DIRECTORY') return node;
+          const nested = findSelected(node.children);
+          if (nested) return nested;
+        }
+        return null;
+      };
+      const selectedPage = selectedSystem && selectedKey ? findSelected(selectedSystem.children) : null;
+      if (selectedPage) {
+        this.selectPage(selectedSystem, selectedPage);
+      } else if (firstPageToSelect) {
         this.selectPage(firstSystemOfPage, firstPageToSelect);
       } else {
         this.renderEmptyState();
