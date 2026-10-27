@@ -1,0 +1,17 @@
+.build/
+.private/
+outputs/
+runtime/
+__pycache__/
+*.py[cod]
+*.local.json
+*.keystore
+*.jks
+*.key
+*.pem
+*.p12
+*.pfx
+*.sqlite3
+*.sqlite3-*
+*.local.env
+*.token

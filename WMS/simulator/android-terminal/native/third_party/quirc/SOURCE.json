@@ -1,0 +1,37 @@
+{
+  "upstream": "https://github.com/dlbeer/quirc",
+  "version": "v1.2",
+  "archive_url": "https://codeload.github.com/dlbeer/quirc/zip/refs/tags/v1.2",
+  "archive_sha256": "39598ebbc2a5740ca16e5cfda5f32263374ff107cd9a6980aaf9b5ca860c3bcf",
+  "license": "ISC",
+  "files": [
+    {
+      "path": "lib/quirc.h",
+      "sha256": "49660ea710add2d6f304a1323f53190f5a2bf34db4dd160d633db0c3f22bfba5"
+    },
+    {
+      "path": "lib/quirc_internal.h",
+      "sha256": "e383ed1a0ca70c07b0530d76bfeb6bd5525efda182589f48c978921a9e54676b"
+    },
+    {
+      "path": "lib/quirc.c",
+      "sha256": "0294b6c56f8c021b256c4c153d70483368164c6cf0cce643e1b6be03ed3585c0"
+    },
+    {
+      "path": "lib/decode.c",
+      "sha256": "d4468c55ecd0d2f905a6813513708005e6d609ef0a3d32a17673313c7552a7c1"
+    },
+    {
+      "path": "lib/identify.c",
+      "sha256": "c36e93edfbc92a795f3edc9ec42d9e89e4d00aa376a88d48cc2e8118542a5372"
+    },
+    {
+      "path": "lib/version_db.c",
+      "sha256": "6764aa2f245085080e1e5cefd9dcd59b9727718a0d4606956e0502a57f5dff30"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "a70ef3ea032998eead2e2c7573a170a809eae08e3ca134611f707eda5932c8a9"
+    }
+  ]
+}

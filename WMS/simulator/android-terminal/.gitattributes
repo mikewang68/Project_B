@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.apk -text
+*.bin -text
+# Preserve upstream sources and their recorded SHA256 byte-for-byte.
+native/third_party/quirc/** -text

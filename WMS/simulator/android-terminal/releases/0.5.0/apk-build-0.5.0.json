@@ -1,0 +1,15 @@
+{
+  "apk": "WMS-Android-C-Terminal-0.5.0.apk",
+  "version": "0.5.0",
+  "min_android": "8.0 (API26)",
+  "target_api": 34,
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86",
+    "x86_64"
+  ],
+  "native_page_alignment": 16384,
+  "sha256": "c7a864a5d83f5405ec9d9a883495a6fcc4d04ec7f339e089a4d95da8b2552e8d",
+  "bytes": 201638
+}
