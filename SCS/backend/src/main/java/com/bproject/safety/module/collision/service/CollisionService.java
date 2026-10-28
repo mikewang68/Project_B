@@ -113,7 +113,9 @@ public class CollisionService {
         }
         d.riskCode = pair.riskCode;
         d.healthCode = pair.healthCode;
-        d.radarStatus = pair.radarDown ? "数据中断" : "正常";
+        // 健康三态与设备端口径一致：断数 / 数据异常 / 正常，避免 degrade 被显示成正常
+        d.radarStatus = pair.radarDown ? "数据中断"
+                : SensorHealth.UNCERTAIN.equals(pair.healthCode) ? "数据异常" : "正常";
         if (pair.deviceStopped && d.id.equals(pair.currentId)) {
             d.status = "已停止";
             d.speed = 0;
@@ -252,6 +254,104 @@ public class CollisionService {
         pair.trend = initialTrend(INIT_DISTANCE);
         pair.activeAlertId = null;
         pair.updatedAt = OffsetDateTime.now(clock);
+    }
+
+    // ---------- 外部设备状态接入（网关 / 边缘节点经 X-API-Key 上报） ----------
+
+    private static final double MAX_SPEED_KMH = 60.0;
+    private static final int MAX_TEXT_LEN = 48;
+
+    /** 单台设备的上报状态；字段均可选，未提供的保持原值。 */
+    public record ExternalDeviceState(String code, String status, Double speed, String direction,
+                                      String controlStatus, String communication, String radarStatus) {}
+
+    /** @param applied 成功应用的设备数；@param ignored 未知或空编码，原样回传便于网关排查 */
+    public record IngestResult(int applied, List<String> ignored) {}
+
+    /**
+     * 应用外部上报的设备运行状态。
+     *
+     * <p>与 {@link #simulate} 的区别：本方法只反映设备自身的运行状态（来自设备协议采集），
+     * <b>不推进碰撞距离、不建告警</b>；碰撞风险仍由配对距离决定。未知设备编码一律忽略，
+     * 不新建设备、不写入任意字段，避免上报方成为第二条设备主数据来源。</p>
+     */
+    @Transactional
+    public synchronized IngestResult applyExternalState(List<ExternalDeviceState> states) {
+        if (states == null || states.isEmpty()) {
+            return new IngestResult(0, List.of());
+        }
+        List<String> ignored = new ArrayList<>();
+        int[] applied = {0};
+        gate.buffer(() -> {
+            for (ExternalDeviceState s : states) {
+                if (s == null || s.code() == null || s.code().isBlank()) {
+                    ignored.add("<empty>");
+                    continue;
+                }
+                String code = s.code().trim();
+                var existing = repository.findById(code);
+                if (existing.isEmpty()) {
+                    ignored.add(code);
+                    continue;
+                }
+                DemoCollisionDevice d = existing.get();
+                if (hasText(s.status())) d.status = clip(s.status());
+                if (s.speed() != null) d.speed = clampSpeed(s.speed());
+                if (hasText(s.direction())) d.direction = clip(s.direction());
+                if (hasText(s.controlStatus())) d.controlStatus = clip(s.controlStatus());
+                if (hasText(s.communication())) d.communication = clip(s.communication());
+                applyHealth(d, s.radarStatus());
+                d.lastUpdated = OffsetDateTime.now(clock).toString();
+                repository.save(d);
+                applied[0]++;
+            }
+            if (applied[0] > 0) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("source", "device-ingest");
+                data.put("applied", applied[0]);
+                publisher.publish("collision.changed", data);
+            }
+        });
+        return new IngestResult(applied[0], List.copyOf(ignored));
+    }
+
+    /** 外部健康状态同步到配对运行态：中断→断数，异常→待确认，其余→正常。 */
+    private void applyHealth(DemoCollisionDevice device, String radarStatus) {
+        if (!hasText(radarStatus)) {
+            return;
+        }
+        String text = radarStatus.trim();
+        device.radarStatus = clip(text);
+        PairState pair = pairOfDevice(device.id);
+        if (pair == null) {
+            return;
+        }
+        if (text.contains("中断")) {
+            pair.healthCode = SensorHealth.RADAR_DOWN;
+            pair.radarDown = true;
+        } else if (text.contains("异常")) {
+            pair.healthCode = SensorHealth.UNCERTAIN;
+            pair.radarDown = false;
+        } else {
+            pair.healthCode = SensorHealth.NORMAL;
+            pair.radarDown = false;
+        }
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private static String clip(String value) {
+        String t = value.trim();
+        return t.length() <= MAX_TEXT_LEN ? t : t.substring(0, MAX_TEXT_LEN);
+    }
+
+    private static double clampSpeed(double value) {
+        if (Double.isNaN(value) || value < 0) {
+            return 0;
+        }
+        return Math.min(value, MAX_SPEED_KMH);
     }
 
     // ---------- 联动 ----------
