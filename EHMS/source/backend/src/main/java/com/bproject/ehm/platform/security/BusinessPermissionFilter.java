@@ -25,8 +25,14 @@ public class BusinessPermissionFilter extends OncePerRequestFilter {
     }
     @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws IOException,ServletException {
         String path=request.getRequestURI();
-        if(path.equals("/api/ehm/v1/auth/login")||path.equals("/api/ehm/v1/auth/logout")){chain.doFilter(request,response);return;}
+        if(Set.of("/api/ehm/v1/auth/login","/api/ehm/v1/auth/logout","/api/ehm/v1/auth/sso/exchange","/api/ehm/v1/auth/sso/revoke","/api/ehm/v1/auth/sso/health").contains(path)){chain.doFilter(request,response);return;}
         if(IamAuditIdentityFilter.actor(request)==null){LocalSessionFilter.reject(mapper,response,401,"请先登录");return;}
+        if(mode.equals("iam") && IamAuditIdentityFilter.actor(request) instanceof EhmSsoSessions.Actor actor){
+            if(!EhmBusinessPermissions.permits(actor,request.getMethod(),path)){
+                LocalSessionFilter.reject(mapper,response,403,"当前功能或操作未获授权");return;
+            }
+            chain.doFilter(request,response);return;
+        }
         boolean safe=Set.of("GET","HEAD").contains(request.getMethod());
         boolean ownService=path.equals("/api/ehm/v1/auth/password")||path.equals("/api/ehm/v1/system/client-events")||path.equals("/api/ehm/v1/assistant/chat");
         boolean privileged=path.startsWith("/api/ehm/v1/auth/users")||path.matches(".*/(export|download|backup|restore|retry)(/.*)?");

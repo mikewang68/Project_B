@@ -196,7 +196,7 @@ renderPage=function(){
 };
 
 const baseSetPageCaseFlow=setPage;
-setPage=function(page){baseSetPageCaseFlow(page);if(CASE_FLOW_PAGES.has(page))loadCaseFlow();};
+setPage=function(page,options){baseSetPageCaseFlow(page,options);if(CASE_FLOW_PAGES.has(page))loadCaseFlow();};
 
 const baseHandleActionCaseFlow=handleAction;
 handleAction=function(event){
