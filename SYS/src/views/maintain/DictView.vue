@@ -3,6 +3,7 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useSysStore } from '@/stores/sys'
 import { useAuthStore } from '@/stores/auth'
+import { sysApi } from '@/api/sys'
 import type { DictType, DictItem, Status } from '@/sys/types'
 
 const sys = useSysStore()
@@ -210,6 +211,22 @@ async function toggleItem(row: DictItem) {
     ElMessage.error(e instanceof Error ? e.message : '操作失败')
   }
 }
+
+async function exportDict() {
+  try {
+    const resp = await sysApi.exportDict(currentTypeCode.value || undefined)
+    const blob = await resp.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `数据字典_${currentTypeCode.value || '全部'}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('字典 CSV 已导出')
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : '导出失败')
+  }
+}
 </script>
 
 <template>
@@ -221,7 +238,10 @@ async function toggleItem(row: DictItem) {
           <template #header>
             <div class="panel-header">
               <span class="panel-title">字典分类（{{ filteredTypes.length }}）</span>
-              <el-button v-if="can('sys:dict:type:add')" type="primary" size="small" :icon="'Plus'" @click="openTypeAdd">新增分类</el-button>
+              <div>
+                <el-button v-if="can('sys:dict:item:view')" size="small" :icon="'Download'" @click="exportDict">导出字典</el-button>
+                <el-button v-if="can('sys:dict:type:add')" type="primary" size="small" :icon="'Plus'" @click="openTypeAdd">新增分类</el-button>
+              </div>
             </div>
           </template>
           <el-input v-model="typeKeyword" placeholder="搜索分类名称/编码" clearable size="small" style="margin-bottom:10px" />
