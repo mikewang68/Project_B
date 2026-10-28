@@ -40,6 +40,7 @@ export default function DemoScenarioBar({
   onRoleChange,
   onReset,
 }: DemoScenarioBarProps) {
+  if (import.meta.env.VITE_PSMS_REAL_API === 'true') return null;
   const resetButton = createC03Element(
     PermissionGate,
     {

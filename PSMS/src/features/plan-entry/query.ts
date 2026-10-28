@@ -1,9 +1,10 @@
 import { planStatuses } from '../../contracts';
 import type { DemoScenario } from '../../mocks/fixtures';
 import { planExceptionFilterValues, type PlanEntryQuery } from './types';
+import { loadCurrentDemoSession } from '../../auth/sessionBootstrap';
 
 const DEFAULT_QUERY: PlanEntryQuery = {
-  date: '2026-07-16',
+  date: import.meta.env.VITE_PSMS_REAL_API === 'true' ? new Date().toLocaleDateString('sv-SE') : '2026-07-16',
   workArea: 'AREA-A',
   scenarioId: 'SCN-01',
   planBatchNo: '',
@@ -71,10 +72,13 @@ export function parsePlanEntryQuery(input: string | URLSearchParams): PlanEntryQ
   const scenarioValue = params.get('scenarioId');
   const sortValue = params.get('sort');
   const planId = nonEmpty(params.get('planId'));
+  const defaultArea = import.meta.env.VITE_PSMS_REAL_API === 'true'
+    ? loadCurrentDemoSession().dataScope.find(area => validWorkAreas.has(area)) ?? DEFAULT_QUERY.workArea
+    : DEFAULT_QUERY.workArea;
 
   return {
     date: isValidDate(dateValue) ? dateValue : DEFAULT_QUERY.date,
-    workArea: workAreaValue && validWorkAreas.has(workAreaValue) ? workAreaValue : DEFAULT_QUERY.workArea,
+    workArea: workAreaValue && validWorkAreas.has(workAreaValue) ? workAreaValue : defaultArea,
     scenarioId: validScenarioIds.has(scenarioValue ?? '')
       ? (scenarioValue as DemoScenario['id'])
       : DEFAULT_QUERY.scenarioId,

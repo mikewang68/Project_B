@@ -38,7 +38,10 @@ aiRouter.post('/assist', authenticate, async (req, res) => {
   window.count++; windows.set(key, window);
   try {
     const config = resolveAiConfig(env);
-    const answer = await requestAi(config, parsed.data);
+    const answer = await requestAi(config, parsed.data, {
+      timeoutMs: env.AI_TIMEOUT_MS,
+      maxTokens: env.AI_MAX_TOKENS,
+    });
     res.json({ answer, model: config.model, source: 'model' });
   } catch (cause) {
     res.status(cause instanceof AiServiceError ? cause.status : 502).json({ message: cause instanceof AiServiceError ? cause.message : 'AI 请求失败，请重试' });

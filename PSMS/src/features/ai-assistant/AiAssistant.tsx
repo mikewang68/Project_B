@@ -68,7 +68,8 @@ export default function AiAssistant() {
     setLoading(true); setError(''); setAnswer('');
     try {
       if (mode === 'model') {
-        const response = await fetch('/api/ai/assist', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${localDemo ? demoToken : connection.token}` }, body: JSON.stringify({ question: question.trim(), context: summary }), signal: AbortSignal.timeout(35_000) });
+        // 后端超时已放到 60 秒，这里留出传输余量；线上实测一次完整回答 12~24 秒。
+        const response = await fetch('/api/ai/assist', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${localDemo ? demoToken : connection.token}` }, body: JSON.stringify({ question: question.trim(), context: summary }), signal: AbortSignal.timeout(75_000) });
         const result = await response.json();
         if (!response.ok || typeof result.answer !== 'string') throw new Error(result.message ?? 'AI 服务暂不可用');
         setAnswer(result.answer); setAnswerSource('AI 分析结果');
@@ -80,7 +81,12 @@ export default function AiAssistant() {
         setAnswer(`计划：${plan.planBatchNo} / ${plan.trainNo}\n货类：${businessLabel(plan.cargoType)}，状态：${businessLabel(plan.status)}，股道：${plan.trackNo}\n\n准备建议：${next}\n\n风险核对：\n${plan.missingFields.length ? `• 待补字段：${plan.missingFields.join('、')}` : '• 必填字段完整'}\n• 来源数据冲突：${plan.conflicts.length} 项\n• A 区资源：${resources.length} 项，当前不可用 ${unavailable.length} 项\n• 当前计划工单：${orders.length} 项，其中阻断或失败 ${orders.filter((item) => ['BLOCKED', 'FAILED'].includes(item.status)).length} 项\n\n以上根据当前界面快照和固定业务规则生成，设备状态需在执行前复核。`);
         setAnswerSource('本地规则分析');
       }
-    } catch (cause) { setError(cause instanceof Error ? cause.message : '分析失败'); }
+    } catch (cause) {
+      const timeout = cause instanceof DOMException && (cause.name === 'TimeoutError' || cause.name === 'AbortError');
+      setError(timeout
+        ? '大模型响应超时（超过 75 秒），请重试，或切换为本地规则分析。'
+        : cause instanceof Error ? cause.message : '分析失败');
+    }
     finally { setLoading(false); }
   };
   return <>

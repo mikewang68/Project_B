@@ -25,12 +25,27 @@ function resolveFromRoot(value: string): string {
  * 变量命名与 SCS / EHMS 保持一致（OPENGAUSS_* / OPENGEMINI_*）。
  */
 const envSchema = z.object({
+  PSMS_SSO_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  PSMS_IAM_BASE_URL: z.string().default(''),
+  PSMS_SSO_SERVICE_TOKEN: z.string().default(''),
+  PSMS_SSO_BINDINGS_FILE: z.string().default(''),
+  PSMS_COOKIE_SECURE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  AUDIT_MAINTENANCE_ENABLED: z.enum(['true','false']).default('false').transform(v=>v==='true'),
   // OpenAI-compatible provider; credentials stay on the backend.
   AI_BASE_URL: z.string().default(''),
   AI_MODEL: z.string().default(''),
   AI_API_KEY: z.string().default(''),
   DASHSCOPE_API_KEY: z.string().trim().default(''),
   AI_DEMO_AUTO_LOGIN: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  /**
+   * 大模型调用超时与输出上限。
+   *
+   * 线上实测：qwen3.8-27b 输出 400~500 tokens 需要 12~24 秒，原来的 30s 超时
+   * 在稍长回答或服务抖动时会被打满，前端只能看到"AI 请求失败或超时"。
+   * 因此超时放到 60s（可用 AI_TIMEOUT_MS 调），并用 max_tokens 兜住最坏耗时。
+   */
+  AI_TIMEOUT_MS: z.coerce.number().int().min(5000).max(180000).default(60000),
+  AI_MAX_TOKENS: z.coerce.number().int().min(100).max(4000).default(1000),
   WRITELOG_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   WRITELOG_URL: z.string().trim().default(''),
   WRITELOG_API_KEY: z.string().trim().default(''),
@@ -88,6 +103,7 @@ const envSchema = z.object({
 
   // ---------- Server ----------
   PORT: z.coerce.number().int().min(1).max(65535).default(3100),
+  HOST: z.string().default('127.0.0.1'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z
