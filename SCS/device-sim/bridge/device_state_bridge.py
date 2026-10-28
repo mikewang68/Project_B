@@ -100,9 +100,36 @@ def tipper_state(host: str, port: int, latency_ms: int) -> dict:
     }
 
 
-def push(scs: str, api_key: str, devices: list[dict], source: str) -> tuple[int, str]:
-    url = scs.rstrip("/") + "/api/v1/ingest/device-state"
-    body = json.dumps({"source": source, "devices": devices}, ensure_ascii=False).encode("utf-8")
+def limit_switch_state(host: str, port: int) -> dict:
+    """装卸区 A：限位开关压合 = 作业面上有人作业。"""
+    r = ModbusReader(host, port).read(0x0000, 3)
+    pressed, _count, health = r
+    if health == 2:
+        return {"code": "LOADING-A", "personnelWorking": None, "signal": "限位开关故障"}
+    return {
+        "code": "LOADING-A",
+        "personnelWorking": bool(pressed),
+        "signal": "限位开关压合" if pressed else "限位开关未压合",
+    }
+
+
+def position_sensor_state(host: str, port: int) -> dict:
+    """装卸区 B：位置传感器测距 → 有车/无车。"""
+    r = ModbusReader(host, port).read(0x0000, 3)
+    distance_mm, occupied, health = r
+    if health == 2 or occupied == 2:
+        return {"code": "LOADING-B", "vehiclePresent": None, "distanceMm": None, "signal": "位置传感器故障"}
+    return {
+        "code": "LOADING-B",
+        "vehiclePresent": occupied == 1,
+        "distanceMm": distance_mm,
+        "signal": f"{'有车' if occupied == 1 else '无车'} {distance_mm / 1000:.1f}m",
+    }
+
+
+def push(scs: str, api_key: str, path: str, payload: dict) -> tuple[int, str]:
+    url = scs.rstrip("/") + path
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json; charset=utf-8")
     req.add_header("X-API-Key", api_key)
@@ -122,6 +149,8 @@ def main():
     ap.add_argument("--api-key-env", default="SCS_API_KEY", help="改用环境变量读取凭据")
     ap.add_argument("--crane", default="127.0.0.1:15050")
     ap.add_argument("--tipper", default="127.0.0.1:15060")
+    ap.add_argument("--switch", default="127.0.0.1:15070", help="装卸区 A 限位开关")
+    ap.add_argument("--position", default="127.0.0.1:15080", help="装卸区 B 位置传感器")
     ap.add_argument("--interval", type=float, default=2.0)
     ap.add_argument("--once", action="store_true", help="只推一次，便于验证")
     a = ap.parse_args()
@@ -133,9 +162,11 @@ def main():
 
     ch, cp = a.crane.rsplit(":", 1)
     th, tp = a.tipper.rsplit(":", 1)
+    sh, sp = a.switch.rsplit(":", 1)
+    ph, pp = a.position.rsplit(":", 1)
 
     while True:
-        devices, errors = [], []
+        devices, zones, errors = [], [], []
         for code, fn, host, port in (("CRANE-01", crane_state, ch, int(cp)),
                                      ("TIP-02", tipper_state, th, int(tp))):
             t0 = time.time()
@@ -143,13 +174,28 @@ def main():
                 devices.append(fn(host, port, int((time.time() - t0) * 1000) or 1))
             except Exception as e:
                 errors.append(f"{code}: {e}")
+        for code, fn, host, port in (("LOADING-A", limit_switch_state, sh, int(sp)),
+                                     ("LOADING-B", position_sensor_state, ph, int(pp))):
+            try:
+                zones.append(fn(host, port))
+            except Exception as e:
+                errors.append(f"{code}: {e}")
+
+        ok = True
         if devices:
-            status, text = push(a.scs, api_key, devices, "device-sim/bridge")
+            status, text = push(a.scs, api_key, "/api/v1/ingest/device-state",
+                                {"source": "device-sim/bridge", "devices": devices})
             print(f"[bridge] push {len(devices)} device(s) -> HTTP {status} {text[:120]}")
+            ok = ok and status == 200
+        if zones:
+            status, text = push(a.scs, api_key, "/api/v1/ingest/zone-state",
+                                {"source": "device-sim/bridge", "zones": zones})
+            print(f"[bridge] push {len(zones)} zone(s) -> HTTP {status} {text[:120]}")
+            ok = ok and status == 200
         if errors:
             print(f"[bridge] skipped: {'; '.join(errors)}")
         if a.once:
-            return 0 if devices and status == 200 else 1
+            return 0 if ok and (devices or zones) else 1
         time.sleep(max(0.2, a.interval))
 
 
