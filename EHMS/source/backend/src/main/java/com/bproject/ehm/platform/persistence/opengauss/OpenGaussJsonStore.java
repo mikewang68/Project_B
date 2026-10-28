@@ -31,6 +31,8 @@ public class OpenGaussJsonStore {
     private final String qualifiedTable;
     private final String schema;
     private final boolean autoDdl;
+    @Value("${ehm.project.default-id:UNASSIGNED}") private String defaultProject="UNASSIGNED";
+    private String project(){return com.bproject.ehm.platform.security.ProjectContext.require(defaultProject);}
 
     public OpenGaussJsonStore(
             JdbcTemplate jdbc,
@@ -52,28 +54,29 @@ public class OpenGaussJsonStore {
         jdbc.execute("CREATE SCHEMA IF NOT EXISTS " + schema);
         jdbc.execute("""
                 CREATE TABLE IF NOT EXISTS %s (
+                    project_id VARCHAR(64) NOT NULL,
                     aggregate_type VARCHAR(64) NOT NULL,
                     aggregate_id VARCHAR(192) NOT NULL,
                     payload TEXT NOT NULL,
                     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (aggregate_type, aggregate_id)
+                    PRIMARY KEY (project_id, aggregate_type, aggregate_id)
                 )
                 """.formatted(qualifiedTable));
         jdbc.execute("CREATE INDEX IF NOT EXISTS idx_ehm_aggregate_updated ON "
-                + qualifiedTable + " (aggregate_type, updated_at DESC)");
+                + qualifiedTable + " (project_id, aggregate_type, updated_at DESC)");
     }
 
     public <T> Optional<T> find(String type, String id, Class<T> valueType) {
         List<String> rows = jdbc.query(
-                "SELECT payload FROM " + qualifiedTable + " WHERE aggregate_type = ? AND aggregate_id = ?",
-                (result, rowNum) -> result.getString(1), type, id);
+                "SELECT payload FROM " + qualifiedTable + " WHERE project_id = ? AND aggregate_type = ? AND aggregate_id = ?",
+                (result, rowNum) -> result.getString(1), project(), type, id);
         return rows.stream().findFirst().map(value -> decode(value, valueType));
     }
 
     public <T> List<T> findAll(String type, Class<T> valueType) {
         return jdbc.query(
-                "SELECT payload FROM " + qualifiedTable + " WHERE aggregate_type = ? ORDER BY updated_at DESC",
-                (result, rowNum) -> decode(result.getString(1), valueType), type);
+                "SELECT payload FROM " + qualifiedTable + " WHERE project_id = ? AND aggregate_type = ? ORDER BY updated_at DESC",
+                (result, rowNum) -> decode(result.getString(1), valueType), project(), type);
     }
 
     public <T> T save(String type, String id, T value) {
@@ -81,19 +84,19 @@ public class OpenGaussJsonStore {
         Timestamp updatedAt = Timestamp.from(Instant.now());
         int updated = jdbc.update(
                 "UPDATE " + qualifiedTable + " SET payload = ?, updated_at = ? "
-                        + "WHERE aggregate_type = ? AND aggregate_id = ?",
-                payload, updatedAt, type, id);
+                        + "WHERE project_id = ? AND aggregate_type = ? AND aggregate_id = ?",
+                payload, updatedAt, project(), type, id);
         if (updated == 0) {
             try {
                 jdbc.update(
                         "INSERT INTO " + qualifiedTable
-                                + " (aggregate_type, aggregate_id, payload, updated_at) VALUES (?, ?, ?, ?)",
-                        type, id, payload, updatedAt);
+                                + " (project_id, aggregate_type, aggregate_id, payload, updated_at) VALUES (?, ?, ?, ?, ?)",
+                        project(), type, id, payload, updatedAt);
             } catch (DuplicateKeyException concurrentInsert) {
                 jdbc.update(
                         "UPDATE " + qualifiedTable + " SET payload = ?, updated_at = ? "
-                                + "WHERE aggregate_type = ? AND aggregate_id = ?",
-                        payload, updatedAt, type, id);
+                                + "WHERE project_id = ? AND aggregate_type = ? AND aggregate_id = ?",
+                        payload, updatedAt, project(), type, id);
             }
         }
         return value;
@@ -101,7 +104,7 @@ public class OpenGaussJsonStore {
 
     public long count(String type) {
         Long value = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM " + qualifiedTable + " WHERE aggregate_type = ?", Long.class, type);
+                "SELECT COUNT(*) FROM " + qualifiedTable + " WHERE project_id = ? AND aggregate_type = ?", Long.class, project(), type);
         return value == null ? 0 : value;
     }
 
@@ -110,8 +113,8 @@ public class OpenGaussJsonStore {
         if (find(type, id, Object.class).isPresent()) return false;
         try {
             jdbc.update("INSERT INTO " + qualifiedTable
-                    + " (aggregate_type, aggregate_id, payload, updated_at) VALUES (?, ?, ?, ?)",
-                    type, id, encode(value), Timestamp.from(Instant.now()));
+                    + " (project_id, aggregate_type, aggregate_id, payload, updated_at) VALUES (?, ?, ?, ?, ?)",
+                    project(), type, id, encode(value), Timestamp.from(Instant.now()));
             return true;
         } catch (DuplicateKeyException race) {
             throw new IllegalStateException("Concurrent sample import; retry after the current import finishes");
