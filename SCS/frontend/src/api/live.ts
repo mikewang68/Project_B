@@ -125,7 +125,8 @@ export function isLiveEvent(raw: unknown): raw is LiveEvent {
     type.startsWith('fence.') ||
     type.startsWith('collision.') ||
     type.startsWith('rule.') ||
-    type.startsWith('ops.')
+    type.startsWith('ops.') ||
+    type.startsWith('zone.')
   )
 }
 
@@ -138,7 +139,8 @@ export function isAiLiveEvent(raw: unknown): raw is LiveEvent {
 export function isDomainLiveEvent(raw: unknown): raw is LiveEvent {
   if (!raw || typeof raw !== 'object' || typeof (raw as { type?: unknown }).type !== 'string') return false
   const type = String((raw as { type: string }).type)
-  return type.startsWith('person.') || type.startsWith('fence.') || type.startsWith('collision.') || type.startsWith('rule.')
+  return type.startsWith('person.') || type.startsWith('fence.') || type.startsWith('collision.')
+    || type.startsWith('rule.') || type.startsWith('zone.')
 }
 
 /**

@@ -18,7 +18,8 @@ public final class ScsRoutePermissions {
     else if(p.startsWith("personnel")||p.startsWith("persons"))module="safety:person";
     else if(p.startsWith("screen"))module="safety:screen";
     else if(p.startsWith("mobile"))module="safety:mobile";
-    else if(read&&(p.startsWith("overview")||p.startsWith("meta/")||p.equals("state")))return "safety:home:map:view";
+    // 装卸区状态属于首页态势展示，与 overview/state 同权限；写入口在 /api/v1/ingest/ 下由机器凭据单独管控
+    else if(read&&(p.startsWith("overview")||p.startsWith("meta/")||p.startsWith("zones")||p.equals("state")))return "safety:home:map:view";
     // 写操作此前落到绑定文件 routes，无条目即 403：非 ADMIN 永远无法使用首页的演示开关
     else if(!read&&p.startsWith("overview"))return "safety:home:map:edit";
     else return null;

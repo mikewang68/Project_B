@@ -5,6 +5,7 @@ import { Bell, Clock, Connection, User, WarningFilled } from '@element-plus/icon
 import { ElMessage } from 'element-plus'
 import AlertDrawer from './AlertDrawer.vue'
 import DeviceHealth from './DeviceHealth.vue'
+import LoadingAreaPanel from './LoadingAreaPanel.vue'
 import RealtimeAlertFeed from './RealtimeAlertFeed.vue'
 import RiskDistributionChart from './RiskDistributionChart.vue'
 import RiskTrendChart from './RiskTrendChart.vue'
@@ -160,6 +161,7 @@ onUnmounted(() => {
       <RiskTrendChart :points="trend.points" :demo="trend.demo" />
       <RiskDistributionChart :items="distribution.items" />
       <DeviceHealth />
+      <LoadingAreaPanel />
     </div>
 
     <AlertDrawer v-model="drawerOpen" :alert="selectedAlert" />

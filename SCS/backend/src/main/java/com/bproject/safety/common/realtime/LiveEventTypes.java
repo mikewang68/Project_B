@@ -61,6 +61,9 @@ public final class LiveEventTypes {
     /** 运维：恢复流程阶段变化。 */
     public static final String OPS_RECOVERY_CHANGED = "ops.recovery.changed";
 
+    /** 装卸区状态变化（A 区人员作业 / B 区车辆进出） */
+    public static final String ZONE_CHANGED = "zone.changed";
+
     /** 客户端心跳请求 */
     public static final String PING = "ping";
     /** 服务端心跳响应 */
