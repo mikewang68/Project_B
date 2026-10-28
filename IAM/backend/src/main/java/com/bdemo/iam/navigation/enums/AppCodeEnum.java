@@ -7,7 +7,7 @@ package com.bdemo.iam.navigation.enums;
 public enum AppCodeEnum {
   WMS(10, "/wms/", "wms", "仓储管理系统"),
   PSMS(20, "/psms/", "pps", "生产调度系统"),
-  SCS(30, "/scs/", "safety", "安全安防系统"),
+  SCS(30, "/scs/", "safety", "安全卡控系统"),
   EHMS(40, "/ehm/", "ehealth", "设备健康管理系统"),
   EMCS(50, "/emcs/", "ems", "能源管理控制系统"),
   TRUST(60, "/trust/", "trust", "可信存证与身份系统"),

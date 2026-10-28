@@ -47,6 +47,7 @@ public class NavigationDataIntegrityTest {
     assertEquals(30, apps[2].getSortOrder());
     assertEquals("/scs/", apps[2].getEntryBasePath());
     assertEquals("safety", apps[2].getIamSystemCode()); // 严禁误映射为 scs
+    assertEquals("安全卡控系统", apps[2].getDefaultDisplayName()); // 门户显示名以枚举为准
 
     assertEquals("EHMS", apps[3].name());
     assertEquals(40, apps[3].getSortOrder());
