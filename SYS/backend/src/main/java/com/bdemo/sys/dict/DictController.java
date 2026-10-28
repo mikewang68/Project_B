@@ -23,7 +23,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -79,6 +83,19 @@ public class DictController {
     @RequirePerm("sys:dict:item:view")
     public R<List<DictItem>> items(@RequestParam(required = false) String typeCode) {
         return R.ok(dictService.listItems(typeCode));
+    }
+
+    @GetMapping("/export")
+    @RequirePerm("sys:dict:item:view")
+    public ResponseEntity<byte[]> export(@RequestParam(required = false) String typeCode,
+                                         HttpServletRequest http) {
+        byte[] bytes = dictService.exportCsv(typeCode).getBytes(StandardCharsets.UTF_8);
+        record(http, "export", typeCode == null || typeCode.isBlank() ? "ALL" : typeCode,
+                "导出数据字典" + (typeCode == null || typeCode.isBlank() ? "" : "「" + typeCode + "」"));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"sys-dict.csv\"")
+                .contentType(MediaType.valueOf("text/csv;charset=UTF-8"))
+                .body(bytes);
     }
 
     @PostMapping("/items")

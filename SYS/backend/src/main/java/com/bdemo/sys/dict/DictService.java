@@ -111,4 +111,29 @@ public class DictService {
     private String emptyToNull(String s) {
         return s == null || s.isBlank() ? null : s;
     }
+
+    /** 导出字典分类/字典项为 UTF-8 CSV（带 BOM，便于 Excel 直接打开）。 */
+    public String exportCsv(String typeCode) {
+        List<DictType> types = listTypes();
+        java.util.Map<String, String> typeNames = new java.util.HashMap<>();
+        for (DictType type : types) typeNames.put(type.getCode(), type.getName());
+        StringBuilder sb = new StringBuilder("\uFEFF");
+        sb.append("type_code,type_name,item_value,item_label,sort,status,tag_type,remark\r\n");
+        for (DictItem item : listItems(typeCode)) {
+            sb.append(csv(item.getTypeCode())).append(',')
+              .append(csv(typeNames.getOrDefault(item.getTypeCode(), ""))).append(',')
+              .append(csv(item.getValue())).append(',')
+              .append(csv(item.getLabel())).append(',')
+              .append(item.getSort() == null ? 0 : item.getSort()).append(',')
+              .append(csv(item.getStatus())).append(',')
+              .append(csv(item.getTagType())).append(',')
+              .append(csv(item.getRemark())).append("\r\n");
+        }
+        return sb.toString();
+    }
+
+    private static String csv(String value) {
+        String v = value == null ? "" : value;
+        return "\"" + v.replace("\"", "\"\"") + "\"";
+    }
 }
