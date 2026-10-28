@@ -75,6 +75,13 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- 公共操作日志客户端（WriteLog/AUDIT），由 AUDIT 模块构建并安装到本机 Maven 仓库 -->
+    <dependency>
+      <groupId>com.bproject.audit</groupId>
+      <artifactId>audit-client</artifactId>
+      <version>1.0.1</version>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>

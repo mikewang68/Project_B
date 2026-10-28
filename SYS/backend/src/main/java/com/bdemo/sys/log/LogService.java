@@ -191,13 +191,9 @@ public class LogService {
                        String result) {
         String username = user == null ? "anonymous" : user.getUsername();
         String userId = user == null ? null : user.getUserId();
-        try {
-            mapper.insert("l" + UUID.randomUUID().toString().replace("-", "").substring(0, 16),
-                    kind, username, userId, moduleName, action, target, detail,
-                    method, uri, ip, normalize(result), null, LocalDateTime.now());
-        } catch (Exception e) {
-            // 日志失败不阻断主业务
-        }
+        mapper.insert("l" + UUID.randomUUID().toString().replace("-", "").substring(0, 16),
+                kind, username, userId, moduleName, action, target, detail,
+                method, uri, ip, normalize(result), null, LocalDateTime.now());
     }
 
     private String normalize(String result) {
