@@ -1,6 +1,6 @@
 # SCS 设备原始协议模拟器（B01~B03 敬昌隆负责范围）
 
-四类设备的数据生成器 + 协议资料卡。对应[接口前置清单"设备范围"]中调研负责人=敬昌隆的 4 个对象：
+六类设备的数据生成器 + 协议资料卡。对应[接口前置清单"设备范围"]及第十七次组会要求：
 
 | 设备 | 调研定位键 | 原始协议形态 | 参考设备（类似替代，未采购） | 端口 |
 |---|---|---|---|---|
@@ -8,22 +8,43 @@
 | 毫米波测距/激光雷达 | IF-IN-RADAR | **Modbus TCP**（FC03/04/06，10~20Hz 轮询） | Benewake TF03-180（寄存器同源） | 15020 |
 | AI 视频分析边缘盒 | IF-IN-AI-EVENT | **HTTP Webhook POST + JPEG 快照** | DeepStream 事件 schema | 15030 |
 | 现场一体化声光报警器 | IF-OUT-ALARM-LIGHT | **Modbus TCP**（FC03/06/16 灯位/蜂鸣/回执） | PATLATE LA6-POE（寄存器风格） | 15040 |
+| **门式起重机（龙门吊）** | 组会指定 | **Modbus TCP**（FC03/06，状态/速度/方向/载重/起升/风速/联锁） | 通用门式起重机 PLC，**寄存器全部我方构造** | 15050 |
+| **液压翻箱机** | 组会指定 | **Modbus TCP**（FC03/06，作业阶段/举升角度/液压压力/联锁） | 液压翻转机 PLC，**寄存器全部我方构造** | 15060 |
 
 全部**纯 Python 标准库零依赖**（AI 盒快照图有 PIL 时更精致，无则退化 1×1 JPEG）。
+
+> **龙门吊与翻箱机没有实物、没有厂家手册**：资料卡 `docs/05`、`docs/06` 里的寄存器地址与换算
+> 全部是我方构造的预案，**不得作为现场接线或 PLC 点表依据**；设备到位后必须按实际手册替换。
 
 ## 快速开始
 
 ```powershell
-# 一键验证四链路（约 25 秒，产出 verify/evidence-*.json）
+# 一键验证六链路（约 40 秒，产出 verify/evidence-*.json）
 cd device-sim
 python verify\verify_all.py
 
 # 单独长跑（Ctrl+C 退出）
 python uwb\uwb_sim.py --dest 127.0.0.1:9000 --scenario patrol --rate 2
 python radar\radar_sim.py --port 15020 --scenario approach
+python crane\crane_sim.py --port 15050 --scenario travel
+python tipper\tipper_sim.py --port 15060 --scenario dump
 python aibox\aibox_sim.py --webhook http://127.0.0.1:15031/hook --scenario mixed
 python alarmlight\alarmlight_sim.py --port 15040
 ```
+
+## 设备状态 → SCS 页面动态展示
+
+`bridge/device_state_bridge.py` 是联调用的**网关替身**（正式网关属董博涵范围）：
+轮询龙门吊/翻箱机 Modbus 从站 → 换算成 SCS 设备状态字段 → `POST /api/v1/ingest/device-state`（X-API-Key）。
+
+```powershell
+$env:SCS_API_KEY = "<机器凭据>"   # 不要写进脚本
+python bridge\device_state_bridge.py --scs http://127.0.0.1:20986 --api-key-env SCS_API_KEY
+python bridge\device_state_bridge.py --scs http://127.0.0.1:20986 --api-key-env SCS_API_KEY --once
+```
+
+SCS 侧只更新已登记设备（`CRANE-01` / `TIP-02` 等）的展示字段并广播 `collision.changed`，
+防碰撞页已订阅该事件，**无需刷新自动更新**。未知设备编码会被忽略，不会新建设备。
 
 ## 场景种子
 
@@ -31,6 +52,8 @@ python alarmlight\alarmlight_sim.py --port 15040
 |---|---|---|
 | UWB | `patrol` / `sos` / `degraded` / `backfill` | 4 人巡逻（含越界 FENCE-03 事件）/ SOS 事件 / 精度劣化+低电 / 断连补传（backfilled 标志） |
 | 雷达 | `approach` / `recede` / `static` / `blind` / `fault` | 20→3m 接近（+0.5m/s）/ 远离 / 8m 恒定 / 超量程（强度<40→DEGRADED）/ RADAR_DOWN |
+| 龙门吊 | `idle` / `hoist` / `travel` / `wind` / `fault` | 待机 / 起升作业（载重与起升高度往复）/ 大车往复行走（0~45 m/min，方向随半周期切换）/ 风速 12~18 m/s 超限 / 故障（DOWN + 联锁断开） |
+| 翻箱机 | `idle` / `dump` / `blocked` / `fault` | 待机 / 完整作业循环（就位→举升→倾卸→回落，40s 一轮）/ 堵料卡阻（角度停滞 60°、压力≥28MPa、降级）/ 故障（角度保持半途） |
 | AI 盒 | `helmet` / `vest` / `intrusion` / `mixed` | 三类违规事件 + 低置信度（0.62）+ 同 UUID 重发（幂等验证） |
 | 声光 | 写寄存器即场景 | 黄(bit2)/橙(bit1)/红(bit0)+蜂鸣 pattern+时长；防抖窗口 500ms；回执区 0x1000+ |
 

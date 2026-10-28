@@ -1,0 +1,157 @@
+"""设备状态桥接（联调用网关替身）。
+
+轮询龙门吊 / 翻箱机 Modbus 从站 → 换算成 SCS 设备状态字段 → POST /api/v1/ingest/device-state。
+
+说明：正式的设备→底座链路由网关负责（组会分工中属董博涵范围）。本脚本只是联调替身，
+让「设备协议模拟 → SCS 页面动态展示」这条链路可以端到端跑通，不代表正式网关实现。
+
+字段映射（复用 SCS 现有的 collision 设备字段，不新增数据库列）：
+  龙门吊 CRANE-01：状态、大车速度(m/min→km/h)、方向、PLC 联锁、通信、感知健康
+  翻箱机 TIP-02 ：作业阶段、行走速度恒 0、固定工位、PLC 联锁、通信、感知健康
+
+用法：
+  python bridge/device_state_bridge.py --scs http://127.0.0.1:20986 --api-key <KEY> --once
+  python bridge/device_state_bridge.py --scs https://scs.example.com --api-key-env SCS_API_KEY
+
+凭据不硬编码：从 --api-key 或环境变量读取（--api-key-env 指定变量名）。
+纯标准库。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import socket
+import struct
+import sys
+import time
+import urllib.error
+import urllib.request
+
+CRANE_STATUS = {0: "待机", 1: "作业中", 2: "故障", 3: "检修"}
+CRANE_DIR = {0: "停止", 1: "向东", 2: "向西"}
+TIPPER_STAGE = {0: "待机", 1: "箱体就位", 2: "举升中", 3: "倾卸中", 4: "回落", 5: "故障"}
+HEALTH_TEXT = {0: "正常", 1: "数据异常", 2: "数据中断"}
+
+
+class ModbusReader:
+    """最小 FC03 客户端，够桥接用。"""
+
+    def __init__(self, host: str, port: int, unit: int = 1, timeout: float = 3.0):
+        self.host, self.port, self.unit, self.timeout = host, port, unit, timeout
+        self.tid = 0
+
+    def read(self, addr: int, count: int) -> list[int]:
+        self.tid = (self.tid + 1) & 0xFFFF
+        pdu = struct.pack(">BHH", 0x03, addr, count)
+        frame = struct.pack(">HHHB", self.tid, 0, len(pdu) + 1, self.unit) + pdu
+        with socket.create_connection((self.host, self.port), timeout=self.timeout) as s:
+            s.sendall(frame)
+            head = _recv_exact(s, 7)
+            _, _, length, _ = struct.unpack(">HHHB", head)
+            body = _recv_exact(s, length - 1)
+        if body[0] != 0x03:
+            raise OSError(f"modbus exception fc=0x{body[0]:02x} code={body[1] if len(body) > 1 else '?'}")
+        n = body[1] // 2  # 字节数 → 寄存器数
+        return list(struct.unpack(f">{n}H", body[2:2 + n * 2]))
+
+
+def _recv_exact(sock, n: int) -> bytes:
+    buf = b""
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            raise OSError("connection closed")
+        buf += chunk
+    return buf
+
+
+def to_signed(v: int) -> int:
+    return v - 0x10000 if v & 0x8000 else v
+
+
+def crane_state(host: str, port: int, latency_ms: int) -> dict:
+    r = ModbusReader(host, port).read(0x0000, 9)
+    status, speed_raw, direction, _load, _hook, _wind, interlock, health, _trolley = r
+    # 大车速度寄存器是 m/min，SCS 现有字段语义是 km/h，这里换算以免读数误导
+    speed_kmh = round(speed_raw / 10.0 * 0.06, 2)
+    return {
+        "code": "CRANE-01",
+        "status": CRANE_STATUS.get(status, "未知"),
+        "speed": speed_kmh,
+        "direction": CRANE_DIR.get(direction, "停止"),
+        "controlStatus": "PLC 联锁可用" if interlock else "PLC 联锁不可用",
+        "communication": f"在线 · {latency_ms}ms",
+        "radarStatus": HEALTH_TEXT.get(health, "数据异常"),
+    }
+
+
+def tipper_state(host: str, port: int, latency_ms: int) -> dict:
+    r = ModbusReader(host, port).read(0x0000, 8)
+    stage, _speed, _direction, _weight, _angle, _pressure, interlock, health = r
+    return {
+        "code": "TIP-02",
+        "status": TIPPER_STAGE.get(stage, "未知"),
+        "speed": 0.0,
+        "direction": "固定工位",
+        "controlStatus": "PLC 联锁可用" if interlock else "PLC 联锁不可用",
+        "communication": f"在线 · {latency_ms}ms",
+        "radarStatus": HEALTH_TEXT.get(health, "数据异常"),
+    }
+
+
+def push(scs: str, api_key: str, devices: list[dict], source: str) -> tuple[int, str]:
+    url = scs.rstrip("/") + "/api/v1/ingest/device-state"
+    body = json.dumps({"source": source, "devices": devices}, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", "application/json; charset=utf-8")
+    req.add_header("X-API-Key", api_key)
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status, resp.read().decode("utf-8", "replace")[:300]
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", "replace")[:300]
+    except Exception as e:  # 网络/证书/超时
+        return 0, str(e)[:200]
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--scs", required=True, help="SCS 基址，如 http://127.0.0.1:20986")
+    ap.add_argument("--api-key", default="", help="SCS 机器凭据（不要写进脚本）")
+    ap.add_argument("--api-key-env", default="SCS_API_KEY", help="改用环境变量读取凭据")
+    ap.add_argument("--crane", default="127.0.0.1:15050")
+    ap.add_argument("--tipper", default="127.0.0.1:15060")
+    ap.add_argument("--interval", type=float, default=2.0)
+    ap.add_argument("--once", action="store_true", help="只推一次，便于验证")
+    a = ap.parse_args()
+
+    api_key = a.api_key or os.environ.get(a.api_key_env, "")
+    if not api_key:
+        print(f"[bridge] 缺少凭据：用 --api-key 或设置环境变量 {a.api_key_env}", file=sys.stderr)
+        return 2
+
+    ch, cp = a.crane.rsplit(":", 1)
+    th, tp = a.tipper.rsplit(":", 1)
+
+    while True:
+        devices, errors = [], []
+        for code, fn, host, port in (("CRANE-01", crane_state, ch, int(cp)),
+                                     ("TIP-02", tipper_state, th, int(tp))):
+            t0 = time.time()
+            try:
+                devices.append(fn(host, port, int((time.time() - t0) * 1000) or 1))
+            except Exception as e:
+                errors.append(f"{code}: {e}")
+        if devices:
+            status, text = push(a.scs, api_key, devices, "device-sim/bridge")
+            print(f"[bridge] push {len(devices)} device(s) -> HTTP {status} {text[:120]}")
+        if errors:
+            print(f"[bridge] skipped: {'; '.join(errors)}")
+        if a.once:
+            return 0 if devices and status == 200 else 1
+        time.sleep(max(0.2, a.interval))
+
+
+if __name__ == "__main__":
+    sys.exit(main())
