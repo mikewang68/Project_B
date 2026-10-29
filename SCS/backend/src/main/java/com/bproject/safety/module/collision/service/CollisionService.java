@@ -262,8 +262,14 @@ public class CollisionService {
     private static final int MAX_TEXT_LEN = 48;
 
     /** 单台设备的上报状态；字段均可选，未提供的保持原值。 */
+    /**
+     * @param x 底图百分比横坐标（0~100），可缺省；龙门吊这类会行走的设备由网关按大车位置换算后上报，
+     *          不传则沿用设备台账里的固定坐标
+     * @param y 底图百分比纵坐标（0~100）
+     */
     public record ExternalDeviceState(String code, String status, Double speed, String direction,
-                                      String controlStatus, String communication, String radarStatus) {}
+                                      String controlStatus, String communication, String radarStatus,
+                                      Double x, Double y) {}
 
     /** @param applied 成功应用的设备数；@param ignored 未知或空编码，原样回传便于网关排查 */
     public record IngestResult(int applied, List<String> ignored) {}
@@ -300,6 +306,10 @@ public class CollisionService {
                 if (hasText(s.direction())) d.direction = clip(s.direction());
                 if (hasText(s.controlStatus())) d.controlStatus = clip(s.controlStatus());
                 if (hasText(s.communication())) d.communication = clip(s.communication());
+                // 会行走的设备（龙门吊）把大车位置换算成底图百分比上报，首页地图上的图标才会跟着动；
+                // 固定工位（翻箱机）不传，沿用台账坐标。
+                if (s.x() != null) d.x = Math.max(0, Math.min(100, s.x()));
+                if (s.y() != null) d.y = Math.max(0, Math.min(100, s.y()));
                 applyHealth(d, s.radarStatus());
                 d.lastUpdated = OffsetDateTime.now(clock).toString();
                 repository.save(d);

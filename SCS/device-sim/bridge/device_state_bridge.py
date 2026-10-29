@@ -30,6 +30,12 @@ import urllib.request
 
 CRANE_STATUS = {0: "待机", 1: "作业中", 2: "故障", 3: "检修"}
 CRANE_DIR = {0: "停止", 1: "向东", 2: "向西"}
+
+# 大车行走位置（底图百分比）。设备协议只给速度和方向，位置在网关侧按时间积分算出来，
+# 再和 UWB 人员坐标一样归一化成百分比上报——SCS 只接收结果，不猜设备在哪。
+# 轨道落在「龙门吊作业区」内：x 42~57、y 20。
+CRANE_RAIL_X0, CRANE_RAIL_X1, CRANE_RAIL_Y = 42.0, 57.0, 20.0
+_crane = {"x": (CRANE_RAIL_X0 + CRANE_RAIL_X1) / 2.0, "t": None}
 TIPPER_STAGE = {0: "待机", 1: "箱体就位", 2: "举升中", 3: "倾卸中", 4: "回落", 5: "故障"}
 HEALTH_TEXT = {0: "正常", 1: "数据异常", 2: "数据中断"}
 
@@ -75,11 +81,26 @@ def crane_state(host: str, port: int, latency_ms: int) -> dict:
     status, speed_raw, direction, _load, _hook, _wind, interlock, health, _trolley = r
     # 大车速度寄存器是 m/min，SCS 现有字段语义是 km/h，这里换算以免读数误导
     speed_kmh = round(speed_raw / 10.0 * 0.06, 2)
+
+    # 按速度积分出大车位置（km/h ÷ 3.6 = m/s，站场 100m 与底图百分比 1:1）
+    now = time.time()
+    dt = 0.0 if _crane["t"] is None else min(5.0, now - _crane["t"])
+    _crane["t"] = now
+    if speed_kmh > 0:
+        step = speed_kmh / 3.6 * dt
+        if direction == 1:       # 向东
+            _crane["x"] += step
+        elif direction == 2:     # 向西
+            _crane["x"] -= step
+    _crane["x"] = min(CRANE_RAIL_X1, max(CRANE_RAIL_X0, _crane["x"]))
+
     return {
         "code": "CRANE-01",
         "status": CRANE_STATUS.get(status, "未知"),
         "speed": speed_kmh,
         "direction": CRANE_DIR.get(direction, "停止"),
+        "x": round(_crane["x"], 1),
+        "y": CRANE_RAIL_Y,
         "controlStatus": "PLC 联锁可用" if interlock else "PLC 联锁不可用",
         "communication": f"在线 · {latency_ms}ms",
         "radarStatus": HEALTH_TEXT.get(health, "数据异常"),
