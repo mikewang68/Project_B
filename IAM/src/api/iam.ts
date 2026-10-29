@@ -55,6 +55,36 @@ function normalizeUser(u: User): User {
   return { ...u, password: '' }
 }
 
+export interface NavigationMenuRow {
+  stableMenuKey: string
+  appCode: string
+  menuName: string
+  projectedDisplayTitle: string
+  menuKind: string
+  entryPath: string
+  routePath: string
+  visible: number
+  enabled: number
+  navEligible: number
+  featureStatus: string
+  unavailableReason: string
+  rowVersion: number
+  updatedBy: string
+  updatedAt: string
+}
+
+export interface NavigationMenuUpdatePayload {
+  menuName?: string
+  projectedDisplayTitle?: string
+  entryPath?: string
+  routePath?: string
+  visible?: number
+  enabled?: number
+  navEligible?: number
+  featureStatus?: string
+  unavailableReason?: string
+}
+
 export const iamApi = {
   token: client,
 
@@ -99,6 +129,15 @@ export const iamApi = {
   // ---------------- 权限目录 / 组织 ----------------
   permissionTree: () => client.request<MenuNode[]>('/permissions/tree'),
   orgTree: () => client.request<OrgNode[]>('/orgs/tree'),
+
+  // ---------------- 导航菜单维护 ----------------
+  navigationMenus: (appCode?: string) =>
+    client.request<NavigationMenuRow[]>('/navigation/menus', { query: { appCode } }),
+  updateNavigationMenu: (stableMenuKey: string, payload: NavigationMenuUpdatePayload) =>
+    client.request<NavigationMenuRow>(`/navigation/menus/${encodeURIComponent(stableMenuKey)}`, {
+      method: 'PUT',
+      body: payload,
+    }),
 
   // ---------------- 有效权限 / 权限健康 ----------------
   effectivePermissions: (id: string) =>

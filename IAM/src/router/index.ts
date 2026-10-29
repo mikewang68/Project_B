@@ -40,6 +40,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '菜单与权限', perm: 'iam:menu:tree:view' },
       },
       {
+        path: 'system/navigation-menus',
+        name: 'system-navigation-menus',
+        component: () => import('@/views/system/NavigationMenuAdminView.vue'),
+        meta: { title: '导航菜单维护', perm: 'iam:menu:tree:view' },
+      },
+      {
         path: 'system/health',
         name: 'system-health',
         component: () => import('@/views/system/PermissionHealthView.vue'),
