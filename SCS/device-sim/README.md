@@ -24,7 +24,10 @@ cd device-sim
 python verify\verify_all.py
 
 # 单独长跑（Ctrl+C 退出）
+# UWB 每人一条独立路线，路线在 uwb/routes.json（形状/速度/起始偏移各自独立，改路线不用改代码）
 python uwb\uwb_sim.py --dest 127.0.0.1:9000 --scenario patrol --rate 2
+# 只跑某一个人（一人一进程）：--only WB-1003
+python uwb\uwb_sim.py --dest 127.0.0.1:9000 --rate 2 --only WB-1003
 python radar\radar_sim.py --port 15020 --scenario approach
 python crane\crane_sim.py --port 15050 --scenario travel
 python tipper\tipper_sim.py --port 15060 --scenario dump
