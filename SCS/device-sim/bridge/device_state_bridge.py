@@ -107,6 +107,30 @@ def crane_state(host: str, port: int, latency_ms: int) -> dict:
     }
 
 
+RADAR_HEALTH = {0: "NORMAL", 1: "DEGRADED", 2: "DOWN"}
+
+
+def radar_state(host: str, port: int, latency_ms: int) -> dict:
+    """毫米波雷达 → 碰撞配对读数（IF-IN-RADAR）。
+
+    寄存器口径见 device-sim/docs/02-毫米波测距雷达资料卡.md：
+    0x0000 距离 cm、0x0002 相对速度 cm/s（有符号）、0x0003 健康、0x0010.. 配对设备编码 ASCII。
+    """
+    reader = ModbusReader(host, port)
+    dist_cm, strength, speed_cms, health = reader.read(0x0000, 4)
+    raw = reader.read(0x0010, 4)
+    pair = struct.pack(">4H", *raw).split(b"\x00")[0].decode("ascii", "replace").strip()
+    # 原厂强度是原始量程值（模拟器给 300），按 500 满量程折算成 0~100 的质量分，仅用于页面展示
+    quality = max(0, min(100, round(strength / 5)))
+    return {
+        "pairDevice": pair,
+        "distance": round(dist_cm / 100.0, 2),
+        "relSpeed": round(to_signed(speed_cms) / 100.0, 2),
+        "radarQuality": quality,
+        "health": RADAR_HEALTH.get(health, "DOWN"),
+    }
+
+
 def tipper_state(host: str, port: int, latency_ms: int) -> dict:
     r = ModbusReader(host, port).read(0x0000, 8)
     stage, _speed, _direction, _weight, _angle, _pressure, interlock, health = r
@@ -172,6 +196,7 @@ def main():
     ap.add_argument("--tipper", default="127.0.0.1:15060")
     ap.add_argument("--switch", default="127.0.0.1:15070", help="装卸区 A 限位开关")
     ap.add_argument("--position", default="127.0.0.1:15080", help="装卸区 B 位置传感器")
+    ap.add_argument("--radar", default="127.0.0.1:15020", help="毫米波测距雷达")
     ap.add_argument("--interval", type=float, default=2.0)
     ap.add_argument("--once", action="store_true", help="只推一次，便于验证")
     a = ap.parse_args()
@@ -185,6 +210,7 @@ def main():
     th, tp = a.tipper.rsplit(":", 1)
     sh, sp = a.switch.rsplit(":", 1)
     ph, pp = a.position.rsplit(":", 1)
+    rh, rp = a.radar.rsplit(":", 1)
 
     while True:
         devices, zones, errors = [], [], []
@@ -202,7 +228,19 @@ def main():
             except Exception as e:
                 errors.append(f"{code}: {e}")
 
+        readings = []
+        t0 = time.time()
+        try:
+            readings.append(radar_state(rh, int(rp), int((time.time() - t0) * 1000) or 1))
+        except Exception as e:
+            errors.append(f"RADAR: {e}")
+
         ok = True
+        if readings:
+            status, text = push(a.scs, api_key, "/api/v1/ingest/radar",
+                                {"source": "device-sim/bridge", "readings": readings})
+            print(f"[bridge] push {len(readings)} radar  -> HTTP {status} {text[:120]}")
+            ok = ok and status == 200
         if devices:
             status, text = push(a.scs, api_key, "/api/v1/ingest/device-state",
                                 {"source": "device-sim/bridge", "devices": devices})
@@ -216,7 +254,7 @@ def main():
         if errors:
             print(f"[bridge] skipped: {'; '.join(errors)}")
         if a.once:
-            return 0 if ok and (devices or zones) else 1
+            return 0 if ok and (devices or zones or readings) else 1
         time.sleep(max(0.2, a.interval))
 
 

@@ -38,7 +38,9 @@ python alarmlight\alarmlight_sim.py --port 15040
 ## 设备状态 → SCS 页面动态展示
 
 `bridge/device_state_bridge.py` 是联调用的**网关替身**（正式网关属董博涵范围）：
-轮询龙门吊/翻箱机 Modbus 从站 → 换算成 SCS 设备状态字段 → `POST /api/v1/ingest/device-state`（X-API-Key）。
+轮询龙门吊/翻箱机 Modbus 从站 → 换算成 SCS 设备状态字段 → `POST /api/v1/ingest/device-state`（X-API-Key）；
+同一进程还轮询**毫米波雷达**（15020）→ `POST /api/v1/ingest/radar`，把相对距离/相对速度/雷达健康喂进碰撞配对，
+防碰撞页的距离与风险等级由它驱动。
 
 ```powershell
 $env:SCS_API_KEY = "<机器凭据>"   # 不要写进脚本
