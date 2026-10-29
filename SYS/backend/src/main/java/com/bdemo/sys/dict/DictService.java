@@ -57,6 +57,18 @@ public class DictService {
         mapper.logicDeleteItemsByType(type.getCode(), now);
     }
 
+    /** 批量删除分类；不存在的 id 跳过，返回实际删除数量。 */
+    @Transactional
+    public int deleteTypes(List<String> ids) {
+        int deleted = 0;
+        for (String id : ids == null ? List.<String>of() : ids) {
+            if (id == null || id.isBlank() || mapper.selectTypeById(id) == null) continue;
+            deleteType(id);
+            deleted++;
+        }
+        return deleted;
+    }
+
     private DictType mustGetType(String id) {
         DictType type = mapper.selectTypeById(id);
         if (type == null) {
@@ -98,6 +110,18 @@ public class DictService {
     public void deleteItem(String id) {
         mustGetItem(id);
         mapper.logicDeleteItem(id, LocalDateTime.now());
+    }
+
+    /** 批量删除字典项；不存在的 id 跳过，返回实际删除数量。 */
+    @Transactional
+    public int deleteItems(List<String> ids) {
+        int deleted = 0;
+        for (String id : ids == null ? List.<String>of() : ids) {
+            if (id == null || id.isBlank() || mapper.selectItemById(id) == null) continue;
+            deleteItem(id);
+            deleted++;
+        }
+        return deleted;
     }
 
     private DictItem mustGetItem(String id) {
