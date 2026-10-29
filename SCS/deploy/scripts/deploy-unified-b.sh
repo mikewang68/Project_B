@@ -43,6 +43,13 @@ fi
 find "$WEB" -mindepth 1 -delete
 cp -a "$REL/frontend/." "$WEB/"
 chown -R root:root "$WEB"
+# cp -a 会把源目录的 SELinux 标签一起带过来（曾因此把 user_home_t 落到 /var/www 下，
+# Enforcing 下 nginx 读不到静态文件，整站 403 而 API 仍正常）。放完必须回标。
+restorecon -R "$WEB" 2>/dev/null || true
+if [ "$(getenforce 2>/dev/null)" = "Enforcing" ] && ! ls -Zd "$WEB" | grep -q 'httpd_sys_content_t'; then
+  echo "[4] SELinux 标签异常：$(ls -Zd "$WEB")" >&2
+  exit 1
+fi
 echo "[4] web -> $(ls "$WEB" | tr '\n' ' ')"
 grep -oE 'index-[^"]+\.js' "$WEB/index.html" | head -1
 
