@@ -82,6 +82,25 @@ function scheduleRefresh(): void {
   refreshTimer = setTimeout(() => { void refreshAll() }, 300)
 }
 
+/**
+ * 人员位置是 1Hz 级的实时流：只重拉底图，不能每条事件都全量刷新五个接口。
+ * 拉取失败不弹提示——下一批上报很快会再触发，弹窗会连成一片；重连时仍走全量同步兜底。
+ */
+let mapTimer: ReturnType<typeof setTimeout> | undefined
+async function refreshMapOnly(): Promise<void> {
+  const token = overviewGuard.next()
+  try {
+    await loadMap()
+    if (!overviewGuard.isLatest(token)) return
+  } catch {
+    // 实时刷新静默失败，保留上一帧位置
+  }
+}
+function scheduleMapRefresh(): void {
+  if (mapTimer) clearTimeout(mapTimer)
+  mapTimer = setTimeout(() => { void refreshMapOnly() }, 300)
+}
+
 /** 风险演示开关：由后端创建/关闭固定演示告警，五端经 WS 同步 */
 async function toggleRisk(): Promise<void> {
   riskActive.value = !riskActive.value
@@ -133,10 +152,16 @@ onMounted(() => {
   disposeLive = liveStore.onAlertEvent((event) => {
     if (event.type.startsWith('alert.') || event.type.startsWith('ai.')) {
       scheduleRefresh()
+    } else if (event.type.startsWith('person.')) {
+      // UWB 上报的人员位置：只刷底图点位
+      scheduleMapRefresh()
     }
   })
   disposeReconnect = liveStore.onReconnected(() => void refreshAll())
-  onUnmounted(() => { if (refreshTimer) clearTimeout(refreshTimer) })
+  onUnmounted(() => {
+    if (refreshTimer) clearTimeout(refreshTimer)
+    if (mapTimer) clearTimeout(mapTimer)
+  })
 })
 
 onUnmounted(() => {

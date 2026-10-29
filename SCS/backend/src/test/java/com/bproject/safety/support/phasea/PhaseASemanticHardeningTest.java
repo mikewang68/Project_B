@@ -199,7 +199,9 @@ class PhaseASemanticHardeningTest {
                 new com.bproject.safety.common.realtime.LiveEventGate());
         PersonnelService personnelService = new PersonnelService(
                 personnelRepository, fenceRepository, alertRepository, alertService, publisher, clock,
-                new com.bproject.safety.common.realtime.LiveEventGate());
+                new com.bproject.safety.common.realtime.LiveEventGate(),
+                new com.bproject.safety.module.personnel.service.PersonnelPositionService(
+                        personnelRepository, publisher, clock));
 
         personnelService.simulateAbnormal("P-ZHAO", "intrusion");
 
