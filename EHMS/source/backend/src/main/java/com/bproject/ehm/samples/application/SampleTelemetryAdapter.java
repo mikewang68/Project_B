@@ -28,7 +28,7 @@ public class SampleTelemetryAdapter implements TelemetrySeriesPort {
     public List<TelemetrySample> history(String code,Instant from,Instant to,int limit){
         Instant end=to==null?Instant.now():to,start=from==null?end.minusSeconds(86400):from;
         if(!start.isBefore(end)||limit<1||limit>10000)throw new IllegalArgumentException("Invalid sample history range or limit");
-        return store.findAll("sample-telemetry",TelemetrySample.class).stream().filter(s->code.equals(s.pointCode()))
+        return store.findByIdPrefix("sample-telemetry",code+":",TelemetrySample.class).stream().filter(s->code.equals(s.pointCode()))
                 .filter(s->!s.sourceTimestamp().isBefore(start)&&!s.sourceTimestamp().isAfter(end))
                 .sorted(Comparator.comparing(TelemetrySample::sourceTimestamp).reversed()).limit(limit)
                 .sorted(Comparator.comparing(TelemetrySample::sourceTimestamp)).toList();

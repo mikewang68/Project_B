@@ -20,6 +20,7 @@ public final class EhmBusinessPermissions {
         if(actor.admin())return true;
         boolean export=path.matches(".*/(export|download|backup)(/.*)?");
         if(actor.globalRead()&&read&&!export)return true;
+        if(read&&path.equals("/api/ehm/v1/system/simulation"))return actor.permissions().contains("ehealth:wb:cockpit:view");
         String relative=path.replaceFirst("^/api/ehm/v1/","");String permission;
         if(relative.startsWith("devices"))permission="ehealth:asset:archive:"+(export?"export":read?"view":"edit");
         else if(relative.startsWith("work-orders"))permission="ehealth:maint:order:"+(export?"export":read?"view":relative.matches("work-orders/[^/]+/(approve|reject)")?"approve":"execute");

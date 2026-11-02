@@ -1,0 +1,52 @@
+# Explicit local-only profile. Start together with server; never activate on a shared deployment.
+server:
+  address: 127.0.0.1
+  port: 18294
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/ehm-simulation;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ${EHM_SIM_DB_PASSWORD}
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 8
+  web:
+    resources:
+      static-locations: ${EHM_SIM_WEB_LOCATION}
+ehm:
+  project:
+    default-id: SIM_EHM
+  simulation:
+    enabled: true
+    project-id: SIM_EHM
+  persistence:
+    schema: ehm_sim
+    adapter: H2-local-preview
+    auto-ddl: true
+  sample-data:
+    enabled: true
+  telemetry:
+    adapter: sample
+  auth:
+    mode: local
+    bootstrap-file: ${EHM_SIM_BOOTSTRAP_FILE}
+    cookie-name: EHM_SIM_SESSION
+    cookie-secure: false
+    session-hours: 24
+    idle-minutes: 120
+  audit:
+    domain: simulation-local
+    zone: SIM_EHM
+    endpoint: ''
+    token-file: ''
+    reader-token-file: ''
+    iam-me-url: ''
+    iam-required: false
+  ai:
+    enabled: false
+    data-policy: disabled
+  cors:
+    allowed-origins: http://127.0.0.1:18294
+  config:
+    path: ./no-production-config.json

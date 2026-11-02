@@ -55,6 +55,13 @@ public class EhmAuditRelay {
     public void record(HttpServletRequest request, String outcome, String source, long duration) {
         enqueue(event(request, outcome, source, duration));
     }
+
+    /** Background simulated actions are system events, never forged human actions. */
+    public void simulationEvent(String eventId, String action, String objectId, String summary) {
+        enqueue(new LogEvent(1,eventId,Instant.now(),"ehealth",domain,zone,"ehm-simulator","SYSTEM",
+                "sample-workbench",action,objectId,"SUCCESS","JOB","/internal/simulation/tick",
+                eventId,0,"JOB","[虚拟运行] "+summary));
+    }
     void enqueue(LogEvent event) {
         try { outbox.enqueue(event); }
         catch (RuntimeException failure) { enqueueFailures.incrementAndGet(); lastEnqueueFailure = Instant.now(); throw failure; }

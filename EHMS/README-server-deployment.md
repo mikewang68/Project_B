@@ -53,6 +53,8 @@ openGemini保存温度、振动、电流、压力、载荷等测点采样以及�
 
 虚拟场景默认关闭（`EHM_SAMPLE_DATA_ENABLED=false`）。只有隔离演示实例可显式启用并由管理员导入；不要将本机H2数据库、样例适配器或账号文件带入正式服务器。openGemini无数据/异常时如实显示，不自动切换为虚拟时序。
 
+1.9.0增加可显式批准的共享服务器运行演练模式：只让 `SAMPLE-LIVE-` 虚拟测点走独立标记的openGauss样本库，真实测点仍走原openGemini。原IAM登录、账号密码、权限、数据库连接、AI与公共日志配置均保留；不上传本机H2或随机验收账号。部署检查与回退见 `docs/服务器持续运行升级说明.md`。该模式不是现场设备接入或生产验收完成声明。
+
 脚本默认从PATH执行java；若服务器Java不在PATH，在config/ehm-server.env中增加
 JAVA_BIN=/实际路径/bin/java。systemd模板中的用户和安装路径也必须按现场账号修改。
 

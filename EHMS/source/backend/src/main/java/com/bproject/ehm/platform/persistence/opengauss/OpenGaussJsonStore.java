@@ -79,6 +79,13 @@ public class OpenGaussJsonStore {
                 (result, rowNum) -> decode(result.getString(1), valueType), project(), type);
     }
 
+    /** Restrict synthetic history reads to one point; timestamps are still filtered in the adapter. */
+    public <T> List<T> findByIdPrefix(String type,String prefix,Class<T> valueType){
+        String escaped=prefix.replace("!","!!").replace("%","!%").replace("_","!_");
+        return jdbc.query("SELECT payload FROM "+qualifiedTable+" WHERE project_id=? AND aggregate_type=? AND aggregate_id LIKE ? ESCAPE '!'",
+                (r,n)->decode(r.getString(1),valueType),project(),type,escaped+"%");
+    }
+
     public <T> T save(String type, String id, T value) {
         String payload = encode(value);
         Timestamp updatedAt = Timestamp.from(Instant.now());
@@ -123,6 +130,21 @@ public class OpenGaussJsonStore {
 
     public void ping() {
         jdbc.queryForObject("SELECT 1", Integer.class);
+    }
+
+    /** Caller must hold a transaction. Serializes a persisted simulation controller across JVMs. */
+    public void lockSimulationControl() {
+        jdbc.queryForObject("SELECT aggregate_id FROM " + qualifiedTable
+                + " WHERE project_id=? AND aggregate_type='simulation-control' AND aggregate_id='control' FOR UPDATE",
+                String.class, project());
+    }
+
+    /** Retention applies ONLY to this simulator's raw samples; never business/audit records. */
+    public int pruneSimulationSamples(Instant before) {
+        if(!project().startsWith("SIM_"))throw new IllegalStateException("Not a simulation project");
+        return jdbc.update("DELETE FROM " + qualifiedTable
+                + " WHERE project_id=? AND aggregate_type='sample-telemetry'"
+                + " AND aggregate_id LIKE 'SAMPLE-LIVE-%' AND updated_at<?",project(),Timestamp.from(before));
     }
 
     private String encode(Object value) {

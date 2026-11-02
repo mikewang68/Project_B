@@ -38,6 +38,7 @@ public class IndustrialSampleService {
                 "message","SAMPLE-前缀均为虚拟演示数据；不代表现场设备、AI预测或真实上链");
     }
     private void allowed(String confirmation){
+        if(store.find("simulation-control","control",Object.class).isPresent())throw new ResponseStatusException(HttpStatus.CONFLICT,"本项目使用设备范围运行模拟器，不混装旧8台固定样例");
         if(!enabled)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"样例导入未启用；不会修改生产数据");
         if(!BUNDLE.equals(confirmation))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"请确认样例包版本");
     }

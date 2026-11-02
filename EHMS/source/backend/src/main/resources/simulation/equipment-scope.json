@@ -1,0 +1,904 @@
+{
+  "version": "scope-20260826-running-v1",
+  "sourceFile": "设备范围-v0.1-20260826.xlsx",
+  "sourceSha256": "addc857984366271903ff95ecadc08a3fcfb71a5a99bf046583c19a8f690dcc5",
+  "sourceRowCount": 47,
+  "assetTypeCount": 29,
+  "assumptions": [
+    "实际数量、实例编号和厂家参数未确定；每个去重范围项仅创建一个虚拟实例",
+    "6个EHM单台设备模板关联已有范围项，不重复统计设备",
+    "测点、量程、阈值和周期全部为可追溯演示假设，不能作为现场安全或设计寿命依据",
+    "IF开头编号是接口研究范围，不是现场设备ID；仅用于映射虚拟健康监测对象"
+  ],
+  "entries": [
+    {
+      "scopeCode": "EQ-IMG-01",
+      "name": "智能化门式起重机 Q=40T，S=30m（磁吸式C型吊具）",
+      "profile": "ROTATING",
+      "sourceRows": [
+        2
+      ],
+      "sourceModules": [
+        "S1"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-02",
+      "name": "智能化双梁桥式起重机 Q=20T，S=28.5m（磁吸式吊具）",
+      "profile": "ROTATING",
+      "sourceRows": [
+        3
+      ],
+      "sourceModules": [
+        "S1"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-03",
+      "name": "智能化双梁桥式起重机 Q=32T，S=28.5m（C型吊具）",
+      "profile": "ROTATING",
+      "sourceRows": [
+        4
+      ],
+      "sourceModules": [
+        "S1"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-04",
+      "name": "梁桥式起重机 Q=50t，S=16.5m",
+      "profile": "ROTATING",
+      "sourceRows": [
+        5
+      ],
+      "sourceModules": [
+        "S1"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-05",
+      "name": "智能化汽车衡",
+      "profile": "WEIGHING",
+      "sourceRows": [
+        6,
+        30
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-06",
+      "name": "粉煤灰（水泥）3000t筒仓",
+      "profile": "PROCESS",
+      "sourceRows": [
+        7,
+        22
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-07",
+      "name": "智能化集装箱门式起重机 Q=40.5T，S=30m",
+      "profile": "ROTATING",
+      "sourceRows": [
+        8
+      ],
+      "sourceModules": [
+        "S1"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-08",
+      "name": "移动式翻箱机",
+      "profile": "ROTATING",
+      "sourceRows": [
+        9
+      ],
+      "sourceModules": [
+        "S1"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-09",
+      "name": "拆箱房设备",
+      "profile": "ROTATING",
+      "sourceRows": [
+        10,
+        23
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-10",
+      "name": "除尘器",
+      "profile": "ROTATING",
+      "sourceRows": [
+        11
+      ],
+      "sourceModules": [
+        "S1"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-11",
+      "name": "提升机",
+      "profile": "ROTATING",
+      "sourceRows": [
+        12,
+        32
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-12",
+      "name": "空气斜槽",
+      "profile": "PROCESS",
+      "sourceRows": [
+        13,
+        24
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-13",
+      "name": "高压离心风机",
+      "profile": "ROTATING",
+      "sourceRows": [
+        14,
+        33
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-14",
+      "name": "库底卸料设备（含控制）",
+      "profile": "ROTATING",
+      "sourceRows": [
+        15,
+        25
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-15",
+      "name": "空压机",
+      "profile": "ROTATING",
+      "sourceRows": [
+        16,
+        34
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-16",
+      "name": "维修间设备",
+      "profile": "ROTATING",
+      "sourceRows": [
+        17
+      ],
+      "sourceModules": [
+        "S1"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-IMG-17",
+      "name": "智能化装卸管控系统/ECS",
+      "profile": "ELECTRONIC",
+      "sourceRows": [
+        18,
+        35
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-EXT-01",
+      "name": "轨道衡",
+      "profile": "WEIGHING",
+      "sourceRows": [
+        19,
+        31
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-EXT-02",
+      "name": "进出车辆识别/道闸及场内定位系统",
+      "profile": "ELECTRONIC",
+      "sourceRows": [
+        20,
+        36
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-EXT-03",
+      "name": "UWB人员定位终端与基站",
+      "profile": "ELECTRONIC",
+      "sourceRows": [
+        21,
+        37
+      ],
+      "sourceModules": [
+        "S1",
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-EXT-04",
+      "name": "皮带输送机",
+      "profile": "ROTATING",
+      "sourceRows": [
+        26
+      ],
+      "sourceModules": [
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-EXT-05",
+      "name": "密闭输送管道（含流量计、气力输送系统）",
+      "profile": "PROCESS",
+      "sourceRows": [
+        27
+      ],
+      "sourceModules": [
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-EXT-06",
+      "name": "RFID读写器与手持终端系统",
+      "profile": "ELECTRONIC",
+      "sourceRows": [
+        28
+      ],
+      "sourceModules": [
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "EQ-EXT-07",
+      "name": "龙门吊抓取引导系统（视觉/定位引导）",
+      "profile": "ELECTRONIC",
+      "sourceRows": [
+        29
+      ],
+      "sourceModules": [
+        "S2"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "IF-IN-RADAR",
+      "name": "毫米波测距/激光雷达",
+      "profile": "ELECTRONIC",
+      "sourceRows": [
+        44
+      ],
+      "sourceModules": [
+        "S3"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "IF-IN-AI-EVENT",
+      "name": "AI 视频分析边缘盒",
+      "profile": "ELECTRONIC",
+      "sourceRows": [
+        45
+      ],
+      "sourceModules": [
+        "S3"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "IF-IN-AI-STREAM",
+      "name": "现场工业高清监控球机",
+      "profile": "ELECTRONIC",
+      "sourceRows": [
+        46
+      ],
+      "sourceModules": [
+        "S3"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "IF-OUT-ALARM-LIGHT",
+      "name": "现场一体化声光报警器",
+      "profile": "ELECTRONIC",
+      "sourceRows": [
+        47
+      ],
+      "sourceModules": [
+        "S3"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    },
+    {
+      "scopeCode": "IF-OUT-VEHICLE-PAD",
+      "name": "门吊/正面吊/车辆车载屏",
+      "profile": "ELECTRONIC",
+      "sourceRows": [
+        48
+      ],
+      "sourceModules": [
+        "S3"
+      ],
+      "simulationQuantity": 1,
+      "actualQuantity": null,
+      "quantityConfirmed": false,
+      "controlBoundary": "EHM只模拟状态采集、健康分析与维保建议，不下发设备控制指令"
+    }
+  ],
+  "coverage": [
+    {
+      "sheet": "设备范围 (2)",
+      "row": 2,
+      "scopeCode": "EQ-IMG-01",
+      "name": "智能化门式起重机 Q=40T，S=30m（磁吸式C型吊具）",
+      "coveredBy": [
+        "EQ-IMG-01"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 3,
+      "scopeCode": "EQ-IMG-02",
+      "name": "智能化双梁桥式起重机 Q=20T，S=28.5m（磁吸式吊具）",
+      "coveredBy": [
+        "EQ-IMG-02"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 4,
+      "scopeCode": "EQ-IMG-03",
+      "name": "智能化双梁桥式起重机 Q=32T，S=28.5m（C型吊具）",
+      "coveredBy": [
+        "EQ-IMG-03"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 5,
+      "scopeCode": "EQ-IMG-04",
+      "name": "梁桥式起重机 Q=50t，S=16.5m",
+      "coveredBy": [
+        "EQ-IMG-04"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 6,
+      "scopeCode": "EQ-IMG-05",
+      "name": "智能化汽车衡",
+      "coveredBy": [
+        "EQ-IMG-05"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 7,
+      "scopeCode": "EQ-IMG-06",
+      "name": "粉煤灰（水泥）3000t筒仓",
+      "coveredBy": [
+        "EQ-IMG-06"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 8,
+      "scopeCode": "EQ-IMG-07",
+      "name": "智能化集装箱门式起重机 Q=40.5T，S=30m",
+      "coveredBy": [
+        "EQ-IMG-07"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 9,
+      "scopeCode": "EQ-IMG-08",
+      "name": "移动式翻箱机",
+      "coveredBy": [
+        "EQ-IMG-08"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 10,
+      "scopeCode": "EQ-IMG-09",
+      "name": "拆箱房设备",
+      "coveredBy": [
+        "EQ-IMG-09"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 11,
+      "scopeCode": "EQ-IMG-10",
+      "name": "除尘器",
+      "coveredBy": [
+        "EQ-IMG-10"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 12,
+      "scopeCode": "EQ-IMG-11",
+      "name": "提升机",
+      "coveredBy": [
+        "EQ-IMG-11"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 13,
+      "scopeCode": "EQ-IMG-12",
+      "name": "空气斜槽",
+      "coveredBy": [
+        "EQ-IMG-12"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 14,
+      "scopeCode": "EQ-IMG-13",
+      "name": "高压离心风机",
+      "coveredBy": [
+        "EQ-IMG-13"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 15,
+      "scopeCode": "EQ-IMG-14",
+      "name": "库底卸料设备（含控制）",
+      "coveredBy": [
+        "EQ-IMG-14"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 16,
+      "scopeCode": "EQ-IMG-15",
+      "name": "空压机",
+      "coveredBy": [
+        "EQ-IMG-15"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 17,
+      "scopeCode": "EQ-IMG-16",
+      "name": "维修间设备",
+      "coveredBy": [
+        "EQ-IMG-16"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 18,
+      "scopeCode": "EQ-IMG-17",
+      "name": "智能化装卸管控系统/ECS",
+      "coveredBy": [
+        "EQ-IMG-17"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 19,
+      "scopeCode": "EQ-EXT-01",
+      "name": "轨道衡",
+      "coveredBy": [
+        "EQ-EXT-01"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 20,
+      "scopeCode": "EQ-EXT-02",
+      "name": "进出车辆识别/道闸及场内定位系统",
+      "coveredBy": [
+        "EQ-EXT-02"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 21,
+      "scopeCode": "EQ-EXT-03",
+      "name": "UWB人员定位终端与基站",
+      "coveredBy": [
+        "EQ-EXT-03"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 22,
+      "scopeCode": "EQ-IMG-06",
+      "name": "粉煤灰（水泥）3000t筒仓",
+      "coveredBy": [
+        "EQ-IMG-06"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 23,
+      "scopeCode": "EQ-IMG-09",
+      "name": "拆箱房设备",
+      "coveredBy": [
+        "EQ-IMG-09"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 24,
+      "scopeCode": "EQ-IMG-12",
+      "name": "空气斜槽",
+      "coveredBy": [
+        "EQ-IMG-12"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 25,
+      "scopeCode": "EQ-IMG-14",
+      "name": "库底卸料设备（含控制）",
+      "coveredBy": [
+        "EQ-IMG-14"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 26,
+      "scopeCode": "EQ-EXT-04",
+      "name": "皮带输送机",
+      "coveredBy": [
+        "EQ-EXT-04"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 27,
+      "scopeCode": "EQ-EXT-05",
+      "name": "密闭输送管道（含流量计、气力输送系统）",
+      "coveredBy": [
+        "EQ-EXT-05"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 28,
+      "scopeCode": "EQ-EXT-06",
+      "name": "RFID读写器与手持终端系统",
+      "coveredBy": [
+        "EQ-EXT-06"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 29,
+      "scopeCode": "EQ-EXT-07",
+      "name": "龙门吊抓取引导系统（视觉/定位引导）",
+      "coveredBy": [
+        "EQ-EXT-07"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 30,
+      "scopeCode": "EQ-IMG-05",
+      "name": "智能化汽车衡",
+      "coveredBy": [
+        "EQ-IMG-05"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 31,
+      "scopeCode": "EQ-EXT-01",
+      "name": "轨道衡",
+      "coveredBy": [
+        "EQ-EXT-01"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 32,
+      "scopeCode": "EQ-IMG-11",
+      "name": "提升机",
+      "coveredBy": [
+        "EQ-IMG-11"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 33,
+      "scopeCode": "EQ-IMG-13",
+      "name": "高压离心风机",
+      "coveredBy": [
+        "EQ-IMG-13"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 34,
+      "scopeCode": "EQ-IMG-15",
+      "name": "空压机",
+      "coveredBy": [
+        "EQ-IMG-15"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 35,
+      "scopeCode": "EQ-IMG-17",
+      "name": "智能化装卸管控系统/ECS",
+      "coveredBy": [
+        "EQ-IMG-17"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 36,
+      "scopeCode": "EQ-EXT-02",
+      "name": "进出车辆识别/道闸及场内定位系统",
+      "coveredBy": [
+        "EQ-EXT-02"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 37,
+      "scopeCode": "EQ-EXT-03",
+      "name": "UWB人员定位终端与基站",
+      "coveredBy": [
+        "EQ-EXT-03"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 38,
+      "scopeCode": "EHM-GT-01",
+      "name": "门吊/龙门吊（单台设备模板，按实际设备实例复制）",
+      "coveredBy": [
+        "EQ-IMG-01",
+        "EQ-IMG-07"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 39,
+      "scopeCode": "EHM-QT-01",
+      "name": "桥吊（单台设备模板，按实际设备实例复制）",
+      "coveredBy": [
+        "EQ-IMG-02",
+        "EQ-IMG-03",
+        "EQ-IMG-04"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 40,
+      "scopeCode": "EHM-FX-01",
+      "name": "翻箱机（单台设备模板，按实际设备实例复制）",
+      "coveredBy": [
+        "EQ-IMG-08"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 41,
+      "scopeCode": "EHM-TS-01",
+      "name": "提升机（单台设备模板，按实际设备实例复制）",
+      "coveredBy": [
+        "EQ-IMG-11"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 42,
+      "scopeCode": "EHM-XL-01",
+      "name": "卸料设备/皮带输送设备（单台设备模板，按实际设备实例复制）",
+      "coveredBy": [
+        "EQ-IMG-14",
+        "EQ-EXT-04"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 43,
+      "scopeCode": "EHM-CC-01",
+      "name": "除尘设备/除尘风机（单台设备模板，按实际设备实例复制）",
+      "coveredBy": [
+        "EQ-IMG-10",
+        "EQ-IMG-13"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 44,
+      "scopeCode": "IF-IN-RADAR",
+      "name": "毫米波测距/激光雷达",
+      "coveredBy": [
+        "IF-IN-RADAR"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 45,
+      "scopeCode": "IF-IN-AI-EVENT",
+      "name": "AI 视频分析边缘盒",
+      "coveredBy": [
+        "IF-IN-AI-EVENT"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 46,
+      "scopeCode": "IF-IN-AI-STREAM",
+      "name": "现场工业高清监控球机",
+      "coveredBy": [
+        "IF-IN-AI-STREAM"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 47,
+      "scopeCode": "IF-OUT-ALARM-LIGHT",
+      "name": "现场一体化声光报警器",
+      "coveredBy": [
+        "IF-OUT-ALARM-LIGHT"
+      ]
+    },
+    {
+      "sheet": "设备范围 (2)",
+      "row": 48,
+      "scopeCode": "IF-OUT-VEHICLE-PAD",
+      "name": "门吊/正面吊/车辆车载屏",
+      "coveredBy": [
+        "IF-OUT-VEHICLE-PAD"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+#simulationConsole .inline-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+#simulationConsole .inline-actions .button{flex:0 0 auto;min-height:36px;padding:7px 12px;white-space:nowrap}
+#simulationConsole{margin-bottom:18px}
+#simulationConsole details{margin-top:14px}
+#simulationConsole summary{cursor:pointer;font-weight:600;padding:8px 0}
+#simulationConsole p{line-height:1.7}
+#simulationConsole .panel-head p{margin-top:5px}
