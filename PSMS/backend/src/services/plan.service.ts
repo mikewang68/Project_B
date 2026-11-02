@@ -3,6 +3,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { writeBusinessAudit } from '../middleware/audit.js';
 
 export interface PlanQuery {
+  workAreas?: string[];
   workArea?: string;
   statuses?: string[];
   date?: string;
@@ -22,6 +23,7 @@ const MAX_PAGE_SIZE = 200;
 function buildFilter(query: PlanQuery): Record<string, unknown> {
   const filter: Record<string, unknown> = {};
   if (query.workArea) filter.workArea = query.workArea;
+  else if (query.workAreas) filter.workArea = { $in: query.workAreas };
   if (query.statuses?.length) filter.status = { $in: query.statuses };
   if (query.planBatchNo) filter.planBatchNo = { $regex: query.planBatchNo, $options: 'i' };
   if (query.trainNo) filter.trainNo = { $regex: query.trainNo, $options: 'i' };

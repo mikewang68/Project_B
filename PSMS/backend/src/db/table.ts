@@ -241,6 +241,7 @@ function buildWhere(spec: TableSpec, filter: Filter | undefined): BuiltWhere {
       }
       if ('$regex' in ops) {
         handled.add('$regex');
+        handled.add('$options');
         const flags = String(ops.$options ?? '');
         const op = flags.includes('i') ? 'ILIKE' : 'LIKE';
         push(([ph]) => `${col} ${op} ${ph}`, [`%${String(ops.$regex)}%`]);

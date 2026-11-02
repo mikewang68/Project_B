@@ -1,0 +1,345 @@
+{
+  "ts": "2026-10-29T17:46:43.554688+08:00",
+  "total": 38,
+  "passed": 38,
+  "failed": 0,
+  "results": [
+    {
+      "check": "tag 帧流（≥8 条、含坐标/精度/电量）",
+      "pass": true,
+      "detail": {
+        "count": 31,
+        "sample": {
+          "type": "tag",
+          "ts": "2026-10-29T17:46:05.474+08:00",
+          "tagId": "WB-1001",
+          "personId": "P-1001",
+          "x_m": 12.0,
+          "y_m": 16.0,
+          "z_m": 1.2,
+          "accuracy_m": 0.18,
+          "battery_pct": 92,
+          "sos": false,
+          "tamper": false,
+          "station_ids": [
+            "BS-01",
+            "BS-02",
+            "BS-03"
+          ],
+          "backfilled": false,
+          "seq": 1
+        }
+      }
+    },
+    {
+      "check": "坐标随时间移动（轨迹非恒定）",
+      "pass": true,
+      "detail": {
+        "wb1003_points": [
+          [
+            43.0,
+            12.0
+          ],
+          [
+            43.795,
+            12.0
+          ],
+          [
+            44.588,
+            12.0
+          ],
+          [
+            45.381,
+            12.0
+          ]
+        ]
+      }
+    },
+    {
+      "check": "基站 1Hz 状态帧",
+      "pass": true,
+      "detail": {
+        "count": 9
+      }
+    },
+    {
+      "check": "seq 单调递增（幂等键成分）",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "check": "手环下行注入回执（构造帧）",
+      "pass": true,
+      "detail": {
+        "frame": "aa55020757422d3130303301000a1f"
+      }
+    },
+    {
+      "check": "FC03 读距离（cm→m，量程合理）",
+      "pass": true,
+      "detail": {
+        "d1": 19.57,
+        "d2": 19.06
+      }
+    },
+    {
+      "check": "接近场景距离递减 + 速度为正（cm/s→m/s）",
+      "pass": true,
+      "detail": {
+        "d1": 19.57,
+        "d2": 19.06,
+        "speed_m_s": 0.5
+      }
+    },
+    {
+      "check": "强度与健康码（NORMAL=0）",
+      "pass": true,
+      "detail": {
+        "strength": 300,
+        "health": 0
+      }
+    },
+    {
+      "check": "配对设备编码（ASCII 寄存器）",
+      "pass": true,
+      "detail": {
+        "code": "VEH-07"
+      }
+    },
+    {
+      "check": "场景切换 blind（强度<40 + DEGRADED）",
+      "pass": true,
+      "detail": {
+        "strength": 35,
+        "health": 1
+      }
+    },
+    {
+      "check": "龙门吊 行走场景：状态=作业中 且方向为东/西",
+      "pass": true,
+      "detail": {
+        "status": 1,
+        "direction": 1
+      }
+    },
+    {
+      "check": "龙门吊 大车速度在 0~45 m/min 量程内",
+      "pass": true,
+      "detail": {
+        "speed_raw": 64
+      }
+    },
+    {
+      "check": "龙门吊 健康 NORMAL 且 PLC 联锁可用",
+      "pass": true,
+      "detail": {
+        "health": 0,
+        "interlock": 1
+      }
+    },
+    {
+      "check": "龙门吊 小车位置在 0~40 m 量程内",
+      "pass": true,
+      "detail": {
+        "trolley_raw": 228
+      }
+    },
+    {
+      "check": "龙门吊 大风场景：风速≥12m/s 且健康降级",
+      "pass": true,
+      "detail": {
+        "wind_raw": 162,
+        "health": 1
+      }
+    },
+    {
+      "check": "龙门吊 故障场景：状态=故障 健康=DOWN 联锁断开",
+      "pass": true,
+      "detail": {
+        "status": 2,
+        "health": 2,
+        "interlock": 0
+      }
+    },
+    {
+      "check": "翻箱机 作业循环推进多个阶段",
+      "pass": true,
+      "detail": {
+        "stages": [
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "check": "翻箱机 举升角度在 0~135° 量程内且有变化",
+      "pass": true,
+      "detail": {
+        "min_raw": 0,
+        "max_raw": 710
+      }
+    },
+    {
+      "check": "翻箱机 固定工位：行走速度与方向恒为 0",
+      "pass": true,
+      "detail": {
+        "speed": 0,
+        "direction": 0
+      }
+    },
+    {
+      "check": "翻箱机 堵料场景：角度停滞 60° + 压力≥28MPa + 健康降级",
+      "pass": true,
+      "detail": {
+        "angle_raw": 600,
+        "pressure_raw": 309,
+        "health": 1
+      }
+    },
+    {
+      "check": "翻箱机 故障场景：阶段=5 健康=DOWN 联锁断开 角度保持半途",
+      "pass": true,
+      "detail": {
+        "stage": 5,
+        "health": 2,
+        "interlock": 0,
+        "angle_raw": 600
+      }
+    },
+    {
+      "check": "限位开关 working：压合=1 且健康 NORMAL",
+      "pass": true,
+      "detail": {
+        "pressed": 1,
+        "health": 0
+      }
+    },
+    {
+      "check": "限位开关 idle：压合=0（作业面无人）",
+      "pass": true,
+      "detail": {
+        "pressed": 0
+      }
+    },
+    {
+      "check": "限位开关 fault：健康=DOWN（不能只看压合位判无人）",
+      "pass": true,
+      "detail": {
+        "health": 2
+      }
+    },
+    {
+      "check": "位置传感器 arrive：距离递减（车辆驶入）",
+      "pass": true,
+      "detail": {
+        "d1_mm": 8643,
+        "d2_mm": 7754
+      }
+    },
+    {
+      "check": "位置传感器 车位状态与阈值一致（≤3000mm 判有车）",
+      "pass": true,
+      "detail": {
+        "d_mm": 7754,
+        "occupied": 0
+      }
+    },
+    {
+      "check": "位置传感器 empty：距离 8.5m 且判无车",
+      "pass": true,
+      "detail": {
+        "d_mm": 8500,
+        "occupied": 0
+      }
+    },
+    {
+      "check": "位置传感器 fault：状态=故障 健康=DOWN（距离 0 不能当成有车）",
+      "pass": true,
+      "detail": {
+        "occupied": 2,
+        "health": 2
+      }
+    },
+    {
+      "check": "webhook 收到 ≥6 条事件",
+      "pass": true,
+      "detail": {
+        "count": 6
+      }
+    },
+    {
+      "check": "违规类型覆盖三类 + 字段齐备",
+      "pass": true,
+      "detail": {
+        "types": [
+          "NO-HELMET",
+          "NO-VEST",
+          "ZONE-INTRUSION"
+        ]
+      }
+    },
+    {
+      "check": "含低置信度事件（<0.85）",
+      "pass": true,
+      "detail": {
+        "lows": [
+          0.62,
+          0.62,
+          0.62
+        ]
+      }
+    },
+    {
+      "check": "duplicate-at 重发同 UUID（幂等）",
+      "pass": true,
+      "detail": {
+        "dup": 1
+      }
+    },
+    {
+      "check": "快照图可下载且为 JPEG",
+      "pass": true,
+      "detail": {
+        "bytes": 6168,
+        "url": "http://127.0.0.1:15030/snapshots/7603fef9-81f0-4f29-99d4-c82e58318e16.jpg"
+      }
+    },
+    {
+      "check": "触发橙灯（FC16 批写 + 回执颜色/时长）",
+      "pass": true,
+      "detail": {
+        "color": 2,
+        "remain": 10,
+        "seq": 1
+      }
+    },
+    {
+      "check": "防抖合并（序号不变、计数+1）",
+      "pass": true,
+      "detail": {
+        "seq": 1,
+        "merged": 1
+      }
+    },
+    {
+      "check": "窗口外触发红生效（序号+1）",
+      "pass": true,
+      "detail": {
+        "color": 3,
+        "seq": 2
+      }
+    },
+    {
+      "check": "非法 pattern 返回异常码",
+      "pass": true,
+      "detail": {
+        "exc": "modbus exception write code=3"
+      }
+    },
+    {
+      "check": "清除指令熄灭",
+      "pass": true,
+      "detail": {}
+    }
+  ]
+}

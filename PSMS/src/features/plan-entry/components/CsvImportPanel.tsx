@@ -6,8 +6,13 @@ import type { Plan } from '../../../contracts';
 import { csvTemplate, parsePlanCsv } from '../csvImport';
 import { getImportedPlans, saveImportedPlans } from '../importedPlans';
 import { BackendConnectionFields, useBackendConnection } from '../../backend-connection/BackendConnection';
+import LiveCsvImportPanel from './LiveCsvImportPanel';
 
 export default function CsvImportPanel() {
+  return import.meta.env.VITE_PSMS_REAL_API === 'true' ? <LiveCsvImportPanel /> : <DemoCsvImportPanel />;
+}
+
+function DemoCsvImportPanel() {
   const runtime = useDemoRuntime();
   const state = useDemoSelector((current) => current);
   const navigate = useNavigate();

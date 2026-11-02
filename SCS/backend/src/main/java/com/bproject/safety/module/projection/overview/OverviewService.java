@@ -14,6 +14,7 @@ import com.bproject.safety.module.fence.model.FenceStatuses;
 import com.bproject.safety.module.fence.repository.FenceRepository;
 import com.bproject.safety.module.personnel.model.DemoPersonnel;
 import com.bproject.safety.module.personnel.repository.PersonnelRepository;
+import com.bproject.safety.module.personnel.service.PersonnelPositionService;
 import com.bproject.safety.module.projection.overview.OverviewDtos.DistributionItem;
 import com.bproject.safety.module.projection.overview.OverviewDtos.FeedItem;
 import com.bproject.safety.module.projection.overview.OverviewDtos.FeedTimeline;
@@ -49,19 +50,22 @@ public class OverviewService {
     private final PersonnelRepository personnelRepository;
     private final CollisionRepository collisionRepository;
     private final FenceRepository fenceRepository;
+    private final PersonnelPositionService personnelPositions;
 
     public OverviewService(SafetyProjectionService projection,
                            AiEventRepository aiEventRepository,
                            AlertService alertService,
                            PersonnelRepository personnelRepository,
                            CollisionRepository collisionRepository,
-                           FenceRepository fenceRepository) {
+                           FenceRepository fenceRepository,
+                           PersonnelPositionService personnelPositions) {
         this.projection = projection;
         this.aiEventRepository = aiEventRepository;
         this.alertService = alertService;
         this.personnelRepository = personnelRepository;
         this.collisionRepository = collisionRepository;
         this.fenceRepository = fenceRepository;
+        this.personnelPositions = personnelPositions;
     }
 
     public OverviewSummary summary() {
@@ -206,8 +210,13 @@ public class OverviewService {
 
     // ---------- BASE DEMO MAP DATA（人员/设备/围栏基础坐标来自各感知模块 Demo 台账，真实感知接入后替换） ----------
 
+    /**
+     * 底图人员：台账为权威源，坐标优先取 UWB 上报的实时位置。
+     * 没有上报过的人员沿用台账坐标（人员名单是全员口径，不存在"未接入"语义）。
+     */
     private List<MapPerson> basePeople() {
         return personnelRepository.findAll().stream()
+                .map(personnelPositions::overlay)
                 .map(p -> new MapPerson(p.id, p.name, p.team, p.getStatus(), p.battery, p.area,
                         p.getRisk(), p.state, p.x, p.y, false))
                 .toList();

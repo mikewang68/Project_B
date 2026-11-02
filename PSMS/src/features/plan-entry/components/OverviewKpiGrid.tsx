@@ -14,7 +14,7 @@ export type OverviewKpiGridProps = {
 
 type KpiCardProps = {
   label: string;
-  value: number;
+  value: number | null;
   suffix?: string;
 };
 
@@ -22,10 +22,10 @@ function KpiCard({ label, value, suffix }: KpiCardProps) {
   return (
     <Card className="overview-kpi-card" size="small">
       <div aria-label={`${label}值`}>
-        <Statistic title={label} value={value} suffix={suffix} />
+        <Statistic title={label} value={value ?? '暂无可核验数据'} suffix={value === null ? undefined : suffix} />
       </div>
       <Typography.Text type="secondary" className="overview-kpi-caption">
-        实时业务投影
+        {value === null ? '请查看数据范围或采集状态' : '业务数据'}
       </Typography.Text>
     </Card>
   );
@@ -56,7 +56,7 @@ export default function OverviewKpiGrid({
     <section aria-label="调度指标" className="overview-kpi-grid">
       <div className="overview-kpi-cards">
         <div>
-          <KpiCard label="当日计划" value={kpis.totalPlans} />
+          <KpiCard label={import.meta.env.VITE_PSMS_REAL_API==='true'?'所选日期计划':'当日计划'} value={kpis.totalPlans} />
         </div>
         <div>
           <div className="overview-linked-card">

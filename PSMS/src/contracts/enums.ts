@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const cargoTypes = ['FLY_ASH', 'STEEL', 'CEMENT', 'GENERAL_CARGO'] as const;
+export const cargoTypes = ['FLY_ASH', 'STEEL', 'CEMENT', 'GENERAL_CARGO', 'COAL', 'IRON_ORE', 'CONTAINER'] as const;
 export const planStatuses = [
   'RECEIVED',
   'VALIDATING',

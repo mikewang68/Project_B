@@ -1,3 +1,5 @@
+import { env } from '../config/env.js';
+import { executeBusinessCommand } from '../services/business-command.service.js';
 import { Router } from 'express';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { auditOperation } from '../middleware/audit.js';
@@ -46,6 +48,11 @@ workOrdersRouter.get('/:id', optionalAuth, async (req, res, next) => {
 // API-008/API-009 工单命令：assign / accept / start / pause / complete / cancel
 workOrdersRouter.post('/:id', authenticate, auditOperation('workOrderAction'), async (req, res, next) => {
   try {
+    if(env.PSMS_SSO_ENABLED){
+      if(typeof res.locals.platformSubject!=='string'){res.status(403).json({ok:false,message:'统一身份会话无效'});return;}
+      const result=await executeBusinessCommand('work-orders',pathParam(req),req.body,{...req.user!,subject:res.locals.platformSubject});
+      res.json({ok:true,data:result});return;
+    }
     const { action, ...data } = req.body as Record<string, unknown> & { action?: string };
     const actorId = req.user!.actorId;
     let result: unknown;

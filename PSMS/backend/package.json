@@ -18,8 +18,9 @@
     "seed:built": "node dist/seeds/seed.js",
     "smoke": "tsx src/scripts/smoke-test.ts",
     "ai:check": "tsx src/scripts/ai-check.ts",
-    "dev:ai": "tsx watch src/scripts/ai-dev.ts"
-    ,"simulate:s1": "tsx src/scripts/s1-simulator.ts"
+    "dev:ai": "tsx watch src/scripts/ai-dev.ts",
+    "dev:railway": "tsx src/scripts/railway-demo.ts",
+    "simulate:s1": "tsx src/scripts/s1-simulator.ts"
   },
   "dependencies": {
     "bcryptjs": "3.0.2",
@@ -33,6 +34,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.12",
     "@types/bcryptjs": "2.4.6",
     "@types/cors": "2.8.19",
     "@types/express": "5.0.6",

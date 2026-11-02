@@ -21,6 +21,11 @@ declare global {
 
 /** 强制鉴权：缺少或非法令牌一律 401 */
 export function authenticate(req: Request, res: Response, next: NextFunction): void {
+  if (env.PSMS_SSO_ENABLED) {
+    if (req.user) next();
+    else res.status(401).json({ ok: false, errorCode: 'UNAUTHORIZED' });
+    return;
+  }
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     res.status(401).json({ ok: false, errorCode: 'UNAUTHORIZED', message: '未提供有效的认证令牌' });
@@ -30,6 +35,11 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
   const token = header.slice(7);
   try {
     req.user = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    if (typeof req.user.userId !== 'string' || typeof req.user.actorId !== 'string'
+      || typeof req.user.roleCode !== 'string' || !Array.isArray(req.user.dataScope)) {
+      delete req.user;
+      res.status(401).json({ ok: false, errorCode: 'UNAUTHORIZED' }); return;
+    }
     if (req.user.purpose === 'ai-demo' && req.baseUrl !== '/api/ai') {
       delete req.user;
       res.status(403).json({ message: 'AI 演示会话仅可用于 AI 分析' }); return;
@@ -42,6 +52,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
 /** 可选鉴权：有令牌则解析，无令牌也放行（用于只读接口） */
 export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
+  if(env.PSMS_SSO_ENABLED){next();return;}
   const header = req.headers.authorization;
   if (header?.startsWith('Bearer ')) {
     try {

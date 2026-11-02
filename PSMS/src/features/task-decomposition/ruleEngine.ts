@@ -21,7 +21,7 @@ import type {
   TaskTreeNodeView,
 } from './types';
 
-const routeByCargoType: Readonly<Record<Plan['cargoType'], readonly TaskRouteStep[]>> = {
+const routeByCargoType: Readonly<Partial<Record<Plan['cargoType'], readonly TaskRouteStep[]>>> = {
   FLY_ASH: [
     { stage: 'RECOGNITION', title: '识别与路由确认', taskType: 'INSPECT', requiredResourceType: 'TEAM' },
     { stage: 'UNLOAD', title: '卸料准备', taskType: 'UNLOAD', requiredResourceType: 'TIPPER' },
@@ -108,7 +108,9 @@ function planWindow(plan: Plan): Readonly<{
 }
 
 function routeFor(cargoType: Plan['cargoType']): readonly TaskRouteStep[] {
-  return routeByCargoType[cargoType];
+  const route = routeByCargoType[cargoType];
+  if (!route) throw new Error(`货类 ${cargoType} 尚未配置经审批的任务路由`);
+  return route;
 }
 
 function selectedCandidateId(

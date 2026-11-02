@@ -103,6 +103,7 @@ public class LiveSessionAuthorization {
     else if (eventType.startsWith("collision.")) permission = "safety:module:collision:view";
     else if (eventType.startsWith("rule.")) permission = "safety:module:rule:view";
     else if (eventType.startsWith("ops.")) permission = "safety:module:ops:view";
+    else if (eventType.startsWith("zone.")) permission = "safety:home:map:view";
     else return false;
     return actor.permissions().contains(permission);
   }

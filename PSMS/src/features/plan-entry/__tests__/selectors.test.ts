@@ -50,6 +50,20 @@ function createState(
 }
 
 describe('plan entry selectors', () => {
+  it('filters live plans and detail by the selected authorized work area', () => {
+    const state = structuredClone(createState('SCN-01'));
+    const first = state.plan.plans[0];
+    state.session.dataScope = ['GLOBAL'];
+    state.plan.plans = [{ ...first, id: 'PLAN-A', workArea: 'AREA-A' }, { ...first, id: 'PLAN-B', workArea: 'AREA-B' }];
+    const areaB = { ...query, workArea: 'AREA-B' };
+    expect(selectPlanLedger(state, areaB, unresolvedWorkflow).items.map(plan => plan.id)).toEqual(['PLAN-B']);
+    expect(selectOverviewKpis(state, areaB, unresolvedWorkflow).totalPlans).toBe(1);
+    expect(selectPlanDetails(state, areaB, 'PLAN-A', unresolvedWorkflow)).toBeUndefined();
+    state.session.dataScope = ['AREA-A'];
+    expect(selectPlanLedger(state, areaB, unresolvedWorkflow).total).toBe(0);
+    expect(selectPlanDetails(state, areaB, 'PLAN-B', unresolvedWorkflow)).toBeUndefined();
+  });
+
   it('projects all seven immutable page view-models from the strict Store', () => {
     const state = createState();
     const kpis = selectOverviewKpis(state, query, unresolvedWorkflow);

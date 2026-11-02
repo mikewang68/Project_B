@@ -94,6 +94,17 @@ export type SystemConfigSlice = {
 };
 
 export type DemoRootState = {
+  liveOverview?: {
+    workArea: string;
+    date: string;
+    generatedAt: string;
+    kpis: { totalPlans: number; pendingConfirmPlans: number; confirmedPlans: number; blockedPlans: number;
+      completedWorkOrders: number; waitingVehicles: number | null; availableResourceRate: number | null; openExceptions: number };
+    availability: { waitingVehicles: string; availableResourceRate: string; yardLayout: string };
+    planRange: { earliest: string | null; latest: string | null; total: number };
+    waitingVehicleScope: string | null;
+    risks: Array<{id:string;source:'EXCEPTION'|'INTERLOCK'|'OFFLINE';type:string;status:string;level:string}>;
+  };
   session: SessionSlice;
   scenario: ScenarioSlice;
   plan: PlanSlice;

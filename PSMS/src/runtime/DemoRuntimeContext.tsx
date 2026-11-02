@@ -101,6 +101,7 @@ import {
 import { createFixtureSnapshot } from '../mocks/fixtures';
 import type { DemoScenario } from '../mocks/fixtures';
 import { createDemoStore, type DemoRootState, type DemoStoreApi } from '../stores';
+import { createLiveStore } from '../stores/createLiveStore';
 import { createAppFetch } from './appBasePath';
 import { loadImportedPlans, getImportedPlans } from '../features/plan-entry/importedPlans';
 
@@ -175,6 +176,7 @@ export type DemoRuntime = {
 };
 
 export type CreateDemoRuntimeOptions = Readonly<{
+  initialState?: DemoRootState;
   initialScenarioId?: DemoScenario['id'];
 }>;
 
@@ -183,9 +185,9 @@ export function createDemoRuntime(
   options: CreateDemoRuntimeOptions = {},
 ): DemoRuntime {
   const appFetcher = createAppFetch(fetcher);
-  const snapshot = createFixtureSnapshot();
+  const snapshot = options.initialState ? undefined : createFixtureSnapshot();
   const session = loadCurrentDemoSession();
-  const store = createDemoStore(snapshot, {
+  const store = options.initialState ? createLiveStore(options.initialState) : createDemoStore(snapshot!, {
     actorId: session.actorId,
     roleCode: session.roleCode,
     dataScope: [...session.dataScope],
@@ -194,7 +196,7 @@ export function createDemoRuntime(
     scenarioId: options.initialScenarioId ?? 'SCN-01',
   });
   const gateway = createPlanEntryGateway(appFetcher);
-  const importedPlans = loadImportedPlans();
+  const importedPlans = options.initialState ? [] : loadImportedPlans();
   if (importedPlans.length) store.replaceDomainState((candidate) => { candidate.plan.plans.push(...importedPlans); });
   const workflow = createPlanEntryWorkflowStore();
   const recommendationGateway = createRecommendationGateway(appFetcher);
@@ -330,7 +332,7 @@ export function createDemoRuntime(
       gateway: systemSettingsGateway,
       workflow: systemSettingsWorkflow,
       commands: systemSettingsCommands,
-      timezone: snapshot.timezone,
+      timezone: snapshot?.timezone ?? 'Asia/Shanghai',
     },
   };
 }

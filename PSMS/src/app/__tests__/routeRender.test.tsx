@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DEMO_SESSION_STORAGE_KEY } from '../../auth';
@@ -35,6 +35,9 @@ describe('业务路由渲染', () => {
         }),
       );
       const router = createMemoryRouter(appRoutes, { initialEntries: [route.smokePath] });
+      // Complete the lazy route import before checking its rendered UI. Cold
+      // chart/map imports can exceed the DOM query timeout during a full run.
+      await waitFor(() => expect(router.state.initialized).toBe(true), { timeout: 15_000 });
       const view = render(<App router={router} />);
 
       expect(await screen.findByText(route.id, undefined, { timeout: 5_000 })).toBeVisible();

@@ -41,10 +41,20 @@ export async function migrate(): Promise<MigrationResult> {
     'SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = current_schema()',
   );
   const existingColumns = new Set(columns.rows.map((row) => `${row.table_name}.${row.column_name}`));
-  // openGauss 6 does not support ADD COLUMN IF NOT EXISTS; inspect the catalog instead.
+  // openGauss 6 lacks ADD COLUMN IF NOT EXISTS. Check again at execution time:
+  // a fresh CREATE TABLE earlier in this batch can already define the upgrade column.
   const statements = SCHEMA_STATEMENTS.filter((sql) => {
     const add = sql.match(/^ALTER TABLE (\w+) ADD COLUMN (\w+)/);
     return !add || !existingColumns.has(`${add[1]}.${add[2]}`);
+  }).map((sql) => {
+    const add = sql.match(/^ALTER TABLE (\w+) ADD COLUMN (\w+)/);
+    if (!add) return sql;
+    return `DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = '${add[1]}' AND column_name = '${add[2]}') THEN
+        ${sql};
+      END IF;
+    END $$`;
   });
   const client = await connectClient();
   try {

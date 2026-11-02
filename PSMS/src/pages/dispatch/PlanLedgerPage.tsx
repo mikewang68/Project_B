@@ -6,6 +6,7 @@ import { routePolicies, type PolicyContext, type RoleCode } from '../../auth';
 import type { PublicErrorCode } from '../../contracts';
 import InterfaceHealthBanner from '../../features/plan-entry/components/InterfaceHealthBanner';
 import PageIdentity from '../../features/plan-entry/components/PageIdentity';
+import LiveQueryFilters from '../../real/LiveQueryFilters';
 import CsvImportPanel from '../../features/plan-entry/components/CsvImportPanel';
 import PageStatePanel, {
   type PageState,
@@ -223,6 +224,7 @@ export default function PlanLedgerPage({
   return (
     <main className="plan-ledger-page" style={pageStyle}>
       {messageContext}
+      <LiveQueryFilters/>
       <header className="plan-ledger-header">
         <PageIdentity pageId="UI-002" name="外部到发信息台账" path="/dispatch/plans" />
         <Space size={[8, 6]} wrap>

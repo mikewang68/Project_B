@@ -1,6 +1,7 @@
-"""四链路本地验证器：启动各模拟器（子进程）→ 客户端读取 → 断言 → 证据 JSON。
+"""八链路本地验证器：启动各模拟器（子进程）→ 客户端读取 → 断言 → 证据 JSON。
 
-运行：python verify_all.py   （约 25s）
+覆盖 UWB / 毫米波雷达 / 龙门吊 / 翻箱机 / 限位开关 / 位置传感器 / AI 盒 / 声光报警器。
+运行：python verify_all.py   （约 45s）
 产出：verify/evidence-<ts>.json
 """
 from __future__ import annotations
@@ -150,6 +151,127 @@ def verify_radar():
         proc.terminate()
 
 
+# ---------- 2b. 龙门吊 ----------
+def verify_crane():
+    print("[CRANE]")
+    proc = spawn(["crane/crane_sim.py", "--port", "15050", "--scenario", "travel"])
+    time.sleep(1.0)
+    try:
+        c = MbClient("127.0.0.1", 15050)
+        r = c.read(3, 0x0000, 9)
+        status, speed, direction, _load, _hook, _wind, interlock, health, trolley = r
+        check("龙门吊 行走场景：状态=作业中 且方向为东/西", status == 1 and direction in (1, 2),
+              {"status": status, "direction": direction})
+        check("龙门吊 大车速度在 0~45 m/min 量程内", 0 <= speed <= 450, {"speed_raw": speed})
+        check("龙门吊 健康 NORMAL 且 PLC 联锁可用", health == 0 and interlock == 1,
+              {"health": health, "interlock": interlock})
+        check("龙门吊 小车位置在 0~40 m 量程内", 0 <= trolley <= 400, {"trolley_raw": trolley})
+
+        c.write_single(0x0100, 3)  # wind
+        time.sleep(0.4)
+        rw = c.read(3, 0x0000, 9)
+        check("龙门吊 大风场景：风速≥12m/s 且健康降级", rw[5] >= 120 and rw[7] == 1,
+              {"wind_raw": rw[5], "health": rw[7]})
+
+        c.write_single(0x0100, 4)  # fault
+        time.sleep(0.4)
+        rf = c.read(3, 0x0000, 9)
+        check("龙门吊 故障场景：状态=故障 健康=DOWN 联锁断开",
+              rf[0] == 2 and rf[7] == 2 and rf[6] == 0,
+              {"status": rf[0], "health": rf[7], "interlock": rf[6]})
+    finally:
+        proc.terminate()
+
+
+# ---------- 2c. 翻箱机 ----------
+def verify_tipper():
+    print("[TIPPER]")
+    proc = spawn(["tipper/tipper_sim.py", "--port", "15060", "--scenario", "dump"])
+    time.sleep(1.0)
+    try:
+        c = MbClient("127.0.0.1", 15060)
+        stages, angles, last = set(), [], None
+        for _ in range(26):  # 13s，足以覆盖「箱体就位 → 举升中」两个阶段
+            r = c.read(3, 0x0000, 8)
+            last = r
+            stages.add(r[0])
+            angles.append(r[4])
+            time.sleep(0.5)
+        check("翻箱机 作业循环推进多个阶段", len(stages) >= 2 and stages <= {0, 1, 2, 3, 4},
+              {"stages": sorted(stages)})
+        check("翻箱机 举升角度在 0~135° 量程内且有变化",
+              all(0 <= a <= 1350 for a in angles) and max(angles) > 0,
+              {"min_raw": min(angles), "max_raw": max(angles)})
+        check("翻箱机 固定工位：行走速度与方向恒为 0", last[1] == 0 and last[2] == 0,
+              {"speed": last[1], "direction": last[2]})
+
+        c.write_single(0x0100, 2)  # blocked
+        time.sleep(0.4)
+        rb = c.read(3, 0x0000, 8)
+        check("翻箱机 堵料场景：角度停滞 60° + 压力≥28MPa + 健康降级",
+              rb[4] == 600 and rb[5] >= 280 and rb[7] == 1,
+              {"angle_raw": rb[4], "pressure_raw": rb[5], "health": rb[7]})
+
+        c.write_single(0x0100, 3)  # fault
+        time.sleep(0.4)
+        rf = c.read(3, 0x0000, 8)
+        check("翻箱机 故障场景：阶段=5 健康=DOWN 联锁断开 角度保持半途",
+              rf[0] == 5 and rf[7] == 2 and rf[6] == 0 and rf[4] == 600,
+              {"stage": rf[0], "health": rf[7], "interlock": rf[6], "angle_raw": rf[4]})
+    finally:
+        proc.terminate()
+
+
+# ---------- 2d. 装卸区 A 限位开关 ----------
+def verify_limit_switch():
+    print("[LIMIT-SWITCH]")
+    proc = spawn(["limit_switch/limit_switch_sim.py", "--port", "15070", "--scenario", "working"])
+    time.sleep(1.0)
+    try:
+        c = MbClient("127.0.0.1", 15070)
+        r = c.read(3, 0x0000, 3)
+        check("限位开关 working：压合=1 且健康 NORMAL", r[0] == 1 and r[2] == 0,
+              {"pressed": r[0], "health": r[2]})
+        c.write_single(0x0100, 0)  # idle
+        time.sleep(0.4)
+        ri = c.read(3, 0x0000, 3)
+        check("限位开关 idle：压合=0（作业面无人）", ri[0] == 0, {"pressed": ri[0]})
+        c.write_single(0x0100, 3)  # fault
+        time.sleep(0.4)
+        rf = c.read(3, 0x0000, 3)
+        check("限位开关 fault：健康=DOWN（不能只看压合位判无人）", rf[2] == 2, {"health": rf[2]})
+    finally:
+        proc.terminate()
+
+
+# ---------- 2e. 装卸区 B 位置传感器 ----------
+def verify_position_sensor():
+    print("[POSITION-SENSOR]")
+    proc = spawn(["position_sensor/position_sensor_sim.py", "--port", "15080", "--scenario", "arrive"])
+    time.sleep(1.0)
+    try:
+        c = MbClient("127.0.0.1", 15080)
+        r1 = c.read(3, 0x0000, 3)
+        time.sleep(2.0)
+        r2 = c.read(3, 0x0000, 3)
+        check("位置传感器 arrive：距离递减（车辆驶入）", r2[0] < r1[0] and r2[0] <= 10000,
+              {"d1_mm": r1[0], "d2_mm": r2[0]})
+        check("位置传感器 车位状态与阈值一致（≤3000mm 判有车）",
+              r2[1] == (1 if r2[0] <= 3000 else 0), {"d_mm": r2[0], "occupied": r2[1]})
+        c.write_single(0x0100, 0)  # empty
+        time.sleep(0.4)
+        re_ = c.read(3, 0x0000, 3)
+        check("位置传感器 empty：距离 8.5m 且判无车", re_[0] == 8500 and re_[1] == 0,
+              {"d_mm": re_[0], "occupied": re_[1]})
+        c.write_single(0x0100, 4)  # fault
+        time.sleep(0.4)
+        rf = c.read(3, 0x0000, 3)
+        check("位置传感器 fault：状态=故障 健康=DOWN（距离 0 不能当成有车）",
+              rf[1] == 2 and rf[2] == 2, {"occupied": rf[1], "health": rf[2]})
+    finally:
+        proc.terminate()
+
+
 # ---------- 3. AI 盒 ----------
 def verify_aibox():
     print("[AIBOX]")
@@ -248,6 +370,10 @@ def main():
     print(f"verify all @ {datetime.now(TZ).isoformat()}  (python {sys.version.split()[0]})")
     verify_uwb()
     verify_radar()
+    verify_crane()
+    verify_tipper()
+    verify_limit_switch()
+    verify_position_sensor()
     verify_aibox()
     verify_alarm()
     passed = sum(1 for r in results if r["pass"])

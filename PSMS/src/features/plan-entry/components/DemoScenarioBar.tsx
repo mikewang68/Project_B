@@ -40,6 +40,7 @@ export default function DemoScenarioBar({
   onRoleChange,
   onReset,
 }: DemoScenarioBarProps) {
+  if (import.meta.env.VITE_PSMS_REAL_API === 'true') return null;
   const resetButton = createC03Element(
     PermissionGate,
     {
@@ -61,7 +62,7 @@ export default function DemoScenarioBar({
     <section className="demo-scenario-bar" aria-label="演示上下文">
       <div className="demo-context-facts">
         <div className="demo-context-item">
-          <Typography.Text type="secondary">业务日期</Typography.Text>
+          <Typography.Text type="secondary">历史样例日期</Typography.Text>
           <Typography.Text strong>{date}</Typography.Text>
         </div>
         <div className="demo-context-item">

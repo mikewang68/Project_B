@@ -57,6 +57,7 @@ export const do001Schema = z
     planBatchNo: z.string(),
     trainNo: z.string(),
     arrivalDepartureTime: z.string(),
+    workArea: z.string().min(1).optional(),
     trackNo: z.string(),
     cargoType: cargoTypeSchema,
     status: planStatusSchema,

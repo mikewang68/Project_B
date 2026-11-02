@@ -58,8 +58,8 @@ export type OverviewKpisViewModel = Readonly<{
   confirmedPlans: number;
   blockedPlans: number;
   completedWorkOrders: number;
-  waitingVehicles: number;
-  availableResourceRate: number;
+  waitingVehicles: number | null;
+  availableResourceRate: number | null;
   openExceptions: number;
 }>;
 
@@ -160,7 +160,9 @@ export type PlanLedgerViewModel = Readonly<{
 }>;
 
 export type InterfaceHealthViewModel = Readonly<{
-  status: 'HEALTHY' | 'DEGRADED' | 'UNAVAILABLE' | 'CIRCUIT_OPEN';
+  sourceLabel?: string;
+  description?: string;
+  status: 'HEALTHY' | 'DEGRADED' | 'UNAVAILABLE' | 'CIRCUIT_OPEN' | 'UNVERIFIED';
   errorCode?: PublicErrorCode;
   retryCount: number;
   circuitOpen: boolean;

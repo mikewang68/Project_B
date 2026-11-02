@@ -113,7 +113,9 @@ public class CollisionService {
         }
         d.riskCode = pair.riskCode;
         d.healthCode = pair.healthCode;
-        d.radarStatus = pair.radarDown ? "数据中断" : "正常";
+        // 健康三态与设备端口径一致：断数 / 数据异常 / 正常，避免 degrade 被显示成正常
+        d.radarStatus = pair.radarDown ? "数据中断"
+                : SensorHealth.UNCERTAIN.equals(pair.healthCode) ? "数据异常" : "正常";
         if (pair.deviceStopped && d.id.equals(pair.currentId)) {
             d.status = "已停止";
             d.speed = 0;
@@ -161,9 +163,21 @@ public class CollisionService {
     }
 
     private void applyDistance(PairState pair, double value) {
+        applyDistance(pair, value, 1.8, pair.direction);
+    }
+
+    /**
+     * @param relSpeed 相对速度（m/s），正=接近、负=远离；来自雷达上报时用实测值，
+     *                 演示推演（{@link #advanceApproach}）沿用固定 1.8
+     * @param direction 运动方向文案，空则保留原值
+     */
+    private void applyDistance(PairState pair, double value, double relSpeed, String direction) {
         String before = pair.riskCode;
         pair.distance = value;
-        pair.relSpeed = 1.8;
+        pair.relSpeed = relSpeed;
+        if (direction != null && !direction.isBlank()) {
+            pair.direction = direction;
+        }
         pair.trend = new ArrayList<>(pair.trend.subList(Math.max(0, pair.trend.size() - 13), pair.trend.size()));
         pair.trend.add(new DistancePoint("现在", value));
         pair.riskCode = riskCodeOf(value);
@@ -252,6 +266,196 @@ public class CollisionService {
         pair.trend = initialTrend(INIT_DISTANCE);
         pair.activeAlertId = null;
         pair.updatedAt = OffsetDateTime.now(clock);
+    }
+
+    // ---------- 外部设备状态接入（网关 / 边缘节点经 X-API-Key 上报） ----------
+
+    private static final double MAX_SPEED_KMH = 60.0;
+    private static final int MAX_TEXT_LEN = 48;
+
+    /** 单台设备的上报状态；字段均可选，未提供的保持原值。 */
+    /**
+     * @param x 底图百分比横坐标（0~100），可缺省；龙门吊这类会行走的设备由网关按大车位置换算后上报，
+     *          不传则沿用设备台账里的固定坐标
+     * @param y 底图百分比纵坐标（0~100）
+     */
+    public record ExternalDeviceState(String code, String status, Double speed, String direction,
+                                      String controlStatus, String communication, String radarStatus,
+                                      Double x, Double y) {}
+
+    /** @param applied 成功应用的设备数；@param ignored 未知或空编码，原样回传便于网关排查 */
+    public record IngestResult(int applied, List<String> ignored) {}
+
+    /**
+     * 应用外部上报的设备运行状态。
+     *
+     * <p>与 {@link #simulate} 的区别：本方法只反映设备自身的运行状态（来自设备协议采集），
+     * <b>不推进碰撞距离、不建告警</b>；碰撞风险仍由配对距离决定。未知设备编码一律忽略，
+     * 不新建设备、不写入任意字段，避免上报方成为第二条设备主数据来源。</p>
+     */
+    @Transactional
+    public synchronized IngestResult applyExternalState(List<ExternalDeviceState> states) {
+        if (states == null || states.isEmpty()) {
+            return new IngestResult(0, List.of());
+        }
+        List<String> ignored = new ArrayList<>();
+        int[] applied = {0};
+        gate.buffer(() -> {
+            for (ExternalDeviceState s : states) {
+                if (s == null || s.code() == null || s.code().isBlank()) {
+                    ignored.add("<empty>");
+                    continue;
+                }
+                String code = s.code().trim();
+                var existing = repository.findById(code);
+                if (existing.isEmpty()) {
+                    ignored.add(code);
+                    continue;
+                }
+                DemoCollisionDevice d = existing.get();
+                if (hasText(s.status())) d.status = clip(s.status());
+                if (s.speed() != null) d.speed = clampSpeed(s.speed());
+                if (hasText(s.direction())) d.direction = clip(s.direction());
+                if (hasText(s.controlStatus())) d.controlStatus = clip(s.controlStatus());
+                if (hasText(s.communication())) d.communication = clip(s.communication());
+                // 会行走的设备（龙门吊）把大车位置换算成底图百分比上报，首页地图上的图标才会跟着动；
+                // 固定工位（翻箱机）不传，沿用台账坐标。
+                if (s.x() != null) d.x = Math.max(0, Math.min(100, s.x()));
+                if (s.y() != null) d.y = Math.max(0, Math.min(100, s.y()));
+                applyHealth(d, s.radarStatus());
+                d.lastUpdated = OffsetDateTime.now(clock).toString();
+                repository.save(d);
+                applied[0]++;
+            }
+            if (applied[0] > 0) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("source", "device-ingest");
+                data.put("applied", applied[0]);
+                publisher.publish("collision.changed", data);
+            }
+        });
+        return new IngestResult(applied[0], List.copyOf(ignored));
+    }
+
+    /**
+     * @param pairDevice 配对编码（当前设备侧，如 VEH-07），决定这笔读数落到哪一对
+     * @param distance 相对距离（米），必填
+     * @param relSpeed 相对速度（m/s），正=接近、负=远离；可缺省，缺省沿用上一帧
+     * @param radarQuality 雷达信号质量 0~100，可缺省
+     * @param health NORMAL / DEGRADED / DOWN，可缺省（缺省按 NORMAL）
+     */
+    public record ExternalRadarReading(String pairDevice, Double distance, Double relSpeed,
+                                       Double radarQuality, String health) {}
+
+    /**
+     * 雷达测距上报：把「相对距离 / 相对速度 / 雷达健康」写进对应的设备配对。
+     *
+     * <p>与 {@link #applyExternalState} 不同，本方法<b>推进</b>配对距离并据此重算碰撞风险——
+     * 距离是雷达的原始测量，风险就该由它决定；否则页面上距离变了风险却不动，等于两套数据。</p>
+     *
+     * <p>只更新已存在的配对（{@code VEH-07} / {@code VEH-08}），未知配对一律忽略：
+     * 上报方不能凭空创造设备对，设备主数据仍只有台账一个来源。</p>
+     */
+    @Transactional
+    public synchronized IngestResult applyExternalRadar(List<ExternalRadarReading> readings) {
+        if (readings == null || readings.isEmpty()) {
+            return new IngestResult(0, List.of());
+        }
+        List<String> ignored = new ArrayList<>();
+        int[] applied = {0};
+        gate.buffer(() -> {
+            for (ExternalRadarReading r : readings) {
+                if (r == null || r.pairDevice() == null || r.pairDevice().isBlank()) {
+                    ignored.add("<empty>");
+                    continue;
+                }
+                String code = r.pairDevice().trim();
+                PairState pair = pairs.get(code);
+                if (pair == null || r.distance() == null) {
+                    ignored.add(code);
+                    continue;
+                }
+                double distance = Math.max(0, Math.min(500, r.distance()));
+                double relSpeed = r.relSpeed() == null ? pair.relSpeed : r.relSpeed();
+                String direction = relSpeed > 0.05 ? "接近" : relSpeed < -0.05 ? "远离" : "保持";
+                applyDistance(pair, distance, relSpeed, direction);
+                applyRadarHealth(pair, r.health());
+                if (r.radarQuality() != null) {
+                    pair.radarQuality = (int) Math.round(Math.max(0, Math.min(100, r.radarQuality())));
+                }
+                pair.updatedAt = OffsetDateTime.now(clock);
+                applied[0]++;
+            }
+            if (applied[0] > 0) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("source", "radar-ingest");
+                data.put("applied", applied[0]);
+                publisher.publish("collision.changed", data);
+            }
+        });
+        return new IngestResult(applied[0], List.copyOf(ignored));
+    }
+
+    /** 雷达健康：只改感知健康态，不直接改碰撞风险等级（风险仍由距离决定）。 */
+    private void applyRadarHealth(PairState pair, String health) {
+        if (health == null || health.isBlank()) {
+            pair.radarDown = false;
+            pair.healthCode = SensorHealth.NORMAL;
+            return;
+        }
+        switch (health.trim().toUpperCase()) {
+            case "DOWN", "RADAR_DOWN" -> {
+                pair.radarDown = true;
+                pair.healthCode = SensorHealth.RADAR_DOWN;
+            }
+            case "DEGRADED", "UNCERTAIN" -> {
+                pair.radarDown = false;
+                pair.healthCode = SensorHealth.UNCERTAIN;
+            }
+            default -> {
+                pair.radarDown = false;
+                pair.healthCode = SensorHealth.NORMAL;
+            }
+        }
+    }
+
+    /** 外部健康状态同步到配对运行态：中断→断数，异常→待确认，其余→正常。 */
+    private void applyHealth(DemoCollisionDevice device, String radarStatus) {
+        if (!hasText(radarStatus)) {
+            return;
+        }
+        String text = radarStatus.trim();
+        device.radarStatus = clip(text);
+        PairState pair = pairOfDevice(device.id);
+        if (pair == null) {
+            return;
+        }
+        if (text.contains("中断")) {
+            pair.healthCode = SensorHealth.RADAR_DOWN;
+            pair.radarDown = true;
+        } else if (text.contains("异常")) {
+            pair.healthCode = SensorHealth.UNCERTAIN;
+            pair.radarDown = false;
+        } else {
+            pair.healthCode = SensorHealth.NORMAL;
+            pair.radarDown = false;
+        }
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private static String clip(String value) {
+        String t = value.trim();
+        return t.length() <= MAX_TEXT_LEN ? t : t.substring(0, MAX_TEXT_LEN);
+    }
+
+    private static double clampSpeed(double value) {
+        if (Double.isNaN(value) || value < 0) {
+            return 0;
+        }
+        return Math.min(value, MAX_SPEED_KMH);
     }
 
     // ---------- 联动 ----------

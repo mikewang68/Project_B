@@ -50,13 +50,15 @@ public class PersonnelService {
     private final DomainLivePublisher publisher;
     private final Clock clock;
     private final LiveEventGate gate;
+    private final PersonnelPositionService positions;
 
     private volatile int refreshIntervalMs = 1000;
     private volatile double defaultBufferDistance = 5.0;
 
     public PersonnelService(PersonnelRepository repository, FenceRepository fenceRepository,
                             AlertRepository alertRepository, AlertService alertService,
-                            DomainLivePublisher publisher, Clock clock, LiveEventGate gate) {
+                            DomainLivePublisher publisher, Clock clock, LiveEventGate gate,
+                            PersonnelPositionService positions) {
         this.repository = repository;
         this.fenceRepository = fenceRepository;
         this.alertRepository = alertRepository;
@@ -64,6 +66,7 @@ public class PersonnelService {
         this.publisher = publisher;
         this.clock = clock;
         this.gate = gate;
+        this.positions = positions;
     }
 
     public PersonnelConfig getConfig() {
@@ -105,27 +108,30 @@ public class PersonnelService {
                               String bracelet, Boolean onlyAbnormal) {
         PersonnelRepository.PersonnelStats stats = repository.getStats();
         String kw = keyword == null ? "" : keyword.trim().toLowerCase();
-        List<DemoPersonnel> filtered = repository.findAll().stream().filter(p -> {
-            boolean kwOk = kw.isEmpty() || (p.name + p.jobNo).toLowerCase().contains(kw);
-            boolean teamOk = team == null || team.isBlank() || team.equals(p.team);
-            boolean areaOk = area == null || area.isBlank() || area.equals(p.area);
-            boolean stateOk = state == null || state.isBlank()
-                    || ("异常".equals(state)
-                        ? !PersonRiskLevels.NORMAL.equals(p.riskCode)
-                        : PersonRiskLevels.NORMAL.equals(p.riskCode));
-            boolean bandOk = bracelet == null || bracelet.isBlank()
-                    || BraceletStatuses.normalize(bracelet).equals(p.braceletStatusCode);
-            boolean abnormalOk = onlyAbnormal == null || !onlyAbnormal
-                    || !PersonRiskLevels.NORMAL.equals(p.riskCode);
-            return kwOk && teamOk && areaOk && stateOk && bandOk && abnormalOk;
-        }).toList();
+        // 坐标/区域优先取 UWB 实时位置；筛选也在覆盖后的数据上做，避免"列表显示 A 区却筛不出来"
+        List<DemoPersonnel> filtered = repository.findAll().stream()
+                .map(positions::overlay)
+                .filter(p -> {
+                    boolean kwOk = kw.isEmpty() || (p.name + p.jobNo).toLowerCase().contains(kw);
+                    boolean teamOk = team == null || team.isBlank() || team.equals(p.team);
+                    boolean areaOk = area == null || area.isBlank() || area.equals(p.area);
+                    boolean stateOk = state == null || state.isBlank()
+                            || ("异常".equals(state)
+                                ? !PersonRiskLevels.NORMAL.equals(p.riskCode)
+                                : PersonRiskLevels.NORMAL.equals(p.riskCode));
+                    boolean bandOk = bracelet == null || bracelet.isBlank()
+                            || BraceletStatuses.normalize(bracelet).equals(p.braceletStatusCode);
+                    boolean abnormalOk = onlyAbnormal == null || !onlyAbnormal
+                            || !PersonRiskLevels.NORMAL.equals(p.riskCode);
+                    return kwOk && teamOk && areaOk && stateOk && bandOk && abnormalOk;
+                }).toList();
         return new PersonnelList(
                 new Stats(stats.online(), stats.abnormal(), stats.bandOffline(), stats.lowBattery()),
                 filtered);
     }
 
     public DemoPersonnel get(String id) {
-        DemoPersonnel p = require(id);
+        DemoPersonnel p = positions.overlay(require(id));
         // 关联未关闭告警只回传编号摘要，不复制完整 Alert
         List<String> active = alertRepository.findAll().stream()
                 .filter(a -> !AlertStatuses.CLOSED.equals(a.statusCode))
@@ -151,6 +157,7 @@ public class PersonnelService {
 
     public List<LivePosition> live(String area) {
         return repository.findAll().stream()
+                .map(positions::overlay)
                 .filter(p -> PersonStatuses.ONLINE.equals(p.statusCode))
                 .filter(p -> area == null || area.isBlank() || area.equals(p.area))
                 .map(p -> new LivePosition(p.id, p.x, p.y, p.area, p.battery, p.getRisk(), p.state,

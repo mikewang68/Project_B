@@ -1,5 +1,6 @@
 import { Alert, Button, Input, Space, Tag } from 'antd';
 import { useEffect, useState } from 'react';
+import { withAppBasePath } from '../../runtime/appBasePath';
 
 const key = 'psms:backend-access-token';
 export function useBackendConnection() {
@@ -16,7 +17,7 @@ export function useBackendConnection() {
   const connect = async () => {
     setLoading(true); setError('');
     try {
-      const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }), signal: AbortSignal.timeout(15_000) });
+      const response = await fetch(withAppBasePath('/api/auth/login'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }), signal: AbortSignal.timeout(15_000) });
       const result = await response.json();
       if (!response.ok || typeof result.data?.accessToken !== 'string') throw new Error(result.message ?? '业务服务连接失败');
       sessionStorage.setItem(key, result.data.accessToken); setToken(result.data.accessToken); setPassword('');
