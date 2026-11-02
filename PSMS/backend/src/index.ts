@@ -27,8 +27,13 @@ import { settingsRouter } from './routes/settings.routes.js';
 import { auditRouter } from './routes/audit.routes.js';
 import { demoRouter } from './routes/demo.routes.js';
 import { aiRouter } from './routes/ai.routes.js';
+import { RailwayRuntime } from './services/railway-runtime.service.js';
+import { startRailwayWorker } from './services/railway-scheduler.service.js';
+import { railwayRouter } from './routes/railway.routes.js';
+import { authenticate, requirePermission } from './middleware/auth.js';
 
 const app = express();
+const railwayRuntime=process.env.PSMS_RAILWAY_ENABLED==='true'?new RailwayRuntime():null;
 
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
@@ -76,6 +81,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/audit-logs', auditRouter);
 app.use('/api/demo', demoRouter);
 app.use('/api/ai', aiRouter);
+if(railwayRuntime) app.use('/api/railway',authenticate,requirePermission('railway:manage'),railwayRouter(railwayRuntime));
 
 app.use(errorHandler);
 
@@ -125,6 +131,7 @@ async function waitForOpenGauss(attempts = 4, delayMs = 5000) {
 async function start(): Promise<void> {
   // 1. 业务库：连不通就直接失败，不做静默降级
   const gauss = await waitForOpenGauss();
+  if(railwayRuntime) await railwayRuntime.initialize();
   logger.info(
     { version: gauss.version, database: gauss.database, latencyMs: gauss.latencyMs },
     'openGauss 已连接',
@@ -160,6 +167,8 @@ async function start(): Promise<void> {
   // 5. 空库自动播种
   await autoSeedIfEmpty();
 
+  const stopRailway=railwayRuntime&&process.env.PSMS_RAILWAY_INLINE_WORKER!=='false'
+    ?startRailwayWorker(railwayRuntime,error=>logger.error({err:error},'铁路模拟运行失败')):()=>{};
   const server = app.listen(env.PORT, env.HOST, () => {
     logger.info(
       { port: env.PORT, env: env.NODE_ENV, openGauss: env.OPENGAUSS_DSN },
@@ -169,6 +178,7 @@ async function start(): Promise<void> {
   });
 
   const shutdown = async (signal: string): Promise<void> => {
+    stopRailway();
     logger.info({ signal }, '收到退出信号，开始优雅关闭…');
     server.close();
     await closePool().catch((err) => logger.warn({ err }, '关闭 openGauss 连接池失败'));

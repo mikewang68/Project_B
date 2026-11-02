@@ -208,6 +208,7 @@ export default function SkeletonLayout() {
             )}
           </div>
           <Space size={12}>
+            <Button href="?railway=1">铁路工单运行台</Button>
             <AiAssistant />
             <Tooltip title="外观设置：切换皮肤与布局" placement="bottom">
               <Button

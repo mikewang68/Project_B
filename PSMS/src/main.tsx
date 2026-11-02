@@ -5,6 +5,11 @@ import './styles/tokens.css';
 import './styles/global.css';
 
 async function bootstrap(): Promise<void> {
+  if (new URLSearchParams(window.location.search).get('railway') === '1') {
+    const { default: RailwayConsole } = await import('./real/RailwayConsole');
+    createRoot(document.getElementById('root')!).render(<StrictMode><RailwayConsole /></StrictMode>);
+    return;
+  }
   if (import.meta.env.VITE_PSMS_REAL_API === 'true') {
     // Do not import the demo router, fixture store, MSW, or reset endpoint in API mode.
     const { default: RealApp } = await import('./real/LiveApp');

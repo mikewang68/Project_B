@@ -1,0 +1,25 @@
+[Unit]
+Description=Project B PSMS daily railway work orders
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=psms
+Group=psms
+WorkingDirectory=/opt/project-b/PSMS/backend
+EnvironmentFile=/etc/project-b/PSMS/service.env
+Environment=PSMS_RAILWAY_ALLOWED_DATABASE=psms
+Environment=PSMS_RAILWAY_AUTO_IMPORT=true
+Environment=PSMS_RAILWAY_HOUR=12
+Environment=PSMS_RAILWAY_MINUTE=30
+ExecStart=/opt/node-24.18.0/bin/node dist/scripts/railway-worker.js
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

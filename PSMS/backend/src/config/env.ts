@@ -11,6 +11,7 @@ export const BACKEND_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 dotenv.config({ path: path.join(BACKEND_ROOT, '.env.ai'), quiet: true });
 dotenv.config({ path: path.join(BACKEND_ROOT, '.env'), quiet: true });
+dotenv.config({ path: path.join(BACKEND_ROOT, '.env.railway'), quiet: true });
 
 /** 把配置里的相对路径统一解析为基于 backend/ 的绝对路径 */
 function resolveFromRoot(value: string): string {

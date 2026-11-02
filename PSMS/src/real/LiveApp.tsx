@@ -84,5 +84,5 @@ export default function LiveApp(){
   if(error)return <Alert type="error" title="生产调度业务数据未能加载" description={error} action={<Button onClick={()=>window.location.reload()}>重试</Button>}/>;
   if(!runtime)return <Spin fullscreen tip="正在恢复业务会话与台账…"/>;
   return <>{refreshError&&<Alert type="warning" title="自动刷新失败，页面保留上次成功读取的数据" description={refreshError}/>}
-    <Space style={{position:'fixed',right:24,bottom:16,zIndex:1001}}><Button onClick={async()=>{await api('/auth/sso/logout',{method:'POST',body:'{}'});window.location.replace('/sso/start?page=PSMS%3Aui-002');}}>退出平台</Button></Space><App runtime={runtime}/></>;
+    <Space style={{position:'fixed',right:24,bottom:16,zIndex:1001}}><Button href="?railway=1">铁路工单运行台</Button><Button onClick={async()=>{await api('/auth/sso/logout',{method:'POST',body:'{}'});window.location.replace('/sso/start?page=PSMS%3Aui-002');}}>退出平台</Button></Space><App runtime={runtime}/></>;
 }

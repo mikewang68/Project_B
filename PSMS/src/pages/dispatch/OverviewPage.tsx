@@ -29,6 +29,7 @@ import {
 import '../../features/plan-entry/plan-entry.css';
 import type { DemoScenario } from '../../mocks/fixtures';
 import LiveQueryFilters from '../../real/LiveQueryFilters';
+import LatestRailwayOrders from '../../real/LatestRailwayOrders';
 import { businessLabel } from '../../presentation/businessCopy';
 import { useDemoRuntime, useDemoSelector, usePlanEntryWorkflow } from '../../runtime';
 import { selectActiveScenario, selectSession } from '../../stores';
@@ -175,6 +176,7 @@ export default function OverviewPage({ viewState, errorCode }: OverviewPageProps
   return (
     <main className="dispatch-overview-page" style={overviewStyle}>
       {messageContext}
+      <LatestRailwayOrders/>
       <LiveQueryFilters/>
       {rootState.liveOverview && <Alert type="info" title={`统计范围：${rootState.liveOverview.workArea} · ${rootState.liveOverview.date}（北京时间）`}
         description={`计划和完成工单按所选日期统计，设备和异常为当前状态${rootState.liveOverview.waitingVehicleScope==='GLOBAL'?'，车辆等待为全场汇总':''}。最近读取：${rootState.liveOverview.generatedAt}。`
