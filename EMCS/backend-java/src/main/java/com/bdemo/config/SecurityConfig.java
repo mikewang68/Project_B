@@ -19,19 +19,28 @@ public class SecurityConfig {
                                             SecurityAuditAccessDeniedHandler accessDeniedHandler) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
+                .logout(logout -> logout.disable())
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
                 .cors(cors -> {})
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Exchange replaces the old session. Per-request rotation would invalidate
+                // the cookie carried by concurrent authenticated browser requests.
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionFixation(fixation -> fixation.none()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/captchaImage", "/error", "/actuator/health/**",
                                 "/transport/crypto/frontend-config", "/transport/crypto/public-key").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/system/**").hasRole("admin")
-                        .requestMatchers("/monitor/**").hasRole("admin")
-                        .requestMatchers(HttpMethod.POST, "/cost/allocation-rules", "/cost/recomputations/*/review").hasRole("finance")
+                        .requestMatchers(HttpMethod.POST,"/collection/events").permitAll()
+                        .requestMatchers("/collection/**").hasAnyRole("admin","energy_mgr","ops","dispatch","PLATFORM_AUDITOR_READONLY")
+                        .requestMatchers(HttpMethod.POST,"/auth/sso/exchange","/auth/sso/revoke").permitAll()
+                        .requestMatchers("/system/**").hasAnyRole("admin", "PLATFORM_AUDITOR_READONLY")
+                        .requestMatchers("/monitor/**").hasAnyRole("admin", "PLATFORM_AUDITOR_READONLY")
+                        .requestMatchers(HttpMethod.POST, "/cost/allocation-rules", "/cost/recomputations/*/review").hasAnyRole("admin", "finance")
                         .requestMatchers(HttpMethod.POST, "/cost/tariffs", "/cost/recomputations")
-                                .hasAnyRole("energy_mgr", "finance")
-                        .requestMatchers("/cost/**").hasAnyRole("admin", "energy_mgr", "finance")
-                        .requestMatchers("/reports/**").hasAnyRole("energy_mgr", "finance")
+                                .hasAnyRole("admin", "energy_mgr", "finance")
+                        .requestMatchers("/cost/**").hasAnyRole("admin", "energy_mgr", "finance", "PLATFORM_AUDITOR_READONLY")
+                        .requestMatchers("/reports/**").hasAnyRole("admin", "energy_mgr", "finance", "PLATFORM_AUDITOR_READONLY")
                         .requestMatchers(HttpMethod.POST, "/raw-quality/**").hasAnyRole("admin", "energy_mgr")
                         .requestMatchers(HttpMethod.POST, "/suggestions/**", "/alerts/*/transition")
                                 .hasAnyRole("admin", "energy_mgr", "ops")

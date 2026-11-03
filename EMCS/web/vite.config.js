@@ -9,7 +9,11 @@ export default defineConfig(({ mode, command }) => {
   return {
     // 构建默认部署到 /emcs/，本地开发使用根路径。
     base: env.VITE_APP_BASE_PATH || (command === 'build' ? '/emcs/' : '/'),
-    plugins: createVitePlugins(env, command === 'build'),
+    plugins: [
+      { name: 'emcs-title-default', enforce: 'pre',
+        transformIndexHtml: html => html.replace('%VITE_APP_TITLE%', env.VITE_APP_TITLE || '能源管理与控制系统') },
+      ...createVitePlugins(env, command === 'build')
+    ],
     resolve: {
       // https://cn.vitejs.dev/config/#resolve-alias
       alias: {

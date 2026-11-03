@@ -27,6 +27,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final SystemUserMapper userMapper;
     private final SystemMenuMapper menuMapper;
+    @org.springframework.beans.factory.annotation.Autowired private org.springframework.beans.factory.ObjectProvider<EmcsSsoSessions> sso;
 
     public AuthController(
             @Value("${b-demo.auth.captcha-enabled}") boolean captchaEnabled,
@@ -79,11 +80,12 @@ public class AuthController {
     }
 
     @GetMapping("/getInfo")
-    public AjaxResult getInfo(@AuthenticationPrincipal AuthenticatedUser principal) {
+    public AjaxResult getInfo(@AuthenticationPrincipal AuthenticatedUser principal,HttpServletRequest request) {
         UserAccount user = userMapper.findById(principal.userId())
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
         List<String> roles = userMapper.findRoleKeys(user.userId());
         List<String> permissions = roles.contains("admin") ? List.of("*:*:*") : userMapper.findPermissions(user.userId());
+        if(request.getAttribute("EMCS_SSO_CURRENT") instanceof EmcsSsoSessions.Current current){roles=current.roles().stream().sorted().toList();permissions=current.permissions().stream().sorted().toList();}
         Map<String, Object> userView = Map.of(
                 "userId", user.userId(),
                 "userName", user.userName(),
@@ -93,6 +95,7 @@ public class AuthController {
                 .add("user", userView)
                 .add("roles", roles)
                 .add("permissions", permissions)
+                .add("authenticationMode",request.getAttribute("EMCS_SSO_CURRENT")!=null?"SSO":"LOCAL")
                 .add("isDefaultModifyPwd", false)
                 .add("isPasswordExpired", false);
     }
@@ -103,7 +106,9 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public AjaxResult logout() {
+    public AjaxResult logout(HttpServletRequest request) {
+        if(request.getSession(false)!=null&&request.getSession(false).getAttribute("EMCS_SSO")!=null)sso.getObject().logout(request.getSession(false));
+        else {String authorization=request.getHeader("Authorization");if(authorization!=null&&authorization.startsWith("Bearer "))jwtService.revoke(authorization.substring(7));}
         return AjaxResult.success();
     }
 }

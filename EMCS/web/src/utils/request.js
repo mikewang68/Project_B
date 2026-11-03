@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { ElNotification , ElMessageBox, ElMessage, ElLoading } from 'element-plus'
-import { getToken } from '@/utils/auth'
+import { getToken, hasNativeSession } from '@/utils/auth'
 import errorCode from '@/utils/errorCode'
 import { createBusinessError } from '@/utils/requestError'
 import { tansParams, blobValidate } from '@/utils/ruoyi'
@@ -24,7 +24,7 @@ axios.defaults.headers['Content-Type'] = 'application/json;charset=utf-8'
 // 创建axios实例
 const service = axios.create({
   // axios中请求配置有baseURL选项，表示请求URL公共部分
-  baseURL: import.meta.env.VITE_APP_BASE_API,
+  baseURL: import.meta.env.VITE_APP_BASE_API || '/emcs-api',
   // 超时
   timeout: 10000
 })
@@ -45,6 +45,14 @@ service.interceptors.request.use(async config => {
   const interval = (config.headers || {}).interval || 1000
   if (getToken() && !isToken) {
     config.headers['Authorization'] = 'Bearer ' + getToken() // 让每个请求携带自定义token 请根据实际情况自行修改
+  }
+  if (hasNativeSession() && !['get','head','options'].includes((config.method || 'get').toLowerCase())) {
+    const apiBase = (import.meta.env.VITE_APP_BASE_API || '/emcs-api').replace(/\/$/, '')
+    const response = await fetch(apiBase + '/auth/sso/csrf', { credentials:'same-origin', cache:'no-store' })
+    if (!response.ok) throw new Error('无法核验统一登录会话')
+    const session = await response.json()
+    if (session.code !== 200 || typeof session.csrfToken !== 'string' || !session.csrfToken) throw new Error('统一登录CSRF凭据缺失')
+    config.headers['X-EMCS-CSRF'] = session.csrfToken
   }
   if (!isRepeatSubmit && (config.method === 'post' || config.method === 'put')) {
     const requestObj = {

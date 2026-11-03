@@ -2,6 +2,8 @@
 
 前端 Vue 3 + Element Plus，后端 Spring Boot + JDK 17。关系数据库为 **openGauss**，缓存使用 **Kvrocks** 的 Redis 协议。初始化数据为固定 SQL，无需 Python。
 
+可选的六类设备标准事件接收、模拟守护进程和页面展示见 [设备采集说明](tools/collection/README.md)。该功能使用新增027迁移，默认关闭；Python仅用于可选模拟工具。模拟闭环不代表厂家协议或现场数据验收。
+
 ## 环境与目录
 
 | 组件 | 版本 / 位置 |
