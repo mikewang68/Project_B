@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { PoolClient } from 'pg';
 import { connectClient } from '../db/openGaussClient.js';
+import { assertLegacyBackground } from './background-scope-policy.js';
 
 export const railwayTicketSchema = z.object({
   version: z.literal('psms.railway-order.v1'), simulated: z.literal(true),
@@ -35,6 +36,7 @@ export class RailwayRuntime {
   private databaseName='';
   constructor(private connect: Connect = connectClient, public intervalSeconds = 15, private embedded = false) {}
   async transaction<T>(fn: (db: Pick<PoolClient,'query'>) => Promise<T>): Promise<T> {
+    assertLegacyBackground('RAILWAY'); // Before any connection or legacy SQL, including startup DDL.
     const db = await this.connect();
     try { await db.query('BEGIN'); const result = await fn(db); await db.query('COMMIT'); return result; }
     catch(e) { await db.query('ROLLBACK'); throw e; } finally { db.release(); }

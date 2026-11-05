@@ -41,7 +41,7 @@ public class TraceService {
       String sql =
           "SELECT DISTINCT e.* FROM events_read e LEFT JOIN event_links l ON l.event_id=e.id WHERE"
               + " e.record_kind='LEGACY_V1' AND e.org_id=? AND ((l.kind=? AND l.target=?) OR"
-              + " (?='EVENT' AND e.source_system||':'||e.source_event_id=?)) LIMIT 501";
+              + " (?='EVENT' AND e.source_system||':'||e.source_event_id=?))"+com.bproject.trust.identity.TrustCentralScope.predicate(com.bproject.trust.identity.TrustCentralScope.Root.EVENT,"e")+" LIMIT 501";
       for (var row : db.queryForList(sql, org, parts[0], parts[1], parts[0], parts[1])) {
         String id = (String) row.get("id");
         if (found.containsKey(id)) continue;
@@ -51,7 +51,7 @@ public class TraceService {
         for (var version :
             db.queryForList(
                 "SELECT source_system,source_event_id FROM events_read WHERE"
-                    + " record_kind='LEGACY_V1' AND root_id=? AND org_id=?",
+                    + " record_kind='LEGACY_V1' AND root_id=? AND org_id=?"+com.bproject.trust.identity.TrustCentralScope.predicate(com.bproject.trust.identity.TrustCentralScope.Root.EVENT,"events_read"),
                 row.get("root_id"),
                 org))
           queue.add(

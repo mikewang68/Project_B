@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { deleteUser, listRoles, listUsers, saveUser, type RoleOption, type SaveUserRequest, type UserView } from '@/api/users'
 import { ApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
+import { centralManagementUrl } from '@/config/centralManagement'
 
 const auth = useAuthStore()
 const loading = ref(false)
@@ -15,6 +16,7 @@ const roles = ref<RoleOption[]>([])
 const form = reactive<SaveUserRequest>({ username: '', mobile: '', displayName: '', password: '', status: 'ENABLED', loginEnabled: true, roleCodes: ['NORMAL'], warehouseCodes: ['default'], ownerCodes: ['default'] })
 
 async function load(): Promise<void> {
+  if (auth.centralAuthorization) return
   loading.value = true
   try { [users.value, roles.value] = await Promise.all([listUsers(), listRoles()]) }
   catch (reason) { ElMessage.error(reason instanceof ApiError ? reason.message : '用户数据加载失败') }
@@ -50,7 +52,15 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="page-stack">
+  <div v-if="auth.centralAuthorization" class="page-stack">
+    <header class="page-heading"><div><p class="eyebrow">SYSTEM</p><h1>人员与岗位管理</h1><p>统一管理账号和岗位，项目、区域及子系统归属随管理员身份确定。</p></div></header>
+    <section class="panel table-panel">
+      <p>请在统一管理端维护本权限范围内的人员与岗位。创建业务操作员时，归属由服务端继承，并检查用户名是否重复。</p>
+      <a v-if="centralManagementUrl" :href="centralManagementUrl" target="_blank" rel="noopener noreferrer" class="el-button el-button--primary">打开人员与岗位管理</a>
+      <p v-else>请从统一门户进入人员与岗位管理。</p>
+    </section>
+  </div>
+  <div v-else class="page-stack">
     <header class="page-heading"><div><p class="eyebrow">SYSTEM</p><h1>用户管理</h1><p>维护公司内账号、角色以及可访问的仓库和货主。</p></div><el-button :disabled="!auth.canWrite('system:user:write')" v-if="auth.hasPermission('system:user:write')" type="primary" @click="openCreate">新建用户</el-button></header>
     <section class="panel table-panel">
       <el-table v-loading="loading" :data="users" stripe>

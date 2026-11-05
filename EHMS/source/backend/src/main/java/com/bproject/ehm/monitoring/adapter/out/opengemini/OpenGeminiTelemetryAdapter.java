@@ -83,7 +83,7 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
         if (start.isAfter(end)) throw new IllegalArgumentException("开始时间不得晚于结束时间");
         String query = "SELECT value,quality,unit,metric,asset_code,source_timestamp,received_at FROM "
                 + MEASUREMENT + " WHERE point_code='" + influxLiteral(pointCode)
-                + "' AND project_id='" + influxLiteral(project()) + "' AND time >= '" + start + "' AND time <= '" + end
+                + "' AND project_id='" + influxLiteral(project()) + "'" + centralTimePredicate() + " AND time >= '" + start + "' AND time <= '" + end
                 + "' ORDER BY time DESC LIMIT " + bounded;
         try {
             // URI overload preserves the single encoding; String overload encodes % a second time.
@@ -104,11 +104,14 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
     }
 
     String lineProtocol(TelemetrySample sample) {
+        var tuple=com.bproject.ehm.platform.security.EhmCentralScope.writeTuple(project());
         Instant eventTime = sample.sourceTimestamp() == null ? Instant.now() : sample.sourceTimestamp();
         long timestampNs = Math.addExact(Math.multiplyExact(eventTime.getEpochSecond(), 1_000_000_000L),
                 eventTime.getNano());
         return MEASUREMENT
                 + ",project_id=" + influxTag(project())
+                + ",region_id=" + influxTag(tuple.regionId())
+                + ",subsystem_code=" + influxTag(tuple.subsystemCode())
                 + ",point_code=" + influxTag(sample.pointCode())
                 + ",asset_code=" + influxTag(sample.assetCode())
                 + ",metric=" + influxTag(sample.metric())
@@ -153,6 +156,17 @@ public class OpenGeminiTelemetryAdapter implements TelemetrySeriesPort {
         } catch (Exception exception) {
             throw new DependencyUnavailableException("openGemini历史结果格式异常", exception);
         }
+    }
+
+    private String centralTimePredicate(){
+        var context=com.bproject.ehm.platform.security.EhmCentralScope.current();
+        if(context==null)return " AND region_id='UNASSIGNED' AND subsystem_code='EHMS'";
+        if(context.scopeMode()==com.bproject.iam.context.ScopeSql.Mode.GLOBAL)return "";
+        if(context.scopeMode()==com.bproject.iam.context.ScopeSql.Mode.DENY)return " AND false";
+        var parts=new ArrayList<String>();
+        for(var tuple:context.activeScope())if(project().equals(tuple.projectId()))
+            parts.add("(region_id='"+influxLiteral(tuple.regionId())+"' AND subsystem_code='"+influxLiteral(tuple.subsystemCode())+"')");
+        return parts.isEmpty()?" AND false":" AND ("+String.join(" OR ",parts)+")";
     }
 
     private static String text(JsonNode row, Map<String, Integer> columns, String name) {

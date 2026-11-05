@@ -33,16 +33,16 @@ const emit = defineEmits<{
       </el-select>
     </label>
     <div class="rule-toolbar__actions">
-      <button v-permission="'safety:module:rule:execute'" type="button" class="rule-btn ghost" @click="emit('mismatch')">
+      <button v-permission="{permission:'safety:module:rule:execute',menu:'SCS:rules',action:'CONFIRM',adapted:false}" type="button" class="rule-btn ghost" @click="emit('mismatch')">
         <el-icon><Warning /></el-icon>模拟版本异常
       </button>
-      <button type="button" class="rule-btn ghost" @click="emit('conflict')">
+      <button v-permission="{permission:'safety:module:rule:execute',menu:'SCS:rules',action:'VIEW',adapted:false}" type="button" class="rule-btn ghost" @click="emit('conflict')">
         <el-icon><Connection /></el-icon>冲突检查
       </button>
-      <button v-permission="'safety:module:rule:execute'" type="button" class="rule-btn ghost" @click="emit('simulate')">
+      <button v-permission="{permission:'safety:module:rule:execute',menu:'SCS:rules',action:'CONFIRM',adapted:false}" type="button" class="rule-btn ghost" @click="emit('simulate')">
         <el-icon><VideoPlay /></el-icon>模拟测试
       </button>
-      <button v-permission="'safety:module:rule:edit'" type="button" class="rule-btn primary" @click="emit('create')">
+      <button v-permission="{permission:'safety:module:rule:edit',menu:'SCS:rules',action:'ADD'}" type="button" class="rule-btn primary" @click="emit('create')">
         <el-icon><Plus /></el-icon>新建规则
       </button>
     </div>

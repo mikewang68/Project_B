@@ -2,15 +2,9 @@
 -- Project_B isolated IAM navigation: full menu snapshot (90 rows)
 --
 -- Purpose
---   Rebuild the exact navigation state used by the isolated demo
---   (8 APP / 15 DIRECTORY rows / 67 PAGE rows, 48 visible pages, 7 formal).
---
--- Why a snapshot instead of replaying batches
---   The historical E17/E18/E20/E21 scripts are incremental UPDATEs against the
---   then-current state. They cannot rebuild 48 visible pages from an empty
---   database. This file is a full state snapshot exported read-only from the
---   running isolated database `iam_sys_demo_lw_20261015_191500_e4f5a6b7`
---   (schema `iam`) on 2026-10-20.
+--   Optional navigation seed for an isolated demonstration installation.
+--   Review the declared applications and paths before applying. Existing
+--   installations use versioned incremental migrations instead of this seed.
 --
 -- Prerequisites
 --   006-navigation-schema.sql      (tables, constraints, hierarchy trigger)
@@ -66,7 +60,7 @@ SELECT 'APP:PSMS', 'PSMS', 'PSMS', 'pps', 'pps', NULL, 'PSMS', 1, 1, 20, '生产
  WHERE NOT EXISTS (SELECT 1 FROM iam_navigation_menu WHERE stable_menu_key = 'APP:PSMS');
 
 INSERT INTO iam_navigation_menu (stable_menu_key, navigation_app_code, source_app_code, source_menu_id, source_parent_id, parent_stable_menu_key, hierarchy_code, original_level, normalized_level, sibling_sort_order, menu_name, projected_display_title, menu_kind, entry_mode, route_path, entry_path, page_key, tab_key, component_path, icon, group_label, visible, enabled, valid, implementation_status, source_stage_note, nav_eligible, nav_exclusion_reason, source_permission_raw, source_reference, content_sha256, row_version, last_operation_source, updated_by, last_batch_id, notes)
-SELECT 'APP:SCS', 'SCS', 'SCS', 'scs', 'scs', NULL, 'SCS', 1, 1, 30, '安全安防系统', '安全安防系统', 'APP', 'NONE', '', '', '', '', '', '', '', 1, 1, 1, 'IMPLEMENTED', 'E18 isolated root', 0, 'CANDIDATE_ROOT_NODE', '', 'E18:APP_SCS', 'e18appscs0000000000000000000000000000000000000000000000000000', 1, 'IMPORT_TOOL', 'E18_AGENT', 'BATCH_E18_ISOLATED', 'SCS 根节点'
+SELECT 'APP:SCS', 'SCS', 'SCS', 'scs', 'scs', NULL, 'SCS', 1, 1, 30, '安全卡控系统', '安全卡控系统', 'APP', 'NONE', '', '', '', '', '', '', '', 1, 1, 1, 'IMPLEMENTED', 'E18 isolated root', 0, 'CANDIDATE_ROOT_NODE', '', 'E18:APP_SCS', 'e18appscs0000000000000000000000000000000000000000000000000000', 1, 'IMPORT_TOOL', 'E18_AGENT', 'BATCH_E18_ISOLATED', 'SCS 根节点'
  WHERE NOT EXISTS (SELECT 1 FROM iam_navigation_menu WHERE stable_menu_key = 'APP:SCS');
 
 INSERT INTO iam_navigation_menu (stable_menu_key, navigation_app_code, source_app_code, source_menu_id, source_parent_id, parent_stable_menu_key, hierarchy_code, original_level, normalized_level, sibling_sort_order, menu_name, projected_display_title, menu_kind, entry_mode, route_path, entry_path, page_key, tab_key, component_path, icon, group_label, visible, enabled, valid, implementation_status, source_stage_note, nav_eligible, nav_exclusion_reason, source_permission_raw, source_reference, content_sha256, row_version, last_operation_source, updated_by, last_batch_id, notes)
@@ -378,7 +372,7 @@ SELECT 'SCS:fences', 'SCS', 'SCS', 'fences', 'SCS', 'SCS:dir-work', 'SCS.E20.03'
  WHERE NOT EXISTS (SELECT 1 FROM iam_navigation_menu WHERE stable_menu_key = 'SCS:fences');
 
 INSERT INTO iam_navigation_menu (stable_menu_key, navigation_app_code, source_app_code, source_menu_id, source_parent_id, parent_stable_menu_key, hierarchy_code, original_level, normalized_level, sibling_sort_order, menu_name, projected_display_title, menu_kind, entry_mode, route_path, entry_path, page_key, tab_key, component_path, icon, group_label, visible, enabled, valid, implementation_status, source_stage_note, nav_eligible, nav_exclusion_reason, source_permission_raw, source_reference, content_sha256, row_version, last_operation_source, updated_by, last_batch_id, notes)
-SELECT 'SCS:overview', 'SCS', 'SCS', 'overview', 'scs', 'SCS:dir-work', 'SCS.01', 2, 3, 5, '安全态势', '安全态势总览', 'PAGE', 'SPA_ROUTE', '/overview', '/safety/overview', '', '', 'src/views/OverviewView.vue', '', '', 1, 1, 1, 'IMPLEMENTED', 'E18 isolated candidate', 0, 'ISOLATED_TEST_ONLY_NOT_RELEASED', 'safety:home:map:view', 'E18:SCS_OVERVIEW', 'e18scsoverview0000000000000000000000000000000000000000000000', 1, 'ADMIN_UI', 'E21_AGENT', 'BATCH_E18_ISOLATED', ''
+SELECT 'SCS:overview', 'SCS', 'SCS', 'overview', 'scs', 'APP:SCS', 'SCS.01', 2, 2, 0, '安全态势', '安全态势总览', 'PAGE', 'SPA_ROUTE', '/overview', '/safety/overview', '', '', 'src/views/OverviewView.vue', '', '', 1, 1, 1, 'IMPLEMENTED', 'E18 isolated candidate', 0, 'ISOLATED_TEST_ONLY_NOT_RELEASED', 'safety:home:map:view', 'E18:SCS_OVERVIEW', 'e18scsoverview0000000000000000000000000000000000000000000000', 1, 'ADMIN_UI', 'E21_AGENT', 'BATCH_E18_ISOLATED', 'SCS owner top-level correction 20261028'
  WHERE NOT EXISTS (SELECT 1 FROM iam_navigation_menu WHERE stable_menu_key = 'SCS:overview');
 
 INSERT INTO iam_navigation_menu (stable_menu_key, navigation_app_code, source_app_code, source_menu_id, source_parent_id, parent_stable_menu_key, hierarchy_code, original_level, normalized_level, sibling_sort_order, menu_name, projected_display_title, menu_kind, entry_mode, route_path, entry_path, page_key, tab_key, component_path, icon, group_label, visible, enabled, valid, implementation_status, source_stage_note, nav_eligible, nav_exclusion_reason, source_permission_raw, source_reference, content_sha256, row_version, last_operation_source, updated_by, last_batch_id, notes)

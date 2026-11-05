@@ -30,6 +30,7 @@ public class SecurityConfig implements WebMvcConfigurer {
     private final PermInterceptor permInterceptor;
     private final AppProperties properties;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final com.bdemo.sys.security.ContextActionInterceptor contextActions=new com.bdemo.sys.security.ContextActionInterceptor();
 
     public SecurityConfig(JwtService jwtService, LoginUserLoader loginUserLoader,
                           PermInterceptor permInterceptor, AppProperties properties) {
@@ -70,6 +71,7 @@ public class SecurityConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(contextActions).addPathPatterns("/**");
         registry.addInterceptor(permInterceptor).addPathPatterns("/**");
     }
 

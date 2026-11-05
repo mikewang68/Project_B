@@ -89,7 +89,7 @@ const emit = defineEmits<{
       </div>
 
       <footer class="rule-drawer-footer">
-        <button v-permission="'safety:module:rule:execute'" type="button" class="rule-btn ghost" @click="emit('simulate', rule)">模拟测试</button>
+        <button v-permission="{permission:'safety:module:rule:execute',menu:'SCS:rules',action:'CONFIRM',adapted:false}" type="button" class="rule-btn ghost" @click="emit('simulate', rule)">模拟测试</button>
         <div class="rule-drawer-footer__right">
           <button v-for="a in ruleActionsOf(rule.status)" :key="a" v-permission="ruleActionPermission(a)" type="button"
             class="rule-btn" :class="{ primary: ['提交评审', '批准', '发布', '重新下发'].includes(a), danger: a === '回滚' }"

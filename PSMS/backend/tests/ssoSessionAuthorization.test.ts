@@ -6,11 +6,11 @@ import type { Server } from 'node:http';
 import express from 'express';
 
 const fake = vi.hoisted(() => ({
-  env: { PSMS_SSO_ENABLED: true, PSMS_IAM_BASE_URL: 'http://iam.example.test',
+  env: { LOG_LEVEL: 'silent', PSMS_SSO_ENABLED: true, PSMS_IAM_BASE_URL: 'http://iam.example.test',
     PSMS_SSO_SERVICE_TOKEN: 'test-only-service-credential-value', PSMS_SSO_BINDINGS_FILE: '', PSMS_COOKIE_SECURE: true },
   user: { _id: 'local-user', username: 'scoped-reader', actorId: 'local-actor', roleCode: 'viewer', dataScope: ['AREA-A'] },
 }));
-vi.mock('../src/config/env.js', () => ({ env: fake.env }));
+vi.mock('../src/config/env.js', () => ({ env: fake.env, isDev: false }));
 vi.mock('../src/db/tables.js', () => ({ User: { findById: () => ({ lean: async () => ({ ...fake.user }) }) } }));
 
 const subject = '123456781234123412341234567890ab';
@@ -46,7 +46,9 @@ beforeAll(async () => {
 
 beforeEach(() => {
   calls = 0; online = true;
+  fake.user._id = 'local-user'; fake.user.username = 'scoped-reader';
   fake.user.roleCode = 'viewer'; fake.user.dataScope = ['AREA-A'];
+  writeFileSync(fake.env.PSMS_SSO_BINDINGS_FILE, JSON.stringify({ [subject]: { userId: fake.user._id, enabled: true } }));
   current = { subject, sessionId: `test-session-${crypto.randomUUID()}`, localSubject: fake.user.username,
     audience: 'psms', readOnly: true, superAdmin: false, permissions: ['plan:view', 'overview:view'] };
 });
@@ -68,6 +70,23 @@ async function exchange() {
 }
 
 describe('native SSO session uses current authorization on every request', () => {
+  it('accepts a newly published independent identity without restarting the router', async () => {
+    const newSubject = 'abcdefabcdefabcdefabcdefabcdefab';
+    current.subject = newSubject; current.localSubject = 'new-scoped-reader';
+    fake.user._id = 'new-local-user'; fake.user.username = current.localSubject;
+    writeFileSync(fake.env.PSMS_SSO_BINDINGS_FILE, JSON.stringify({ [newSubject]: { userId: fake.user._id, enabled: true } }));
+    const { cookie } = await exchange();
+    expect((await actualFetch(`${base}/api/plans`, { headers: { cookie } })).status).toBe(200);
+    expect(calls).toBe(1);
+  });
+
+  it('rejects an existing cookie immediately when its local mapping is disabled', async () => {
+    const { cookie } = await exchange();
+    writeFileSync(fake.env.PSMS_SSO_BINDINGS_FILE, JSON.stringify({ [subject]: { userId: fake.user._id, enabled: false } }));
+    expect((await actualFetch(`${base}/api/plans`, { headers: { cookie } })).status).toBe(401);
+    expect(calls).toBe(0);
+  });
+
   it('removes and restores a plan grant without replacing the native cookie', async () => {
     const { cookie } = await exchange();
     expect((await actualFetch(`${base}/api/plans`, { headers: { cookie } })).status).toBe(200);

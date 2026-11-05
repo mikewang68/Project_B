@@ -21,6 +21,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final LoginUserLoader loader;
     private com.bdemo.iam.sso.SsoAuthorizationService nativeAuthorization;
+    private com.bdemo.iam.scope.ScopeContextService scopeContexts;
+    public JwtAuthFilter withScopeContexts(com.bdemo.iam.scope.ScopeContextService service) {
+        scopeContexts=service;return this;
+    }
     public JwtAuthFilter withNativeAuthorization(com.bdemo.iam.sso.SsoAuthorizationService service) {
         nativeAuthorization=service;return this;
     }
@@ -59,9 +63,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 LoginUser user=loader.load(subject);
                 if(user==null)throw new com.bdemo.iam.sso.SsoTicketService.SsoTicketException("账号不可用");
                 request.setAttribute("iam.sessionId",sid);
+                if(scopeContexts!=null)scopeContexts.forRequest(user,request);
                 SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user,null,AuthorityUtils.NO_AUTHORITIES));
                 filterChain.doFilter(request,response);return;
-            }catch(com.bdemo.iam.sso.SsoTicketService.SsoTicketException denied){
+            }catch(com.bdemo.iam.sso.SsoTicketService.SsoTicketException | com.bdemo.iam.common.BizException denied){
                 nativeSession.invalidate();response.setStatus(401);response.setContentType("application/json;charset=UTF-8");
                 response.getWriter().write("{\"code\":401,\"message\":\"会话或授权已失效\"}");return;
             }
@@ -81,11 +86,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
                 LoginUser loginUser = loader.load(userId);
                 if (loginUser != null) {
+                    if(scopeContexts!=null)scopeContexts.forRequest(loginUser,request);
                     var authentication = new UsernamePasswordAuthenticationToken(
                             loginUser, null, AuthorityUtils.NO_AUTHORITIES);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
-            } catch (JwtException | IllegalArgumentException e) {
+            } catch (JwtException | IllegalArgumentException | com.bdemo.iam.common.BizException e) {
                 SecurityContextHolder.clearContext();
             }
         }

@@ -23,7 +23,7 @@ public interface DictMapper {
                    created_at AS createdAt, updated_at AS updatedAt
             FROM sys_dict_type
             WHERE deleted = 0
-            <if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> ORDER BY sort_order, created_at
+            <if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} ORDER BY sort_order, created_at
 
 </script>
 """)
@@ -36,7 +36,7 @@ public interface DictMapper {
             FROM sys_dict_type
             WHERE id = #{id} AND deleted = 0
 
-<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>
+<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>
 """)
     DictType selectTypeById(@Param("id") String id);
 
@@ -47,20 +47,20 @@ public interface DictMapper {
             FROM sys_dict_type
             WHERE dict_code = #{code} AND deleted = 0
 
-<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>
+<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>
 """)
     DictType selectTypeByCode(@Param("code") String code);
 
-    @Select("<script>SELECT COUNT(1) FROM sys_dict_type WHERE dict_code = #{code} AND deleted = 0<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>")
+    @Select("<script>SELECT COUNT(1) FROM sys_dict_type WHERE dict_code = #{code} AND deleted = 0<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>")
     int countTypeByCode(@Param("code") String code);
 
     @Insert("""
-            INSERT INTO sys_dict_type
-              (owner_app_code, id, dict_code, dict_name, remark, status, sort_order, created_at, updated_at, deleted)
+            <script>INSERT INTO sys_dict_type
+              (<if test='@com.bdemo.sys.security.ResourceScope@version2()'>scope_kind,</if>owner_app_code, id, dict_code, dict_name, remark, status, sort_order, created_at, updated_at, deleted)
             VALUES
-              ('SYS', #{id}, #{code}, #{name}, #{remark}, #{status},
+              (<if test='@com.bdemo.sys.security.ResourceScope@version2()'>'GLOBAL',</if>'SYS', #{id}, #{code}, #{name}, #{remark}, #{status},
                COALESCE((SELECT MAX(sort_order) + 1 FROM sys_dict_type t), 1),
-               #{now}, #{now}, 0)
+               #{now}, #{now}, 0)</script>
             """)
     int insertType(@Param("id") String id, @Param("code") String code, @Param("name") String name,
                    @Param("remark") String remark, @Param("status") String status,
@@ -72,12 +72,12 @@ public interface DictMapper {
             SET dict_name = #{name}, remark = #{remark}, status = #{status}, updated_at = #{now}
             WHERE id = #{id} AND deleted = 0
 
-<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>
+<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>
 """)
     int updateType(@Param("id") String id, @Param("name") String name, @Param("remark") String remark,
                    @Param("status") String status, @Param("now") LocalDateTime now);
 
-    @Update("<script>UPDATE sys_dict_type SET deleted = 1, updated_at = #{now} WHERE id = #{id}<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>")
+    @Update("<script>UPDATE sys_dict_type SET deleted = 1, updated_at = #{now} WHERE id = #{id}<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>")
     int logicDeleteType(@Param("id") String id, @Param("now") LocalDateTime now);
 
     // ---------------- 字典项 ----------------
@@ -90,7 +90,7 @@ public interface DictMapper {
             FROM sys_dict_item
             WHERE deleted = 0
             <if test="typeCode != null"> AND type_code = #{typeCode} </if>
-            <if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> ORDER BY type_code, sort_order, created_at
+            <if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} ORDER BY type_code, sort_order, created_at
             </script>
             """)
     List<DictItem> selectItems(@Param("typeCode") String typeCode);
@@ -103,7 +103,7 @@ public interface DictMapper {
             FROM sys_dict_item
             WHERE id = #{id} AND deleted = 0
 
-<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>
+<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>
 """)
     DictItem selectItemById(@Param("id") String id);
 
@@ -113,18 +113,18 @@ public interface DictMapper {
             WHERE type_code = #{typeCode} AND item_value = #{value} AND deleted = 0
               AND (CAST(#{excludeId} AS VARCHAR) IS NULL OR id &lt;&gt; #{excludeId})
 
-<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>
+<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>
 """)
     int countItemValue(@Param("typeCode") String typeCode, @Param("value") String value,
                        @Param("excludeId") String excludeId);
 
     @Insert("""
-            INSERT INTO sys_dict_item
-              (owner_app_code, id, type_code, item_value, item_label, tag_type, sort_order, status, remark,
+            <script>INSERT INTO sys_dict_item
+              (<if test='@com.bdemo.sys.security.ResourceScope@version2()'>scope_kind,</if>owner_app_code, id, type_code, item_value, item_label, tag_type, sort_order, status, remark,
                created_at, updated_at, deleted)
             VALUES
-              ('SYS', #{id}, #{typeCode}, #{value}, #{label}, #{tagType}, #{sort}, #{status}, #{remark},
-               #{now}, #{now}, 0)
+              (<if test='@com.bdemo.sys.security.ResourceScope@version2()'>'GLOBAL',</if>'SYS', #{id}, #{typeCode}, #{value}, #{label}, #{tagType}, #{sort}, #{status}, #{remark},
+               #{now}, #{now}, 0)</script>
             """)
     int insertItem(@Param("id") String id, @Param("typeCode") String typeCode,
                    @Param("value") String value, @Param("label") String label,
@@ -139,18 +139,18 @@ public interface DictMapper {
                 status = #{status}, remark = #{remark}, updated_at = #{now}
             WHERE id = #{id} AND deleted = 0
 
-<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>
+<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>
 """)
     int updateItem(@Param("id") String id, @Param("label") String label, @Param("tagType") String tagType,
                    @Param("sort") Integer sort, @Param("status") String status,
                    @Param("remark") String remark, @Param("now") LocalDateTime now);
 
-    @Update("<script>UPDATE sys_dict_item SET deleted = 1, updated_at = #{now} WHERE id = #{id}<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>")
+    @Update("<script>UPDATE sys_dict_item SET deleted = 1, updated_at = #{now} WHERE id = #{id}<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>")
     int logicDeleteItem(@Param("id") String id, @Param("now") LocalDateTime now);
 
-    @Update("<script>UPDATE sys_dict_item SET deleted = 1, updated_at = #{now} WHERE type_code = #{typeCode}<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>")
+    @Update("<script>UPDATE sys_dict_item SET deleted = 1, updated_at = #{now} WHERE type_code = #{typeCode}<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>")
     int logicDeleteItemsByType(@Param("typeCode") String typeCode, @Param("now") LocalDateTime now);
 
-    @Delete("<script>DELETE FROM sys_dict_item WHERE type_code = #{typeCode}<if test='!@com.bdemo.sys.security.ResourceScope@globalRead()'> AND owner_app_code='SYS' </if> </script>")
+    @Delete("<script>DELETE FROM sys_dict_item WHERE type_code = #{typeCode}<if test='@com.bdemo.sys.security.ResourceScope@version2()'> AND scope_kind='GLOBAL' </if> ${@com.bdemo.sys.security.ResourceScope@catalogOwnerCondition()} </script>")
     int hardDeleteItemsByType(@Param("typeCode") String typeCode);
 }

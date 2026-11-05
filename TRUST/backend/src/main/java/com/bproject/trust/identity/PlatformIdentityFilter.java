@@ -21,6 +21,10 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
   private final PlatformIdentity iam;
   private final IntegrationSettings settings;
   private com.bproject.trust.logevidence.LogOperations operationLogs;
+  private TrustSsoSessions ssoSessions;
+  private boolean unifiedSessionRequired;
+  public PlatformIdentityFilter withSso(TrustSsoSessions value) { ssoSessions=value; return this; }
+  public PlatformIdentityFilter withUnifiedSessionRequired(boolean value){unifiedSessionRequired=value;return this;}
 
   public PlatformIdentityFilter(PlatformIdentity iam, IntegrationSettings settings) {
     this.iam = iam;
@@ -49,6 +53,29 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
       return;
     }
     try {
+      var nativeSession = request.getSession(false);
+      if (ssoSessions != null && nativeSession != null
+          && nativeSession.getAttribute(TrustSsoSessions.ATTRIBUTE) instanceof TrustSsoSessions.Binding binding
+          && !path.startsWith("/api/v1/auth/sso/") && !path.equals("/api/v1/logout")) {
+        var current = ssoSessions.current(binding);
+        var authorities = new ArrayList<SimpleGrantedAuthority>();
+        current.permissions().forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
+        if(current.permissions().stream().anyMatch(p -> p.equals("trust:event:submit") || p.equals("trust:event:correct") || p.equals("trust:evidence:upload") || p.equals("trust:task:retry")))
+          authorities.add(new SimpleGrantedAuthority("ROLE_EDITOR"));
+        if(current.permissions().contains("trust:audit:read"))authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        SecurityContextHolder.getContext().setAuthentication(
+            UsernamePasswordAuthenticationToken.authenticated(current.principal(),null,authorities));
+        if(current.context()!=null&&!TrustCentralScope.permits(current.context(),request.getMethod(),path))throw new ApiError(403,"当前功能或操作未获授权");
+        if(current.context()==null&&current.principal().readOnly()&&!ReadOnlyPolicy.permits(path,request.getMethod()))
+          throw new ApiError(403,"当前身份为只读，禁止此操作");
+        String permission=current.context()!=null&&path.endsWith("/download")?"trust:evidence:download":
+            current.context()!=null&&path.equals("/api/v1/trace")?"trust:trace:read":requiredPermission(path,request.getMethod());
+        if(permission!=null&&!current.permissions().contains(permission))throw new ApiError(403,"缺少业务操作权限");
+        try(var scope=TrustCentralScope.bind(current.context())){chain.doFilter(request,response);}
+        catch(IOException|ServletException failure){throw failure;}catch(Exception failure){throw new ServletException(failure);}return;
+      }
+      if(unifiedSessionRequired&&path.startsWith("/api/v1/")&&!path.startsWith("/api/v1/integrations/")&&!path.startsWith("/api/v1/auth/sso/"))
+        throw new ApiError(401,"UNIFIED_SESSION_REQUIRED");
       if (path.startsWith("/api/v1/integrations/")) {
         String authorization = request.getHeader("Authorization");
         if (authorization == null || !authorization.startsWith("Bearer "))
@@ -78,6 +105,7 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
             localLoginEnabled && (path.equals("/api/v1/login") || path.equals("/api/v1/dev-login"));
         if (path.startsWith("/api/v1/")
             && !path.equals("/api/v1/iam/login")
+            && !path.startsWith("/api/v1/auth/sso/")
             && !path.equals("/api/v1/csrf")
             && !path.equals("/api/v1/logout")
             && configuration.iamRequired()

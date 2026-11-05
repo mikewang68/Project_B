@@ -76,7 +76,7 @@ function formatTimestamp(value: string): string {
 }
 
 function planStatusTone(status: Plan['status']): PlanLedgerRowViewModel['statusTone'] {
-  if (status === 'CONFIRMED' || status === 'DECOMPOSED') return 'success';
+  if (status === 'CONFIRMED' || status === 'DECOMPOSED' || status === 'COMPLETED') return 'success';
   if (status === 'BLOCKED') return 'error';
   if (status === 'PENDING_CONFIRM' || status === 'ADJUSTED') return 'warning';
   if (status === 'CANCELLED') return 'default';
@@ -97,6 +97,10 @@ function planProgressPresentation(
       return { percent: 100, label: '已确认', status: 'success' };
     case 'DECOMPOSED':
       return { percent: 100, label: '已拆解', status: 'success' };
+    case 'IN_PROGRESS':
+      return { percent: 100, label: '已下达执行（进度见工单）', status: 'normal' };
+    case 'COMPLETED':
+      return { percent: 100, label: '已完成', status: 'success' };
     case 'BLOCKED':
       return { percent: 50, label: '流程阻断', status: 'exception' };
     case 'CANCELLED':
@@ -531,7 +535,7 @@ function workflowStepIndex(status: PlanLedgerRowViewModel['status']): number {
   if (status === 'VALIDATING') return 1;
   if (status === 'BLOCKED' || status === 'ADJUSTED') return 2;
   if (status === 'PENDING_CONFIRM') return 3;
-  if (status === 'CONFIRMED' || status === 'DECOMPOSED') return 4;
+  if (status === 'CONFIRMED' || status === 'DECOMPOSED' || status === 'IN_PROGRESS' || status === 'COMPLETED') return 4;
   return 0;
 }
 

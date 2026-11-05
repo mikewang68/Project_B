@@ -4,6 +4,7 @@ import { getRouters } from '@/api/menu'
 import Layout from '@/layout/index'
 import ParentView from '@/components/ParentView'
 import InnerLink from '@/layout/components/InnerLink'
+import useUserStore from '@/store/modules/user'
 
 // 匹配views里面所有的.vue文件
 const modules = import.meta.glob('./../../views/**/*.vue')
@@ -33,7 +34,7 @@ const usePermissionStore = defineStore(
         this.sidebarRouters = routes
       },
       generateRoutes(roles) {
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
           // 向后端请求路由数据
           getRouters().then(res => {
             const sdata = JSON.parse(JSON.stringify(res.data))
@@ -45,11 +46,14 @@ const usePermissionStore = defineStore(
             const asyncRoutes = filterDynamicRoutes(dynamicRoutes)
             asyncRoutes.forEach(route => { router.addRoute(route) })
             this.setRoutes(rewriteRoutes)
-            this.setSidebarRouters(constantRoutes.concat(sidebarRoutes))
+            const staticMenus = useUserStore().centralAuthorization?.version === 2
+              ? constantRoutes.filter(route => route.path !== '')
+              : constantRoutes
+            this.setSidebarRouters(staticMenus.concat(sidebarRoutes))
             this.setDefaultRoutes(sidebarRoutes)
             this.setTopbarRoutes(defaultRoutes)
             resolve(rewriteRoutes)
-          })
+          }).catch(reject)
         })
       }
     }

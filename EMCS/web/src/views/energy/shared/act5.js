@@ -1,3 +1,4 @@
+import { resourceAction } from '../../../utils/central-authorization.js'
 // 第五幕成本与报表共享交互辅助｜REQ-051–062、073/074
 
 const costFilterKeys = Object.freeze([
@@ -58,11 +59,24 @@ export function errorStatus(error) {
 }
 
 // REQ-073/074：骨架把 admin 当全局角色，成本业务写入口必须显式收窄。
-export function costBusinessAccess(roles = []) {
+export function costBusinessAccess(roles = [], authorization = null) {
   const values = new Set(roles)
   const readOnlyAdmin = values.has('admin')
   const finance = !readOnlyAdmin && values.has('finance')
   const manager = !readOnlyAdmin && values.has('energy_mgr')
+  if (authorization?.version === 2) {
+    const admin = values.has('admin')
+    const global = authorization.adminLevel === 'L1_SUPER' && authorization.scopeMode === 'GLOBAL'
+    const allowed = (native, menu, action) => resourceAction(native, authorization, menu, action)
+    return {
+      tariff: global && allowed(admin || finance || manager, 'EMCS:2013', 'ADD'),
+      allocation: global && allowed(admin || finance, 'EMCS:2013', 'ADD'),
+      recompute: allowed(admin || finance || manager, 'EMCS:2013', 'ADD'),
+      review: allowed(admin || finance, 'EMCS:2013', 'CONFIRM'),
+      suggestion: allowed(admin || finance || manager, 'EMCS:2011', 'ADD'),
+      report: allowed(admin || finance || manager, 'EMCS:2014', 'VIEW')
+    }
+  }
   return {
     tariff: finance || manager,
     allocation: finance,

@@ -6,6 +6,7 @@ public final class EhmBusinessPermissions {
     private EhmBusinessPermissions(){}
     public static boolean permitsWorkOrderStatus(EhmSsoSessions.Actor actor,String status){
         if(actor.readOnly())return false;
+        if(actor.context()!=null&&!actor.context().hasAction("EHMS:workorders","CONFIRM"))return false;
         if(actor.admin())return true;
         var target=com.bproject.ehm.maintenance.domain.model.WorkOrderStatus.from(status);
         String operation=Set.of(com.bproject.ehm.maintenance.domain.model.WorkOrderStatus.APPROVED,
@@ -13,6 +14,7 @@ public final class EhmBusinessPermissions {
         return actor.permissions().contains("ehealth:maint:order:"+operation);
     }
     public static boolean permits(EhmSsoSessions.Actor actor,String method,String path){
+        if(!EhmCentralScope.permits(actor.context(),method,path))return false;
         boolean read=Set.of("GET","HEAD").contains(method);
         if(path.equals("/api/ehm/v1/auth/me"))return read;
         if(path.equals("/api/ehm/v1/auth/logout")||path.equals("/api/ehm/v1/system/client-events"))return true;
@@ -22,7 +24,13 @@ public final class EhmBusinessPermissions {
         if(actor.globalRead()&&read&&!export)return true;
         if(read&&path.equals("/api/ehm/v1/system/simulation"))return actor.permissions().contains("ehealth:wb:cockpit:view");
         String relative=path.replaceFirst("^/api/ehm/v1/","");String permission;
-        if(relative.startsWith("devices"))permission="ehealth:asset:archive:"+(export?"export":read?"view":"edit");
+        var governance=EhmCentralScope.governanceRoute(method,relative);
+        if(governance!=null)return actor.permissions().contains(governance.nativePermission());
+        if(relative.matches("shared-dispatch/(plans|work-orders)(/[-_a-zA-Z0-9]{1,128})?")&&read)permission="ehealth:maint:order:view";
+        else if(relative.matches("telemetry/points/[^/]+/samples")&&read)permission="ehealth:rt:realtime:view";
+        else if(Set.of("data-quality/points","data-quality/summary").contains(relative)&&read)permission="ehealth:edge:quality:view";
+        else if(relative.matches("data-quality/points/[^/]+/sample")&&method.equals("POST"))permission="ehealth:edge:quality:execute";
+        else if(relative.startsWith("devices"))permission="ehealth:asset:archive:"+(export?"export":read?"view":"edit");
         else if(relative.startsWith("work-orders"))permission="ehealth:maint:order:"+(export?"export":read?"view":relative.matches("work-orders/[^/]+/(approve|reject)")?"approve":"execute");
         else if(relative.startsWith("alarms"))permission="ehealth:alert:center:"+(export?"export":read?"view":"execute");
         else if(read&&(relative.equals("dashboard/summary")||relative.equals("analytics/overview")||relative.startsWith("workbench")||relative.startsWith("cockpit")))permission="ehealth:wb:cockpit:"+(export?"export":"view");

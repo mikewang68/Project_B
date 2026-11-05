@@ -24,7 +24,8 @@ public class DashboardService {
         long warehouseId = tenant.currentWarehouse().id();
         long ownerId = tenant.currentOwner().id();
         return new DashboardSummary(
-                repository.warehouseCount(principal.companyId()),
+                com.mt.wms.auth.sso.WmsCentralScope.current() == null
+                        ? repository.warehouseCount(principal.companyId()) : tenant.warehouses().size(),
                 repository.stockInPending(principal.companyId(), warehouseId, ownerId),
                 repository.stockOutPending(principal.companyId(), warehouseId, ownerId),
                 repository.inventoryAlertCount(principal.companyId(), warehouseId, ownerId),

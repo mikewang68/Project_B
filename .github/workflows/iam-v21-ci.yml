@@ -1,0 +1,94 @@
+name: IAM V2 source integration
+
+on:
+  pull_request:
+    paths:
+      - 'IAM/**'
+      - 'SYS/**'
+      - 'PSMS/**'
+      - 'WMS/**'
+      - 'EHMS/**'
+      - 'EMCS/**'
+      - 'TRUST/**'
+      - 'AUDIT/client/**'
+      - '.github/workflows/iam-v21-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iam-v21-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  java:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [IAM/backend, SYS/backend, WMS, EHMS/source/backend, EMCS/backend-java, TRUST/backend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Install shared source dependencies
+        run: |
+          mvn -B -f AUDIT/pom.xml -pl client -am -DskipTests install
+          mvn -B -f IAM/context-client/pom.xml -DskipTests install
+      - name: Compile application and test sources
+        run: mvn -B -f '${{ matrix.module }}/pom.xml' -DskipTests -Dexec.skip=true package
+      - name: Verify environment-independent IAM guards
+        if: matrix.module == 'IAM/backend'
+        run: mvn -B -f IAM/backend/pom.xml -Dtest=IdentityIsolationGuardTest,ScopeSqlTest,NativeScopeReadinessTest -Dsurefire.failIfNoSpecifiedTests=false test
+
+  typescript:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - run: corepack enable && corepack prepare pnpm@10.34.5 --activate
+      - name: Build context SDK
+        working-directory: IAM/context-client-ts
+        run: |
+          pnpm install --ignore-workspace --frozen-lockfile
+          pnpm build
+          pnpm test
+      - name: Compile PSMS backend
+        working-directory: PSMS/backend
+        run: |
+          pnpm install --ignore-workspace --frozen-lockfile
+          pnpm typecheck
+          pnpm build
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {module: IAM, command: build}
+          - {module: SYS, command: build}
+          - {module: PSMS, command: build}
+          - {module: WMS/frontend, command: verify-and-build}
+          - {module: EMCS/web, command: 'build:prod'}
+          - {module: TRUST/frontend, command: build}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - run: corepack enable && corepack prepare pnpm@10.34.5 --activate
+      - name: Install locked dependencies and build
+        working-directory: ${{ matrix.module }}
+        run: |
+          pnpm install --ignore-workspace --frozen-lockfile
+          pnpm run '${{ matrix.command }}'

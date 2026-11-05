@@ -218,6 +218,7 @@
           </section>
 
           <section v-else class="detail-actions" aria-label="后端授权的建议动作">
+            <el-alert v-if="detail.verificationCapability === 'NOT_IMPLEMENTED'" :title="detail.verificationMessage" type="warning" :closable="false" />
             <el-button
               v-for="action in visibleActions"
               :key="action.value"
@@ -434,6 +435,8 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import useUserStore from '@/store/modules/user'
+import { resourceAction } from '@/utils/central-authorization'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getErrorStatus as getRequestErrorStatus } from '@/utils/requestError'
@@ -475,6 +478,8 @@ defineOptions({ name: 'EnergyAlertSuggestion' })
 
 // 双主题响应式：切顶栏夜览时四维验证对比图即时重绘
 const theme = useChartTheme()
+const scopeUser = useUserStore()
+const scopeCan = (action) => resourceAction(true, scopeUser.centralAuthorization, 'EMCS:2011', action)
 
 const route = useRoute()
 const router = useRouter()
@@ -550,7 +555,7 @@ const actionDefinitions = Object.freeze({
 })
 
 const visibleActions = computed(() => (detail.value?.allowedActions || [])
-  .filter((action) => actionDefinitions[action])
+  .filter((action) => actionDefinitions[action] && scopeCan(action === 'addActivity' ? 'EDIT' : 'CONFIRM'))
   .map((action) => ({ value: action, ...actionDefinitions[action] })))
 
 const priorityFactorRows = computed(() => {
@@ -679,6 +684,7 @@ function clearDetailQuery() {
 }
 
 function openAction(action) {
+  if (!scopeCan(action === 'addActivity' ? 'EDIT' : 'CONFIRM')) return
   if (!(detail.value?.allowedActions || []).includes(action)) return
   if (action === 'generateVerification') {
     generateVerification()

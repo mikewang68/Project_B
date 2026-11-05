@@ -23,7 +23,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -73,12 +77,33 @@ public class DictController {
         return R.ok();
     }
 
+    @PostMapping("/types/batch-delete")
+    @RequirePerm("sys:dict:type:delete")
+    public R<Integer> batchDeleteTypes(@RequestBody List<String> ids, HttpServletRequest http) {
+        int deleted = dictService.deleteTypes(ids);
+        record(http, "delete", "BATCH", "批量删除字典分类：" + deleted + " 项");
+        return R.ok(deleted);
+    }
+
     // ---------------- 字典项 ----------------
 
     @GetMapping("/items")
     @RequirePerm("sys:dict:item:view")
     public R<List<DictItem>> items(@RequestParam(required = false) String typeCode) {
         return R.ok(dictService.listItems(typeCode));
+    }
+
+    @GetMapping("/export")
+    @RequirePerm("sys:dict:item:view")
+    public ResponseEntity<byte[]> export(@RequestParam(required = false) String typeCode,
+                                         HttpServletRequest http) {
+        byte[] bytes = dictService.exportCsv(typeCode).getBytes(StandardCharsets.UTF_8);
+        record(http, "export", typeCode == null || typeCode.isBlank() ? "ALL" : typeCode,
+                "导出数据字典" + (typeCode == null || typeCode.isBlank() ? "" : "「" + typeCode + "」"));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"sys-dict.csv\"")
+                .contentType(MediaType.valueOf("text/csv;charset=UTF-8"))
+                .body(bytes);
     }
 
     @PostMapping("/items")
@@ -109,6 +134,14 @@ public class DictController {
                 item == null ? id : item.getTypeCode() + "." + item.getValue(),
                 "删除字典项「" + (item == null ? id : item.getLabel()) + "」");
         return R.ok();
+    }
+
+    @PostMapping("/items/batch-delete")
+    @RequirePerm("sys:dict:item:delete")
+    public R<Integer> batchDeleteItems(@RequestBody List<String> ids, HttpServletRequest http) {
+        int deleted = dictService.deleteItems(ids);
+        record(http, "delete", "BATCH", "批量删除字典项：" + deleted + " 项");
+        return R.ok(deleted);
     }
 
     private void record(HttpServletRequest http, String action, String target, String detail) {

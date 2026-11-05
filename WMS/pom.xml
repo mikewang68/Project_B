@@ -26,6 +26,7 @@
     </properties>
 
     <dependencies>
+        <!-- IAM context-client 2.1.0 source is vendored unchanged under com/bproject/iam/context. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>

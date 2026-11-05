@@ -61,6 +61,7 @@ public class UserController {
     @GetMapping("/{id}/effective-permissions")
     @RequirePerm("iam:user:list:view")
     public R<EffectivePermissionView> effectivePermissions(@PathVariable String id) {
+        userService.get(id);
         return R.ok(effectivePermissionService.getView(id));
     }
 
@@ -68,6 +69,7 @@ public class UserController {
     @RequirePerm("iam:user:list:view")
     public R<PermissionExplanation> explainPermission(@PathVariable String id,
                                                       @RequestParam String code) {
+        userService.get(id);
         return R.ok(effectivePermissionService.explain(id, code));
     }
 

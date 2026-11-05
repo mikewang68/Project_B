@@ -21,7 +21,7 @@ public class AuditController {
   }
 
   @GetMapping("/audit")
-  @PreAuthorize("hasRole('ADMIN')")
+  @PreAuthorize("hasAuthority('trust:audit:read') or hasRole('ADMIN')")
   public List<Map<String, Object>> audit(Authentication a) {
     return audit.list(identity.org(a));
   }

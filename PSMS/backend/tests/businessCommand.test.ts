@@ -4,6 +4,8 @@ vi.mock('../src/db/openGaussClient.js',()=>({connectClient:vi.fn()}));
 vi.mock('../src/lib/logger.js',()=>({logger:{error:vi.fn()}}));
 import { businessTransition,executeBusinessCommand,createBusinessWorkOrder } from '../src/services/business-command.service.js';
 import { mayWriteBusinessRoute } from '../src/middleware/sso-policy.js';
+import { runWithCentralScope } from '../src/middleware/central-scope.js';
+import { buildFilters, type UserContext } from '@bproject/iam-context-client';
 const query=vi.fn(),release=vi.fn(),connect=vi.fn(async()=>({query,release}) as unknown as PoolClient);
 const actor={actorId:'local-actor',subject:'stable-iam-subject',roleCode:'admin',dataScope:['GLOBAL']};
 const input={action:'acknowledge',expectedVersion:'v1',reason:'核对设备异常'};
@@ -11,6 +13,27 @@ beforeEach(()=>{vi.clearAllMocks();query.mockImplementation(async(sql:string)=>(
   ?[{id:'EX-1',status:'OPEN',work_area:'AREA-A',record_version:'v1'}]:sql.startsWith('UPDATE')
   ?[{id:'EX-1',status:'ACKNOWLEDGED',record_version:'v2'}]:[]}));});
 describe('business command transaction',()=>{
+ it('allocates the global queue counter while retaining tuple guards on the actual vehicle',async()=>{
+  const triple={projectId:'PROJECT_B',regionId:'SHEN_TIE',subsystemCode:'PSMS'};
+  const scope={...buildFilters('SCOPED',[triple]),...triple,contextVersion:2,
+   userId:'central-user',userCode:'central-user',username:'operator',displayName:'operator',
+   adminLevel:'L4_OPERATOR',readOnly:false,serviceAudience:'PSMS',scopeMode:'SCOPED',
+   allowedScopes:[triple],activeScope:[triple],roles:['job'],visibleMenuKeys:['PSMS:ui-006'],
+   menuOperations:{'PSMS:ui-006':['VIEW','EDIT','CONFIRM']},managementCapabilities:[],authorizationVersion:'1'} as UserContext;
+  query.mockImplementation(async(sql:string)=>({rows:sql.startsWith('SELECT *')
+   ?[{id:'A1',status:'APPROVED',record_version:'v1'}]
+   :sql.startsWith('SELECT COALESCE(max(queue_number)')?[{maximum:10}]
+   :sql.startsWith('UPDATE')?[{id:'A1',status:'QUEUED'}]:[]}));
+  await runWithCentralScope(scope,()=>executeBusinessCommand('appointments','A1',
+   {...input,action:'checkin'},actor,connect));
+  const max=query.mock.calls.find(([sql])=>sql.startsWith('SELECT COALESCE(max(queue_number)'));
+  expect(max?.[0]).not.toContain('project_id');
+  expect(query.mock.calls.findIndex(([sql])=>sql.startsWith('LOCK TABLE'))).toBeLessThan(query.mock.calls.indexOf(max!));
+  const read=query.mock.calls.find(([sql])=>sql.startsWith('SELECT *'));
+  expect(read?.[0]).toContain('project_id');expect(read?.[1]).toContain('SHEN_TIE');
+  const write=query.mock.calls.find(([sql])=>sql.startsWith('UPDATE'));
+  expect(write?.[0]).toContain('project_id');expect(write?.[1]).toContain(11);expect(write?.[1]).toContain('SHEN_TIE');
+ });
  it('requires explicit states, including human approval before vehicle arrival',()=>{
   expect(()=>businessTransition('appointments','enter','PENDING')).toThrow('状态');
   expect(()=>businessTransition('work-orders','complete','DRAFT')).toThrow('状态');

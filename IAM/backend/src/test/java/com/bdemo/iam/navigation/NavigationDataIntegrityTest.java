@@ -47,6 +47,7 @@ public class NavigationDataIntegrityTest {
     assertEquals(30, apps[2].getSortOrder());
     assertEquals("/scs/", apps[2].getEntryBasePath());
     assertEquals("safety", apps[2].getIamSystemCode()); // 严禁误映射为 scs
+    assertEquals("安全卡控系统", apps[2].getDefaultDisplayName()); // 门户显示名以枚举为准
 
     assertEquals("EHMS", apps[3].name());
     assertEquals(40, apps[3].getSortOrder());
@@ -123,9 +124,12 @@ public class NavigationDataIntegrityTest {
 
   @Test
   void test_03_reconciliation_against_normalized_csv_187_records() throws Exception {
-    File csvFile = new File("D:\\智慧仓储项目\\tmp\\stage1_menu_normalization\\outputs\\navigation_menu_normalized.csv");
+    String suppliedCsv = System.getenv("IAM_NAVIGATION_NORMALIZED_CSV");
+    org.junit.jupiter.api.Assumptions.assumeTrue(suppliedCsv != null && !suppliedCsv.isBlank(),
+        "SKIP: provide the original normalized CSV using IAM_NAVIGATION_NORMALIZED_CSV");
+    File csvFile = new File(suppliedCsv);
     org.junit.jupiter.api.Assumptions.assumeTrue(csvFile.exists(),
-        "SKIP: 阶段 1 标准化 CSV 仅存在于开发机，CI/服务器环境跳过该对账测试");
+        "SKIP: provide the original normalized CSV using IAM_NAVIGATION_NORMALIZED_CSV");
 
     List<Map<String, String>> rows = new ArrayList<>();
     try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(csvFile), StandardCharsets.UTF_8))) {

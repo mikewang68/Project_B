@@ -106,7 +106,8 @@ public class AuthService {
         ip,
         "success");
     return new LoginResponse(token, user, roles, permissions, loginUser != null && loginUser.isSuperAdmin(),
-        loginUser != null && loginUser.isReadOnly(), loginUser == null ? "SCOPED_USER" : loginUser.getAccessMode());
+        loginUser != null && loginUser.isReadOnly(), loginUser == null ? "SCOPED_USER" : loginUser.getAccessMode(),
+        loginUser==null?null:loginUser.getUserContext());
   }
 
   public LoginResponse current(LoginUser loginUser) {
@@ -116,7 +117,7 @@ public class AuthService {
     User user = userService.currentProfile(loginUser);
     List<Role> roles = userService.loadRoles(loginUser.getUserId());
     List<String> permissions = loginUser.getPermissions().stream().sorted().toList();
-    return new LoginResponse(null, user, roles, permissions, loginUser.isSuperAdmin(), loginUser.isReadOnly(), loginUser.getAccessMode());
+    return new LoginResponse(null, user, roles, permissions, loginUser.isSuperAdmin(), loginUser.isReadOnly(), loginUser.getAccessMode(),loginUser.getUserContext());
   }
 
   @org.springframework.beans.factory.annotation.Autowired

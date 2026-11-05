@@ -35,6 +35,7 @@ function canReadAreaA(state: DemoRootState): boolean {
 const planStatusLabels: Record<(typeof planStatuses)[number], string> = {
   RECEIVED: '已接收', VALIDATING: '校验中', PENDING_CONFIRM: '待确认', CONFIRMED: '已确认',
   DECOMPOSED: '已拆解', BLOCKED: '已阻塞', CANCELLED: '已取消', ADJUSTED: '已调整',
+  IN_PROGRESS: '执行中', COMPLETED: '已完成',
 };
 
 const workOrderStatusLabels: Record<(typeof workOrderStatuses)[number], string> = {
@@ -87,7 +88,7 @@ function percent(numerator: number, denominator: number): number {
 
 const definitions: readonly ReportMetricDefinition[] = [
   { key: 'planTotal', label: '计划总数', source: 'DO-001 生产计划', formula: '计划对象总数' },
-  { key: 'confirmedPlanCount', label: '已确认计划数', source: 'DO-001 生产计划状态', formula: '已确认或已拆解的计划数量' },
+  { key: 'confirmedPlanCount', label: '已确认计划数', source: 'DO-001 生产计划状态', formula: '已确认、已拆解、执行中或已完成的计划数量' },
   { key: 'appliedRecommendationCount', label: '推荐已应用数', source: 'C05 生产准备建议草稿', formula: '结构校验有效且状态为已确认的推荐草稿数量' },
   { key: 'generatedWorkOrderCount', label: '已生成任务数', source: 'DO-005 作业工单', formula: '作业单对象总数' },
   { key: 'dispatchedWorkOrderCount', label: '已派工任务数', source: 'DO-005 作业工单状态', formula: '已派工、已确认、执行中、已完成或已暂停的任务数量' },
@@ -121,7 +122,7 @@ export function deriveReportMetrics(state: DemoRootState): ReportMetricSnapshot 
   const packets = visible ? state.offline.packets : [];
   const drafts = visible ? Object.values(state.recommendation.drafts) : [];
   const confirmedPlanCount = plans.filter(({ status }) =>
-    status === 'CONFIRMED' || status === 'DECOMPOSED').length;
+    status === 'CONFIRMED' || status === 'DECOMPOSED' || status === 'IN_PROGRESS' || status === 'COMPLETED').length;
   const appliedRecommendationCount = drafts.filter((candidate) => {
     const parsed = recommendationDraftSchema.safeParse(candidate);
     return parsed.success && parsed.data.status === 'CONFIRMED';

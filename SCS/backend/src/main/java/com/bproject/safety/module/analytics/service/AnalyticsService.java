@@ -216,7 +216,7 @@ public class AnalyticsService {
             long c = scope.stream().filter(a -> sameDay(a, day)).count();
             long hi = scope.stream().filter(a -> sameDay(a, day) && RiskClassifier.isHighRisk(a)).count();
             boolean today = i == 0;
-            if (!today) {
+            if (!today && com.bproject.safety.config.ScsCentralScope.current() == null) {
                 // 历史桶叠加 DEMO 基线（本周固定数组；本月按确定性序列），当天桶只用真实数据
                 long base = "本月".equals(period) ? ((i * 7) % 12 + 8)
                         : WEEK_BASELINE[(days - 1 - i) % WEEK_BASELINE.length];

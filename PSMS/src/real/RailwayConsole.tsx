@@ -8,7 +8,7 @@ type Run={id:string;status:string;step:number;created_at:string;updated_at:strin
 type Event={id:string;run_id:string;stage:string;occurred_at:string;detail:{progress:number;weight:number;simulated:boolean}};
 type Snapshot={tickets:Ticket[];runs:Run[];events:Event[];schedule:{PSMS_RAILWAY_AUTO_IMPORT:string;PSMS_RAILWAY_HOUR:number;PSMS_RAILWAY_MINUTE:number}};
 function time(value:string){return new Date(value).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false});}
-export default function RailwayConsole(){
+export default function RailwayConsole({readOnly = false}:{readOnly?:boolean}){
   const[data,setData]=useState<Snapshot>();const[error,setError]=useState('');const[busy,setBusy]=useState(false);
   const connection=useBackendConnection();
   useEffect(()=>{let disposed=false,pending=false;
@@ -21,8 +21,8 @@ export default function RailwayConsole(){
     {error&&<Alert style={{marginTop:16}} type="error" title="运行服务请求失败" description={error}/>}
     {error&&import.meta.env.VITE_PSMS_REAL_API!=='true'&&<BackendConnectionFields connection={connection}/>}
     <Space style={{margin:'20px 0'}} wrap>
-      <Button type="primary" loading={busy} onClick={()=>void execute(async()=>{const result=await api('/generate',{});const blob=new Blob([JSON.stringify(result.data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=result.data.id+'.json';a.click();URL.revokeObjectURL(url);})}>生成并下载今日工单</Button>
-      <Upload accept=".json" showUploadList={false} beforeUpload={file=>{void execute(async()=>{if(file.size>65536)throw new Error('工单文件不能超过64KB');await api('/import',JSON.parse(await file.text()));});return false;}}><Button loading={busy}>导入工单并启动流程</Button></Upload>
+      <Button type="primary" disabled={readOnly} loading={busy} onClick={()=>void execute(async()=>{if(readOnly)return;const result=await api('/generate',{});const blob=new Blob([JSON.stringify(result.data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=result.data.id+'.json';a.click();URL.revokeObjectURL(url);})}>生成并下载今日工单</Button>
+      <Upload disabled={readOnly} accept=".json" showUploadList={false} beforeUpload={file=>{if(readOnly)return false;void execute(async()=>{if(file.size>65536)throw new Error('工单文件不能超过64KB');await api('/import',JSON.parse(await file.text()));});return false;}}><Button disabled={readOnly} loading={busy}>导入工单并启动流程</Button></Upload>
       <Button href={withAppBasePath('/')}>返回原系统</Button>
       <Tag color="green">{data?.schedule?.PSMS_RAILWAY_AUTO_IMPORT==='true'?`每天北京时间 ${String(data.schedule.PSMS_RAILWAY_HOUR).padStart(2,'0')}:${String(data.schedule.PSMS_RAILWAY_MINUTE).padStart(2,'0')} 自动导入`:'自动导入已关闭'}</Tag>
     </Space>
@@ -30,7 +30,7 @@ export default function RailwayConsole(){
       {title:'工单编号',dataIndex:'id'},{title:'日期（北京时间）',dataIndex:'business_date'},
       {title:'内容',render:(_,t:Ticket)=>`${t.payload.trainNo} / ${t.payload.cargoType} / ${t.payload.weight}吨`},
       {title:'导入状态',render:(_,t:Ticket)=>data?.runs.some(r=>r.id===t.id)?'已导入':'尚未导入'},
-      {title:'操作',render:(_,t:Ticket)=><Button disabled={busy||data?.runs.some(r=>r.id===t.id)} onClick={()=>void execute(()=>api('/import',t.payload))}>导入并运行</Button>},
+      {title:'操作',render:(_,t:Ticket)=><Button disabled={readOnly||busy||data?.runs.some(r=>r.id===t.id)} onClick={()=>{if(!readOnly)void execute(()=>api('/import',t.payload));}}>导入并运行</Button>},
     ]}/></Card>
     <Card title="执行进度（每15秒推进一个阶段）" style={{marginBottom:20}}><Table rowKey="id" dataSource={data?.runs??[]} pagination={{pageSize:5}} columns={[
       {title:'工单',dataIndex:'id'},{title:'状态',render:(_,r:Run)=><Tag color={r.status==='ERROR'?'red':r.status==='COMPLETED'?'green':'blue'}>{r.status==='COMPLETED'?'已完成':r.status==='ERROR'?'执行失败':'运行中'}</Tag>},

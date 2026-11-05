@@ -10,6 +10,8 @@ export const planStatuses = [
   'BLOCKED',
   'CANCELLED',
   'ADJUSTED',
+  'IN_PROGRESS',
+  'COMPLETED',
 ] as const;
 export const trackOccupyStatuses = ['FREE', 'OCCUPIED', 'RELEASING', 'BLOCKED'] as const;
 export const workOrderTypes = ['UNLOAD', 'TRANSFER', 'LOAD', 'INSPECT'] as const;

@@ -34,7 +34,7 @@ public class IdentityController {
 
   @GetMapping("/me")
   public Map<String, Object> me(Authentication a) {
-    return Map.of(
+    var result = new java.util.LinkedHashMap<String, Object>(Map.of(
         "username",
         a.getPrincipal() instanceof PlatformPrincipal p ? p.username() : a.getName(),
         "orgId",
@@ -45,6 +45,14 @@ public class IdentityController {
         a.getPrincipal() instanceof PlatformPrincipal ? "IAM" : "LOCAL",
         "simulated",
         a.getPrincipal() instanceof PlatformPrincipal && settings.read().simulated(),
-        "readOnly", ReadOnlyPolicy.restricted(a));
+        "readOnly", ReadOnlyPolicy.restricted(a)));
+    var context = TrustCentralScope.current();
+    if (context != null) {
+      result.put("contextContractVersion", 2);
+      result.put("menuOperations", context.menuOperations());
+      result.put("centralAdminLevel", context.adminLevel());
+      result.put("authorizationVersion", context.authorizationVersion());
+    }
+    return result;
   }
 }

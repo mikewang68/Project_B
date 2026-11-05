@@ -1,6 +1,6 @@
 import { apiRequest, postJson, putJson } from './http'
 import type { AlertEvent } from '@/types/alert'
-import type { LivePosition, PersonnelConfig, PersonnelRecord, TrackPoint } from '@/types/personnel'
+import type { LivePosition, PersonnelConfig, PersonnelRecord, TrackPoint, UwbStationHealth } from '@/types/personnel'
 import { mapLivePositions, mapPerson, mapPersonnelList, mapTrack } from '@/adapters/personnel'
 
 /** 人员定位 API Client —— 对应后端 PersonnelController（/api/v1/personnel）。 */
@@ -25,6 +25,9 @@ function qs(params: Record<string, unknown>): string {
 }
 
 export const personnelApi = {
+  uwbStations: async (): Promise<UwbStationHealth> =>
+    (await apiRequest('/personnel/uwb-stations')) as UwbStationHealth,
+
   list: async (query: PersonnelQuery = {}): Promise<ReturnType<typeof mapPersonnelList>> =>
     mapPersonnelList(await apiRequest(`/personnel${qs(query)}`)),
 

@@ -5,6 +5,7 @@ import { post, resetCsrf } from "../../shared/http/client";
 export function useSession() {
   const me = ref<ApiRecord | null>(null);
   let generation = 0, refreshing = false;
+  let refreshTimer: ReturnType<typeof setInterval> | undefined;
   async function refreshAccess() {
     if (!me.value || refreshing) return;
     const user = me.value, version = generation;
@@ -13,13 +14,18 @@ export function useSession() {
       const current = await currentUser();
       if (version === generation && user === me.value && JSON.stringify(current) !== JSON.stringify(user))
         me.value = current;
-    } catch {
-      if (version === generation && user === me.value) me.value = null;
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      if (version === generation && user === me.value && (status === 401 || status === 403))
+        me.value = null;
     } finally { refreshing = false; }
   }
   onMounted(async () => {
     window.addEventListener("trust-access-changed", refreshAccess);
     window.addEventListener("focus", refreshAccess);
+    refreshTimer = setInterval(() => {
+      if (me.value?.contextContractVersion === 2) void refreshAccess();
+    }, 15000);
     try {
       me.value = await currentUser();
     } catch {}
@@ -27,6 +33,7 @@ export function useSession() {
   onBeforeUnmount(() => {
     window.removeEventListener("trust-access-changed", refreshAccess);
     window.removeEventListener("focus", refreshAccess);
+    if (refreshTimer) clearInterval(refreshTimer);
   });
   async function signIn(username: string, password: string) {
     generation++;

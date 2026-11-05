@@ -3,9 +3,9 @@ import { flushPromises, shallowMount, type VueWrapper } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import AgentView from './AgentView.vue'
 
-const mocks = vi.hoisted(() => ({ status: vi.fn(), chat: vi.fn(), utilization: vi.fn(), history: vi.fn(), alerts: vi.fn(), schedules: vi.fn(), mails: vi.fn() }))
+const mocks = vi.hoisted(() => ({ status: vi.fn(), chat: vi.fn(), utilization: vi.fn(), history: vi.fn(), alerts: vi.fn(), schedules: vi.fn(), mails: vi.fn(), actions: new Set<string>() }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ query: { tab: 'alerts' } }) }))
-vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPermission: () => true, canWrite: () => true, user: { tenant: { currentWarehouse: { name: '测试仓库' }, currentOwner: { name: '测试货主' } } } }) }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPermission: () => true, canWrite: () => true, canAction: (_menu: string, action: string) => mocks.actions.has(action), centralAuthorization: true, user: { centralAdminLevel: 'L3_SUBSYSTEM', tenant: { currentWarehouse: { name: '测试仓库' }, currentOwner: { name: '测试货主' } } } }) }))
 vi.mock('@/api/agent', () => ({ agentStatus: mocks.status, agentChat: mocks.chat, agentUtilization: mocks.utilization,
   agentHistory: mocks.history, agentAlerts: mocks.alerts, agentSchedules: mocks.schedules, agentMails: mocks.mails,
   readAgentAlert: vi.fn(), saveAgentSchedule: vi.fn(), runAgentSchedule: vi.fn(), retryAgentMail: vi.fn(), agentWeights: vi.fn(), saveAgentWeight: vi.fn() }))
@@ -13,6 +13,7 @@ vi.mock('@/api/agent', () => ({ agentStatus: mocks.status, agentChat: mocks.chat
 let wrapper: VueWrapper | undefined
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.actions = new Set(['VIEW', 'ADD', 'EDIT', 'FAULT_ALARM', 'RECEIVE_EMAIL'])
   mocks.status.mockResolvedValue({ modelConfigured: true, model: 'local-test', mailConfigured: false })
   for (const mock of [mocks.history, mocks.alerts, mocks.schedules, mocks.mails]) mock.mockResolvedValue([])
   mocks.utilization.mockResolvedValue({ total_locations: 14, occupied_locations: 12, occupancy_percent: 85.71,
@@ -23,6 +24,28 @@ const render = () => shallowMount(AgentView, { global: { plugins: [ElementPlus],
   stubs: { ElTableColumn: { template: '<div />' } } } })
 
 describe('warehouse agent page', () => {
+  it('does not submit a persistent chat when only VIEW is granted', async () => {
+    mocks.actions = new Set(['VIEW'])
+    wrapper = render(); await flushPromises()
+    const state = wrapper.vm as unknown as { question: string; send: () => Promise<void>; canChat: boolean; manage: boolean }
+    state.question = '查看库存'; await state.send()
+    expect(state.canChat).toBe(false)
+    expect(state.manage).toBe(false)
+    expect(mocks.chat).not.toHaveBeenCalled()
+  })
+  it('does not turn ADD into EDIT, alarm execution or mail permission', async () => {
+    mocks.actions = new Set(['VIEW', 'ADD'])
+    wrapper = render(); await flushPromises()
+    const state = wrapper.vm as unknown as { canChat: boolean; canCreate: boolean; canEdit: boolean; canRun: boolean; canEmail: boolean; canSave: boolean; editWeights: boolean }
+    expect(state.canChat).toBe(true)
+    expect(state.canCreate).toBe(true)
+    expect(state.canEdit).toBe(false)
+    expect(state.canRun).toBe(false)
+    expect(state.canEmail).toBe(false)
+    expect(state.canSave).toBe(false)
+    expect(state.editWeights).toBe(false)
+  })
+
   it('opens the station alerts tab from the top navigation and shows disabled mail', async () => {
     wrapper = render(); await flushPromises()
     expect(wrapper.findComponent({ name: 'ElTabs' }).props('modelValue')).toBe('alerts')

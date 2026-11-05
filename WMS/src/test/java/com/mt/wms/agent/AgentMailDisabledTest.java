@@ -12,7 +12,7 @@ class AgentMailDisabledTest {
         AgentRepository repository=mock(AgentRepository.class);
         @SuppressWarnings("unchecked") ObjectProvider<JavaMailSender> mail=mock(ObjectProvider.class);
         var service=new AgentPatrolService(repository,mock(AgentAnalytics.class),mock(TransactionTemplate.class),mail,
-                "smtp.example.com","sender@example.com",true,false);
+                "smtp.example.com","sender@example.com",true,false,mock(WmsAgentAuthorization.class));
         assertFalse(service.mailReady());
         service.sendMail();
         verifyNoInteractions(repository,mail);

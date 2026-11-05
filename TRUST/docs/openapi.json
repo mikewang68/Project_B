@@ -87,7 +87,11 @@
               }
             }
           }
-        }
+        },
+        "x-iam-menu": "TRUST:events",
+        "x-iam-actions": [
+          "UPLOAD"
+        ]
       }
     },
     "/api/v1/events": {
@@ -154,7 +158,11 @@
             }
           }
         },
-        "description": "List/count/search share the same selected view and organization. Detail remains bound to the selected immutable event ID."
+        "description": "List/count/search share the same selected view and organization. Detail remains bound to the selected immutable event ID.",
+        "x-iam-menu": "TRUST:events",
+        "x-iam-actions": [
+          "VIEW"
+        ]
       },
       "post": {
         "tags": [
@@ -182,7 +190,11 @@
               }
             }
           }
-        }
+        },
+        "x-iam-menu": "TRUST:events",
+        "x-iam-actions": [
+          "CHAIN_SUBMIT"
+        ]
       }
     },
     "/api/v1/events/{id}/verify": {
@@ -214,7 +226,11 @@
             }
           }
         },
-        "description": " 仅LEGACY_V1；即使同组织会话也不能读取GENERIC_V1，返回404。通用首版不提供原文下载/导出。"
+        "description": " 仅LEGACY_V1；即使同组织会话也不能读取GENERIC_V1，返回404。通用首版不提供原文下载/导出。",
+        "x-iam-menu": "TRUST:events",
+        "x-iam-actions": [
+          "AUDIT_VERIFY"
+        ]
       }
     },
     "/api/v1/events/{id}/retry": {
@@ -223,6 +239,7 @@
           "task-controller"
         ],
         "operationId": "retry",
+        "description": "会话接口仅原子重排同范围 READY/FAILED 任务；RUNNING/DONE 返回409，跨范围事件返回404。V2需要TRUST:tasks的CHAIN_SUBMIT，且仍执行原组织与事件范围约束；只读用户不能重试。",
         "parameters": [
           {
             "name": "id",
@@ -234,6 +251,8 @@
           }
         ],
         "responses": {
+          "409": {"description": "任务处于 RUNNING 或 DONE，未重新提交"},
+          "404": {"description": "事件不存在或超出当前授权范围"},
           "200": {
             "description": "OK",
             "content": {
@@ -245,7 +264,13 @@
               }
             }
           }
-        }
+        },
+        "x-retry-eligible-states": ["READY", "FAILED"],
+        "x-retry-conflict-states": ["RUNNING", "DONE"],
+        "x-iam-menu": "TRUST:tasks",
+        "x-iam-actions": [
+          "CHAIN_SUBMIT"
+        ]
       }
     },
     "/api/v1/events/{id}/export": {
@@ -277,7 +302,11 @@
             }
           }
         },
-        "description": " 仅LEGACY_V1；即使同组织会话也不能读取GENERIC_V1，返回404。通用首版不提供原文下载/导出。"
+        "description": " 仅LEGACY_V1；即使同组织会话也不能读取GENERIC_V1，返回404。通用首版不提供原文下载/导出。",
+        "x-iam-menu": "TRUST:events",
+        "x-iam-actions": [
+          "EXPORT"
+        ]
       }
     },
     "/api/v1/events/{id}/corrections": {
@@ -317,7 +346,12 @@
               }
             }
           }
-        }
+        },
+        "x-iam-menu": "TRUST:events",
+        "x-iam-actions": [
+          "EDIT",
+          "CHAIN_SUBMIT"
+        ]
       }
     },
     "/api/v1/trace": {
@@ -357,7 +391,11 @@
             }
           }
         },
-        "description": "EVENT 的 value 必须为 sourceSystem:sourceEventId，不是内部 UUID。BATCH/BUNDLE/HANDOVER 用于选择起点，后续只遍历显式 EVENT 边；同批次本身不是父子证据。missingReferences 为尚未接收的来源事件引用。"
+        "description": "EVENT 的 value 必须为 sourceSystem:sourceEventId，不是内部 UUID。BATCH/BUNDLE/HANDOVER 用于选择起点，后续只遍历显式 EVENT 边；同批次本身不是父子证据。missingReferences 为尚未接收的来源事件引用。",
+        "x-iam-menu": "TRUST:trace",
+        "x-iam-actions": [
+          "VIEW"
+        ]
       }
     },
     "/api/v1/tasks": {
@@ -381,7 +419,11 @@
               }
             }
           }
-        }
+        },
+        "x-iam-menu": "TRUST:tasks",
+        "x-iam-actions": [
+          "VIEW"
+        ]
       }
     },
     "/api/v1/status": {
@@ -422,7 +464,27 @@
                   "properties": {
                     "readOnly": {
                       "type": "boolean",
-                      "description": "Server-enforced strict viewing restriction; business writes, manual verification, original download and evidence export are denied."
+                      "description": "Server-enforced readonly restriction. V1 retains strict viewing; V2 permits explicitly granted AUDIT_VERIFY, DOWNLOAD and EXPORT while denying business writes."
+                    },
+                    "contextContractVersion": {
+                      "type": "integer",
+                      "description": "Present with value 2 only for a validated central V2 session."
+                    },
+                    "menuOperations": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      },
+                      "description": "Trusted current central menu actions; V2 only. Effective authorities remain intersected with the native identity policy."
+                    },
+                    "centralAdminLevel": {
+                      "type": "string",
+                      "description": "Trusted central management level; does not grant native global administration."
+                    },
+                    "authorizationVersion": {
+                      "type": "string",
+                      "description": "Current central authorization version; clients refresh after changes."
                     }
                   }
                 }
@@ -430,7 +492,7 @@
             }
           }
         },
-        "description": "Server-derived identity and effective authorities. readOnly is true only for a trusted active IAM PLATFORM_AUDITOR_READONLY role; browser declarations cannot override it. It restricts actions and never grants data access."
+        "description": "Server-derived identity, readonly state and effective authorities. V2 also returns the validated context version and menu actions. Readonly may originate from central policy or a native VIEWER identity; browser declarations cannot override it. It restricts actions and never grants data access."
       }
     },
     "/api/v1/evidence/{id}/download": {
@@ -461,7 +523,11 @@
               }
             }
           }
-        }
+        },
+        "x-iam-menu": "TRUST:events",
+        "x-iam-actions": [
+          "DOWNLOAD"
+        ]
       }
     },
     "/api/v1/events/{id}": {
@@ -492,7 +558,11 @@
               }
             }
           }
-        }
+        },
+        "x-iam-menu": "TRUST:events",
+        "x-iam-actions": [
+          "VIEW"
+        ]
       }
     },
     "/api/v1/csrf": {
@@ -3042,5 +3112,11 @@
     {
       "sessionCookie": []
     }
-  ]
+  ],
+  "x-iam-context-contract": {
+    "version": 2,
+    "scopeDefinition": "central-scope-v21.md",
+    "nativeOrganizationBoundaryPreserved": true,
+    "unadaptedResources": "DENY"
+  }
 }

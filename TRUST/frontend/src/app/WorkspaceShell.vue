@@ -93,7 +93,10 @@ const appearanceOpen = ref(false);
           隔离测试 · 当前使用模拟 IAM
           身份，权限和组织范围由隔离测试身份服务校验。
         </p>
-        <p v-if="me.readOnly" class="alert" role="status">
+        <p v-if="me.readOnly && me.contextContractVersion === 2" class="alert" role="status">
+          当前身份只读：可查看授权记录；核验、下载和导出分别按授权开放。修改和补办已禁用。
+        </p>
+        <p v-else-if="me.readOnly" class="alert" role="status">
           当前身份为强制只读：可查看已授权记录，不能修改、补办、核验或下载导出。
         </p>
         <p v-if="error" class="alert error" role="alert">{{ error }}</p>

@@ -235,6 +235,7 @@ export default function PlanLedgerPage({
             <Typography.Text type="secondary">当前角色</Typography.Text>
             <Select<RoleCode>
               aria-label="当前角色"
+              disabled={import.meta.env.VITE_PSMS_REAL_API === 'true'}
               value={session.roleCode}
               onChange={(roleCode: RoleCode) => runtime.commands.switchRole(roleCode)}
               options={routePolicies['UI-002'].map((roleCode) => ({
@@ -253,7 +254,7 @@ export default function PlanLedgerPage({
         syncLoading={pageLoading || syncLoading}
         recoverLoading={pageLoading || recoverLoading}
         commandError={interfaceError}
-        onSync={() => {
+        onSync={import.meta.env.VITE_PSMS_REAL_API === 'true' ? undefined : () => {
           void syncPlans();
         }}
         onRecover={() => {

@@ -66,7 +66,7 @@ export function createClient(options: ApiClientOptions): ApiClient {
     const headers: Record<string, string> = { Accept: 'application/json', ...opts.headers }
     const token = getToken()
     if (token) headers.Authorization = `Bearer ${token}`
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && path !== '/auth/login') {
       const csrfResponse = await fetch(baseUrl() + '/auth/sso/csrf', { credentials: 'same-origin', cache: 'no-store',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined })
       if (!csrfResponse.ok) throw new ApiError(csrfResponse.status, csrfResponse.status, '无法核验登录会话')

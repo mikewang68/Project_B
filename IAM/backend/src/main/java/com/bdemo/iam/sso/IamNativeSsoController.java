@@ -26,7 +26,14 @@ public class IamNativeSsoController {
     if(!services.authorize("iam",credential))throw new ResponseStatusException(HttpStatus.FORBIDDEN);
     var claims=tickets.verify(body.ticket(),"iam");
     var data=authorization.current(claims.getSubject(),claims.get("sid",String.class),"iam");
-    if(!data.get("username").equals(data.get("localSubject")))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"主体映射不一致");
+    // Existing IAM bindings use the username; V2 provisioning uses the stable
+    // IAM user ID. Both must identify this same centrally verified principal.
+    boolean usernameBinding=Objects.equals(data.get("username"),data.get("localSubject"));
+    boolean userIdBinding=data.get("userContext") instanceof com.bproject.iam.context.UserContext context
+        && Objects.equals(context.userId(),claims.getSubject())
+        && "IAM".equals(context.serviceAudience())
+        && Objects.equals(claims.getSubject(),data.get("localSubject"));
+    if(!usernameBinding&&!userIdBinding)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"主体映射不一致");
     if(!tickets.consume(claims.getId(),"iam"))throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
     var old=request.getSession(false);if(old!=null)old.invalidate();
     var session=request.getSession(true);

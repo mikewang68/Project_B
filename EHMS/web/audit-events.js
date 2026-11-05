@@ -1,6 +1,7 @@
 // Supplemental browser intents only. CUD/query outcomes are captured by the backend.
 (function(){
   document.addEventListener('click',function(event){
+    if(window.EhmCentralPolicy?.enabled(window.EhmAuth))return;
     const target=event.target.closest('[data-page],[data-goto],[data-action]');
     if(!target || target.disabled)return;
     const navigation=target.dataset.page||target.dataset.goto;

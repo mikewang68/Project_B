@@ -22,12 +22,17 @@ onMounted(async () => {
   // 全局只维护一条 /ws/live（管理端 / 大屏 / 移动端共享）
   if(!await auth.ensureLoaded())return
   authorizationTimer=window.setInterval(()=>{void auth.refresh()},15_000)
-  liveStore.start()
+  if(auth.user?.menuOperations==null||auth.user.scopedRealtime===true)liveStore.start()
+  if(auth.user?.menuOperations!=null)return
   void store.initialize()
 })
 
 watch(()=>auth.user?.authorizationVersion,(next,previous)=>{
-  if(previous&&next&&next!==previous){store.dispose();void store.initialize()}
+  if(previous&&next&&next!==previous){
+    store.dispose()
+    if(auth.user?.menuOperations!=null)window.location.reload()
+    else void store.initialize()
+  }
 })
 function clearAuthentication(){auth.clear();sharedLiveSocket.stop();store.dispose()}
 onMounted(()=>window.addEventListener('scs:unauthenticated',clearAuthentication))

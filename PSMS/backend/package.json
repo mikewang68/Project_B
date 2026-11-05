@@ -23,6 +23,7 @@
     "simulate:s1": "tsx src/scripts/s1-simulator.ts"
   },
   "dependencies": {
+    "@bproject/iam-context-client": "file:../../IAM/context-client-ts",
     "bcryptjs": "3.0.2",
     "cors": "2.8.5",
     "dotenv": "17.2.3",
@@ -34,7 +35,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.12",
+    "@electric-sql/pglite": "0.5.12",
     "@types/bcryptjs": "2.4.6",
     "@types/cors": "2.8.19",
     "@types/express": "5.0.6",

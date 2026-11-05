@@ -176,7 +176,7 @@ public class PersonnelService {
     public RemindResult remind(String id, String message) {
         DemoPersonnel p = require(id);
         return new RemindResult(true, OffsetDateTime.now(clock).toString(),
-                "已向 " + p.name + " 的手环 " + p.braceletId + " 发送震动提醒"
+                "【模拟回执，未下发现场设备】向 " + p.name + " 的手环 " + p.braceletId + " 发送震动提醒"
                         + (message == null || message.isBlank() ? "" : "：" + message));
     }
 

@@ -114,14 +114,10 @@ public class NavigationProjectionService {
       throw new BizException(401, 40101, "未登录或登录已过期");
     }
 
-    // 1. 校验 appCode 入参：若传入必须为合法八系统枚举，DTS 或非法值返回 400
-    AppCodeEnum filterApp = null;
-    if (appCodeParam != null && !appCodeParam.isBlank()) {
-      filterApp = AppCodeEnum.fromString(appCodeParam.trim());
-      if (filterApp == null) {
-        throw new BizException(400, 40001, "无效的子系统编码参数: " + appCodeParam);
-      }
-    }
+    boolean v2=user.getUserContext()!=null;
+    String filterApp=appCodeParam==null||appCodeParam.isBlank()?null:appCodeParam.trim().toUpperCase(java.util.Locale.ROOT);
+    if(filterApp!=null && (!filterApp.matches("[A-Za-z0-9_-]{1,32}") || !v2&&AppCodeEnum.fromString(filterApp)==null))
+      throw new BizException(400,40001,"无效的子系统编码参数");
 
     // 2. 判定主体鉴权模式与只读状态
     boolean isReadonly = user.isReadOnly()
@@ -150,7 +146,8 @@ public class NavigationProjectionService {
     userContext.setAllowedAppCodes(user.getAllowedAppCodes());
 
     // 3. 解析当前数据提供者并读取候选菜单与权限映射（Fail-Closed 保证：若 DB 异常直接外抛 50001）
-    NavigationDataProvider provider = resolveActiveProvider();
+    NavigationDataProvider provider = v2?databaseProvider:resolveActiveProvider();
+    if(provider==null)throw new BizException(503,50301,"新版导航要求数据库目录");
     log.info("Projecting navigation tree using provider: {}, user: {}, mode: {}",
         provider.getProviderName(), user.getUsername(), accessMode);
 
@@ -176,13 +173,14 @@ public class NavigationProjectionService {
     List<SystemNode> systems = new ArrayList<>();
     int filteredOutCount = 0;
 
-    for (AppCodeEnum app : AppCodeEnum.values()) {
-      if (filterApp != null && app != filterApp) {
-        continue;
-      }
-
+    List<NavigationAppEntity> registered=v2?provider.getActiveApps():legacyApplications();
+    if(filterApp!=null && registered.stream().noneMatch(a->filterApp.equals(a.getAppCode())))
+      throw new BizException(400,40001,"未登记或未启用的子系统");
+    if(!v2)registered=registered.stream().filter(a->AppCodeEnum.fromString(a.getAppCode())!=null).toList();
+    for (NavigationAppEntity app : registered) {
+      if(filterApp!=null&&!filterApp.equals(app.getAppCode()))continue;
       // 作用域检查：Scoped 用户需核验其是否属于该系统作用域
-      if (!user.mayEnter(app.name())) continue;
+      if (!user.mayEnter(app.getAppCode())) continue;
 
       List<PageLeafNode> children = new ArrayList<>();
       // E21：目录节点索引，子页按 parentStableMenuKey 挂载
@@ -190,7 +188,7 @@ public class NavigationProjectionService {
       Map<String, Integer> orderMap = new LinkedHashMap<>();
 
       for (NavigationMenuEntity menu : candidateMenus) {
-        if (!app.name().equalsIgnoreCase(menu.getNavigationAppCode())) {
+        if (!app.getAppCode().equalsIgnoreCase(menu.getNavigationAppCode())) {
           continue;
         }
 
@@ -212,7 +210,15 @@ public class NavigationProjectionService {
         }
 
         // 三级放行状态核验：当前目标环境放行状态真实核对
-        boolean isApproved = isolatedCandidate || isReleaseApproved(menu.getStableMenuKey(), ruleByMenu, provider);
+        boolean managementPage=v2&&com.bdemo.iam.scope.ScopeManagementAccess.menu(
+            user.getUserContext(),app.getAppCode(),menu.getStableMenuKey(),menu.getRoutePath());
+        // V2 uses its explicit action catalog and published state. New systems do
+        // not need a synthetic legacy permission-code mapping to launch a page.
+        boolean isApproved = isolatedCandidate || (v2
+            ? isDirectoryNode || java.util.Set.of("READY","PARTIAL").contains(
+                java.util.Objects.toString(menu.getFeatureStatus(),""))
+                && (managementPage||user.getUserContext().hasAction(menu.getStableMenuKey(),"VIEW"))
+            : isReleaseApproved(menu.getStableMenuKey(), ruleByMenu, provider));
         if (!isApproved && !showFeatureCatalog) {
           filteredOutCount++;
           continue;
@@ -227,8 +233,8 @@ public class NavigationProjectionService {
         // 权限点匹配核验
         String requiredPerm = requiredPermByMenu.get(menu.getStableMenuKey());
         // Directories carry structure; their remaining authorized children decide visibility.
-        boolean hasPerm = isDirectoryNode || showFeatureCatalog && !isApproved && user.getAdminAppCodes().contains(app.name())
-            || checkViewPermission(user, accessMode, requiredPerm);
+        boolean hasPerm = isDirectoryNode || managementPage || showFeatureCatalog && !isApproved && user.getAdminAppCodes().contains(app.getAppCode())
+            || (v2?user.getUserContext().hasAction(menu.getStableMenuKey(),"VIEW"):checkViewPermission(user, accessMode, requiredPerm));
         if (!hasPerm) {
           filteredOutCount++;
           continue;
@@ -262,7 +268,7 @@ public class NavigationProjectionService {
 
       // E21：目录按父子关系嵌套；只有最外层目录挂到系统根
       for (NavigationMenuEntity m : candidateMenus) {
-        if (!app.name().equalsIgnoreCase(m.getNavigationAppCode())) continue;
+        if (!app.getAppCode().equalsIgnoreCase(m.getNavigationAppCode())) continue;
         if (!"DIRECTORY".equalsIgnoreCase(m.getMenuKind())) continue;
         PageLeafNode dir = directoryNodes.get(m.getStableMenuKey());
         if (dir == null) continue;
@@ -292,12 +298,12 @@ public class NavigationProjectionService {
       // 规则：一级系统无已授权二级功能时整个一级系统裁掉
       if (!children.isEmpty()) {
         SystemNode sysNode = new SystemNode();
-        sysNode.setAppCode(app.name());
-        sysNode.setDisplayName(app.getDefaultDisplayName());
+        sysNode.setAppCode(app.getAppCode());
+        sysNode.setDisplayName(app.getDisplayName());
         sysNode.setSortOrder(app.getSortOrder());
         sysNode.setEntryBasePath(app.getEntryBasePath());
         if (externalAddressesEnabled) {
-          NavigationAppEntity configuredApp = addressApps.get(app.name());
+          NavigationAppEntity configuredApp = addressApps.get(app.getAppCode());
           sysNode.setSsoEnabled(configuredApp != null && configuredApp.isSsoEnabled());
           if (configuredApp != null) sysNode.setAddressVersion(configuredApp.getAddressVersion());
           try {
@@ -307,7 +313,7 @@ public class NavigationProjectionService {
               sysNode.setEntryBasePath(configuredApp.getEntryBasePath());
             }
           } catch (IllegalArgumentException e) {
-            throw new BizException(500, 50001, "导航访问地址配置无效: " + app.name());
+            throw new BizException(500, 50001, "导航访问地址配置无效: " + app.getAppCode());
           }
         }
         sysNode.setChildren(children);
@@ -437,7 +443,7 @@ public class NavigationProjectionService {
     Map<String, List<String>> result = new LinkedHashMap<>();
 
     for (SystemNode sys : visibleSystems) {
-      AppCodeEnum app = AppCodeEnum.fromString(sys.getAppCode());
+      NavigationAppEntity app = (user.getUserContext()!=null?databaseProvider.getActiveApps():legacyApplications()).stream().filter(a->sys.getAppCode().equals(a.getAppCode())).findFirst().orElse(null);
       if (app == null) continue;
 
       String sysPrefix = app.getIamSystemCode() + ":";
@@ -449,7 +455,7 @@ public class NavigationProjectionService {
         }
 
         // 只读硬否决：剥离全部状态改变动作
-        if (isReadonly) {
+        if (isReadonly && user.getUserContext()==null) {
           if (isWriteAction(p)) {
             continue;
           }
@@ -458,7 +464,7 @@ public class NavigationProjectionService {
       }
 
       Collections.sort(opPerms);
-      result.put(app.name(), opPerms);
+      result.put(app.getAppCode(), opPerms);
     }
     return result;
   }
@@ -470,5 +476,13 @@ public class NavigationProjectionService {
         || lower.contains(":upload") || lower.contains(":retry") || lower.contains(":rotate")
         || lower.contains(":revoke") || lower.contains(":manage") || lower.contains(":review")
         || lower.contains(":export") || lower.contains(":submit") || lower.contains(":correct");
+  }
+  private List<NavigationAppEntity> legacyApplications() {
+    var result=new ArrayList<NavigationAppEntity>();
+    for(var item:AppCodeEnum.values()) {
+      var app=new NavigationAppEntity();app.setAppCode(item.name());app.setIamSystemCode(item.getIamSystemCode());
+      app.setDisplayName(item.getDefaultDisplayName());app.setSortOrder(item.getSortOrder());app.setEntryBasePath(item.getEntryBasePath());result.add(app);
+    }
+    return result;
   }
 }

@@ -2811,7 +2811,9 @@
           "DECOMPOSED",
           "BLOCKED",
           "CANCELLED",
-          "ADJUSTED"
+          "ADJUSTED",
+          "IN_PROGRESS",
+          "COMPLETED"
         ]
       },
       "TrackOccupyStatus": {

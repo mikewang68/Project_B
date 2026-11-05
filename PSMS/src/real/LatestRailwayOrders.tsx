@@ -5,6 +5,7 @@ import { BackendConnectionFields,useBackendConnection } from '../features/backen
 import { withAppBasePath } from '../runtime/appBasePath';
 import { businessLabel } from '../presentation/businessCopy';
 import { z } from 'zod';
+import { loadCurrentDemoSession } from '../auth';
 
 type Order={id:string;business_date:string;train_no:string;cargo_type:string;estimated_weight:number;status:string;updated_at:string};
 type Snapshot={source:{kind:string;database:string};orders:Order[];runs:{id:string;step:number}[]};
@@ -12,6 +13,10 @@ const snapshotSchema=z.object({source:z.object({kind:z.enum(['LOCAL_DEMO','SERVE
   orders:z.array(z.object({id:z.string(),business_date:z.string(),train_no:z.string(),cargo_type:z.string(),estimated_weight:z.coerce.number(),status:z.string(),updated_at:z.string()})),
   runs:z.array(z.object({id:z.string(),step:z.number().int().min(0).max(16)}))});
 export default function LatestRailwayOrders(){
+  if (import.meta.env.VITE_PSMS_REAL_API === 'true' && loadCurrentDemoSession().menuOperations != null) return null;
+  return <RailwayOrdersContent />;
+}
+function RailwayOrdersContent(){
   const[data,setData]=useState<Snapshot>();const[error,setError]=useState('');const[login,setLogin]=useState(false);
   const connection=useBackendConnection();
   useEffect(()=>{let pending=false,disposed=false;

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import ScopeSelectionBar from '@/components/ScopeSelectionBar.vue'
 import {
   usePreferenceStore,
   THEME_OPTIONS,
@@ -32,11 +33,23 @@ const navMenu: NavItem[] = [
   { id: 'iam-users', label: '用户管理', icon: 'UserFilled', path: '/system/users', perm: 'iam:user:list:view' },
   { id: 'iam-roles', label: '角色管理', icon: 'Avatar', path: '/system/roles', perm: 'iam:role:list:view' },
   { id: 'iam-menus', label: '菜单与权限', icon: 'Menu', path: '/system/menus', perm: 'iam:menu:tree:view' },
+  { id: 'iam-navigation-menus', label: '导航菜单维护', icon: 'Operation', path: '/system/navigation-menus', perm: 'iam:menu:tree:view' },
   { id: 'iam-health', label: '权限健康', icon: 'DataAnalysis', path: '/system/health', perm: 'iam:role:list:view' },
 ]
 
-const filteredMenu = computed(() => navMenu.filter((item) => auth.permCodes.has(item.perm) && (!item.platformOnly || auth.isSuperAdmin)))
+const filteredMenu = computed(() => {
+  const result = navMenu.filter((item) => auth.permCodes.has(item.perm) && (!item.platformOnly || auth.isSuperAdmin)
+    && (!auth.userContext || ['L1_SUPER','L1_READONLY'].includes(auth.userContext.adminLevel)))
+  if(auth.canManageScope) result.unshift({ id: 'scope-management', label: '分级人员与权限', icon: 'UserFilled', path: '/system/scope-management', perm: '' })
+  if(auth.userContext) result.push({ id: 'account-scope', label: '我的权限范围', icon: 'Lock', path: '/account/scope', perm: '' })
+  return result
+})
 const activeMenu = computed(() => route.path)
+const scopeViewKey = computed(() => JSON.stringify([auth.userContext?.scopeMode, auth.userContext?.activeScope]))
+
+async function handleScopeChanged() {
+  if (!filteredMenu.value.some(item => item.path === route.path)) await router.replace(auth.landingPath)
+}
 
 function handleSelect(path: string) {
   if (path && path !== route.path) router.push(path)
@@ -147,10 +160,13 @@ const prefVisible = ref(false)
         </div>
       </header>
 
+      <ScopeSelectionBar @changed="handleScopeChanged" />
+
       <main class="content">
-        <RouterView v-slot="{ Component }">
+        <el-empty v-if="auth.scopeRefreshRequired" description="等待重新读取当前权限范围" />
+        <RouterView v-else v-slot="{ Component }">
           <transition name="fade" mode="out-in">
-            <component :is="Component" />
+            <component :is="Component" :key="scopeViewKey" />
           </transition>
         </RouterView>
       </main>

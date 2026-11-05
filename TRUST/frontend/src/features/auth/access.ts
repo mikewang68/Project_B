@@ -14,10 +14,16 @@ const edits = new Set([
 export function hasPermission(user: ApiRecord | null, permission: string): boolean {
   if (!user) return false;
   const roles: string[] = Array.isArray(user.roles) ? user.roles : [];
-  if (user.readOnly === true && ![
+  const central = user.contextContractVersion === 2;
+  if (central && permission === "trust:evidence:read") permission = "trust:evidence:download";
+  if (!central && permission === "trust:event:import") permission = "trust:event:submit";
+  const safe = [
     "trust:event:read", "trust:task:read", "trust:operations:read", "trust:audit:read",
     "trust:wallet:read", "trust:identity:read",
-  ].includes(permission)) return false;
+    ...(central ? ["trust:trace:read", "trust:evidence:verify", "trust:evidence:export",
+      "trust:evidence:download"] : []),
+  ];
+  if (user.readOnly === true && !safe.includes(permission)) return false;
   if (user.identityProvider === "IAM") return roles.includes(permission);
   if (user.identityProvider !== "LOCAL") return false;
   if (reads.has(permission)) return true;
@@ -27,7 +33,7 @@ export function hasPermission(user: ApiRecord | null, permission: string): boole
 
 export function canOpenPage(user: ApiRecord | null, page: string): boolean {
   const permissions: Record<string, string[]> = {
-    events: ["trust:event:read"], trace: ["trust:event:read"],
+    events: ["trust:event:read"], trace: [user?.contextContractVersion === 2 ? "trust:trace:read" : "trust:event:read"],
     create: ["trust:event:submit", "trust:event:correct"], tasks: ["trust:task:read"],
     status: ["trust:operations:read"], wallets: ["trust:wallet:read"],
     identities: ["trust:identity:read"],

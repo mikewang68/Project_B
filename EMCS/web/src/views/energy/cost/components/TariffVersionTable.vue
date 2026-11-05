@@ -71,7 +71,7 @@ const visible = ref(false)
 const saving = ref(false)
 const range = ref([])
 const form = reactive({ energyType: 'electricity', prices: { peak: null, flat: null, valley: null, flatOnly: null }, remark: '' })
-const access = computed(() => costBusinessAccess(useUserStore().roles))
+const access = computed(() => costBusinessAccess(useUserStore().roles, useUserStore().centralAuthorization))
 const periodLabel = (value) => ({ peak: '峰段', flat: '平段', valley: '谷段', flatOnly: '单一' }[value] || value || '—')
 
 async function load() {

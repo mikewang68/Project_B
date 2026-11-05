@@ -39,6 +39,7 @@ public interface SystemUserMapper {
             SELECT DISTINCT m.perms
             FROM sys_menu m
             JOIN sys_role_menu rm ON rm.menu_id = m.menu_id
+            JOIN sys_role r ON r.role_id=rm.role_id AND r.status='0' AND r.del_flag='0'
             JOIN sys_user_role ur ON ur.role_id = rm.role_id
             WHERE ur.user_id = #{userId} AND m.status = '0'
               AND m.perms IS NOT NULL AND m.perms <> ''

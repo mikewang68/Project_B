@@ -49,6 +49,12 @@ public class UserService implements LoginUserLoader {
   @org.springframework.beans.factory.annotation.Autowired
   private com.bdemo.iam.security.AppScopePolicy appScopes;
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bdemo.iam.scope.ScopeContextService scopeContexts;
+
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bdemo.iam.scope.ScopeProvisioning scopeProvisioning;
+
   // ---- 查询 ----
 
   public List<User> list(String keyword, String status, String roleId) {
@@ -56,7 +62,7 @@ public class UserService implements LoginUserLoader {
     LoginUser current = com.bdemo.iam.security.JwtAuthFilter.currentUser();
     String scopeZone = null;
     String scopeCompany = null;
-    if (current != null && !hasGlobalUserRead(current)) {
+    if (current != null && current.getUserContext()==null && !hasGlobalUserRead(current)) {
       // 非全权管理员：只允许看到本人可信域内的用户；域缺失则 fail-closed 返回空集合
       scopeZone = current.getScopeZone();
       scopeCompany = current.getScopeCompany();
@@ -115,6 +121,7 @@ public class UserService implements LoginUserLoader {
 
   /** 判断目标用户是否落在当前登录主体的可信数据域内。 */
   private boolean inCurrentScope(LoginUser current, User target) {
+    if(current.getUserContext()!=null)return appScopes!=null&&appScopes.visible("USER",target.getId());
     String zone = current.getScopeZone();
     String company = current.getScopeCompany();
     boolean hasZone = zone != null && !zone.isBlank();
@@ -152,6 +159,17 @@ public class UserService implements LoginUserLoader {
       String status,
       String blockchainId,
       String blockchainAddress) {
+    return createInternal(username,name,phone,email,rawPassword,roleIds,orgCodes,status,blockchainId,blockchainAddress,null);
+  }
+
+  @Transactional
+  public User createScoped(com.bdemo.iam.user.dto.UserUpsertRequest r,com.bdemo.iam.scope.ScopeProvisioning.Plan plan) {
+    return createInternal(r.username(),r.name(),r.phone(),r.email(),r.password(),r.roleIds(),plan.orgCodes(),r.status(),r.blockchainId(),r.blockchainAddress(),plan);
+  }
+
+  private User createInternal(String username,String name,String phone,String email,String rawPassword,
+      List<String> roleIds,List<String> orgCodes,String status,String blockchainId,String blockchainAddress,
+      com.bdemo.iam.scope.ScopeProvisioning.Plan plan) {
     if (blockchainId != null || blockchainAddress != null)
       throw BizException.badRequest("身份字段由服务端管理");
     username = username == null ? null : username.trim();
@@ -168,9 +186,9 @@ public class UserService implements LoginUserLoader {
       throw BizException.badRequest("密码至少 6 位");
     }
     if (userMapper.countByUsername(username) > 0) {
-      throw BizException.conflict("用户名已存在：" + username);
+      throw new UsernameConflictException();
     }
-    validateRoles(roleIds);
+    if(plan==null)validateRoles(roleIds);else scopeProvisioning.validateRoles(plan,roleIds);
     OrgService.OrgResolveResult org = orgService.resolve(orgCodes);
     identities.validateOrganization(org.companyCode);
     LocalDateTime now = LocalDateTime.now();
@@ -196,7 +214,9 @@ public class UserService implements LoginUserLoader {
         null,
         null,
         now);
+    if(plan!=null)scopeProvisioning.apply(id,plan);
     replaceRoles(id, roleIds);
+    if(plan!=null)scopeProvisioning.refreshReadonlyBindings(id);
     if(appScopes!=null) appScopes.recordCreated("USER",id);
     identities.sync(id, "USER_CHANGED");
     return get(id);
@@ -224,6 +244,7 @@ public class UserService implements LoginUserLoader {
       throw BizException.notFound("用户不存在");
     }
     protectAdministrator(existing);
+    if(scopeProvisioning!=null)scopeProvisioning.validateExistingUserRoles(id,roleIds);
     validateRoles(roleIds);
     if (current != null && id.equals(current.getUserId()) && "disabled".equals(status)) {
       throw BizException.badRequest("不能停用当前登录账号");
@@ -259,6 +280,7 @@ public class UserService implements LoginUserLoader {
         LocalDateTime.now());
     sessions.revokeUser(id);
     replaceRoles(id, roleIds);
+    if(scopeProvisioning!=null)scopeProvisioning.refreshReadonlyBindings(id);
     identities.sync(id, "USER_CHANGED");
     return get(id);
   }
@@ -291,12 +313,16 @@ public class UserService implements LoginUserLoader {
     protectAdministrator(u);
     if (!java.util.Set.of("active", "disabled").contains(target))
       throw BizException.badRequest("用户状态非法");
-    if (target.equals(u.getStatus())) return get(id);
+    if (target.equals(u.getStatus())) {
+      if(scopeProvisioning!=null)scopeProvisioning.refreshReadonlyBindings(id);
+      return get(id);
+    }
     if (current != null && id.equals(current.getUserId()) && "disabled".equals(target)) {
       throw BizException.badRequest("不能停用当前登录账号");
     }
     sessions.revokeUser(id);
     userMapper.updateStatus(id, target, LocalDateTime.now());
+    if(scopeProvisioning!=null)scopeProvisioning.refreshReadonlyBindings(id);
     identities.sync(id, "USER_STATUS");
     return get(id);
   }
@@ -325,9 +351,11 @@ public class UserService implements LoginUserLoader {
       throw BizException.notFound("用户不存在");
     }
     protectAdministrator(userMapper.selectById(id));
+    if(scopeProvisioning!=null)scopeProvisioning.validateExistingUserRoles(id,roleIds);
     validateRoles(roleIds);
     sessions.revokeUser(id);
     replaceRoles(id, roleIds);
+    if(scopeProvisioning!=null)scopeProvisioning.syncBindings(id);
     identities.sync(id, "USER_CHANGED");
     return get(id);
   }
@@ -397,6 +425,7 @@ public class UserService implements LoginUserLoader {
     // 可信数据域：直接取库内归属，供行级查询下推过滤；客户端 Header 不参与
     loginUser.setScopeZone(u.getZoneCode());
     loginUser.setScopeCompany(u.getCompanyCode());
+    if(scopeContexts!=null)scopeContexts.enrich(loginUser);
     return loginUser;
   }
 

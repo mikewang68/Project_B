@@ -33,6 +33,8 @@ public class NavigationAddressPublicationService {
     }
   }
   private static final Set<String> APPS=Set.of("IAM","SYS","WMS","PSMS","SCS","EHMS","EMCS","TRUST");
+  @org.springframework.beans.factory.annotation.Autowired(required=false)
+  private com.bdemo.iam.scope.ApplicationRegistry registry;
   private final JdbcTemplate db;private final ObjectMapper json;private final SsoServiceIdentity services;
   private final OperationLogger audit;private final Set<String> allowedSuffixes;
   private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
@@ -43,7 +45,7 @@ public class NavigationAddressPublicationService {
     allowedSuffixes=new HashSet<>();for(String value:suffixes.split(","))if(!value.isBlank())allowedSuffixes.add(value.trim().toLowerCase(Locale.ROOT));
   }
   private String app(String value){String key=value==null?"":value.toUpperCase(Locale.ROOT);
-    if(!APPS.contains(key))throw new BizException(400,40001,"未知系统");return key;}
+    if(!(registry==null?APPS.contains(key):registry.registered(key)))throw new BizException(400,40001,"未知系统");return key;}
   private LoginUser administrator(){var user=JwtAuthFilter.currentUser();
     if(user==null||!user.isSuperAdmin()||user.isReadOnly())throw new BizException(403,40301,"仅平台全权管理员可管理访问地址");return user;}
   private Map<String,Object> current(String app,boolean lock){
@@ -53,6 +55,10 @@ public class NavigationAddressPublicationService {
   private Integer port(Object value){return value==null?null:((Number)value).intValue();}
   private Address address(Map<String,Object> row){return new Address((String)row.get("domain_name"),(String)row.get("public_scheme"),port(row.get("public_port")),
       (String)row.get("origin_scheme"),(String)row.get("origin_ip"),port(row.get("origin_port")),(String)row.get("module_path"));}
+  private boolean hasAddress(Map<String,Object> row) {
+    return !Objects.toString(row.get("domain_name"),"").isBlank()
+        || !Objects.toString(row.get("origin_ip"),"").isBlank();
+  }
   private String encode(Address value){try{return json.writeValueAsString(value);}catch(Exception invalid){throw new IllegalArgumentException(invalid);}}
   private Address decode(Object value){try{return json.readValue(value.toString(),Address.class);}catch(Exception invalid){throw new BizException(500,50001,"地址版本记录无法读取");}}
   public List<Map<String,Object>> list(){administrator();return db.queryForList("SELECT app_code,domain_name,public_scheme,public_port,origin_scheme,origin_ip,origin_port,module_path,address_version FROM iam.iam_navigation_app WHERE valid=1 AND in_nav_scope=1 ORDER BY sort_order");}
@@ -70,9 +76,10 @@ public class NavigationAddressPublicationService {
     if(proposed==null)throw new BizException(400,40001,"缺少地址配置");
     // Validate the origin transport even when the browser address uses a domain.
     new Address("",null,null,proposed.originScheme(),proposed.originIp(),proposed.originPort(),proposed.modulePath()).baseUrl();
-    URI candidate=URI.create(proposed.baseUrl());URI previous=URI.create(address(active).baseUrl());
+    URI candidate=URI.create(proposed.baseUrl());
+    URI previous=hasAddress(active)?URI.create(address(active).baseUrl()):null;
     String host=candidate.getHost().toLowerCase(Locale.ROOT);
-    boolean permitted=host.equals(previous.getHost())||host.equals(active.get("origin_ip"))
+    boolean permitted=previous!=null&&(host.equals(previous.getHost())||host.equals(active.get("origin_ip")))
         ||allowedSuffixes.stream().anyMatch(s->host.equals(s)||host.endsWith("."+s));
     if(!permitted)throw new BizException(400,40001,"域名不在部署端登记的发布范围内");
     if(!candidate.getScheme().equals("https"))throw new BizException(400,40001,"统一登录访问入口必须使用HTTPS，HTTP回源请单独配置");
@@ -127,13 +134,16 @@ public class NavigationAddressPublicationService {
     String code=draft.get("app_code").toString();Address next=decode(draft.get("address_json"));probe(code,next);
     var active=current(code,true);long version=((Number)active.get("address_version")).longValue();
     if(((Number)draft.get("base_version")).longValue()!=version)throw new BizException(409,40901,"地址版本已变化，请重新创建草稿");
-    if(db.queryForObject("SELECT count(*) FROM iam.iam_navigation_address_revision WHERE app_code=? AND published_version=?",Long.class,code,version)==0)
+    if(hasAddress(active)&&db.queryForObject("SELECT count(*) FROM iam.iam_navigation_address_revision WHERE app_code=? AND published_version=?",Long.class,code,version)==0)
       db.update("INSERT INTO iam.iam_navigation_address_revision(revision_id,app_code,base_version,published_version,address_json,state,created_by,published_at) VALUES(?,?,?,?,?,'PUBLISHED',?,CURRENT_TIMESTAMP)",UUID.randomUUID().toString(),code,version,version,encode(address(active)),user.getUserId());
     db.update("UPDATE iam.iam_navigation_address_revision SET state='SUPERSEDED',retire_after=CURRENT_TIMESTAMP+INTERVAL '180 seconds' WHERE app_code=? AND published_version=?",code,version);
     db.update("UPDATE iam.iam_navigation_app SET domain_name=?,public_scheme=?,public_port=?,origin_scheme=?,origin_ip=?,origin_port=?,module_path=?,address_version=address_version+1 WHERE app_code=? AND address_version=?",
         next.domainName(),next.publicScheme(),next.publicPort(),next.originScheme(),next.originIp(),next.originPort(),next.modulePath(),code,version);
     db.update("UPDATE iam.iam_navigation_address_revision SET state='PUBLISHED',published_version=?,published_at=CURRENT_TIMESTAMP WHERE revision_id=?",version+1,id);
-    log(user,"publish",code,"发布访问地址版本 "+(version+1)+"："+encode(address(active))+" → "+encode(next));return runtime(code,null);
+    log(user,"publish",code,"发布访问地址版本 "+(version+1)+"："+(hasAddress(active)?encode(address(active)):"FIRST_PUBLICATION")+" → "+encode(next));
+    URI browser=URI.create(next.baseUrl());
+    return Map.of("appCode",code,"version",version+1,"baseUrl",next.baseUrl(),
+        "origin",browser.getScheme()+"://"+browser.getRawAuthority(),"modulePath",browser.getPath());
   }
   @Transactional
   public Map<String,Object> rollback(String id){administrator();var old=revision(id);
@@ -142,6 +152,7 @@ public class NavigationAddressPublicationService {
     String draftId=draft(code,current,decode(old.get("address_json"))).get("revision_id").toString();validate(draftId);return publish(draftId);
   }
   public Map<String,Object> runtime(String code,Long requestedVersion){String key=app(code);var current=current(key,false);
+    if(registry!=null&&!registry.accepts(key))throw new BizException(403,40301,"系统未启用或尚无已发布地址");
     long version=((Number)current.get("address_version")).longValue();Address configured=address(current);
     if(requestedVersion!=null&&requestedVersion!=version){var rows=db.queryForList("SELECT address_json FROM iam.iam_navigation_address_revision WHERE app_code=? AND published_version=? AND state='SUPERSEDED' AND retire_after>CURRENT_TIMESTAMP",key,requestedVersion);
       if(rows.size()!=1)throw new BizException(409,40901,"该地址事务版本已过期，请重新进入功能");configured=decode(rows.get(0).get("address_json"));version=requestedVersion;}

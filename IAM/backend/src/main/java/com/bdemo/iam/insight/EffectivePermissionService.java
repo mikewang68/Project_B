@@ -27,6 +27,8 @@ public class EffectivePermissionService {
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
     private final PermissionMapper permissionMapper;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private org.springframework.jdbc.core.JdbcTemplate scopeDb;
 
     public EffectivePermissionService(UserMapper userMapper, RoleMapper roleMapper,
                                       PermissionMapper permissionMapper, com.bdemo.iam.security.LoginUserLoader loginUserLoader) {
@@ -54,7 +56,7 @@ public class EffectivePermissionService {
         // 权限编码 -> 来源角色集合（批量一次取关系，避免 N+1）
         Map<String, LinkedHashSet<RoleBrief>> sources = new LinkedHashMap<>();
         List<String> roleIds = roles.stream().map(RoleBrief::getId).toList();
-        if (!roleIds.isEmpty()) {
+        if (!roleIds.isEmpty() && (loginUser==null || loginUser.getUserContext()==null)) {
             Map<String, RoleBrief> roleById = new LinkedHashMap<>();
             for (RoleBrief rb : roles) {
                 roleById.put(rb.getId(), rb);
@@ -65,6 +67,25 @@ public class EffectivePermissionService {
                 if (rb != null) {
                     sources.computeIfAbsent(row.getPermissionCode(), k -> new LinkedHashSet<>()).add(rb);
                 }
+            }
+        }
+        if(loginUser!=null && loginUser.getUserContext()!=null && !loginUser.isSuperAdmin()) {
+            var context=loginUser.getUserContext();
+            if(scopeDb==null)throw new BizException(503,"新版权限来源暂不可用");
+            var params=new ArrayList<Object>();params.add(userId);
+            String boundary;
+            if(context.adminLevel().startsWith("L1_"))boundary=" AND r.role_scope='GLOBAL'";
+            else if(context.adminLevel().equals("L2_PROJECT"))boundary=" AND 1=0";
+            else {
+                boundary=" AND r.role_scope='REGION_SYSTEM' AND r.project_id=? AND r.region_id=? AND r.subsystem_code=?";
+                params.add(context.projectId());params.add(context.regionId());params.add(context.subsystemCode());
+            }
+            var rows=scopeDb.queryForList("SELECT r.id AS role_id,g.stable_menu_key,g.op_code,p.permission_code FROM iam.iam_user_role ur JOIN iam.iam_role r ON r.id=ur.role_id AND r.status='active' AND r.deleted=0 JOIN iam.iam_role_operation_grant g ON g.role_id=r.id JOIN iam.iam_operation_permission_map m ON m.stable_menu_key=g.stable_menu_key AND m.op_code=g.op_code AND m.mapping_status='VERIFIED' JOIN iam.iam_permission p ON p.id=m.permission_id AND p.status='active' WHERE ur.user_id=?"+boundary,params.toArray());
+            var roleById=new LinkedHashMap<String,RoleBrief>();roles.forEach(r->roleById.put(r.getId(),r));
+            for(var row:rows) {
+                var role=roleById.get(row.get("role_id"));
+                if(role!=null && context.hasAction(row.get("stable_menu_key").toString(),row.get("op_code").toString()))
+                    sources.computeIfAbsent(row.get("permission_code").toString(),k->new LinkedHashSet<>()).add(role);
             }
         }
 

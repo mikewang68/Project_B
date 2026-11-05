@@ -89,10 +89,10 @@ defineEmits<{
         <button v-if="isEditingExisting" type="button" @click="$emit('cancel')">
           <el-icon><Close /></el-icon>取消编辑
         </button>
-        <button v-permission="'safety:fence:edit'" type="button" @click="$emit('save')">
+        <button v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:isEditingExisting?'EDIT':'ADD'}" type="button" @click="$emit('save')">
           {{ isEditingExisting ? '保存修改' : '保存草稿' }}
         </button>
-        <button v-permission="'safety:fence:edit'" type="button" class="primary" @click="$emit('review')">
+        <button v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:isEditingExisting?'EDIT':'ADD'}" type="button" class="primary" @click="$emit('review')">
           <el-icon><Check /></el-icon>{{ isEditingExisting ? '保存并提交' : '提交评审' }}
         </button>
       </div>
@@ -153,11 +153,11 @@ defineEmits<{
       </div>
 
       <div class="fence-panel-actions">
-        <button v-permission="'safety:fence:edit'" type="button" @click="$emit('edit')">
+        <button v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT'}" type="button" @click="$emit('edit')">
           <el-icon><Edit /></el-icon>编辑围栏
         </button>
-        <button v-if="fence.status === '已生效'" v-permission="'safety:fence:edit'" type="button" @click="$emit('fail')">模拟下发失败</button>
-        <button v-if="fence.status === '草稿'" v-permission="'safety:fence:edit'" type="button" class="primary" @click="$emit('review')">
+        <button v-if="fence.status === '已生效'" v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT',adapted:false}" type="button" @click="$emit('fail')">模拟下发失败</button>
+        <button v-if="fence.status === '草稿'" v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT'}" type="button" class="primary" @click="$emit('review')">
           <el-icon><Check /></el-icon>提交评审
         </button>
         <button v-else-if="['待发布','待评审'].includes(fence.status)" v-permission="'safety:fence:publish'" type="button" class="primary" @click="$emit('publish')">

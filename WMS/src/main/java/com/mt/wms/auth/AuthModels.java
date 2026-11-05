@@ -54,7 +54,9 @@ public final class AuthModels {
             List<MenuItem> menus,
             TenantView tenant,
             boolean readOnly,
-            String authorizationVersion) {
+            String authorizationVersion,
+            java.util.Map<String, Set<String>> menuOperations,
+            String centralAdminLevel) {
     }
 
     public record CsrfView(String headerName, String parameterName, String token) {

@@ -107,7 +107,7 @@ public class JdbcAiModelRepository implements AiModelRepository {
     private final RowMapper<AiModelInfo> rowMapper;
 
     public JdbcAiModelRepository(NamedParameterJdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = new com.bproject.safety.config.ScsScopedJdbcTemplate(jdbcTemplate);
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.rowMapper = new AiModelRowMapper();
@@ -167,6 +167,7 @@ public class JdbcAiModelRepository implements AiModelRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public AiModelInfo save(AiModelInfo model) {
         Objects.requireNonNull(model, "model must not be null");
         Objects.requireNonNull(model.id, "model.id must not be null");
@@ -174,6 +175,7 @@ public class JdbcAiModelRepository implements AiModelRepository {
         if (model.updatedAt == null) {
             model.updatedAt = OffsetDateTime.now(clock.withZone(ZONE));
         }
+        var centralStamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.AI_MODEL,model.id);
         AiModelInfo toPersist = model.copy();
         MapSqlParameterSource params = createParams(toPersist);
 
@@ -187,6 +189,7 @@ public class JdbcAiModelRepository implements AiModelRepository {
                 }
             }
         }
+        com.bproject.safety.config.ScsCentralScope.afterWrite(jdbcTemplate,centralStamp);
         return toPersist.copy();
     }
 

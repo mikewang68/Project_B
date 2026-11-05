@@ -16,8 +16,11 @@ public final class WmsCurrentAuthorization {
         boolean full=current.path("superAdmin").asBoolean(false) && localAdmin && !readOnly;
         Set<String> central=new HashSet<>();current.path("permissions").forEach(v->central.add(v.asText()));
         Set<String> permissions=new HashSet<>(local.permissions());
-        if (!full) permissions.removeIf(p->!central.contains(p)&&!central.contains("wms:"+p));
-        if (readOnly) permissions.removeIf(p->!p.endsWith(":read")&&!p.endsWith(":view")&&!p.equals("tenant:all"));
+        var context=WmsCentralScope.validate(current,new com.fasterxml.jackson.databind.ObjectMapper());
+        if(context!=null)permissions.removeIf(p->!WmsCentralScope.localPermission(context,p));
+        else if (!full) permissions.removeIf(p->!central.contains(p)&&!central.contains("wms:"+p));
+        if (readOnly) permissions.removeIf(p->!p.endsWith(":read")&&!p.endsWith(":view")&&!p.equals("tenant:all")
+            &&!(context!=null&&p.equals("integration:manage")&&WmsCentralScope.localPermission(context,p)));
         return new WmsPrincipal(local.userId(),local.companyId(),local.companyCode(),local.companyName(),
                 local.username(),local.displayName(),local.roles(),Set.copyOf(permissions),local.passwordChangeRequired(),readOnly);
     }

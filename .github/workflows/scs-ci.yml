@@ -1,5 +1,5 @@
 # SCS 持续集成：与 deploy/scripts/build-server.sh 的门禁保持一致
-# 后端：mvn verify（449 项测试）；前端：typecheck + vitest + 生产构建
+# 后端：安装当前 IAM SDK 后执行 mvn verify；前端：typecheck + vitest + 生产构建
 # 版本钉子与 build-server.sh 相同：Java 17 / Maven 3.9.16 / Node 24.18.0 / pnpm 10.34.5
 name: SCS CI
 
@@ -8,10 +8,12 @@ on:
     branches: [main]
     paths:
       - 'SCS/**'
+      - 'IAM/context-client/**'
       - '.github/workflows/scs-ci.yml'
   pull_request:
     paths:
       - 'SCS/**'
+      - 'IAM/context-client/**'
       - '.github/workflows/scs-ci.yml'
 
 concurrency:
@@ -30,6 +32,9 @@ jobs:
           java-version: '17'
           maven-version: '3.9.16'
           cache: maven
+      - name: Install current IAM context client
+        working-directory: .
+        run: mvn -B -f IAM/context-client/pom.xml install
       - name: Test & package
         working-directory: SCS/backend
         run: mvn -B -gs .mvn/settings.xml -s .mvn/settings.xml verify

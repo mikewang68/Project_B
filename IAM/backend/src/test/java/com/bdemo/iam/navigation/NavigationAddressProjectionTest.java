@@ -12,6 +12,9 @@ import com.bdemo.iam.navigation.service.NavigationProjectionService;
 import com.bdemo.iam.security.LoginUser;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import com.bproject.iam.context.ScopeSql;
+import com.bproject.iam.context.ScopeTriple;
 import org.junit.jupiter.api.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -95,6 +98,56 @@ class NavigationAddressProjectionTest {
     assertEquals("IAM:users", directory.getChildren().get(0).getChildren().get(0).getStableMenuKey());
     user.setPermissions(Set.of("iam:entry:view"));
     assertTrue(service.projectNavigationTree("IAM", false).getSystems().isEmpty());
+  }
+  private com.bproject.iam.context.UserContext context(String level,String app,Set<String> capabilities,
+      Map<String,Set<String>> operations) {
+    var scope=List.of(new ScopeTriple("P","R",app));
+    var filter=ScopeSql.build(ScopeSql.Mode.SCOPED,scope);
+    return new com.bproject.iam.context.UserContext(2,"test-id","test-user","test-id","Test",
+        level,false,"IAM","P","R",app,ScopeSql.Mode.SCOPED,scope,scope,Set.of(),
+        operations.keySet(),operations,capabilities,"version",filter.my_info(),
+        filter.my_project_zone_info(),filter.my_info_template(),filter.my_project_zone_info_template(),
+        filter.scope_params());
+  }
+  @Test void v2ManagerGetsOnlyTheRegisteredManagementPageWithoutIamBusinessPermissions() {
+    var page=new NavigationDataLoader().getDefaultMenus().stream()
+        .filter(menu->"IAM:users".equals(menu.getStableMenuKey())).findFirst().orElseThrow();
+    page.setStableMenuKey("IAM:scope-management");page.setRoutePath("/system/scope-management");
+    page.setEntryPath("/iam/system/scope-management");page.setFeatureStatus("READY");
+    when(provider.getNavEligibleMenus()).thenReturn(List.of(page));
+    when(provider.getViewPermissionRules()).thenReturn(List.of());
+    var user=new LoginUser("test-id","test-user","Test",false,Set.of());
+    user.setUserContext(context("L3_SUBSYSTEM","WMS",Set.of("VIEW_MANAGEMENT"),Map.of()));
+    login(user);user.setScopedApps(Set.of("WMS"));
+    var systems=service.projectNavigationTree("IAM",false).getSystems();
+    assertEquals(1,systems.size());
+    assertEquals("IAM:scope-management",systems.get(0).getChildren().get(0).getStableMenuKey());
+    assertTrue(systems.get(0).getChildren().get(0).isCanLaunch());
+    assertEquals(Set.of("WMS"),user.getAllowedAppCodes());
+    page.setRoutePath("/system/users");
+    assertTrue(service.projectNavigationTree("IAM",false).getSystems().isEmpty(),
+        "The management exception must not be repurposed as global IAM user management");
+    page.setRoutePath("/system/scope-management");
+    user.setUserContext(context("L4_OPERATOR","WMS",Set.of(),Map.of()));
+    assertTrue(service.projectNavigationTree("IAM",false).getSystems().isEmpty());
+  }
+  @Test void newV2ApplicationLaunchesOnlyItsPublishedExplicitViewWithoutLegacyMapping() {
+    address.setAppCode("V21NEW");
+    var page=new NavigationDataLoader().getDefaultMenus().stream()
+        .filter(menu->"IAM:users".equals(menu.getStableMenuKey())).findFirst().orElseThrow();
+    page.setNavigationAppCode("V21NEW");page.setStableMenuKey("V21NEW:records");
+    page.setParentStableMenuKey("APP:V21NEW");page.setFeatureStatus("READY");
+    when(provider.getNavEligibleMenus()).thenReturn(List.of(page));
+    when(provider.getViewPermissionRules()).thenReturn(List.of());
+    var user=new LoginUser("test-id","test-user","Test",false,Set.of());
+    user.setUserContext(context("L4_OPERATOR","V21NEW",Set.of(),Map.of("V21NEW:records",Set.of("VIEW"))));
+    login(user);user.setScopedApps(Set.of("V21NEW"));
+    assertTrue(service.projectNavigationTree("V21NEW",false).getSystems().get(0).getChildren().get(0).isCanLaunch());
+    page.setFeatureStatus("PLANNED");
+    assertTrue(service.projectNavigationTree("V21NEW",false).getSystems().isEmpty());
+    page.setFeatureStatus("READY");
+    user.setUserContext(context("L4_OPERATOR","V21NEW",Set.of(),Map.of()));
+    assertTrue(service.projectNavigationTree("V21NEW",false).getSystems().isEmpty());
   }
   private NavigationMenuEntity directory(String key, String parent, int level) {
     var result = new NavigationMenuEntity();

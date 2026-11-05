@@ -1,6 +1,17 @@
 // Opt-in local operation lab. All values and progress come from persisted backend records.
 (function(){
   state.simulation={status:null,busy:false,error:'',seenTick:-1,polling:false};
+  let generation=0;
+  // Simulation administration has no V2 regional contract. Preserve the V1 console
+  // without probing its global endpoints or carrying its data into a V2 session.
+  function allowed(){
+    const auth=window.EhmAuth;
+    return !!auth?.user&&auth.menuOperations==null&&!window.EhmCentralPolicy?.enabled(auth);
+  }
+  function invalidate(){
+    generation++;
+    Object.assign(state.simulation,{status:null,busy:false,error:'',seenTick:-1,polling:false});
+  }
   const presets={daily:{intervalSeconds:300,hoursPerTick:300/3600,cycleHours:40,warningRatio:.8,autoWorkflow:false},demo:{intervalSeconds:5,hoursPerTick:1,cycleHours:40,warningRatio:.8,autoWorkflow:true}};
   function editing(){return !!document.querySelector('#modal.open, #drawer.open')||/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||'');}
   function controls(){
@@ -25,33 +36,52 @@
     if(!EQUIPMENT.some(x=>x.code===state.asset))state.asset=a.code;
     for(const key of ['visual','healthFlow','maintenanceProgram'])if(state[key]&&!EQUIPMENT.some(x=>x.code===state[key].assetCode))state[key].assetCode=a.code;
   }
-  async function refreshBusiness(){
+  async function refreshBusiness(current){
+    if(current!==generation||!allowed())return;
     if(typeof EHM_GOV!=='undefined')EHM_GOV.loaded={};
-    await loadBackendData();chooseAsset();
+    await loadBackendData();
+    if(current!==generation||!allowed())return;
+    chooseAsset();
     if(state.spares?.warehouseCode==='MAIN')state.spares.warehouseCode='SAMPLE-LIVE-WH';
-    if(['realtime','diagnosis'].includes(state.page))await loadVisualPoints();
-    if(typeof HEALTH_PAGES!=='undefined'&&HEALTH_PAGES.has(state.page))await loadHealthFlow();
-    if(['asset-tree','bom','measurement','data-quality'].includes(state.page))await loadStructureData();
-    if(['maintenance-plan','inspection'].includes(state.page))await loadMaintenanceProgram();
-    if(['evidence','rootcause','repair-retest'].includes(state.page))await loadCaseFlow();
-    if(state.page==='spares')await loadSpares();
-    if(['fmeca','knowledge','fault-codes','sla','alarm-rules'].includes(state.page))await loadReliability();
-    if(state.page==='audit-logs')await loadAuditBrowser(true);
-    renderPage();
+    const loaders=[
+      [()=>['realtime','diagnosis'].includes(state.page),()=>loadVisualPoints()],
+      [()=>typeof HEALTH_PAGES!=='undefined'&&HEALTH_PAGES.has(state.page),()=>loadHealthFlow()],
+      [()=>['asset-tree','bom','measurement','data-quality'].includes(state.page),()=>loadStructureData()],
+      [()=>['maintenance-plan','inspection'].includes(state.page),()=>loadMaintenanceProgram()],
+      [()=>['evidence','rootcause','repair-retest'].includes(state.page),()=>loadCaseFlow()],
+      [()=>state.page==='spares',()=>loadSpares()],
+      [()=>['fmeca','knowledge','fault-codes','sla','alarm-rules'].includes(state.page),()=>loadReliability()],
+      [()=>state.page==='audit-logs',()=>loadAuditBrowser(true)]
+    ];
+    for(const [matches,load] of loaders){
+      if(current!==generation||!allowed())return;
+      if(matches())await load();
+    }
+    if(current===generation&&allowed())renderPage();
   }
   async function refresh(withBusiness=false){
-    const s=state.simulation;if(s.polling||!window.EhmAuth.user)return;
-    s.polling=true;try{const d=await apiRequest('/system/simulation');s.status=d;s.error='';
+    const s=state.simulation;if(!allowed()||s.polling)return;
+    const current=generation;
+    s.polling=true;try{const d=await apiRequest('/system/simulation');
+      if(current!==generation||!allowed())return;
+      s.status=d;s.error='';
       if(d.enabled){const changed=d.control.ticks!==s.seenTick;s.seenTick=d.control.ticks;
-        if(withBusiness||changed)await refreshBusiness();else if(state.page==='sample-workbench'&&!editing())renderPage();}
-    }catch(e){s.error=e.message;if(state.page==='sample-workbench'&&!editing())renderPage();}finally{s.polling=false;}
+        if(withBusiness||changed)await refreshBusiness(current);else if(state.page==='sample-workbench'&&!editing())renderPage();}
+    }catch(e){if(current===generation&&allowed()){s.error=e.message;if(state.page==='sample-workbench'&&!editing())renderPage();}}
+    finally{if(current===generation)s.polling=false;}
   }
   async function command(path,extra={}){
-    const s=state.simulation;if(s.busy)return;s.busy=true;
-    try{await apiRequest('/system/simulation/'+path,{method:'POST',body:JSON.stringify({confirmation:'SYNTHETIC_ONLY',...extra})});s.error='';await refresh(true);toast('虚拟运行操作已保存');return true;}
-    catch(e){s.error=e.message;toast('未执行成功：'+e.message);return false;}finally{s.busy=false;if(!editing())renderPage();}
+    const s=state.simulation;if(!allowed()||!window.EhmAuth.canWrite()||s.busy)return;
+    const current=generation;s.busy=true;
+    try{await apiRequest('/system/simulation/'+path,{method:'POST',body:JSON.stringify({confirmation:'SYNTHETIC_ONLY',...extra})});
+      if(current!==generation||!allowed())return false;
+      s.error='';await refresh(true);
+      if(current!==generation||!allowed())return false;
+      toast('虚拟运行操作已保存');return true;}
+    catch(e){if(current===generation&&allowed()){s.error=e.message;toast('未执行成功：'+e.message);}return false;}
+    finally{if(current===generation){s.busy=false;if(allowed()&&!editing())renderPage();}}
   }
-  const oldRender=renderPage;renderPage=function(){oldRender();const d=state.simulation.status;if(!d?.enabled)return;
+  const oldRender=renderPage;renderPage=function(){oldRender();const d=state.simulation.status;if(!allowed()||!d?.enabled)return;
     const view=$('#pageView');
     if(state.page==='sample-workbench'){
       view.querySelector('[data-action="sampleInstall"]')?.closest('section.panel')?.remove();
@@ -63,6 +93,7 @@
   };
   const oldAction=handleAction;handleAction=function(event){const a=event.currentTarget.dataset.action;
     if(!a?.startsWith('sim'))return oldAction(event);
+    if(!allowed())return toast('当前账号未获模拟管理权限');
     if(a==='simRefresh')return refresh(true);
     if(!window.EhmAuth.canWrite())return toast('仅超级管理员可以控制模拟运行');
     if(a==='simTick')return command('tick',{requestId:'ui-'+crypto.randomUUID()});
@@ -72,7 +103,7 @@
     if(a==='simSettings'){const p=state.simulation.status.control.settings;return openModal('虚拟运行','调整模拟参数',`<div class="form-grid">${[['intervalSeconds','每轮间隔（秒）',p.intervalSeconds],['hoursPerTick','每轮模拟小时',p.hoursPerTick],['cycleHours','演示周期（小时）',p.cycleHours],['warningRatio','提醒比例（0.5～小于1）',p.warningRatio]].map(([id,label,v])=>`<div class="field"><label>${label}</label><input id="sim-${id}" type="number" step="any" value="${v}"></div>`).join('')}<label><input id="sim-auto" type="checkbox" ${p.autoWorkflow?'checked':''}> 使用虚拟操作员自动演练闭环</label></div>`,'保存',()=>{const settings={};for(const key of ['intervalSeconds','hoursPerTick','cycleHours','warningRatio'])settings[key]=Number($('#sim-'+key).value);settings.autoWorkflow=$('#sim-auto').checked;return command('settings',{settings});});}
   };
   const oldPage=setPage;setPage=function(...args){const v=oldPage(...args);if(args[0]==='sample-workbench')refresh();return v;};
-  document.addEventListener('ehm-auth-change',()=>{if(window.EhmAuth.user)refresh(true);else state.simulation.status=null;});
+  document.addEventListener('ehm-auth-change',()=>{invalidate();if(allowed())void refresh(true);});
   window.EhmAuth.ready.then(()=>refresh(true));
-  setInterval(()=>{if(!document.hidden&&!editing()&&!state.simulation.busy&&state.simulation.status?.enabled)refresh();},5000);
+  setInterval(()=>{if(allowed()&&!document.hidden&&!editing()&&!state.simulation.busy&&state.simulation.status?.enabled)refresh();},5000);
 })();

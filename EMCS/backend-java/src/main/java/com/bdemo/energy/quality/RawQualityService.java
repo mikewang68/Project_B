@@ -1,6 +1,7 @@
 package com.bdemo.energy.quality;
 
 import com.bdemo.common.BusinessException;
+import com.bdemo.config.EmcsCentralScope;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,16 +34,20 @@ public class RawQualityService {
     }
 
     public Map<String, Object> summary(String pointCode, String timeStart, String timeEnd, String zone) {
-        String selectedCode = blank(pointCode) ? "GC-A1-E" : pointCode;
         LocalDateTime start = blank(timeStart) ? LocalDateTime.of(2026, 7, 6, 6, 0) : parse(timeStart);
         LocalDateTime end = blank(timeEnd) ? LocalDateTime.of(2026, 7, 6, 18, 0) : parse(timeEnd);
         if (!start.isBefore(end)) throw new IllegalArgumentException("timeStart 必须早于 timeEnd");
+        String zoneSql = "ALL".equalsIgnoreCase(zone) ? "" : " AND a.area_code=?";
+        Object[] pointParams = zoneSql.isEmpty() ? new Object[0] : new Object[]{"AREA-" + zone.toUpperCase()};
+        List<Map<String,Object>> catalog=pointRows(zoneSql,pointParams);
+        if(blank(pointCode)&&catalog.isEmpty())return map("signature",signature(0),"demoState",map("enabled",false),
+            "filters",map("pointId",null,"timeStart",format(start),"timeEnd",format(end),"zone",zone),
+            "selected",null,"points",List.of(),"readings",List.of(),"tasks",List.of(),"backfillBatches",List.of(),"recomputeHints",List.of(),"qualityBreakdown",List.of());
+        String selectedCode = blank(pointCode) ? String.valueOf(catalog.get(0).get("point_code")) : pointCode;
         List<Map<String, Object>> selectedRows = pointRows(" AND p.point_code=?", selectedCode);
         if (selectedRows.isEmpty()) throw new BusinessException(404, "采集点不存在");
         Map<String, Object> selected = selectedRows.get(0);
-        String zoneSql = "ALL".equalsIgnoreCase(zone) ? "" : " AND a.area_code=?";
-        Object[] pointParams = zoneSql.isEmpty() ? new Object[0] : new Object[]{"AREA-" + zone.toUpperCase()};
-        List<Map<String, Object>> points = pointRows(zoneSql, pointParams).stream().map(this::point).toList();
+        List<Map<String, Object>> points = catalog.stream().map(this::point).toList();
         List<Map<String, Object>> readings = jdbc.queryForList("""
                 SELECT r.sample_time,r.cumulative_value,r.incremental_value,r.quality_state,r.source_batch,
                   r.ingest_time,r.is_backfill,r.correction_reason,r.status_value
@@ -121,43 +126,38 @@ public class RawQualityService {
         String target = "day".equals(body.scope()) ? "e_stat_day" : "e_stat_month";
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT * FROM e_recompute_log WHERE target_table=? AND target_key_json LIKE ? AND new_version_no IS NULL
-                ORDER BY id DESC LIMIT 1 FOR UPDATE
-                """, target, "%\"periodKey\":\"" + body.periodKey() + "\"%");
+                %s ORDER BY id DESC LIMIT 1 FOR UPDATE
+                """.formatted(EmcsCentralScope.recomputePredicate()), target, "%\"periodKey\":\"" + body.periodKey() + "\"%");
         if (rows.isEmpty()) throw new BusinessException(404, "periodKey 不存在或已重算");
-        Map<String, Object> row = rows.get(0); int oldVersion = ((Number) fallback(row.get("old_version_no"), 1)).intValue();
-        jdbc.update("UPDATE e_recompute_log SET new_version_no=?,delta_value=0,delta_pct=0,operator=? WHERE id=?",
-                oldVersion + 1, operator, row.get("id"));
-        return map("id", row.get("id"), "periodKey", body.periodKey(), "scope", body.scope(), "status", "completed",
-                "oldVersionNo", oldVersion, "newVersionNo", oldVersion + 1,
-                "diffSummary", map("deltaValue", 0, "deltaPct", 0), "operator", operator, "completedAt", format(demoNow));
+        throw new BusinessException(409, "当前版本尚未执行日/月聚合重算，不能将版本号递增和零差异当作计算完成");
     }
 
     private List<Map<String, Object>> pointRows(String extra, Object... params) { return jdbc.queryForList("""
             SELECT p.*,a.area_code,a.area_name,e.equipment_code,e.equipment_name FROM e_meter_point p
             JOIN e_area a ON a.area_id=p.area_id LEFT JOIN e_equipment e ON e.equipment_id=p.equipment_id
             WHERE 1=1 %s ORDER BY a.area_code,p.point_id
-            """.formatted(extra), params); }
+            """.formatted(extra+EmcsCentralScope.area("p.area_id")), params); }
     private Map<String, Object> point(Map<String, Object> row) { return map("zone", String.valueOf(row.get("area_code")).replace("AREA-", ""),
             "deviceId", fallback(row.get("equipment_code"), row.get("point_code")), "deviceName", fallback(row.get("equipment_name"), row.get("point_name")),
             "energyType", energyUi(row.get("energy_type_code")), "pointId", row.get("point_code"), "pointName", row.get("point_name"),
             "unit", row.get("unit"), "samplingInterval", interval(row.get("sample_period_sec")),
             "status", "enabled".equals(row.get("status")) ? "启用" : "停用"); }
     private List<Map<String, Object>> tasks(Object areaId) { return jdbc.queryForList("""
-            SELECT * FROM e_collect_task WHERE area_id=? OR area_id IS NULL ORDER BY scheduled_time DESC LIMIT 12
-            """, areaId).stream().map(row -> map("taskId", row.get("batch_no"), "taskName", fallback(row.get("point_scope"), "ALL"),
+            SELECT * FROM e_collect_task WHERE (area_id=? OR area_id IS NULL) %s ORDER BY scheduled_time DESC LIMIT 12
+            """.formatted(EmcsCentralScope.area("area_id")), areaId).stream().map(row -> map("taskId", row.get("batch_no"), "taskName", fallback(row.get("point_scope"), "ALL"),
             "dataSource", "gateway", "lastSuccessAt", format(row.get("actual_ingest_time")), "lastFailureAt", null,
             "lastError", row.get("failure_reason"), "failureBatchCount", row.get("retry_count"),
             "currentState", taskState(row.get("task_status")), "affectedPoints", split(row.get("point_scope")),
             "samplingInterval", "15min", "timeoutThreshold", "45min")).toList(); }
     private List<Map<String, Object>> backfills(Object areaId) { return jdbc.queryForList("""
             SELECT * FROM e_collect_task WHERE (area_id=? OR area_id IS NULL) AND (task_status='backfilled' OR outage_start IS NOT NULL)
-            ORDER BY actual_ingest_time DESC LIMIT 10
-            """, areaId).stream().map(row -> map("batchId", row.get("batch_no"), "triggeredBy", "system",
+            %s ORDER BY actual_ingest_time DESC LIMIT 10
+            """.formatted(EmcsCentralScope.area("area_id")), areaId).stream().map(row -> map("batchId", row.get("batch_no"), "triggeredBy", "system",
             "triggeredAt", format(row.get("actual_ingest_time")), "cacheStart", format(row.get("outage_start")),
             "cacheEnd", format(row.get("outage_end")), "pointIds", split(row.get("point_scope")),
             "recordsIngested", row.get("affected_point_count"), "dupHandledCount", 0,
             "failureReason", row.get("failure_reason"), "status", "backfilled".equals(row.get("task_status")) ? "succeeded" : "failed", "affectedPeriods", periods(row.get("outage_start")))).toList(); }
-    private List<Map<String, Object>> recomputeHints() { return jdbc.queryForList("SELECT * FROM e_recompute_log WHERE new_version_no IS NULL ORDER BY created_at DESC LIMIT 20")
+    private List<Map<String, Object>> recomputeHints() { return jdbc.queryForList("SELECT * FROM e_recompute_log WHERE new_version_no IS NULL"+EmcsCentralScope.recomputePredicate()+" ORDER BY created_at DESC LIMIT 20")
             .stream().map(row -> { Map<String, Object> key = jsonObject(row.get("target_key_json")); return map("id", row.get("id"),
                     "periodKey", fallback(key.get("periodKey"), key.get("period_key")), "scope", String.valueOf(row.get("target_table")).endsWith("day") ? "day" : "month",
                     "status", "pending", "reason", row.get("trigger_reason"), "createdAt", format(row.get("created_at"))); }).toList(); }
@@ -165,7 +165,7 @@ public class RawQualityService {
     private Map<String, Object> previewHint(String period) { return map("periodKey", period, "scope", period.endsWith("D") ? "day" : "month", "status", "pending", "reason", "backfill"); }
     private List<String> periods(Object value) { if (value == null) return List.of(); LocalDate day = dateTime(value).toLocalDate(); return List.of(day + "D", day.toString().substring(0, 7) + "M"); }
     private double todayCoverage(long pointId, int sampleSeconds) { Long count = jdbc.queryForObject("SELECT COUNT(*) FROM e_raw_reading WHERE point_id=? AND sample_time>=? AND sample_time<? AND quality_state IN ('ok','late','est','fix')", Long.class, pointId, Timestamp.valueOf(demoNow.toLocalDate().atStartOfDay()), Timestamp.valueOf(demoNow.toLocalDate().plusDays(1).atStartOfDay())); return round((count == null ? 0 : count) * 100.0 / Math.max(1, 86400 / sampleSeconds), 2); }
-    private String currentTask(Object areaId) { List<String> values = jdbc.query("SELECT task_status FROM e_collect_task WHERE area_id=? OR area_id IS NULL ORDER BY scheduled_time DESC LIMIT 1", (rs, n) -> rs.getString(1), areaId); return values.isEmpty() ? "unknown" : taskState(values.get(0)); }
+    private String currentTask(Object areaId) { List<String> values = jdbc.query("SELECT task_status FROM e_collect_task WHERE (area_id=? OR area_id IS NULL)"+EmcsCentralScope.area("area_id")+" ORDER BY scheduled_time DESC LIMIT 1", (rs, n) -> rs.getString(1), areaId); return values.isEmpty() ? "unknown" : taskState(values.get(0)); }
     private Map<String, Object> signature(double coverage) { return map("version", "v0.3.4-demo", "formulaVersion", "v0.1", "priceVersion", "v2026-05", "baselineVersion", "BASELINE-SYSTEM-ELEC-2026", "sigId", Integer.toHexString(Double.valueOf(coverage).hashCode()), "seed", 42, "generatedAt", format(demoNow), "coverage", coverage); }
     private String energyUi(Object value) { return switch (String.valueOf(value)) { case "electricity" -> "ELEC"; case "water" -> "WATER"; case "compressed_air" -> "AIR"; default -> String.valueOf(value); }; }
     private String interval(Object seconds) { return (((Number) seconds).intValue() / 60) + "min"; }

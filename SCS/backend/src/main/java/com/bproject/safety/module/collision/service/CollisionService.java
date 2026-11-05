@@ -166,11 +166,6 @@ public class CollisionService {
         applyDistance(pair, value, 1.8, pair.direction);
     }
 
-    /**
-     * @param relSpeed 相对速度（m/s），正=接近、负=远离；来自雷达上报时用实测值，
-     *                 演示推演（{@link #advanceApproach}）沿用固定 1.8
-     * @param direction 运动方向文案，空则保留原值
-     */
     private void applyDistance(PairState pair, double value, double relSpeed, String direction) {
         String before = pair.riskCode;
         pair.distance = value;
@@ -274,14 +269,12 @@ public class CollisionService {
     private static final int MAX_TEXT_LEN = 48;
 
     /** 单台设备的上报状态；字段均可选，未提供的保持原值。 */
-    /**
-     * @param x 底图百分比横坐标（0~100），可缺省；龙门吊这类会行走的设备由网关按大车位置换算后上报，
-     *          不传则沿用设备台账里的固定坐标
-     * @param y 底图百分比纵坐标（0~100）
-     */
     public record ExternalDeviceState(String code, String status, Double speed, String direction,
                                       String controlStatus, String communication, String radarStatus,
                                       Double x, Double y) {}
+
+    public record ExternalRadarReading(String pairDevice, Double distance, Double relSpeed,
+                                       Double radarQuality, String health) {}
 
     /** @param applied 成功应用的设备数；@param ignored 未知或空编码，原样回传便于网关排查 */
     public record IngestResult(int applied, List<String> ignored) {}
@@ -299,6 +292,7 @@ public class CollisionService {
             return new IngestResult(0, List.of());
         }
         List<String> ignored = new ArrayList<>();
+        List<String> reportedDevices = new ArrayList<>();
         int[] applied = {0};
         gate.buffer(() -> {
             for (ExternalDeviceState s : states) {
@@ -318,18 +312,18 @@ public class CollisionService {
                 if (hasText(s.direction())) d.direction = clip(s.direction());
                 if (hasText(s.controlStatus())) d.controlStatus = clip(s.controlStatus());
                 if (hasText(s.communication())) d.communication = clip(s.communication());
-                // 会行走的设备（龙门吊）把大车位置换算成底图百分比上报，首页地图上的图标才会跟着动；
-                // 固定工位（翻箱机）不传，沿用台账坐标。
                 if (s.x() != null) d.x = Math.max(0, Math.min(100, s.x()));
                 if (s.y() != null) d.y = Math.max(0, Math.min(100, s.y()));
                 applyHealth(d, s.radarStatus());
                 d.lastUpdated = OffsetDateTime.now(clock).toString();
                 repository.save(d);
+                reportedDevices.add(d.id);
                 applied[0]++;
             }
             if (applied[0] > 0) {
                 Map<String, Object> data = new LinkedHashMap<>();
                 data.put("source", "device-ingest");
+                data.put("deviceIds", reportedDevices);
                 data.put("applied", applied[0]);
                 publisher.publish("collision.changed", data);
             }
@@ -337,58 +331,47 @@ public class CollisionService {
         return new IngestResult(applied[0], List.copyOf(ignored));
     }
 
-    /**
-     * @param pairDevice 配对编码（当前设备侧，如 VEH-07），决定这笔读数落到哪一对
-     * @param distance 相对距离（米），必填
-     * @param relSpeed 相对速度（m/s），正=接近、负=远离；可缺省，缺省沿用上一帧
-     * @param radarQuality 雷达信号质量 0~100，可缺省
-     * @param health NORMAL / DEGRADED / DOWN，可缺省（缺省按 NORMAL）
-     */
-    public record ExternalRadarReading(String pairDevice, Double distance, Double relSpeed,
-                                       Double radarQuality, String health) {}
-
-    /**
-     * 雷达测距上报：把「相对距离 / 相对速度 / 雷达健康」写进对应的设备配对。
-     *
-     * <p>与 {@link #applyExternalState} 不同，本方法<b>推进</b>配对距离并据此重算碰撞风险——
-     * 距离是雷达的原始测量，风险就该由它决定；否则页面上距离变了风险却不动，等于两套数据。</p>
-     *
-     * <p>只更新已存在的配对（{@code VEH-07} / {@code VEH-08}），未知配对一律忽略：
-     * 上报方不能凭空创造设备对，设备主数据仍只有台账一个来源。</p>
-     */
+    /** Retains the deployed machine-ingest contract; unknown pairs are not created. */
     @Transactional
     public synchronized IngestResult applyExternalRadar(List<ExternalRadarReading> readings) {
         if (readings == null || readings.isEmpty()) {
             return new IngestResult(0, List.of());
         }
         List<String> ignored = new ArrayList<>();
+        java.util.Set<String> reportedDevices = new java.util.LinkedHashSet<>();
         int[] applied = {0};
         gate.buffer(() -> {
-            for (ExternalRadarReading r : readings) {
-                if (r == null || r.pairDevice() == null || r.pairDevice().isBlank()) {
+            for (ExternalRadarReading reading : readings) {
+                if (reading == null || !hasText(reading.pairDevice())) {
                     ignored.add("<empty>");
                     continue;
                 }
-                String code = r.pairDevice().trim();
+                String code = reading.pairDevice().trim();
                 PairState pair = pairs.get(code);
-                if (pair == null || r.distance() == null) {
+                if (pair == null || reading.distance() == null) {
                     ignored.add(code);
                     continue;
                 }
-                double distance = Math.max(0, Math.min(500, r.distance()));
-                double relSpeed = r.relSpeed() == null ? pair.relSpeed : r.relSpeed();
-                String direction = relSpeed > 0.05 ? "接近" : relSpeed < -0.05 ? "远离" : "保持";
-                applyDistance(pair, distance, relSpeed, direction);
-                applyRadarHealth(pair, r.health());
-                if (r.radarQuality() != null) {
-                    pair.radarQuality = (int) Math.round(Math.max(0, Math.min(100, r.radarQuality())));
+                if(com.bproject.safety.config.ScsCentralScope.legacyMachineIngress()
+                    &&(repository.findById(pair.currentId).isEmpty()||repository.findById(pair.relatedId).isEmpty())){
+                    ignored.add(code);continue;
+                }
+                double distance = Math.max(0, Math.min(500, reading.distance()));
+                double speed = reading.relSpeed() == null ? pair.relSpeed : reading.relSpeed();
+                String direction = speed > 0.05 ? "接近" : speed < -0.05 ? "远离" : "保持";
+                applyDistance(pair, distance, speed, direction);
+                applyRadarHealth(pair, reading.health());
+                if (reading.radarQuality() != null) {
+                    pair.radarQuality = (int) Math.round(Math.max(0, Math.min(100, reading.radarQuality())));
                 }
                 pair.updatedAt = OffsetDateTime.now(clock);
+                reportedDevices.add(pair.currentId);reportedDevices.add(pair.relatedId);
                 applied[0]++;
             }
             if (applied[0] > 0) {
                 Map<String, Object> data = new LinkedHashMap<>();
                 data.put("source", "radar-ingest");
+                data.put("deviceIds", reportedDevices);
                 data.put("applied", applied[0]);
                 publisher.publish("collision.changed", data);
             }
@@ -396,14 +379,9 @@ public class CollisionService {
         return new IngestResult(applied[0], List.copyOf(ignored));
     }
 
-    /** 雷达健康：只改感知健康态，不直接改碰撞风险等级（风险仍由距离决定）。 */
     private void applyRadarHealth(PairState pair, String health) {
-        if (health == null || health.isBlank()) {
-            pair.radarDown = false;
-            pair.healthCode = SensorHealth.NORMAL;
-            return;
-        }
-        switch (health.trim().toUpperCase()) {
+        String value = health == null ? "" : health.trim().toUpperCase(java.util.Locale.ROOT);
+        switch (value) {
             case "DOWN", "RADAR_DOWN" -> {
                 pair.radarDown = true;
                 pair.healthCode = SensorHealth.RADAR_DOWN;
@@ -594,6 +572,8 @@ public class CollisionService {
     private PairState pairOfDevice(String id) {
         for (PairState p : pairs.values()) {
             if (p.currentId.equals(id) || p.relatedId.equals(id)) {
+                if((com.bproject.safety.config.ScsCentralScope.current()!=null||com.bproject.safety.config.ScsCentralScope.legacyMachineIngress())
+                    &&(repository.findById(p.currentId).isEmpty()||repository.findById(p.relatedId).isEmpty()))return null;
                 return p;
             }
         }

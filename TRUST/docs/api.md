@@ -11,6 +11,12 @@
 
 所有查询、下载、核验和导出受数据范围限制。管理员和录入员可录入、上传、更正、补办；查询员可读、核验、导出。审计查询仅限同范围管理员。
 
+V2 钱包属于组织级托管资源，仅接受 GLOBAL 范围的 L1 上下文，同时执行原组织归属检查。`TRUST:wallets` 的 VIEW 允许读取；VIEW+EDIT 允许提出登记、绑定或停用申请；VIEW+CONFIRM 允许复核。只读用户不能提出或批准变更，L2/L3/L4 即使误配这些动作也不能管理组织钱包。提出和复核继续要求两个不同的稳定 IAM 主体，菜单授权不会替代证书、来源、预期修订号或链上签名策略校验。
+
+V2 的 `TRUST:identities` 与 `TRUST:status` 同属组织级管理资源，只接受 GLOBAL 的 L1 上下文及对应 VIEW，不能用区域岗位读取组织全量身份、运行汇总或审计。钱包关联的身份与证书历史可按 `TRUST:wallets` VIEW 读取。状态页的设置、投递和历史记录读取仍受组织约束；修改设置额外要求 `TRUST:status` EDIT、原配置中的管理主体许可及正确修订号，菜单授权不会替代这些条件。全局只读用户没有修改或重试能力。
+
+`TRUST:tasks` VIEW 与 `TRUST:trace` VIEW 分别控制任务和溯源查询；事件归属与中央项目、区域、系统范围继续求交。任务重试额外要求 `TRUST:tasks` CHAIN_SUBMIT。只允许原任务处于 READY 或 FAILED 时原子重排；RUNNING 与 DONE 返回 409，避免已完成存证被重新提交。跨范围事件返回 404。此规则不改变受限服务凭据的通用证据接入重试契约。
+
 ## 接口清单
 
 | 方法与资源 | 语义 |
@@ -32,7 +38,7 @@
 | POST /imports | UTF-8 JSON 数组或 CSV，返回逐行结果；文件上限 1 MiB、200 行 |
 | GET /trace | kind=BATCH/BUNDLE/HANDOVER/EVENT，value 为编号；EVENT 格式为来源系统:来源事件号 |
 | GET /tasks | 最近 200 条同范围任务及原因 |
-| POST /events/{id}/retry | 重排处理任务；正在处理时返回 409 |
+| POST /events/{id}/retry | 原子重排 READY/FAILED 任务；RUNNING/DONE 返回 409 |
 | POST /events/{id}/verify | 即时核验事件、证据引用、IPFS 文件/清单和链上字段 |
 | POST /events/{id}/export | 核验通过后返回 ZIP；未通过返回 409 |
 | GET /status | 数据库、IPFS、Fabric、同范围事件和任务汇总 |

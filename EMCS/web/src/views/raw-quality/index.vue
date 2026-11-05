@@ -10,6 +10,7 @@
 -->
 <template>
   <div class="rq-dark cockpit-page">
+    <DeviceCollectionPanel />
     <!-- ============ 顶栏筛选 + 演示态签名 ============ -->
     <div class="rq-filters">
       <div class="fg">
@@ -39,7 +40,8 @@
     <el-alert v-if="loadError" :title="loadError" type="error" :closable="false" show-icon style="margin-top:16px"><el-button @click="loadSummary" :loading="loading">重新加载</el-button></el-alert>
     <div v-if="loading && !payload" class="rq-loading">正在拉取数据…</div>
 
-    <div v-if="payload" class="rq-main">
+    <el-empty v-if="payload && !payload.selected" description="当前授权范围暂无采集点" />
+    <div v-if="payload?.selected" class="rq-main">
       <!-- ============ 左侧：点位树 ============ -->
       <aside class="rq-tree-panel">
         <div class="tree-head">
@@ -143,6 +145,7 @@
               size="small"
               class="rc-btn"
               @click="doRecompute(h)"
+              :disabled="!scopeCan('CONFIRM')"
               :loading="recomputing === h.periodKey"
             >一键重算</el-button>
           </div>
@@ -313,6 +316,7 @@
 </template>
 
 <script setup>
+import DeviceCollectionPanel from './DeviceCollectionPanel.vue'
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts/core'
@@ -323,12 +327,16 @@ import {
 import { CanvasRenderer } from 'echarts/renderers'
 import { getRawQualitySummary, postBackfill, postRecompute } from '@/api/rawQuality'
 import { deriveBackfillWindow } from './backfillWindow'
+import useUserStore from '@/store/modules/user'
+import { resourceAction } from '@/utils/central-authorization'
 import { useChartTheme, chartSeriesColors } from '@/views/energy/shared/cockpitTheme'
 
 echarts.use([LineChart, ScatterChart, GridComponent, TooltipComponent, MarkAreaComponent, MarkLineComponent, CanvasRenderer])
 
 // 双主题响应式：切顶栏夜览时图表即时重绘
 const theme = useChartTheme()
+const scopeUser = useUserStore()
+const scopeCan = (action) => resourceAction(true, scopeUser.centralAuthorization, 'EMCS:2008', action)
 
 defineOptions({ name: 'RawQuality' })
 
@@ -409,7 +417,7 @@ const backfilling = ref(false)
 const recomputing = ref(null)
 
 const canBackfill = computed(() =>
-  payload.value?.tasks.some((t) => t.currentState === 'failed')
+  scopeCan('EDIT') && payload.value?.tasks.some((t) => t.currentState === 'failed')
 )
 
 const backfillWindow = computed(() => deriveBackfillWindow(
@@ -418,6 +426,7 @@ const backfillWindow = computed(() => deriveBackfillWindow(
 ))
 
 async function doBackfill() {
+  if (!scopeCan('EDIT')) return
   if (!backfillWindow.value) {
     ElMessage.error('当前无连续缺测窗，无法执行补传')
     return
@@ -438,6 +447,7 @@ async function doBackfill() {
 }
 
 async function doRecompute(hint) {
+  if (!scopeCan('CONFIRM')) return
   recomputing.value = hint.periodKey
   try {
     await postRecompute({ periodKey: hint.periodKey, scope: hint.scope })

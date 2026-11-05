@@ -6,6 +6,7 @@
  */
 import { env } from '../config/env.js';
 import { TelemetryPoint } from '../db/telemetry.js';
+import { assertLegacyBackground } from '../services/background-scope-policy.js';
 
 const once = process.argv.includes('--once');
 const intervalMs = Math.max(200, Number(process.env.PSMS_SIMULATOR_INTERVAL_MS ?? 1000));
@@ -18,6 +19,7 @@ const points = [
 let sequence = 0;
 
 async function sendBatch(): Promise<number> {
+  assertLegacyBackground('SIMULATOR');
   const now = Date.now(); sequence += 1;
   const docs = points.map((point, index) => ({
     ...point,
@@ -27,6 +29,7 @@ async function sendBatch(): Promise<number> {
   return TelemetryPoint.insertMany(docs);
 }
 
+assertLegacyBackground('SIMULATOR');
 if (!env.OPENGEMINI_ENABLED) throw new Error('OPENGEMINI_ENABLED=false，无法启动 S1 模拟守护进程');
 const run = async () => {
   const written = await sendBatch();

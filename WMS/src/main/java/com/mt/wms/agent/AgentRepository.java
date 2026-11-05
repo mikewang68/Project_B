@@ -133,14 +133,17 @@ class AgentRepository {
         return scoped("SELECT * FROM wms_agent_schedule WHERE company_id=:c AND warehouse_id=:w AND owner_id=:o AND user_id=:u ORDER BY id DESC",s).param("u",s.userId()).query(Schedule.class).list();
     }
     void saveSchedule(Scope s,Long id,ScheduleRequest r,String emails,OffsetDateTime next) {
-        String sql=id==null?"INSERT INTO wms_agent_schedule(company_id,warehouse_id,owner_id,user_id,name,enabled,frequency,interval_minutes,daily_time,emails,low_stock,replenishment,frozen_stock,capacity,capacity_percent,cooldown_hours,next_run_at) VALUES(:c,:w,:o,:u,:name,:enabled,:freq,:minutes,:time,:emails,:low,:rep,:frozen,:capacity,:pct,:cool,:next)"
-            :"UPDATE wms_agent_schedule SET name=:name,enabled=:enabled,frequency=:freq,interval_minutes=:minutes,daily_time=:time,emails=:emails,low_stock=:low,replenishment=:rep,frozen_stock=:frozen,capacity=:capacity,capacity_percent=:pct,cooldown_hours=:cool,next_run_at=:next,last_error=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=:id AND company_id=:c AND warehouse_id=:w AND owner_id=:o AND user_id=:u AND (lease_until IS NULL OR lease_until<CURRENT_TIMESTAMP)";
+        var reference=WmsAgentAuthorization.capture();
+        String sql=id==null?"INSERT INTO wms_agent_schedule(company_id,warehouse_id,owner_id,user_id,name,enabled,frequency,interval_minutes,daily_time,emails,low_stock,replenishment,frozen_stock,capacity,capacity_percent,cooldown_hours,next_run_at,scope_context_version,iam_subject,iam_session_id) VALUES(:c,:w,:o,:u,:name,:enabled,:freq,:minutes,:time,:emails,:low,:rep,:frozen,:capacity,:pct,:cool,:next,:version,:subject,:sid)"
+            :"UPDATE wms_agent_schedule SET name=:name,enabled=:enabled,frequency=:freq,interval_minutes=:minutes,daily_time=:time,emails=:emails,low_stock=:low,replenishment=:rep,frozen_stock=:frozen,capacity=:capacity,capacity_percent=:pct,cooldown_hours=:cool,next_run_at=:next,last_error=NULL,updated_at=CURRENT_TIMESTAMP,scope_context_version=:version,iam_subject=:subject,iam_session_id=:sid WHERE id=:id AND company_id=:c AND warehouse_id=:w AND owner_id=:o AND user_id=:u AND (lease_until IS NULL OR lease_until<CURRENT_TIMESTAMP)";
         var query=scoped(sql,s).param("u",s.userId()).param("name",r.name()).param("enabled",r.enabled()).param("freq",r.frequency()).param("minutes",r.intervalMinutes()).param("time",r.dailyTime()).param("emails",emails)
-            .param("low",r.lowStock()).param("rep",r.replenishment()).param("frozen",r.frozenStock()).param("capacity",r.capacity()).param("pct",r.capacityPercent()).param("cool",r.cooldownHours()).param("next",next);
+            .param("low",r.lowStock()).param("rep",r.replenishment()).param("frozen",r.frozenStock()).param("capacity",r.capacity()).param("pct",r.capacityPercent()).param("cool",r.cooldownHours()).param("next",next)
+            .param("version",reference.version()).param("subject",reference.subject()).param("sid",reference.sessionId());
         if(id!=null) query=query.param("id",id);
         if(query.update()!=1) throw new IllegalArgumentException("巡检任务正在执行、不存在或无权修改，请稍后重试");
     }
     List<Schedule> due() {return jdbc.sql("SELECT * FROM wms_agent_schedule WHERE enabled=TRUE AND next_run_at<=CURRENT_TIMESTAMP ORDER BY next_run_at LIMIT 10").query(Schedule.class).list();}
+    List<Schedule> dueCentral() {return jdbc.sql("SELECT * FROM wms_agent_schedule WHERE enabled=TRUE AND scope_context_version=2 AND next_run_at<=CURRENT_TIMESTAMP ORDER BY next_run_at LIMIT 10").query(Schedule.class).list();}
     boolean claim(Schedule s,boolean manual) {
         return jdbc.sql("UPDATE wms_agent_schedule SET lease_until=CURRENT_TIMESTAMP+INTERVAL '10 minutes' WHERE id=:id AND (:manual OR (enabled=TRUE AND next_run_at<=CURRENT_TIMESTAMP)) AND (lease_until IS NULL OR lease_until<CURRENT_TIMESTAMP)").param("id",s.id()).param("manual",manual).update()==1;
     }

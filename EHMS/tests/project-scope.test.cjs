@@ -20,7 +20,7 @@ function browser(search='',response={}){
     ok:response.status===undefined||response.status===200,status:response.status||200,headers:{get:()=>null},
     json:async()=>({enabled:true,mode:'iam',user:{username:'test-user',role:'SUPER_ADMIN'},
       projectIds:['PROJECT_A','PROJECT_B'],projectId:response.projectId||'PROJECT_A'})};}};
-  const context={window,document,location,URL,URLSearchParams,Headers,CustomEvent:class{constructor(type){this.type=type;}},sessionStorage:{removeItem(){}}};
+  const context={window,document,location,URL,URLSearchParams,Headers,CustomEvent:class{constructor(type){this.type=type;}},sessionStorage:{removeItem(){}},setInterval(){}};
   return{context,elements,requests,events,assigned,classes,run(file){vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../web',file),'utf8'),context);}};
 }
 

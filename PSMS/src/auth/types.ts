@@ -21,7 +21,9 @@ export type PageId =
 export type SessionContext = {
   readOnly?: boolean;
   fullAdmin?: boolean;
+  platformSuperAdmin?: boolean;
   permissions?: readonly string[];
+  menuOperations?: Readonly<Record<string, readonly string[]>> | null;
   actorId: string;
   roleCode: RoleCode;
   dataScope: readonly string[];

@@ -44,6 +44,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 @Profile("server")
 public class JdbcFenceRepository implements FenceRepository {
+    private static String centralScope(String alias){return com.bproject.safety.config.ScsCentralScope.predicate(com.bproject.safety.config.ScsCentralScope.Root.FENCE,alias);}
 
     private static final Logger log = LoggerFactory.getLogger(JdbcFenceRepository.class);
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
@@ -82,7 +83,7 @@ public class JdbcFenceRepository implements FenceRepository {
 
     @Override
     public List<DemoFence> findAll() {
-        List<FenceRowDto> dtos = jdbcTemplate.query(SELECT_ALL, Collections.emptyMap(), rowMapper);
+        List<FenceRowDto> dtos = jdbcTemplate.query(BASE_SELECT+" WHERE f.is_deleted=false"+centralScope("f")+" ORDER BY f.fence_code ASC", Collections.emptyMap(), rowMapper);
         return dtos.stream().map(this::toDemoFence).toList();
     }
 
@@ -93,7 +94,7 @@ public class JdbcFenceRepository implements FenceRepository {
         }
         try {
             FenceRowDto dto = jdbcTemplate.queryForObject(
-                    SELECT_BY_CODE,
+                    SELECT_BY_CODE+centralScope("f"),
                     Map.of("fenceCode", id.trim()),
                     rowMapper
             );
@@ -104,9 +105,11 @@ public class JdbcFenceRepository implements FenceRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public DemoFence save(DemoFence fence) {
         Objects.requireNonNull(fence, "fence must not be null");
         Objects.requireNonNull(fence.id, "fence.id must not be null");
+        var stamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.FENCE,fence.id);
 
         DemoFence toPersist = fence.copy();
         // 复查-D1：已生效/版本异常围栏编辑进入 TO_REVIEW 时，active_version 保持指向
@@ -115,6 +118,7 @@ public class JdbcFenceRepository implements FenceRepository {
         Long fenceId = upsertFenceRoot(toPersist, governingVersion);
         upsertFenceVersion(fenceId, toPersist);
         upsertFenceEdgeSync(fenceId, toPersist);
+        com.bproject.safety.config.ScsCentralScope.afterWrite(jdbcTemplate,stamp);
 
         return findById(toPersist.id).orElse(toPersist);
     }
@@ -150,9 +154,12 @@ public class JdbcFenceRepository implements FenceRepository {
             return java.util.Optional.empty();
         }
         List<FenceRowDto> rows = jdbcTemplate.query(
-                BASE_SELECT.replace("v.version_no = f.active_version", "v.version_no = f.version")
+                BASE_SELECT.replace("f.active_version,", "v.version_no AS active_version,")
+                        .replace("f.buffer_distance,", "v.buffer_distance,")
+                        .replace("v.version_no = f.active_version", "v.version_no <> f.active_version")
                         + " WHERE f.fence_code = :code AND f.is_deleted = false "
-                        + "AND f.version <> f.active_version",
+                        + "AND f.status_code = 'TO_REVIEW' AND v.status_code = 'TO_REVIEW'"
+                        + centralScope("f") + " ORDER BY v.created_at DESC, v.id DESC LIMIT 1",
                 java.util.Collections.singletonMap("code", (Object) id.trim()),
                 rowMapper);
         return rows.stream().findFirst().map(this::toDemoFence);
@@ -161,7 +168,7 @@ public class JdbcFenceRepository implements FenceRepository {
     @Override
     public long count() {
         Long c = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM safety.safety_fence WHERE is_deleted = false",
+                "SELECT count(*) FROM safety.safety_fence WHERE is_deleted = false"+centralScope("safety_fence"),
                 Collections.emptyMap(),
                 Long.class
         );

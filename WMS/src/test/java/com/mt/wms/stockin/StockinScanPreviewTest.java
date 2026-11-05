@@ -20,7 +20,7 @@ class StockinScanPreviewTest {
     private final BusinessSequenceService sequences=mock(BusinessSequenceService.class);
     private final MockHttpSession session=new MockHttpSession();
     private final WmsPrincipal reader=new WmsPrincipal(71L,11L,"test-company","Test company","reader","Reader",List.of("VIEWER"),Set.of("stockin:read"),false);
-    private final StockinService service=new StockinService(repository,tenants,sequences);
+    private final StockinService service=new StockinService(repository,tenants,sequences,mock(PsmsReceiptRecorder.class),mock(StockinReceiptIdempotency.class));
 
     @BeforeEach void scope(){
         when(tenants.current(reader,session)).thenReturn(new AuthModels.TenantView("test-company","Test company",

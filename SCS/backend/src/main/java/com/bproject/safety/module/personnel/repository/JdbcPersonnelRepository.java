@@ -99,7 +99,7 @@ public class JdbcPersonnelRepository implements PersonnelRepository {
     public JdbcPersonnelRepository(NamedParameterJdbcTemplate jdbcTemplate,
                                    DemoMasterData masterData,
                                    Clock clock) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = new com.bproject.safety.config.ScsScopedJdbcTemplate(jdbcTemplate);
         this.masterData = masterData;
         this.clock = clock;
         this.rowMapper = new PersonnelRowMapper();
@@ -144,10 +144,12 @@ public class JdbcPersonnelRepository implements PersonnelRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public DemoPersonnel save(DemoPersonnel person) {
         Objects.requireNonNull(person, "person must not be null");
         Objects.requireNonNull(person.id, "person.id must not be null");
 
+        var centralStamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.PERSONNEL,person.id);
         DemoPersonnel toPersist = person.copy();
         MapSqlParameterSource params = createParams(toPersist);
 
@@ -156,6 +158,7 @@ public class JdbcPersonnelRepository implements PersonnelRepository {
             jdbcTemplate.update(INSERT_PERSONNEL, params);
         }
 
+        com.bproject.safety.config.ScsCentralScope.afterWrite(jdbcTemplate,centralStamp);
         return toPersist.copy();
     }
 

@@ -143,7 +143,10 @@ public class FenceService {
             throw ApiException.conflict("已停用围栏不可编辑，请重新启用后再修改");
         }
         validate(req.name(), req.polygon());
-        applyBasics(f, req.name(), req.kind(), req.riskLevel(), req.teams(), req.startsAt(), req.endsAt(),
+        if (req.kind() != null && !KINDS.contains(req.kind())) {
+            throw ApiException.unprocessable("非法围栏类型: " + req.kind());
+        }
+        applyBasics(f, req.name(), req.kind() == null ? f.kind : req.kind(), req.riskLevel(), req.teams(), req.startsAt(), req.endsAt(),
                 req.polygon(), req.bufferDistance());
         // 已生效围栏被编辑后回到待评审，版本递增，需要重新发布（专业配置中心口径）
         if (FenceStatuses.EFFECTIVE.equals(f.statusCode) || FenceStatuses.MISMATCH.equals(f.statusCode)) {

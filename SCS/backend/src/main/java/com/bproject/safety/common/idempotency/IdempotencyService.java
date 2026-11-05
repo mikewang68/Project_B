@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 /**
  * 基于 Kvrocks（Redis 协议）的通用幂等服务。
  *
- * <p>前端对所有非 GET 请求自动携带 Idempotency-Key；node4/node5 双实例部署时，
+ * <p>前端对所有非 GET 请求自动携带 Idempotency-Key；多实例部署时，
  * 不能使用 JVM 内存做去重，因此以 Kvrocks 为共享存储：</p>
  * <pre>
  *   idempotency:{key} = PROCESSING | 结果摘要，带 TTL
@@ -41,7 +41,7 @@ public class IdempotencyService {
             return Optional.empty();
         }
         try {
-            String value = redis.opsForValue().get(KEY_PREFIX + key);
+            String value = redis.opsForValue().get(storageKey(key));
             if (value == null || PROCESSING.equals(value)) {
                 return Optional.empty();
             }
@@ -62,7 +62,7 @@ public class IdempotencyService {
             return true;
         }
         try {
-            Boolean ok = redis.opsForValue().setIfAbsent(KEY_PREFIX + key, PROCESSING, ttl);
+            Boolean ok = redis.opsForValue().setIfAbsent(storageKey(key), PROCESSING, ttl);
             return !Boolean.FALSE.equals(ok);
         } catch (RuntimeException ex) {
             log.warn("Kvrocks 写入幂等键失败，降级放行 key={} cause={}", key, ex.toString());
@@ -76,7 +76,7 @@ public class IdempotencyService {
             return;
         }
         try {
-            redis.opsForValue().set(KEY_PREFIX + key,
+            redis.opsForValue().set(storageKey(key),
                     resultSummary == null ? "OK" : resultSummary, ttl);
         } catch (RuntimeException ex) {
             log.warn("Kvrocks 写入幂等结果失败 key={} cause={}", key, ex.toString());
@@ -89,7 +89,7 @@ public class IdempotencyService {
             return;
         }
         try {
-            redis.delete(KEY_PREFIX + key);
+            redis.delete(storageKey(key));
         } catch (RuntimeException ex) {
             log.warn("Kvrocks 释放幂等键失败 key={} cause={}", key, ex.toString());
         }
@@ -122,5 +122,15 @@ public class IdempotencyService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+    private String storageKey(String key) {
+        var context=com.bproject.safety.config.ScsCentralScope.current();
+        if(context==null)return KEY_PREFIX+key;
+        var tuple=com.bproject.safety.config.ScsCentralScope.writeScope();
+        var attrs=(org.springframework.web.context.request.ServletRequestAttributes)org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        var request=attrs.getRequest();
+        String identity=context.userId()+"\n"+tuple.projectId()+"\n"+tuple.regionId()+"\n"+tuple.subsystemCode()+"\n"+request.getMethod()+"\n"+request.getRequestURI()+"\n"+key;
+        try{return KEY_PREFIX+"v2:"+java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(identity.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}
+        catch(java.security.NoSuchAlgorithmException impossible){throw new IllegalStateException(impossible);}
     }
 }

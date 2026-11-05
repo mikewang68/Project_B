@@ -16,6 +16,7 @@ public interface SystemMenuMapper {
             FROM sys_menu m
             <if test='userId != 1'>
               JOIN sys_role_menu rm ON rm.menu_id = m.menu_id
+              JOIN sys_role r ON r.role_id=rm.role_id AND r.status='0' AND r.del_flag='0'
               JOIN sys_user_role ur ON ur.role_id = rm.role_id AND ur.user_id = #{userId}
             </if>
             WHERE m.status = '0' AND m.menu_type IN ('M', 'C')

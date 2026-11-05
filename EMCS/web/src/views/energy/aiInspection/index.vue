@@ -13,10 +13,10 @@
       <div class="page-title">
         <span class="eyebrow">AI INSPECTION · 自主巡检</span>
         <b>AI 自主巡检报告</b>
-        <small>每日 07:00 自动巡检 · 覆盖数据质量 / 告警 / 能耗成本 / 设备画像四条链</small>
+        <small>当前提供告警与建议数量汇总；手动报告按当前授权范围生成</small>
       </div>
       <div class="page-actions">
-        <el-button :loading="runLoading" :disabled="!access" type="primary" @click="onRunNow">
+        <el-button :loading="runLoading" :disabled="!canRun" type="primary" @click="onRunNow">
           立即巡检
         </el-button>
       </div>
@@ -117,7 +117,7 @@
           </div>
 
           <div v-else-if="!findings.length" class="detail-empty">
-            本次巡检未发现异常，全部指标处于正常区间。
+            本次报告未提供逐项巡检发现；请结合汇总与业务明细核查，空列表不代表全部指标正常。
           </div>
 
           <div v-else class="findings">
@@ -157,13 +157,15 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Lock } from '@element-plus/icons-vue'
 import useUserStore from '@/store/modules/user'
+import { resourceAction } from '@/utils/central-authorization'
 import { getInspection, listInspections, runInspection } from '@/api/agent'
 
 const userStore = useUserStore()
 const access = computed(() => {
   const roles = new Set(userStore.roles || [])
-  return roles.has('admin') || roles.has('energy_mgr')
+  return resourceAction(roles.has('admin') || roles.has('energy_mgr') || roles.has('PLATFORM_AUDITOR_READONLY'), userStore.centralAuthorization, 'EMCS:2015', 'VIEW')
 })
+const canRun = computed(() => resourceAction(userStore.roles.some(r => ['admin','energy_mgr'].includes(r)), userStore.centralAuthorization, 'EMCS:2015', 'ADD'))
 
 const list = ref([])
 const listLoading = ref(false)
@@ -277,7 +279,7 @@ async function loadList(preferId) {
     // 否则 res.data 作为对象命中兜底、Array.isArray 判否变空列表（历史报告 0 份的根因）
     const d = res?.data ?? res
     const rows = d?.items || d?.rows || res?.rows || res?.items || (Array.isArray(d) ? d : [])
-    list.value = Array.isArray(rows) ? rows : []
+    list.value = Array.isArray(rows) ? rows.map(row => ({ ...row, id: row.id ?? row.reportId })) : []
     if (list.value.length) {
       const target = preferId
         ? list.value.find((r) => r.id === preferId)
@@ -299,7 +301,8 @@ async function loadDetail(id) {
   detailLoading.value = true
   try {
     const res = await getInspection(id)
-    current.value = res?.data || res
+    const row = res?.data || res
+    current.value = { ...row, id: row.id ?? row.reportId }
   } finally {
     detailLoading.value = false
   }
@@ -311,10 +314,11 @@ function selectReport(id) {
 }
 
 async function onRunNow() {
+  if (!canRun.value) return
   runLoading.value = true
   try {
     const res = await runInspection()
-    const newId = res?.data?.id || res?.id
+    const newId = res?.data?.id || res?.data?.reportId || res?.id
     ElMessage.success('本次巡检已完成，报告已刷新')
     await loadList(newId)
   } catch (err) {

@@ -47,7 +47,7 @@ public class CostController {
     }
     @GetMapping("/recomputations/{id}") public AjaxResult recomputation(@PathVariable long id) { return AjaxResult.success(service.recomputation(id)).add("msg", "成本重算详情"); }
     @PostMapping("/recomputations") public AjaxResult recompute(@RequestBody Map<String,Object> body,
-            @AuthenticationPrincipal AuthenticatedUser user) { return AjaxResult.success(service.recompute(body, user.userName())).add("msg", "成本重算已发起，等待财务复核"); }
+            @AuthenticationPrincipal AuthenticatedUser user) { return AjaxResult.success(service.recompute(body, user.userName())).add("msg", "重算申请已记录，尚未执行费用重算"); }
     @PostMapping("/recomputations/{id}/review") public AjaxResult review(@PathVariable long id, @RequestBody Map<String,Object> body,
-            @AuthenticationPrincipal AuthenticatedUser user) { return AjaxResult.success(service.review(id, body, user.userName())).add("msg", "成本重算复核完成"); }
+            @AuthenticationPrincipal AuthenticatedUser user) { return AjaxResult.success(service.review(id, body, user.userName())).add("msg", "重算申请复核已记录，不表示计算完成"); }
 }

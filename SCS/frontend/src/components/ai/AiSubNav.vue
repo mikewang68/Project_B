@@ -29,13 +29,13 @@ defineProps<{
         :class="{ 'is-active': route.path.startsWith('/ai/models') }"
       >
         <el-icon><Cpu /></el-icon>
-        <span>AI模型管理与在线识别</span>
+        <span>AI模型管理与模拟识别</span>
         <span v-if="activeModelName" class="tab-pill">当前: {{ activeModelName }}</span>
       </RouterLink>
     </div>
 
     <div class="ai-sub-nav__status">
-      <span class="live-pulse"><i></i><b>AI视觉推理引擎在线</b></span>
+      <span class="live-pulse"><i></i><b>本地模拟识别模式</b></span>
     </div>
   </nav>
 </template>

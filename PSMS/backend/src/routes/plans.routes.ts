@@ -169,15 +169,26 @@ plansRouter.post('/:id/recommendation', authenticate, auditOperation('recommenda
 // API-007 任务拆解（写入任务集合）
 plansRouter.post('/:id/tasks', authenticate, auditOperation('decomposeTasks'), async (req, res, next) => {
   try {
-    if (!Array.isArray(req.body?.tasks)) {
+    const taskSchema = z.object({
+      name: z.string().trim().min(1).max(200).optional(),
+      description: z.string().max(2000).optional(),
+      equipmentId: z.string().trim().min(1).max(160).optional(),
+      assignedCrew: z.array(z.string().min(1).max(160)).max(50).optional(),
+      status: z.literal('PENDING').optional(),
+      order: z.number().int().min(0).max(1000).optional(),
+      estimatedDuration: z.number().int().min(1).max(10080).optional(),
+      dependsOn: z.array(z.string()).max(0).optional(),
+    }).strict();
+    const parsed = z.object({ tasks: z.array(taskSchema).min(1).max(200) }).strict().safeParse(req.body);
+    if (!parsed.success) {
       res.status(400).json({
         ok: false,
         errorCode: 'DEMO-SCENARIO-001',
-        message: 'tasks 必须为数组',
+        message: '任务字段无效；新任务必须为待执行状态，归属由计划继承',
       });
       return;
     }
-    const tasks = await workOrderService.createTasksForPlan(pathParam(req), req.body.tasks);
+    const tasks = await workOrderService.createTasksForPlan(pathParam(req), parsed.data.tasks);
     res.json({
       ok: true,
       data: { apiId: 'API-007', operationId: 'POST_mock_plans_id_decompose', items: tasks },

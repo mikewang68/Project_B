@@ -47,6 +47,8 @@ public class SsoTicketService {
   private final SecretKey key;
   private final String issuer;
   private final long ttlSeconds;
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bdemo.iam.scope.ApplicationRegistry registry;
 
   public SsoTicketService(
       AppProperties properties, SsoTicketMapper tickets, SessionMapper sessions, ObjectMapper json) {
@@ -213,9 +215,9 @@ public class SsoTicketService {
     return new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
   }
 
-  private static String normalizeAudience(String audience) {
+  private String normalizeAudience(String audience) {
     String aud = audience == null ? "" : audience.trim().toLowerCase();
-    if (!ALLOWED_AUDIENCE.contains(aud)) {
+    if (!(registry==null?ALLOWED_AUDIENCE.contains(aud):registry.accepts(aud))) {
       throw new IllegalArgumentException("不支持的受众: " + audience);
     }
     return aud;

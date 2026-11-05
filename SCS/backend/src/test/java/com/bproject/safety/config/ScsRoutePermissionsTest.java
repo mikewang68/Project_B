@@ -104,7 +104,7 @@ class ScsRoutePermissionsTest {
   void everyReferencedCodeIsRegisteredInIamCatalog() throws IOException {
     // 该断言需要同一仓库里的 IAM/ 目录（本地 _gh_work、CI 全仓库检出都有）。
     // 服务器上只部署 SCS/ 子树时没有 IAM/，此时跳过而不是误报失败。
-    Path iam = iamIsolatedDir();
+    Path iam = iamCatalogDir();
     Assumptions.assumeTrue(iam != null,
         "未找到同级 IAM/ 迁移目录（仅 SCS 子树的构建环境），跳过跨仓库登记断言");
 
@@ -147,7 +147,7 @@ class ScsRoutePermissionsTest {
     assertTrue(Files.exists(csv), "找不到菜单定义文件: " + csv);
     String text = Files.readString(csv, StandardCharsets.UTF_8);
     Set<String> registered = new LinkedHashSet<>();
-    Path iam = iamIsolatedDir();
+    Path iam = iamCatalogDir();
     org.junit.jupiter.api.Assumptions.assumeTrue(iam != null, "SCS-only checkout has no IAM permission catalog");
     try (Stream<Path> files = Files.walk(iam)) {
       for (Path p : files.filter(f -> f.toString().endsWith(".sql")).toList()) {
@@ -174,9 +174,9 @@ class ScsRoutePermissionsTest {
   }
 
   /** @return IAM 迁移目录；不存在时返回 null（调用方用 assume 跳过）。 */
-  private static Path iamIsolatedDir() {
+  private static Path iamCatalogDir() {
     // SCS/backend → SCS → Project_B 根 → IAM/backend/db/isolated
-    Path iam = scsRoot().getParent().resolve("IAM/backend/db/isolated");
+    Path iam = scsRoot().getParent().resolve("IAM/backend/db");
     return Files.isDirectory(iam) ? iam : null;
   }
 

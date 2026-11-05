@@ -55,3 +55,13 @@ iam:
   identity:
     config: ${IAM_IDENTITY_CONFIG:}
     idempotency-secret: ${IAM_IDEMPOTENCY_SECRET:}
+  audit:
+    public:
+      enabled: ${IAM_PUBLIC_AUDIT_ENABLED:false}
+      endpoint: ${IAM_PUBLIC_AUDIT_ENDPOINT:}
+      token-file: ${IAM_PUBLIC_AUDIT_TOKEN_FILE:}
+      domain: ${IAM_PUBLIC_AUDIT_DOMAIN:B-PROJECT}
+      zone: ${IAM_PUBLIC_AUDIT_ZONE:DL-PORT}
+      source-timezone: Asia/Shanghai
+      since: ${IAM_PUBLIC_AUDIT_SINCE:}
+      export-ms: ${IAM_PUBLIC_AUDIT_EXPORT_MS:5000}

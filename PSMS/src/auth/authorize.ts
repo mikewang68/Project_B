@@ -1,6 +1,7 @@
 import { isWithinDataScope } from './dataScope';
 import { loadCurrentDemoSession } from './sessionBootstrap';
 import {livePageAllowed}from'./livePagePolicy';
+import { centralPermissionAllowed } from './centralActions';
 import {
   actionPolicies,
   isPageId,
@@ -33,7 +34,11 @@ function deny(
 
 export function authorize(context: PolicyContext): PermissionDecision {
   if (import.meta.env.VITE_PSMS_REAL_API === 'true') context = { ...context, session: loadCurrentDemoSession() };
-  if (context.session.permissions) {
+  const central = context.session.menuOperations != null;
+  if (central && !centralPermissionAllowed(context.session, String(context.permission), context.pageId)) {
+    return deny('ACTION', '当前动作未获中央菜单权限授权');
+  }
+  if (!central && context.session.permissions) {
     const permission = String(context.permission);
     if (context.session.readOnly && !permission.endsWith(':view')) return deny('ACTION', '当前账号只读，禁止业务变更');
     if (context.session.fullAdmin) return { allow: true };
@@ -42,7 +47,7 @@ export function authorize(context: PolicyContext): PermissionDecision {
   }
   const role = context.session.roleCode as string;
 
-  if (context.pageId !== undefined) {
+  if (!central && context.pageId !== undefined) {
     if (!isRoleCode(role)) return deny('PAGE', `Unknown role: ${role}`);
     if (!isPageId(context.pageId)) return deny('PAGE', `Unknown page: ${context.pageId}`);
     if (!routePolicies[context.pageId].some((allowedRole) => allowedRole === role)) {
@@ -54,7 +59,7 @@ export function authorize(context: PolicyContext): PermissionDecision {
   if (!isPermissionCode(context.permission)) {
     return deny('ACTION', `Unknown permission: ${context.permission}`);
   }
-  if (!actionPolicies[context.permission].some((allowedRole) => allowedRole === role)) {
+  if (!central && !actionPolicies[context.permission].some((allowedRole) => allowedRole === role)) {
     return deny('ACTION', `Role ${role} lacks ${context.permission}.`);
   }
 
@@ -106,7 +111,7 @@ export function authorizePage(
   session: PolicyContext['session'],
   pageId: PolicyContext['pageId'],
 ): PermissionDecision {
-  if(session.permissions){
+  if(session.permissions || session.menuOperations!=null){
     if(pageId===undefined||!isPageId(pageId))return deny('PAGE','功能标识无效');
     return livePageAllowed(session,pageId,routeRequiredPermissions[pageId])?{allow:true}:deny('PAGE','当前功能未获平台授权');
   }

@@ -10,9 +10,22 @@ export function pagePermission(path:string):string|undefined {
   return pagePermissions[path] ?? (path.startsWith('/mobile/') ? pagePermissions['/mobile'] : undefined)
 }
 
-export function ruleActionPermission(action: string): string | undefined {
-  if (['批准', '驳回'].includes(action)) return 'safety:module:rule:approve'
-  if (['发布', '重新下发', '回滚'].includes(action)) return 'safety:module:rule:execute'
-  if (['编辑', '提交评审', '新建版本', '停用'].includes(action)) return 'safety:module:rule:edit'
-  return undefined
+const pageMenus: Record<string,string> = {
+  '/overview':'SCS:overview', '/people':'SCS:people', '/fences':'SCS:fences',
+  '/devices':'SCS:devices', '/ai':'SCS:ai', '/ai/models':'SCS:ai-models',
+  '/alarms':'SCS:alarms', '/analytics':'SCS:analytics', '/rules':'SCS:rules',
+  '/operations':'SCS:operations', '/safety-screen':'SCS:safety-screen',
+  '/mobile':'SCS:mobile-home', '/mobile/home':'SCS:mobile-home', '/mobile/alerts':'SCS:mobile-alerts',
+}
+export function pageMenu(path:string):string|undefined {
+  const normalized=path.replace(/\/+$/,'')||'/'
+  return pageMenus[normalized] ?? (/^\/mobile\/alert\/[^/]+$/.test(normalized)?'SCS:mobile-alerts':undefined)
+}
+
+export function ruleActionPermission(action: string): { permission: string; menu: string; action: string } {
+  const menu = 'SCS:rules'
+  if (['批准', '驳回'].includes(action)) return { permission: 'safety:module:rule:approve', menu, action: 'CONFIRM' }
+  if (['发布', '重新下发', '回滚'].includes(action)) return { permission: 'safety:module:rule:execute', menu, action: 'CONFIRM' }
+  if (['编辑', '提交评审', '新建版本', '停用'].includes(action)) return { permission: 'safety:module:rule:edit', menu, action: 'EDIT' }
+  return { permission: '', menu, action: '' }
 }

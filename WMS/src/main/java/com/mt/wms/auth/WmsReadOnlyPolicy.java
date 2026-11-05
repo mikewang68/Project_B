@@ -18,9 +18,10 @@ public final class WmsReadOnlyPolicy {
     }
 
     public static boolean denies(String method, String path) {
-        // Account self-maintenance is not a business write. CSRF and authentication still apply.
+        // Own session scope and account maintenance retain authentication, CSRF
+        // and the tenant service's authorized warehouse/owner checks.
         if (("POST".equals(method) && "/api/v1/auth/logout".equals(path))
-                || ("PUT".equals(method) && "/api/v1/auth/password".equals(path))) return false;
+                || ("PUT".equals(method) && Set.of("/api/v1/auth/password", "/api/v1/auth/tenant").contains(path))) return false;
         return !Set.of("GET", "HEAD", "OPTIONS").contains(method)
                 || path.toLowerCase(Locale.ROOT).matches(".*/(export|download)(/.*)?");
     }

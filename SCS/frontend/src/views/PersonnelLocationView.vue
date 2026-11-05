@@ -6,7 +6,7 @@ import SafetyMapCanvas from '@/components/shared/SafetyMapCanvas.vue'
 import PersonnelList from '@/components/personnel/PersonnelList.vue'
 import PersonnelDetailDrawer from '@/components/personnel/PersonnelDetailDrawer.vue'
 import TrackPlayback from '@/components/personnel/TrackPlayback.vue'
-import type { PersonnelRecord, TrackPoint } from '@/types/personnel'
+import type { PersonnelRecord, TrackPoint, UwbStationHealth } from '@/types/personnel'
 import type { PersonnelPoint } from '@/types/overview'
 import type { FenceRecord } from '@/types/fence'
 import { personnelApi } from '@/api/personnel'
@@ -21,6 +21,10 @@ const fences = ref<FenceRecord[]>([])
 const track = ref<TrackPoint[]>([])
 const backendStats = ref({ online: 0, abnormal: 0, bandOffline: 0, lowBattery: 0 })
 const refreshInterval = ref(1000)
+const uwbHealth = ref<UwbStationHealth | null>(null)
+let uwbTimer: ReturnType<typeof setInterval> | undefined
+let uwbInFlight = false
+let disposed = false
 let timer: ReturnType<typeof setInterval> | undefined
 let reloadTimer: ReturnType<typeof setTimeout> | undefined
 let livePollTimer: ReturnType<typeof setInterval> | undefined
@@ -36,7 +40,22 @@ const stats = computed(() => [
   { label: '异常人员', value: backendStats.value.abnormal, tone: 'warning' },
   { label: '手环离线', value: backendStats.value.bandOffline, tone: 'muted' },
   { label: '低电量', value: backendStats.value.lowBattery, tone: 'warning' },
+  { label: 'UWB 基站', value: uwbHealth.value
+    ? `${uwbHealth.value.summary.online}/${uwbHealth.value.summary.total}` : '—', tone: 'primary' },
 ])
+
+async function loadUwbStations(): Promise<void> {
+  if (uwbInFlight || disposed) return
+  uwbInFlight = true
+  try {
+    const result = await personnelApi.uwbStations()
+    if (!disposed) uwbHealth.value = result
+  } catch {
+    if (!disposed) uwbHealth.value = null
+  } finally {
+    uwbInFlight = false
+  }
+}
 
 let inFlight = false
 let pendingReload = false
@@ -186,24 +205,22 @@ function tick(): void { if (trackIndex.value >= track.value.length - 1) playing.
 watch([playing, speed], () => { if (timer) clearInterval(timer); timer = playing.value ? setInterval(tick, 850 / speed.value) : undefined }, { immediate: true })
 
 onMounted(() => {
+  void loadUwbStations()
+  uwbTimer = setInterval(() => { void loadUwbStations() }, 5000)
   void loadList()
   void loadFences()
   void loadConfig()
   sharedLiveSocket.connect()
   disposeLive = sharedLiveSocket.onMessage((raw) => {
     if (!isDomainLiveEvent(raw)) return
-    if (String(raw.type) === 'person.config_changed') {
-      const data = raw.data as { refreshIntervalMs?: number } | undefined
-      if (data?.refreshIntervalMs) {
-        refreshInterval.value = data.refreshIntervalMs
-        restartLiveTimer()
-      }
-    }
+    if (['person.config.changed', 'person.config_changed'].includes(String(raw.type))) void loadConfig()
     if (String(raw.type).startsWith('person.')) void loadList()
     if (String(raw.type) === 'fence.changed') void loadFences()
   })
 })
 onBeforeUnmount(() => {
+  disposed = true
+  if (uwbTimer) clearInterval(uwbTimer)
   if (timer) clearInterval(timer)
   if (reloadTimer) clearTimeout(reloadTimer)
   if (livePollTimer) clearInterval(livePollTimer)
@@ -236,6 +253,20 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </header>
+
+    <div v-if="uwbHealth && uwbHealth.stations.length" class="uwb-station-bar dashboard-card">
+      <strong>UWB 基站健康</strong>
+      <span v-for="station in uwbHealth.stations" :key="station.stationId"
+        class="uwb-station-chip"
+        :class="{ 'is-offline': !station.online, 'is-warn': station.online && (!station.clockSynced || !station.powerOk) }">
+        <b>{{ station.stationId }}</b>
+        <span>{{ station.online ? `${station.snrDb} dB` : '离线' }}</span>
+      </span>
+      <span class="uwb-station-summary">
+        {{ uwbHealth.summary.allClockSynced ? '时钟同步' : '时钟异常' }}
+        <template v-if="uwbHealth.summary.minSnrDb !== null"> · 最低信噪比 {{ uwbHealth.summary.minSnrDb }} dB</template>
+      </span>
+    </div>
 
     <div class="compact-filter-bar dashboard-card">
       <el-input v-model="query" clearable placeholder="搜索人员姓名/工号"><template #prefix><el-icon><Search /></el-icon></template></el-input>
@@ -271,3 +302,11 @@ onBeforeUnmount(() => {
     <PersonnelDetailDrawer v-model="drawerOpen" :person="selectedPerson" @locate="drawerOpen = false" @playback="startPlayback" @remind="remind" @alerts="showAlerts" />
   </section>
 </template>
+
+<style scoped>
+.uwb-station-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 12px; }
+.uwb-station-chip { display: inline-flex; gap: 8px; align-items: center; padding: 5px 10px; border-radius: 6px; background: #edf7f1; color: #277a4d; }
+.uwb-station-chip.is-offline { background: #f1f3f5; color: #737b84; }
+.uwb-station-chip.is-warn { background: #fff4de; color: #986315; }
+.uwb-station-summary { margin-left: auto; color: #667280; font-size: 13px; }
+</style>

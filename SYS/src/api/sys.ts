@@ -16,6 +16,7 @@ const client = createClient({ tokenKey: TOKEN_KEY })
 
 export interface LoginResult {
   superAdmin: boolean
+  userContext?: { contextVersion: number; menuOperations: Record<string,string[]> }
   readOnly: boolean
   token: string
   user: { id: string; username: string; name: string }
@@ -24,6 +25,7 @@ export interface LoginResult {
 }
 
 export interface MeResult {
+  userContext?: { contextVersion: number; menuOperations: Record<string,string[]> }
   readOnly: boolean
   user: { id: string; username: string; name: string }
   roles: Array<{ id: string; name: string; code: string }>
@@ -85,6 +87,8 @@ export const sysApi = {
   // ---------------- 数据字典：字典项 ----------------
   listDictItems: (typeCode?: string) =>
     client.request<DictItem[]>('/sys/dict/items', { query: { typeCode } }),
+  exportDict: (typeCode?: string) =>
+    client.request<Response>('/sys/dict/export', { query: { typeCode }, raw: true }),
   createDictItem: (payload: DictItemPayload) =>
     client.request<DictItem>('/sys/dict/items', { method: 'POST', body: payload }),
   updateDictItem: (id: string, payload: DictItemPayload) =>

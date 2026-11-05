@@ -136,8 +136,8 @@ function save(submit: boolean): void {
     <footer class="rule-form-footer">
       <button type="button" class="rule-btn ghost" @click="emit('update:modelValue', false)">取消</button>
       <div>
-        <button v-permission="'safety:module:rule:edit'" type="button" class="rule-btn" @click="save(false)">保存草稿</button>
-        <button v-permission="'safety:module:rule:edit'" type="button" class="rule-btn primary" @click="save(true)">提交评审</button>
+        <button v-permission="{permission:'safety:module:rule:edit',menu:'SCS:rules',action:rule?'EDIT':'ADD'}" type="button" class="rule-btn" @click="save(false)">保存草稿</button>
+        <button v-permission="{permission:'safety:module:rule:edit',menu:'SCS:rules',action:rule?'EDIT':'ADD'}" type="button" class="rule-btn primary" @click="save(true)">提交评审</button>
       </div>
     </footer>
   </ElDrawer>

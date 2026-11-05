@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Plan } from '../../../contracts';
 import { loadCurrentDemoSession } from '../../../auth';
+import { centralActionAllowed } from '../../../auth/centralActions';
 import { useDemoRuntime, useDemoSelector } from '../../../runtime';
 import { liveApi, loadLivePlans } from '../../../real/client';
 import { csvTemplate, parsePlanCsv } from '../csvImport';
@@ -15,7 +16,9 @@ export default function LiveCsvImportPanel() {
   const [workArea, setWorkArea] = useState(areas[0]);
   const [pending, setPending] = useState<Plan[]>([]); const [error, setError] = useState('');
   const [feedback, setFeedback] = useState(''); const [loading, setLoading] = useState(false);
-  const permitted = !session.readOnly && !!workArea && (session.fullAdmin || session.permissions?.includes('pps:api:plans:write'));
+  const nativeWrite = session.fullAdmin === true || session.permissions?.includes('pps:api:plans:write') === true;
+  const permitted = !session.readOnly && !!workArea && nativeWrite && (session.menuOperations == null
+    || centralActionAllowed(session, 'PSMS:ui-002', 'UPLOAD'));
   const commit = async () => {
     setLoading(true); let savedCount = 0;
     try {

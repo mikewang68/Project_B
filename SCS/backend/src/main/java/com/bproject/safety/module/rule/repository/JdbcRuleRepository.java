@@ -45,6 +45,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 @Profile("server")
 public class JdbcRuleRepository implements RuleRepository, DemoClearableStore {
+    private static String centralScope(){return com.bproject.safety.config.ScsCentralScope.predicate(com.bproject.safety.config.ScsCentralScope.Root.RULE,"safety_rule");}
 
     private static final Logger log = LoggerFactory.getLogger(JdbcRuleRepository.class);
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
@@ -79,14 +80,14 @@ public class JdbcRuleRepository implements RuleRepository, DemoClearableStore {
 
     @Override
     public List<DemoRule> findAll() {
-        String sql = BASE_SELECT + " WHERE is_deleted = false ORDER BY updated_at DESC NULLS LAST, rule_code ASC";
+        String sql = BASE_SELECT + " WHERE is_deleted = false"+centralScope()+" ORDER BY updated_at DESC NULLS LAST, rule_code ASC";
         List<RuleRowDto> dtos = jdbcTemplate.query(sql, Collections.emptyMap(), rowMapper);
         return dtos.stream().map(this::toDemoRule).sorted(ORDER).toList();
     }
 
     @Override
     public List<DemoRule> filter(RuleQuery q) {
-        StringBuilder sql = new StringBuilder(BASE_SELECT).append(" WHERE is_deleted = false");
+        StringBuilder sql = new StringBuilder(BASE_SELECT).append(" WHERE is_deleted = false").append(centralScope());
         MapSqlParameterSource params = new MapSqlParameterSource();
 
         if (q.category() != null && !q.category().isBlank()) {
@@ -121,7 +122,7 @@ public class JdbcRuleRepository implements RuleRepository, DemoClearableStore {
             return Optional.empty();
         }
         try {
-            String sql = BASE_SELECT + " WHERE rule_code = :ruleCode AND is_deleted = false";
+            String sql = BASE_SELECT + " WHERE rule_code = :ruleCode AND is_deleted = false"+centralScope();
             RuleRowDto dto = jdbcTemplate.queryForObject(
                     sql,
                     Map.of("ruleCode", id.trim()),
@@ -134,15 +135,18 @@ public class JdbcRuleRepository implements RuleRepository, DemoClearableStore {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public DemoRule save(DemoRule rule) {
         Objects.requireNonNull(rule, "rule must not be null");
         Objects.requireNonNull(rule.id, "rule.id must not be null");
+        var stamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.RULE,rule.id);
 
         DemoRule toPersist = rule.copy();
         Long ruleId = upsertRuleRoot(toPersist);
         saveAreas(ruleId, toPersist.areas);
         saveVersions(ruleId, toPersist);
         saveEdgeSync(ruleId, toPersist);
+        com.bproject.safety.config.ScsCentralScope.afterWrite(jdbcTemplate,stamp);
 
         return findById(toPersist.id).orElse(toPersist);
     }
@@ -150,7 +154,7 @@ public class JdbcRuleRepository implements RuleRepository, DemoClearableStore {
     @Override
     public long count() {
         Long c = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM safety.safety_rule WHERE is_deleted = false",
+                "SELECT count(*) FROM safety.safety_rule WHERE is_deleted = false"+centralScope(),
                 Collections.emptyMap(),
                 Long.class
         );

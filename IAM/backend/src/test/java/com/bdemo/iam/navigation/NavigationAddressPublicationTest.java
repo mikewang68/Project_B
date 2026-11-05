@@ -49,4 +49,14 @@ class NavigationAddressPublicationTest {
     assertEquals("https://warehouse.example.test/ehm/",new Address("warehouse.example.test","https",443,"http","192.0.2.10",18090,"/ehm/").baseUrl());
     assertEquals("https://192.0.2.10:18444/",new Address("","https",443,"https","192.0.2.10",18444,"/").baseUrl());
   }
+  @Test void firstDraftAcceptsOnlyDeploymentAllowlistWithoutInventingPreviousAddress(){
+    login(true,false);
+    var blank=active();blank.put("domain_name","");blank.put("origin_ip","");blank.put("origin_port",null);
+    when(db.queryForList(anyString(),any(Object[].class))).thenReturn(List.of(blank));
+    when(db.queryForList(anyString(),eq("WMS"))).thenReturn(List.of(blank));
+    assertDoesNotThrow(()->service.draft("WMS",3,
+        new Address("new.example.test","https",443,"http","192.0.2.10",18080,"/")));
+    assertThrows(BizException.class,()->service.draft("WMS",3,
+        new Address("external.invalid","https",443,"http","192.0.2.10",18080,"/")));
+  }
 }

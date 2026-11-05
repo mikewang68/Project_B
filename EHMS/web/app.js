@@ -99,8 +99,14 @@ function fallbackSummary(){
   return {totalDevices:EQUIPMENT.length,onlineDevices:online,onlineRate:EQUIPMENT.length?Math.round(online*1000/EQUIPMENT.length)/10:0,healthyDevices:assessable.filter(e=>e.health>=80).length,highRiskDevices:EQUIPMENT.filter(e=>['severe','critical'].includes(e.riskClass)).length,openAlarms:alarmObjects.filter(a=>a.status!=='已关闭').length,criticalOpenAlarms:alarmObjects.filter(a=>a.status!=='已关闭'&&a.levelClass==='severe').length,activeWorkOrders:WORK_ORDERS.filter(w=>!['已关闭','已取消'].includes(w.status)).length,pendingWorkOrders:WORK_ORDERS.filter(w=>['待审批','待执行'].includes(w.status)).length,dataQuality:96.8};
 }
 async function loadBackendData(showMessage=false){
+  const identity=()=>JSON.stringify([window.EhmAuth?.user,window.EhmAuth?.projectId,
+    window.EhmAuth?.authorizationVersion,window.EhmAuth?.menuOperations]);
+  const startedAs=identity();
+  const current=()=>startedAs===identity()&&!window.EhmCentralPolicy?.enabled(window.EhmAuth);
+  if(!current())return;
   try{
     const [summary,devices,alarms,orders]=await Promise.all([apiRequest('/dashboard/summary'),apiList('/devices'),apiList('/alarms'),apiList('/work-orders')]);
+    if(!current())return;
     const deviceItems=Array.isArray(devices)?devices:(devices?.content||[]);
     const alarmItems=Array.isArray(alarms)?alarms:(alarms?.content||[]);
     const orderItems=Array.isArray(orders)?orders:(orders?.content||[]);
@@ -110,6 +116,7 @@ async function loadBackendData(showMessage=false){
     renderPage();
     if(showMessage)toast('已从openGauss刷新设备、告警和工单数据。');
   }catch(error){
+    if(!current())return;
     state.backendConnected=false;state.backendError=error.message;
     const status=$('#runtimeStatus');if(status){status.classList.remove('connected');status.innerHTML='<span></span>离线演示模式';}
     if(showMessage)toast('后端暂不可用，当前数据未刷新：'+error.message);
@@ -505,6 +512,7 @@ function openModal(eyebrow,title,body,confirmText,onConfirm){
 function closeModal(){$('#modal').classList.remove('open');$('#modal').setAttribute('aria-hidden','true');}
 function openCreateWork(){
   const device=EQUIPMENT.find(e=>e.code===state.asset)||EQUIPMENT[0];
+  if(!device){toast('当前授权范围暂无可用设备，请先获准查看并加载设备台账。');return;}
   closeDrawer();openModal('维保工单','根据告警或人工检查创建专项工单',`<div class="risk-confirm"><strong>风险与影响：</strong>当前仅创建工单，不改变生产计划。维护窗口必须由调度和设备专业人员确认。</div><div class="form-grid"><div class="field"><label>设备</label><select id="workDevice">${EQUIPMENT.map(e=>`<option value="${esc(e.code)}" ${e.code===device.code?'selected':''}>${esc(e.code)} ${esc(e.name)}</option>`).join('')}</select></div><div class="field"><label>优先级</label><select id="workPriority"><option>P1 高</option><option selected>P2 中</option><option>P3 低</option></select></div><div class="field full"><label>工单主题</label><input id="workTitle" value="${esc(device.code==='GT-01'?'起升减速机振动异常专项检查':device.name+'状态检查')}"/></div><div class="field"><label>建议班组</label><input id="workAssignee" value="${esc(device.owner)}"/></div><div class="field"><label>建议窗口（尚未审批）</label><input id="workWindow" value="2026-09-05 夜班"/></div><div class="field full"><label>检查内容</label><textarea id="workDescription">核验传感器安装与校准；复测关键参数；记录维修前状态。</textarea></div></div>`,'创建并进入待审批',createWorkOrderFromForm);
 }
 
@@ -513,8 +521,9 @@ function openConfirmCause(){
 }
 function openHandover(){setPage('shift-handover');}
 function openStack(){
-  openDrawer('实际开发环境','已部署技术栈与能力边界',`<div class="notice-bar"><strong>三节点开发底座</strong><span>node4 / node5 / node6 已完成API、数据库、缓存、消息、时序与监控连通验证。</span></div><div class="stack-grid"><div class="stack-card"><b>Java 17 / Maven</b><span>后端开发与构建</span>${tag('已具备','good')}</div><div class="stack-card"><b>Node.js / pnpm</b><span>React/Vue前端构建</span>${tag('已具备','good')}</div><div class="stack-card"><b>openGauss 6.0.5</b><span>关系业务数据</span>${tag('运行中','good')}</div><div class="stack-card"><b>Kvrocks 2.16</b><span>缓存服务</span>${tag('运行中','good')}</div><div class="stack-card"><b>RocketMQ 5.5</b><span>消息与后台任务</span>${tag('运行中','good')}</div><div class="stack-card"><b>openGemini 1.5.2</b><span>设备时序数据</span>${tag('运行中','good')}</div><div class="stack-card"><b>Easegress / Nginx</b><span>API网关与静态发布</span>${tag('运行中','good')}</div><div class="stack-card"><b>Nightingale / Categraf</b><span>监控与指标采集</span>${tag('运行中','good')}</div></div><h3 class="mt-12">未部署 / 条件能力</h3><div class="capability-table"><div class="capability-row"><div><b>A-01中心AI推理服务器</b><p>鲲鹏+Atlas 300I A2预选型</p></div><p>尚未采购部署，单机也存在可用性风险。</p>${tag('待部署','limited')}</div><div class="capability-row"><div><b>CANN / MindSpore Lite</b><p>驱动、固件、算子与模型组合</p></div><p>必须取得兼容矩阵并完成实机验证。</p>${tag('阻断','critical')}</div><div class="capability-row"><div><b>现场PLC / 工业网关</b><p>OPC UA / Modbus / MQTT</p></div><p>目标设备、证书、点表和采样策略尚未冻结。</p>${tag('接口前置','warn')}</div></div>`);
+  openDrawer('系统组件','配置与能力说明',`<div class="notice-bar"><strong>设备健康管理</strong><span>组件连接与可用能力以当前配置和接口返回为准。</span></div><div class="stack-grid"><div class="stack-card"><b>业务服务</b><span>设备档案、工单与健康数据查询</span></div><div class="stack-card"><b>关系与时序数据</b><span>按已登记的数据来源读取</span></div><div class="stack-card"><b>模型与设备接口</b><span>启用前需核对模型、点位、质量与权限</span></div></div>`);
 }
+
 function openSensitiveExport(){openModal('敏感数据导出','导出设备与测点清单',`<div class="risk-confirm"><strong>数据风险：</strong>完整点表、PLC地址和网络信息属于受控数据。导出需说明用途、范围、接收人、保存期限，并生成审计编号。</div><div class="form-grid"><div class="field"><label>导出范围</label><select><option>仅设备基础信息</option><option>设备+部件+BOM</option><option>含测点（需审批）</option></select></div><div class="field"><label>接收人</label><input placeholder="填写接收人"/></div><div class="field full"><label>用途说明</label><textarea placeholder="说明为何需要导出"></textarea></div></div>`,'提交审批',()=>toast('已创建演示导出审批 APV-20260902-016。'));}
 function openGatewayDetail(){openDrawer('数据质量事件','GT-03 · 边缘网关离线',`<div class="callout purple"><h3>影响范围</h3><p>关联GT-03的24个测点断流；健康评估已暂停，告警仅保留网关/数据质量类事件。</p></div><div class="maturity-line"><div class="maturity-step done">正常采集</div><div class="maturity-step current">网关离线</div><div class="maturity-step blocked">补传待开始</div><div class="maturity-step blocked">一致性校验</div><div class="maturity-step blocked">评估恢复</div></div><h3>排查顺序</h3><ol class="condition-list"><li>核验网关供电、机柜环境与交换机端口。</li><li>核验现场网络、证书与服务进程。</li><li>确认本地缓存空间、WAL和断网数据完整性。</li><li>恢复后自动补传、去重、顺序与时间戳校验。</li><li>数据完整度恢复到门槛后重新启用健康评估。</li></ol>`,`<button class="button" data-goto="data-quality">查看质量中心</button>`);}
 
@@ -554,6 +563,9 @@ async function createDeviceFromForm(){
 }
 
 function init(){
+  if(window.EhmCentralPolicy?.enabled(window.EhmAuth)){
+    EQUIPMENT=[];ALARMS=[];WORK_ORDERS=[];state.summary=null;state.page=pageFromLocation();
+  }
   renderNav();renderPage();loadBackendData();
   $$('.nav-parent').forEach(b=>b.onclick=()=>b.closest('.nav-group').classList.toggle('open'));
   $$('.nav-child').forEach(b=>b.onclick=()=>setPage(b.dataset.page));

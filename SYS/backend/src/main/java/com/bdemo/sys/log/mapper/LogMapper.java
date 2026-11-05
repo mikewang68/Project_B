@@ -19,6 +19,7 @@ public interface LogMapper {
                    created_at AS createdAt
             FROM sys_operation_log
             <where>
+              <bind name="contextFilter" value="@com.bdemo.sys.security.ResourceScope@logCondition()"/> ${contextFilter}
               <if test="!@com.bdemo.sys.security.ResourceScope@globalRead()"> AND owner_app_code='SYS' </if>
               <if test="kind != null and kind != ''"> AND kind = #{kind} </if>
               <if test="module != null and module != ''"> AND module = #{module} </if>
@@ -45,6 +46,7 @@ public interface LogMapper {
             <script>
             SELECT COUNT(1) FROM sys_operation_log
             <where>
+              <bind name="contextFilter" value="@com.bdemo.sys.security.ResourceScope@logCondition()"/> ${contextFilter}
               <if test="!@com.bdemo.sys.security.ResourceScope@globalRead()"> AND owner_app_code='SYS' </if>
               <if test="kind != null and kind != ''"> AND kind = #{kind} </if>
               <if test="module != null and module != ''"> AND module = #{module} </if>
@@ -81,6 +83,7 @@ public interface LogMapper {
     // ============ 统计聚合（统一过滤条件） ============
     String STATS_WHERE = """
             <where>
+              <bind name="contextFilter" value="@com.bdemo.sys.security.ResourceScope@logCondition()"/> ${contextFilter}
               <if test="!@com.bdemo.sys.security.ResourceScope@globalRead()"> AND owner_app_code='SYS' </if>
               <if test="begin != null"> AND created_at &gt;= #{begin} </if>
               <if test="end != null"> AND created_at &lt;= #{end} </if>

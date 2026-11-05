@@ -4,6 +4,9 @@ import type { PoolClient } from 'pg';
 import { SCHEMA_STATEMENTS } from '../src/db/schema.js';
 import { RailwayRuntime, generateRailwayTicket, railwayTicketSchema, shanghaiDate } from '../src/services/railway-runtime.service.js';
 import { dailyRailwayJob, railwayScheduleSettings, startRailwayWorker } from '../src/services/railway-scheduler.service.js';
+vi.mock('../src/db/openGaussClient.js', () => ({ connectClient: vi.fn(() => {
+  throw new Error('This test must use its explicit isolated database connection');
+}) }));
 afterEach(()=>vi.useRealTimers());
 
 describe('railway durable PostgreSQL workflow',()=>{

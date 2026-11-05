@@ -83,7 +83,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
                                  ObjectMapper objectMapper,
                                  DemoMasterData masterData,
                                  Clock clock) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = new com.bproject.safety.config.ScsScopedJdbcTemplate(jdbcTemplate);
         this.objectMapper = objectMapper;
         this.masterData = masterData;
         this.clock = clock;
@@ -189,6 +189,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public DemoAiEvent save(DemoAiEvent event) {
         Objects.requireNonNull(event, "event must not be null");
         DemoAiEvent toPersist = event.copy();
@@ -201,12 +202,16 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
         UUID rootUuid = resolveUuid(toPersist.id);
         String eventNo = toPersist.id;
 
+        var centralStamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.AI_EVENT,eventNo);
+        com.bproject.safety.config.ScsCentralScope.requireReference(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.ALERT,toPersist.linkedAlertId);
+
         // 1. 保存 / 更新主表 safety.ai_event
         saveRootEvent(rootUuid, eventNo, toPersist);
 
         // 2. 追加审计时间线 safety.ai_event_timeline
         appendTimelineNodes(rootUuid, toPersist);
 
+        com.bproject.safety.config.ScsCentralScope.afterWrite(jdbcTemplate,centralStamp);
         return findById(eventNo).orElse(toPersist);
     }
 
@@ -218,6 +223,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
 
     @Override
     public boolean claimLinkedAlert(String eventId, String alertId) {
+        com.bproject.safety.config.ScsCentralScope.requireReference(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.ALERT,alertId);
         UUID alertUuid = com.bproject.safety.module.alert.repository.JdbcAlertRepository.resolveUuid(alertId);
         int claimed = jdbcTemplate.update(
                 "UPDATE safety.ai_event SET linked_alert_id = :alertUuid, updated_at = now() "

@@ -50,3 +50,21 @@ export interface PersonnelConfig {
   qualityThreshold: string
   supportedIntervals: number[]
 }
+
+export interface UwbStationHealth {
+  summary: {
+    total: number
+    online: number
+    minSnrDb: number | null
+    allClockSynced: boolean
+  }
+  stations: {
+    stationId: string
+    online: boolean
+    clockSynced: boolean
+    snrDb: number
+    powerOk: boolean
+    tagCount: number
+    lastSeen: string
+  }[]
+}

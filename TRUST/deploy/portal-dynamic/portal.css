@@ -806,6 +806,8 @@ html[data-audience="public"] .card{min-height:220px}
   flex-wrap: wrap;
 }
 .btn-navigate {
+  border: 0;
+  font: inherit;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -820,6 +822,10 @@ html[data-audience="public"] .card{min-height:220px}
 }
 .btn-navigate:hover {
   background: var(--primary-hover);
+}
+.btn-navigate:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 .btn-navigate .nav-icon {
   font-size: 15px;

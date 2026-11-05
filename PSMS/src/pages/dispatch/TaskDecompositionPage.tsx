@@ -126,7 +126,7 @@ export default function TaskDecompositionPage() {
   }
 
   const selectedNodes = tree.filter(({ nodeId }) => workflow.selectedNodeIds.includes(nodeId));
-  const locked = plan?.status === 'DECOMPOSED' || tree.some(({ status }) => status === 'READY');
+  const locked = ['DECOMPOSED', 'IN_PROGRESS', 'COMPLETED'].includes(plan?.status ?? '') || tree.some(({ status }) => status === 'READY');
   const returnUrl = `/dispatch/plans/${encodeURIComponent(planId)}/recommendation`;
   const dispatchUrl = `/dispatch/work-orders?planId=${encodeURIComponent(planId)}&scenarioId=${encodeURIComponent(state.scenario.activeScenarioId)}&from=task-decomposition`;
   const interlockUrl = `/safety/interlocks?scenarioId=${encodeURIComponent(state.scenario.activeScenarioId)}&planId=${encodeURIComponent(planId)}&from=task-decomposition`;

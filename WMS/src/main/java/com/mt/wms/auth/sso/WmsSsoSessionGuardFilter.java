@@ -55,7 +55,7 @@ public class WmsSsoSessionGuardFilter extends OncePerRequestFilter {
     // 使用 requestURI：Boot 3 的 getServletPath() 在部分配置下可能为空字符串。
     String path = WmsReadOnlyPolicy.requestPath(request);
     return !path.startsWith("/api/")
-        || path.equals("/api/v1/auth/login")
+        || path.equals("/api/v1/auth/login")&&(authorization==null||!authorization.requiresUnifiedSession())
         || path.equals("/api/v1/auth/csrf")
         // LogoutFilter still enforces CSRF. Its handler performs central logout and always clears locally.
         || (path.equals("/api/v1/auth/logout") && "POST".equals(request.getMethod()))
@@ -68,6 +68,13 @@ public class WmsSsoSessionGuardFilter extends OncePerRequestFilter {
       throws ServletException, IOException {
 
     HttpSession session = request.getSession(false);
+    if(authorization!=null&&authorization.requiresUnifiedSession()
+        &&(session==null||!Boolean.TRUE.equals(session.getAttribute(ATTR_SSO_ESTABLISHED)))) {
+      if(session!=null) {destroyAndReject(session,request,response,"请通过统一身份入口登录");return;}
+      response.setStatus(401);response.setContentType("application/json;charset=UTF-8");
+      mapper.writeValue(response.getOutputStream(),ApiResponse.error("UNIFIED_SESSION_REQUIRED","请通过统一身份入口登录",null));
+      return;
+    }
     if (session == null) {
       chain.doFilter(request, response);
       return;
@@ -111,9 +118,16 @@ public class WmsSsoSessionGuardFilter extends OncePerRequestFilter {
           return;
         }
         var current=authorization.currentAuthorization(binding.iamSubject(),binding.iamSessionId(),established);
+        var central=WmsCentralScope.validate(current,mapper);
+        WmsCentralScope.bind(request,central);
+        if(central!=null&&!WmsCentralScope.route(central,request.getMethod(),WmsReadOnlyPolicy.requestPath(request))) {
+          response.setStatus(403);response.setContentType("application/json;charset=UTF-8");
+          mapper.writeValue(response.getOutputStream(),ApiResponse.error("CENTRAL_OPERATION_DENIED","接口未授权或尚未适配中央范围",null));return;
+        }
         request.setAttribute("WMS_IAM_AUTHORIZATION",current);
         request.setAttribute("WMS_IAM_READONLY",current.path("readOnly").asBoolean());
-        if(current.path("readOnly").asBoolean() && WmsReadOnlyPolicy.denies(request.getMethod(),WmsReadOnlyPolicy.requestPath(request))){
+        if(current.path("readOnly").asBoolean() && WmsReadOnlyPolicy.denies(request.getMethod(),WmsReadOnlyPolicy.requestPath(request))
+            &&!WmsCentralScope.readonlyTransfer(central,request.getMethod(),WmsReadOnlyPolicy.requestPath(request))){
           response.setStatus(403);response.setContentType("application/json;charset=UTF-8");
           mapper.writeValue(response.getOutputStream(),ApiResponse.error("AUTH_READONLY","统一身份为只读",null));return;
         }

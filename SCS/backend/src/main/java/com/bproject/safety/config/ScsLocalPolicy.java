@@ -10,11 +10,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class ScsLocalPolicy {
   private final ObjectMapper mapper;private final String file;
-  public record Actor(String subject,String username,Set<String> roles,Set<String> permissions,boolean readOnly,boolean admin){}
+  public record Actor(String subject,String username,Set<String> roles,Set<String> permissions,boolean readOnly,boolean admin,com.bproject.iam.context.UserContext context){
+    public Actor(String subject,String username,Set<String> roles,Set<String> permissions,boolean readOnly,boolean admin){this(subject,username,roles,permissions,readOnly,admin,null);}
+  }
 
   /**
    * 数据范围暂不受支持。与 {@link ScsIamTicketValidator.InvalidTicketException}（票据本身不可信）
-   * 区分开：IAM 下发非空范围在契约上是合法的，只是 SCS 还没有对应的对象过滤能力。
+   * 区分开：IAM 下发非空范围在契约上是合法的，只是 SCS 尚未实现这些旧组织字段的对象过滤能力。
    * 不能把这种情形说成票据格式错误，也不能静默忽略范围当作全局身份。
    */
   public static class UnsupportedDataScopeException extends RuntimeException {
@@ -36,13 +38,16 @@ public class ScsLocalPolicy {
         throw new IllegalArgumentException("No business mapping");
       enforceDataScope(c,b);
       boolean readOnly=c.path("readOnly").asBoolean()||role.equals("VIEWER");
+      var context=ScsCentralScope.validate(claims.get("userContext"),subject,mapper);
+      if(context!=null&&(context.scopeMode()==com.bproject.iam.context.ScopeSql.Mode.DENY||context.readOnly()!=c.path("readOnly").asBoolean()))
+        throw new IllegalArgumentException("Central scope denied");
       boolean admin=role.equals("ADMIN")&&(c.path("superAdmin").asBoolean(false)||c.path("applicationAdmin").asBoolean(false))&&!readOnly;
       Set<String> permissions=new HashSet<>();b.path("permissions").forEach(v->permissions.add(v.asText()));
-      if(!c.path("superAdmin").asBoolean(false)){
+      if(context==null&&!c.path("superAdmin").asBoolean(false)){
         Set<String> central=new HashSet<>();c.path("permissions").forEach(v->central.add(v.asText()));permissions.retainAll(central);
       }
       Set<String> roles=readOnly?Set.of(SecurityInterceptor.ROLE_PLATFORM_AUDITOR_READONLY):Set.of(role);
-      return new Actor(subject,c.path("username").asText(local),roles,Set.copyOf(permissions),readOnly,admin);
+      return new Actor(subject,c.path("username").asText(local),roles,Set.copyOf(permissions),readOnly,admin,context);
     }catch(UnsupportedDataScopeException unsupported){
       // 必须原样上抛：被下面的 catch(Exception) 吞掉会变成"票据无效"，掩盖真实原因。
       throw unsupported;
@@ -56,7 +61,7 @@ public class ScsLocalPolicy {
    *   <li>字符串 {@code "null"} 以及其他实际非空值<b>不</b>视为空值；</li>
    *   <li>对象、数组、布尔、数值等非法类型直接拒绝；</li>
    *   <li>归一化后仍比对 IAM 与本地显式映射；</li>
-   *   <li>非空范围一律拒绝——SCS 尚无行级过滤，字符串相同不代表真正隔离。</li>
+   *   <li>这些旧组织范围非空时一律拒绝；中央 V2 项目/区域范围另由 ScsCentralScope 执行，不能混为一谈。</li>
    * </ol>
    */
   private static void enforceDataScope(JsonNode claims, JsonNode binding) {
@@ -89,13 +94,14 @@ public class ScsLocalPolicy {
   }
 
   public boolean permits(Actor actor,String method,String path){
+    if(actor.context()!=null&&!ScsCentralScope.permits(actor.context(),method,path))return false;
     // Logout is session maintenance, available to read-only users too; CSRF is checked by the interceptor.
     if (method.equals("POST") && path.equals("/api/v1/auth/sso/logout")) return true;
-    boolean safe=Set.of("GET","HEAD","OPTIONS").contains(method);
+    boolean safe=Set.of("GET","HEAD","OPTIONS").contains(method)||ScsCentralScope.readOnlyQuery(method,path);
     boolean export=path.matches(".*/(export|download)(/.*)?");
     if(actor.readOnly()&&!safe)return false;
     if(safe&&path.equals("/api/v1/auth/me"))return true;
-    if(safe&&path.equals("/ws/live"))return actor.admin() || actor.permissions().stream().anyMatch(p->p.endsWith(":view") || p.endsWith(":read"));
+    if(safe&&path.equals("/ws/live"))return actor.context()!=null?com.bproject.safety.common.realtime.ScopedLiveEventPolicy.mayConnect(actor):actor.admin() || actor.permissions().stream().anyMatch(p->p.endsWith(":view") || p.endsWith(":read"));
     if(actor.admin())return true;
     String required=ScsRoutePermissions.required(method,path);
     if(required!=null)return actor.permissions().contains(required);

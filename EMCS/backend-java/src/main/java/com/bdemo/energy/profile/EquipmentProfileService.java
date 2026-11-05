@@ -34,6 +34,7 @@ public class EquipmentProfileService {
         List<Object> params = new ArrayList<>(List.of(energy, Timestamp.valueOf(window.start), Timestamp.valueOf(window.end),
                 Timestamp.valueOf(window.end), Timestamp.valueOf(window.start)));
         if (!areaFilter.isEmpty()) params.add("AREA-" + zone.toUpperCase());
+        areaFilter+=com.bdemo.config.EmcsCentralScope.area("eq.area_id");
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT eq.equipment_id,eq.equipment_code,eq.equipment_name,eq.equipment_type,
                   eq.rated_power_kw,eq.energy_types,a.area_code,a.area_name,
@@ -68,7 +69,7 @@ public class EquipmentProfileService {
         List<Map<String, Object>> equipmentRows = jdbc.queryForList("""
                 SELECT eq.*,a.area_code,a.area_name FROM e_equipment eq JOIN e_area a ON a.area_id=eq.area_id
                 WHERE eq.equipment_code=?
-                """, equipmentCode);
+                """+com.bdemo.config.EmcsCentralScope.area("eq.area_id"), equipmentCode);
         if (equipmentRows.isEmpty()) throw new BusinessException(404, "设备不存在");
         Map<String, Object> equipment = equipmentRows.get(0);
         long equipmentId = ((Number) equipment.get("equipment_id")).longValue();
@@ -136,7 +137,7 @@ public class EquipmentProfileService {
             BigDecimal value = decimal(row.get("total_value")); LocalDateTime at = dateTime(row.get("stat_time"));
             result.put("totalEnergy", result.get("totalEnergy").add(value));
             String bucket = hasOrder(at, orders) ? "workEnergy" : "standby".equals(row.get("state")) ? "standbyEnergy" :
-                    List.of("stopped", "maintenance").contains(row.get("state")) ? "stoppedEnergy" : "auxiliaryEnergy";
+                    List.of("stopped", "maintenance").contains(java.util.Objects.toString(row.get("state"),"")) ? "stoppedEnergy" : "auxiliaryEnergy";
             result.put(bucket, result.get(bucket).add(value));
         }
         result.replaceAll((key, value) -> value.setScale(4, RoundingMode.HALF_UP)); return result;
@@ -147,8 +148,8 @@ public class EquipmentProfileService {
                 SELECT eq.equipment_code,eq.equipment_name,SUM(h.total_value) value FROM e_equipment eq
                 LEFT JOIN e_stat_hour h ON h.object_type='equipment' AND h.object_id=eq.equipment_id
                   AND h.energy_type_code=? AND h.stat_time>=? AND h.stat_time<?
-                WHERE eq.equipment_type=? GROUP BY eq.equipment_id,eq.equipment_code,eq.equipment_name ORDER BY value DESC
-                """, energy, Timestamp.valueOf(window.start), Timestamp.valueOf(window.end), equipment.get("equipment_type")).stream()
+                WHERE eq.equipment_type=? %s GROUP BY eq.equipment_id,eq.equipment_code,eq.equipment_name ORDER BY value DESC
+                """.formatted(com.bdemo.config.EmcsCentralScope.area("eq.area_id")), energy, Timestamp.valueOf(window.start), Timestamp.valueOf(window.end), equipment.get("equipment_type")).stream()
                 .map(row -> map("equipmentCode", row.get("equipment_code"), "equipmentName", row.get("equipment_name"),
                         "value", round(number(row.get("value")), 4))).toList();
     }

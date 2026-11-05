@@ -207,7 +207,7 @@ function sevLabel(s: DiagSeverity) {
         <el-form-item>
           <el-button :icon="'RefreshLeft'" @click="resetFilter">重置</el-button>
           <el-button
-            v-if="can('sys:log:list:export')"
+            v-if="can('sys:log:list:export') && auth.hasOperation('SYS:logs','EXPORT')"
             type="primary"
             :icon="'Download'"
             @click="exportCsv"

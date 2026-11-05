@@ -26,6 +26,8 @@ function resolveFromRoot(value: string): string {
  * 变量命名与 SCS / EHMS 保持一致（OPENGAUSS_* / OPENGEMINI_*）。
  */
 const envSchema = z.object({
+  PSMS_SHARED_READ_ENABLED: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+  PSMS_SHARED_ALLOW_LOOPBACK_HTTP: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
   PSMS_SSO_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   PSMS_IAM_BASE_URL: z.string().default(''),
   PSMS_SSO_SERVICE_TOKEN: z.string().default(''),

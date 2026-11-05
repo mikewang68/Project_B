@@ -8,7 +8,8 @@ describe('native live menu permission boundary',()=>{
   for(const id of ['UI-005','UI-006','UI-007','UI-008'])expect(livePageAllowed(actor,id,'dispatch:view')).toBe(false);
  });
  it('enables only connected authorized pages and keeps the readonly veto over admin flags',()=>{
-  expect(connectedLivePageIds).toContain('UI-005');expect(connectedLivePageIds).not.toContain('UI-009');
+  expect(connectedLivePageIds).toContain('UI-005');expect(connectedLivePageIds).toContain('UI-009');
+  expect(connectedLivePageIds).not.toContain('UI-003');
   expect(livePageAllowed({...actor,fullAdmin:true,readOnly:true},'UI-005','dispatch:view')).toBe(false);
   expect(livePageAllowed({...actor,fullAdmin:true,readOnly:true,permissions:['pps:api:work-orders:read']},'UI-005','dispatch:view')).toBe(true);
  });

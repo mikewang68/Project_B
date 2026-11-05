@@ -129,7 +129,7 @@ async function signOut(): Promise<void> {
           <el-badge v-if="auth.hasPermission('agent:read')" :value="agentUnread" :hidden="!agentUnread"><el-button plain @click="router.push({ path: '/agent', query: { tab: 'alerts' } })">站内预警</el-button></el-badge>
           <el-button class="pref-btn" plain @click="prefVisible = true">外观设置</el-button>
           <el-tag v-if="auth.readOnly" type="info">只读账号</el-tag>
-          <button class="tenant" type="button" :disabled="!auth.canWrite()" @click="tenantDialog = true">{{ auth.user?.tenant.currentWarehouse.name }} · {{ auth.user?.tenant.currentOwner.name }}</button>
+          <button class="tenant" type="button" :disabled="!auth.authenticated || !!auth.sessionError" @click="tenantDialog = true">{{ auth.user?.tenant.currentWarehouse.name }} · {{ auth.user?.tenant.currentOwner.name }}</button>
           <el-dropdown trigger="click"><button class="user-trigger" type="button">{{ auth.user?.displayName }} ▾</button><template #dropdown><el-dropdown-menu><el-dropdown-item @click="passwordDialog = true">修改密码</el-dropdown-item><el-dropdown-item divided @click="signOut">退出登录</el-dropdown-item></el-dropdown-menu></template></el-dropdown>
         </div>
       </header>
@@ -164,7 +164,7 @@ async function signOut(): Promise<void> {
         <el-form-item label="当前仓库"><el-select v-model="tenantForm.warehouseCode" style="width:100%"><el-option v-for="item in auth.user?.tenant.warehouses" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.code" /></el-select></el-form-item>
         <el-form-item label="当前货主"><el-select v-model="tenantForm.ownerCode" style="width:100%"><el-option v-for="item in auth.user?.tenant.owners" :key="item.id" :label="`${item.name}（${item.code}）`" :value="item.code" /></el-select></el-form-item>
       </el-form>
-      <template #footer><el-button @click="tenantDialog = false">取消</el-button><el-button type="primary" :disabled="!auth.canWrite()" :loading="tenantSaving" @click="saveTenant">确定切换</el-button></template>
+      <template #footer><el-button @click="tenantDialog = false">取消</el-button><el-button type="primary" :disabled="!auth.authenticated || !!auth.sessionError" :loading="tenantSaving" @click="saveTenant">确定切换</el-button></template>
     </el-dialog>
 
     <el-dialog v-model="passwordDialog" title="修改登录密码" width="460px" :close-on-click-modal="!auth.user?.passwordChangeRequired" :close-on-press-escape="!auth.user?.passwordChangeRequired" :show-close="!auth.user?.passwordChangeRequired">

@@ -4,19 +4,19 @@
   const restricted=new Set(['sampleInstall','sampleTick','openCaseFlow','healthToWorkOrder','defectToWorkOrder','downloadAuditPackage','confirmCause','batchAssign','ackAlarm','newWork','createWork']);
   function adminAction(action){return restricted.has(action)||/^(new|create|edit|archive|delete|ack|close|run|review|publish|disable|verify|generate|start|submit|receive|reserve|issue|release|return|seed|simulate|advance|complete|convert|export|download|saveTemplate|saveCalibration|saveConfig)/i.test(action||'');}
   const actionPermissions={createWork:'ehealth:maint:order:execute',newWork:'ehealth:maint:order:execute',advanceWork:'ehealth:maint:order:execute',ackAlarm:'ehealth:alert:center:execute',closeAlarm:'ehealth:alert:center:execute',openCaseFlow:'ehealth:alert:center:execute'};
-  function allowedAction(action){return !auth.enabled||auth.canWrite()||!auth.readOnly&&auth.permissions.includes(actionPermissions[action]);}
+  function allowedAction(action,status){if(window.EhmCentralPolicy.enabled(auth))return window.EhmCentralPolicy.action(auth,action,status);return !auth.enabled||auth.canWrite()||!auth.readOnly&&auth.permissions.includes(actionPermissions[action]);}
   function applyPolicy(){
     const admin=!auth.enabled||auth.canWrite();
     document.querySelectorAll('[data-action]').forEach(button=>{
       if(!adminAction(button.dataset.action))return;
-      if(!allowedAction(button.dataset.action)&&!button.disabled){button.dataset.authBlocked='1';button.disabled=true;button.classList.add('auth-admin-only');button.title='仅超级管理员可操作';}
-      else if(allowedAction(button.dataset.action)&&button.dataset.authBlocked){delete button.dataset.authBlocked;button.disabled=false;button.classList.remove('auth-admin-only');button.removeAttribute('title');}
+      if(!allowedAction(button.dataset.action,button.dataset.status)&&!button.disabled){button.dataset.authBlocked='1';button.disabled=true;button.classList.add('auth-admin-only');button.title='当前账号未获此操作权限';}
+      else if(allowedAction(button.dataset.action,button.dataset.status)&&button.dataset.authBlocked){delete button.dataset.authBlocked;button.disabled=false;button.classList.remove('auth-admin-only');button.removeAttribute('title');}
     });
     const test=document.getElementById('assistantTest');if(test){test.disabled=!admin;test.title=admin?'':'连接测试仅超级管理员可操作';}
     const account=document.getElementById('authAccountButton');if(account){account.textContent=auth.user?(auth.user.username+' · '+(auth.canWrite()?'超级管理员':'一般用户')):'账号';account.title='当前登录账号';}
   }
   const observer=new MutationObserver(()=>applyPolicy());observer.observe(document.getElementById('pageView'),{childList:true,subtree:true});
-  document.addEventListener('click',event=>{const button=event.target.closest('[data-action]');if(auth.enabled&&button&&adminAction(button.dataset.action)&&!allowedAction(button.dataset.action)){event.preventDefault();event.stopImmediatePropagation();toast('仅超级管理员可操作，请使用管理员账号登录。');}},true);
+  document.addEventListener('click',event=>{const button=event.target.closest('[data-action]');if(auth.enabled&&button&&adminAction(button.dataset.action)&&!allowedAction(button.dataset.action,button.dataset.status)){event.preventDefault();event.stopImmediatePropagation();toast('当前账号未获此操作权限。');}},true);
   const renderExisting=renderIam;
   renderIam=function(){
     if(auth.mode!=='local')return `<section class="panel"><h2>统一身份与本系统权限</h2><p>${esc(auth.user?.username||'')} · ${auth.readOnly?'只读访问':auth.canWrite()?'本系统管理员':'业务人员'}</p><p>账号与密码由平台统一维护；本系统依据授权提供功能。</p><p>授权项目：${auth.projectIds.map(esc).join('、')}</p></section>`;const user=auth.user||{},admin=auth.canWrite(),d=state.authUsers;

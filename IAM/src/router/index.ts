@@ -16,6 +16,18 @@ const routes: RouteRecordRaw[] = [
     redirect: '/system/users',
     children: [
       {
+        path: 'system/scope-management',
+        name: 'scope-management',
+        component: () => import('@/views/system/ScopeManagementView.vue'),
+        meta: { title: '分级人员与权限', scopeManagement: true },
+      },
+      {
+        path: 'account/scope',
+        name: 'account-scope',
+        component: () => import('@/views/system/AccountScopeView.vue'),
+        meta: { title: '我的权限范围', scopeContext: true },
+      },
+      {
         path: 'system/addresses',
         name: 'system-addresses',
         component: () => import('@/views/system/NavigationAddressView.vue'),
@@ -38,6 +50,12 @@ const routes: RouteRecordRaw[] = [
         name: 'system-menus',
         component: () => import('@/views/system/MenuPermView.vue'),
         meta: { title: '菜单与权限', perm: 'iam:menu:tree:view' },
+      },
+      {
+        path: 'system/navigation-menus',
+        name: 'system-navigation-menus',
+        component: () => import('@/views/system/NavigationMenuAdminView.vue'),
+        meta: { title: '导航菜单维护', perm: 'iam:menu:tree:view' },
       },
       {
         path: 'system/health',
@@ -94,6 +112,14 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   // 已登录：校验路由级权限（meta.perm）；超级管理员在 permCodes 中已动态拥有全部权限
+  if(auth.userContext && to.redirectedFrom?.path === '/' && to.path !== auth.landingPath) {
+    next(auth.landingPath)
+    return
+  }
+  if(to.meta.scopeManagement && !auth.canManageScope || to.meta.scopeContext && !auth.userContext) {
+    next('/403')
+    return
+  }
   if ((to.meta.platformAdminOnly && !auth.isSuperAdmin) || (to.meta.perm && !auth.permCodes.has(to.meta.perm as string))) {
     next('/403')
     return

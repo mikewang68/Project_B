@@ -20,12 +20,12 @@ const actionable = (s: AiEvent['status']): boolean => ['待复核', '不确定',
     <template v-if="event.status === '待复核'">
       <button v-permission="'safety:module:ai:edit'" type="button" @click="emit('falseReport')"><el-icon><CircleClose /></el-icon>标记误报</button>
       <button v-permission="'safety:module:ai:edit'" type="button" @click="emit('uncertain')"><el-icon><QuestionFilled /></el-icon>暂不确定</button>
-      <button v-permission="'safety:module:ai:edit'" type="button" class="danger" @click="emit('confirm')"><el-icon><Check /></el-icon>确认违规</button>
+      <button v-permission="{permission:'safety:module:ai:edit',menu:'SCS:ai',action:'CONFIRM'}" type="button" class="danger" @click="emit('confirm')"><el-icon><Check /></el-icon>确认违规</button>
     </template>
 
     <template v-else-if="event.status === '不确定'">
       <button v-permission="'safety:module:ai:edit'" type="button" @click="emit('falseReport')"><el-icon><CircleClose /></el-icon>标记误报</button>
-      <button v-permission="'safety:module:ai:edit'" type="button" class="danger" @click="emit('confirm')"><el-icon><Check /></el-icon>确认违规</button>
+      <button v-permission="{permission:'safety:module:ai:edit',menu:'SCS:ai',action:'CONFIRM'}" type="button" class="danger" @click="emit('confirm')"><el-icon><Check /></el-icon>确认违规</button>
       <button v-permission="'safety:module:ai:assign'" type="button" class="primary" @click="emit('assign')"><el-icon><Promotion /></el-icon>派单处理</button>
     </template>
 
@@ -40,7 +40,7 @@ const actionable = (s: AiEvent['status']): boolean => ['待复核', '不确定',
 
     <template v-else-if="event.status === '处理中'">
       <span class="review-action-bar__note">{{ event.assignee }} 正在现场处置</span>
-      <button v-permission="'safety:module:ai:edit'" type="button" class="primary" @click="emit('close')"><el-icon><Lock /></el-icon>关闭事件</button>
+      <button v-permission="{permission:'safety:module:ai:edit',menu:'SCS:ai',action:'CONFIRM'}" type="button" class="primary" @click="emit('close')"><el-icon><Lock /></el-icon>关闭事件</button>
     </template>
 
     <p v-else class="review-action-bar__final">

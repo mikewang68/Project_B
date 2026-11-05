@@ -23,7 +23,7 @@
       <el-table-column label="操作" width="180">
         <template #default="{row}">
           <el-button link type="primary" @click="open(row.archiveId)">冻结预览</el-button>
-          <el-button link @click="download(row.archiveId)">重下载</el-button>
+          <el-button v-if="canExport" link @click="download(row.archiveId)">重下载</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -46,6 +46,7 @@ import { getReportArchive, getReportArchives } from '@/api/reports'
 import ReportPreview from './ReportPreview.vue'
 import { reportTemplateLabels } from '../../shared/act5'
 
+defineProps({ canExport: { type: Boolean, default: true } })
 const items = ref([])
 const loading = ref(false)
 const visible = ref(false)

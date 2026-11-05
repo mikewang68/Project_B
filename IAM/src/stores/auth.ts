@@ -11,6 +11,7 @@ import { computed, ref } from 'vue'
 import type { AuthSession, LoginRequest, LoginResponse, User, Role } from '@/iam/types'
 import { MENU_TREE, filterMenuByPerms, collectAllPerms, type MenuNode } from '@/iam/menu-tree'
 import { iamApi, type LoginResult, type MeResult } from '@/api/iam'
+import { scopeApi, type ScopeSelection, type UserContext } from '@/api/scope'
 
 /** IAM 后台可导航页面及其进入所需权限（登录落地页按此顺序选第一个有权限的） */
 const LANDING_CANDIDATES = [
@@ -30,6 +31,10 @@ export const useAuthStore = defineStore('auth', () => {
   const hydrated = ref(false)
   const readOnly = ref(false)
   const fullAdmin = ref(false)
+  const userContext = ref<UserContext | null>(null)
+  const scopeSelectionPending = ref(false)
+  const scopeRefreshRequired = ref(false)
+  const canManageScope = computed(() => userContext.value?.managementCapabilities.includes('VIEW_MANAGEMENT') === true)
 
   // ---- getters ----
   const isLoggedIn = computed(() => !!session.value && !!currentUser.value)
@@ -39,13 +44,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** 登录后默认落地页：取第一个有权限的 IAM 页面，都没有则去 403 */
   const landingPath = computed(() => {
+    if(userContext.value) return canManageScope.value ? '/system/scope-management' : '/account/scope'
     const hit = LANDING_CANDIDATES.find((c) => permCodes.value.has(c.perm))
     return hit ? hit.path : '/403'
   })
 
   // ---- actions ----
   function hydrate(user: User, roles: Array<Pick<Role, 'id' | 'name' | 'code' | 'status'>>,
-                  permissions: string[], token: string, authorization?: { superAdmin: boolean; readOnly: boolean }) {
+                  permissions: string[], token: string, authorization?: { superAdmin: boolean; readOnly: boolean; userContext?: UserContext | null }) {
+    userContext.value = authorization?.userContext ?? null
     readOnly.value = authorization?.readOnly === true
     fullAdmin.value = authorization?.superAdmin === true && !readOnly.value
     currentUser.value = user
@@ -56,7 +63,7 @@ export const useAuthStore = defineStore('auth', () => {
       for (const p of collectAllPerms()) codes.add(p.code)
     }
     permCodes.value = codes
-    if (readOnly.value) for (const p of codes) if (!/:(view|read|list|query|detail)$/.test(p)) codes.delete(p)
+    if (readOnly.value && !userContext.value) for (const p of codes) if (!/:(view|read|list|query|detail)$/.test(p)) codes.delete(p)
     menuTree.value = filterMenuByPerms(MENU_TREE, codes)
     session.value = {
       token,
@@ -67,9 +74,12 @@ export const useAuthStore = defineStore('auth', () => {
       expireAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
     }
     hydrated.value = true
+    scopeRefreshRequired.value = false
   }
 
   function reset() {
+    scopeRefreshRequired.value = false
+    userContext.value = null
     readOnly.value = false
     fullAdmin.value = false
     session.value = null
@@ -128,30 +138,58 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /** Strict refresh: callers must not announce a scope change when this request fails. */
+  async function refreshScopeState() {
+    const token = iamApi.token.getToken()
+    const me: MeResult = await iamApi.me()
+    const user: User = {
+      id: me.user.id,
+      username: me.user.username,
+      name: me.user.name,
+      password: '',
+      roleIds: me.roles.map((r) => r.id),
+      status: 'active',
+      createdAt: currentUser.value?.createdAt || '',
+      updatedAt: '',
+    }
+    hydrate(user, me.roles.map((r) => ({ ...r, status: 'active', permCodes: [] })),
+      me.permissions, token || '', me)
+  }
+
   /** 变更当前用户资料/角色后重新拉取身份与权限；用户失效则登出 */
   async function refreshCurrentUser() {
-    const token = iamApi.token.getToken()
-    try {
-      const me: MeResult = await iamApi.me()
-      const user: User = {
-        id: me.user.id,
-        username: me.user.username,
-        name: me.user.name,
-        password: '',
-        roleIds: me.roles.map((r) => r.id),
-        status: 'active',
-        createdAt: currentUser.value?.createdAt || '',
-        updatedAt: '',
-      }
-      hydrate(user, me.roles.map((r) => ({ ...r, status: 'active', permCodes: [] })),
-        me.permissions, token || '', me)
-    } catch {
+    try { await refreshScopeState() } catch {
       reset()
+    }
+  }
+
+  async function selectScope(selection: ScopeSelection) {
+    if (scopeSelectionPending.value) throw new Error('范围切换正在处理，请稍候')
+    scopeSelectionPending.value = true
+    // A lost response may follow a committed server-side selection. Hide stale views
+    // until the same session has been revalidated, including after a failed POST.
+    scopeRefreshRequired.value = true
+    try {
+      await scopeApi.selectContext(selection)
+      await refreshScopeState()
+      if (!userContext.value) throw new Error('未取得当前权限范围，请重新登录')
+    } catch (error) {
+      scopeRefreshRequired.value = true
+      try { await refreshScopeState() } catch { /* Keep stale views blocked. */ }
+      throw error
+    } finally {
+      scopeSelectionPending.value = false
     }
   }
 
   return {
     session,
+    userContext,
+    scopeSelectionPending,
+    scopeRefreshRequired,
+    selectScope,
+    refreshScopeState,
+    canManageScope,
     currentUser,
     userRoles,
     permCodes,

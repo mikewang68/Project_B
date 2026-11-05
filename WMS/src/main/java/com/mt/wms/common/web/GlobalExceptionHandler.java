@@ -17,6 +17,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(com.mt.wms.stockin.PsmsInboundException.class)
+    ResponseEntity<ApiResponse<Void>> psmsInbound(com.mt.wms.stockin.PsmsInboundException exception,HttpServletRequest request) {
+        return ResponseEntity.status(exception.status()).body(ApiResponse.error(exception.code(),exception.getMessage(),requestId(request)));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiResponse<Void>> validation(MethodArgumentNotValidException exception, HttpServletRequest request) {
         String message = exception.getBindingResult().getFieldErrors().stream()

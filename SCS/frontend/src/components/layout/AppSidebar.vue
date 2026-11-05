@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { markRaw } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { pagePermission } from '@/permissions'
 const auth=useAuthStore()
-const visible=(path:string):boolean => {const permission=pagePermission(path);return !!permission&&auth.can(permission)}
+const visible=(path:string):boolean => auth.canPage(path)
 // 分组同时受分组权限码与"至少一个子项可见"约束；无 groupPermission 的分组只看子项
 type NavGroup={label:string;groupPermission?:string;items:{path:string;label:string;icon:unknown}[]}
 const visibleGroup=(group:NavGroup):boolean =>

@@ -9,17 +9,20 @@ import { createDemoRuntime, type DemoRuntime } from '../runtime';
 import { liveApi as api, loadLivePlans as loadPlans, loadLiveOverview } from './client';
 import { parsePlanEntryQuery } from '../features/plan-entry/query';
 import App from '../app/App';
+import { livePageAllowed } from '../auth/livePagePolicy';
 
 const userSchema = z.object({actorId:z.string(),username:z.string(),displayName:z.string(),roleCode:z.string(),dataScope:z.array(z.string()),
-  readOnly:z.boolean(),superAdmin:z.boolean(),applicationAdmin:z.boolean().optional(),permissions:z.array(z.string())});
+  readOnly:z.boolean(),superAdmin:z.boolean(),applicationAdmin:z.boolean().optional(),permissions:z.array(z.string()),
+  menuOperations:z.record(z.string(),z.array(z.string())).nullish()});
 async function bootstrap(): Promise<DemoRuntime> {
   const me=userSchema.parse((await api('/auth/me')).data);
   const admin = me.superAdmin || me.applicationAdmin === true;
   const session:SessionContext={actorId:me.actorId,roleCode:me.readOnly?'AUDITOR':admin?'SYS_ADMIN':'DISPATCHER',
-    dataScope:me.dataScope,online:true,demoTime:new Date().toISOString(),readOnly:me.readOnly,fullAdmin:admin,permissions:me.permissions};
+    dataScope:me.dataScope,online:true,demoTime:new Date().toISOString(),readOnly:me.readOnly,fullAdmin:admin,platformSuperAdmin:me.superAdmin,permissions:me.permissions,menuOperations:me.menuOperations};
   setVerifiedLiveSession(session);
-  const plans=await loadPlans();
-  const canReadOverview = admin || ['pps:api:overview:read','overview:view','pps:overview:view'].some(p=>me.permissions.includes(p));
+  const readPlans=()=>livePageAllowed(session,'UI-002','plan:view')?loadPlans():Promise.resolve([]);
+  const plans=await readPlans();
+  const canReadOverview = livePageAllowed(session,'UI-001','overview:view');
   const readOverview = () => {
     const query = parsePlanEntryQuery(window.location.search);
     return canReadOverview ? loadLiveOverview(query.date, query.workArea) : Promise.resolve(undefined);
@@ -36,7 +39,7 @@ async function bootstrap(): Promise<DemoRuntime> {
   const liveFetch:typeof fetch=async(input,init)=>{
     const url=new URL(String(input),window.location.origin),method=(init?.method??'GET').toUpperCase();
     if(method==='GET'&&/\/mock\/(overview|plans)$/.test(url.pathname)){
-      const [next, overview] = await Promise.all([loadPlans(), readOverview()]);
+      const [next, overview] = await Promise.all([readPlans(), readOverview()]);
       runtime.store.replaceDomainState(s=>{s.plan.plans=next;s.liveOverview=overview;});
       return new Response(JSON.stringify({ok:true,data:{},traceId:'LIVE-READ',auditLogId:''}),{headers:{'Content-Type':'application/json'}});
     }
@@ -67,11 +70,11 @@ export default function LiveApp(){
       pending=true;
       try{
         const current=userSchema.parse((await api('/auth/me')).data),old=loadCurrentDemoSession();
-        const signature=(permissions:readonly string[],scope:readonly string[],readOnly:boolean,admin:boolean)=>JSON.stringify([
-          [...permissions].sort(),[...scope].sort(),readOnly,admin]);
-        if(signature(current.permissions,current.dataScope,current.readOnly,current.superAdmin||current.applicationAdmin===true)
-          !==signature(old.permissions??[],old.dataScope,old.readOnly===true,old.fullAdmin===true)){
-          setVerifiedLiveSession({...old,permissions:[],readOnly:true,fullAdmin:false,dataScope:[]});
+        const signature=(actor:string,permissions:readonly string[],scope:readonly string[],readOnly:boolean,admin:boolean,menus:SessionContext['menuOperations'])=>JSON.stringify([
+          actor,[...permissions].sort(),[...scope].sort(),readOnly,admin,menus==null?null:Object.keys(menus).sort().map(key=>[key,[...menus[key]].sort()])]);
+        if(signature(current.actorId,current.permissions,current.dataScope,current.readOnly,current.superAdmin||current.applicationAdmin===true,current.menuOperations)
+          !==signature(old.actorId,old.permissions??[],old.dataScope,old.readOnly===true,old.fullAdmin===true,old.menuOperations)){
+          setVerifiedLiveSession({...old,permissions:[],menuOperations:{},readOnly:true,fullAdmin:false,dataScope:[]});
           window.location.reload();return;
         }
         await runtime.gateway.getOverview();if(!disposed)setRefreshError('');
@@ -84,5 +87,5 @@ export default function LiveApp(){
   if(error)return <Alert type="error" title="生产调度业务数据未能加载" description={error} action={<Button onClick={()=>window.location.reload()}>重试</Button>}/>;
   if(!runtime)return <Spin fullscreen tip="正在恢复业务会话与台账…"/>;
   return <>{refreshError&&<Alert type="warning" title="自动刷新失败，页面保留上次成功读取的数据" description={refreshError}/>}
-    <Space style={{position:'fixed',right:24,bottom:16,zIndex:1001}}><Button href="?railway=1">铁路工单运行台</Button><Button onClick={async()=>{await api('/auth/sso/logout',{method:'POST',body:'{}'});window.location.replace('/sso/start?page=PSMS%3Aui-002');}}>退出平台</Button></Space><App runtime={runtime}/></>;
+    <Space style={{position:'fixed',right:24,bottom:16,zIndex:1001}}>{loadCurrentDemoSession().menuOperations == null && <Button href="?railway=1">铁路工单运行台</Button>}<Button onClick={async()=>{await api('/auth/sso/logout',{method:'POST',body:'{}'});window.location.replace('/sso/start?page=PSMS%3Aui-002');}}>退出平台</Button></Space><App runtime={runtime}/></>;
 }

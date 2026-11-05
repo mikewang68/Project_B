@@ -21,7 +21,11 @@ class PermissionAuthorizationDatabaseTest {
   @Test
   void explanationAgreesWithRuntimeForActiveDisabledDeletedAndSuperAdmin() throws Exception {
     String url=System.getenv("IAM_IDENTITY_DB_URL");
-    assertEquals("jdbc:postgresql://127.0.0.1:25432/iam_identity_dev_test?currentSchema=iam",url);
+    assertNotNull(url);
+    String prefix="jdbc:postgresql://127.0.0.1:25432/iam_identity_",suffix="_test?currentSchema=iam";
+    assertTrue(url.startsWith(prefix)&&url.endsWith(suffix),"Only an isolated identity test database is allowed");
+    String fixture=url.substring(prefix.length(),url.length()-suffix.length());
+    assertTrue(!fixture.isEmpty()&&fixture.chars().allMatch(c->c>='a'&&c<='z'||c>='0'&&c<='9'||c=='_'));
     var ds=new DriverManagerDataSource(url,System.getenv("IAM_IDENTITY_DB_USER"),System.getenv("IAM_IDENTITY_DB_PASSWORD"));
     var config=new Configuration(new Environment("isolated-test",new JdbcTransactionFactory(),ds));
     config.setMapUnderscoreToCamelCase(true);
@@ -34,7 +38,11 @@ class PermissionAuthorizationDatabaseTest {
         db.update("INSERT INTO iam.iam_user(id,username,password_hash,display_name) VALUES(?,?,?,'permission fixture')",id,"perm-"+id,"UNUSABLE_TEST_HASH");
         db.update("INSERT INTO iam.iam_role(id,role_code,role_name) VALUES(?,?,'permission fixture')",role,"fixture-"+role);
         db.update("INSERT INTO iam.iam_user_role(user_id,role_id) VALUES(?,?)",id,role);
-        db.update("INSERT INTO iam.iam_role_permission(role_id,permission_id) VALUES(?,'iam:user:list:view')",role);
+        // A permission code and its storage ID are separate. An active role also
+        // needs an explicit application boundary, as every runtime mapper does.
+        assertEquals(1,db.update("INSERT INTO iam.iam_role_permission(role_id,permission_id)"
+            +" SELECT ?,id FROM iam.iam_permission WHERE permission_code='iam:user:list:view' AND system_code='iam'",role));
+        db.update("INSERT INTO iam.iam_role_app_scope(role_id,app_code) VALUES(?,'IAM')",role);
         var users=session.getMapper(UserMapper.class);var roles=session.getMapper(RoleMapper.class);var perms=session.getMapper(PermissionMapper.class);
         var runtime=new UserService(users,roles,null,new PermissionService(perms),null);
         var insight=new EffectivePermissionService(users,roles,perms,runtime);

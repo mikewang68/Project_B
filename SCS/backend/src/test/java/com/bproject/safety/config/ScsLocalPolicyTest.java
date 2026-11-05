@@ -106,6 +106,42 @@ class ScsLocalPolicyTest {
     assertFalse(scopedBindings(Map.of()).permits(actor, "POST", "/api/v1/fences"));
   }
 
+  @Test
+  void centralTupleSurvivesLegacyNullNormalizationAndStillLimitsActions() throws Exception {
+    var policy = policy();
+    var ticket = centralClaims();
+    ticket.put("company", null);
+    ticket.put("org", "   ");
+    var actor = policy.resolve(ticket);
+    assertNotNull(actor.context());
+    assertEquals("REGION_TEST", actor.context().regionId());
+    assertTrue(policy.permits(actor, "GET", "/api/v1/fences"));
+    assertFalse(policy.permits(actor, "POST", "/api/v1/fences"));
+    assertFalse(policy.permits(actor, "GET", "/api/v1/rules"));
+  }
+
+  @Test
+  void aCentralTupleDoesNotAuthorizeAnUnsupportedLegacyOrganizationScope() throws Exception {
+    var ticket = centralClaims();
+    ticket.put("company", "company-test");
+    var policy = scopedBindings(Map.of("company", "company-test"));
+    assertThrows(ScsLocalPolicy.UnsupportedDataScopeException.class, () -> policy.resolve(ticket));
+  }
+
+  private Map<String, Object> centralClaims() {
+    var tuple = new com.bproject.iam.context.ScopeTriple("PROJECT_TEST", "REGION_TEST", "SCS");
+    var mode = com.bproject.iam.context.ScopeSql.Mode.SCOPED;
+    var sql = com.bproject.iam.context.ScopeSql.build(mode, List.of(tuple));
+    var context = new com.bproject.iam.context.UserContext(
+        2, "subject-a", "operator", "subject-a", "operator", "L4_OPERATOR", false, "SCS",
+        tuple.projectId(), tuple.regionId(), tuple.subsystemCode(), mode, List.of(tuple), List.of(tuple),
+        Set.of("test-role"), Set.of("SCS:fences"), Map.of("SCS:fences", Set.of("VIEW")), Set.of(), "1",
+        sql.my_info(), sql.my_project_zone_info(), sql.my_info_template(), sql.my_project_zone_info_template(), sql.scope_params());
+    var ticket = new HashMap<String, Object>(claims(List.of("safety:fence:list:view", "safety:fence:edit"), false, false));
+    ticket.put("userContext", context);
+    return ticket;
+  }
+
   /** 构造带 scope 字段（值可自定义）的绑定文件；未给出的字段保持缺省。 */
   private ScsLocalPolicy scopedBindings(Map<String, Object> scopeOverrides) throws Exception {
     var json = new ObjectMapper();

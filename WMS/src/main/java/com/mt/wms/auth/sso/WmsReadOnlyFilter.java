@@ -19,7 +19,7 @@ public final class WmsReadOnlyFilter extends OncePerRequestFilter {
         String path=WmsReadOnlyPolicy.requestPath(request);
         if(path.startsWith("/api/")&&WmsReadOnlyPolicy.denies(request.getMethod(),path)
             &&authentication!=null&&authentication.getPrincipal() instanceof WmsPrincipal principal
-            &&principal.readOnly()) {
+            &&principal.readOnly()&&!WmsCentralScope.readonlyTransfer(WmsCentralScope.current(request),request.getMethod(),path)) {
             response.setStatus(403);response.setContentType("application/json;charset=UTF-8");
             mapper.writeValue(response.getOutputStream(),ApiResponse.error("AUTH_READONLY","只读账号不允许写操作",null));return;
         }

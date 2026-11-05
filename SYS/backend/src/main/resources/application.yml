@@ -38,6 +38,17 @@ app:
     enabled: ${AI_ENABLED:false}
     provider: ${AI_PROVIDER:disabled}
 
+sys:
+  audit:
+    public:
+      enabled: ${SYS_PUBLIC_AUDIT_ENABLED:false}
+      endpoint: ${SYS_PUBLIC_AUDIT_ENDPOINT:}
+      token-file: ${SYS_PUBLIC_AUDIT_TOKEN_FILE:}
+      domain: ${SYS_PUBLIC_AUDIT_DOMAIN:B-PROJECT}
+      zone: ${SYS_PUBLIC_AUDIT_ZONE:DL-PORT}
+      since: ${SYS_PUBLIC_AUDIT_SINCE:}
+      interval-ms: ${SYS_PUBLIC_AUDIT_INTERVAL_MS:5000}
+
 logging:
   level:
     com.bdemo.sys: info

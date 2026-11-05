@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { liveApi } from './client';
 import type { SessionContext } from '../auth';
+import { canLiveMenuAction } from '../auth/liveActionPolicy';
 
 export const liveBusinessPages = {
   'UI-005': { title: '派工看板', collections: ['work-orders', 'tasks'] },
@@ -11,8 +12,9 @@ export const liveBusinessPages = {
 export type LiveBusinessPageId = keyof typeof liveBusinessPages;
 export type LiveCollection = (typeof liveBusinessPages)[LiveBusinessPageId]['collections'][number];
 export function canReadCollection(session: SessionContext, collection: LiveCollection) {
+  const menu=collection==='work-orders'?'PSMS:ui-005':collection==='appointments'?'PSMS:ui-006':collection==='exceptions'?'PSMS:ui-008':'PSMS:ui-007';
   const resource = collection === 'tasks' || collection === 'equipment' ? 'monitor' : collection;
-  return (session.fullAdmin && !session.readOnly) || session.permissions?.includes(`pps:api:${resource}:read`) === true;
+  return canLiveMenuAction(session,menu,'VIEW',`pps:api:${resource}:read`);
 }
 const row = z.object({ id: z.string().min(1), status: z.string().min(1), updated_at: z.string().min(1),record_version:z.string().min(1) }).catchall(z.unknown());
 const pageSchema = z.object({ collection: z.enum(['work-orders','tasks','equipment','appointments','exceptions']),
@@ -35,6 +37,12 @@ export function businessActions(collection:LiveCollection,status:string):Busines
     .map(([code,label,,operation,equipment])=>({code,label,permission:`pps:api:${collection}:${operation}`,equipment}));
 }
 export function canRunBusinessAction(session:SessionContext,action:BusinessAction):boolean{
+  if(session.menuOperations!=null){
+    const resource=action.permission.split(':')[2];
+    const menu=resource==='work-orders'?'PSMS:ui-005':resource==='appointments'?'PSMS:ui-006':resource==='exceptions'?'PSMS:ui-008':undefined;
+    const operation=action.code==='create'?'ADD':['approve','complete','close'].includes(action.code)?'CONFIRM':'EDIT';
+    return !!menu&&canLiveMenuAction(session,menu,operation,action.permission);
+  }
   return !session.readOnly && (session.fullAdmin===true || session.permissions?.includes(action.permission)===true);
 }
 export async function runBusinessAction(collection:LiveCollection,row:BusinessRow,action:BusinessAction,values:{reason:string;equipmentId?:string}){

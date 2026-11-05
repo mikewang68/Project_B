@@ -71,6 +71,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class AiEventService implements com.bproject.safety.module.alert.service.AlertClosureListener {
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private com.bproject.safety.config.ScsScopedReferenceData centralReferences;
 
     private static final Logger log = LoggerFactory.getLogger(AiEventService.class);
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
@@ -138,6 +140,7 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
     }
 
     public AiMetrics metrics() {
+        boolean demoMetrics=this.demoMetrics&&com.bproject.safety.config.ScsCentralScope.current()==null;
         var counts = repository.counts();
         var start=OffsetDateTime.now(clock.withZone(ZONE)).toLocalDate().atStartOfDay(ZONE).toOffsetDateTime();
         long today=demoMetrics?AiDemoSeeder.BASE_TODAY+Math.max(0,counts.total()-AiDemoSeeder.SEED_COUNT)
@@ -157,6 +160,8 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
     }
 
     public List<CameraInfo> cameras() {
+        if(com.bproject.safety.config.ScsCentralScope.current()!=null)
+            return centralReferences==null?List.of():centralReferences.visible(com.bproject.safety.config.ScsCentralScope.Root.CAMERA,cameras,CameraInfo::cameraId);
         return List.copyOf(cameras);
     }
 
@@ -755,6 +760,8 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
 
     /** 获取边缘抓拍图片字节流（代理转发至 edge-ai /snapshots/ 静态端点）。 */
     public ResponseEntity<byte[]> getSnapshot(String edgeUrl, String filename) {
+        if(com.bproject.safety.config.ScsCentralScope.current()!=null&&(centralReferences==null||!centralReferences.snapshotVisible(filename)))
+            return ResponseEntity.notFound().build();
         if (filename == null || filename.isBlank() || filename.contains("..") || filename.contains("/")
                 || filename.contains("\\") || filename.contains(":")) {
             // 复查-6.4：冒号拦截 Windows 盘符相对路径（C:x）逃逸
