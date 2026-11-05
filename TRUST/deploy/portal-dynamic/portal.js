@@ -17,7 +17,9 @@
   // ==========================================
   const STORAGE_KEY = 'b-project-appearance';
   const V3_SCHEMA_VERSION = '3.0';
-  const ALLOWED_APP_CODES = ['WMS', 'PSMS', 'SCS', 'EHMS', 'EMCS', 'TRUST', 'IAM', 'SYS'];
+  const APP_CODE = /^[A-Z][A-Z0-9_-]{0,31}$/;
+  const LEVEL_NAMES = { L1_SUPER: 'L1 平台总管理员', L1_READONLY: 'L1 平台只读用户',
+    L2_PROJECT: 'L2 项目管理员', L3_SUBSYSTEM: 'L3 子系统管理员', L4_OPERATOR: 'L4 业务操作员' };
 
   const themes = [
     { id: 'tech-blue', name: '科技蓝', description: '深海军蓝导航 · 科技蓝主色（默认）', colors: ['#24364a', '#409eff'] },
@@ -79,6 +81,41 @@
   let activePageNode = null;
   let currentProvider = null;
   let lastFocus = null;
+  let activeWorkspace = null;
+  let workspaceProject = null;
+  let workspaceBusy = false;
+  let workspaceGlobal = false;
+
+  // Project identifiers are presentation selections, never an authority supplied by the browser.
+  const WorkspaceModel = {
+    isL1(context) { return ['L1_SUPER', 'L1_READONLY'].includes(context.adminLevel); },
+    validate(data) {
+      if (data?.legacy === true && data.userContext === null && Array.isArray(data.projects) && !data.projects.length) return data;
+      const ctx = data?.userContext;
+      if (!ctx || !LEVEL_NAMES[ctx.adminLevel] || !Array.isArray(ctx.allowedScopes)
+          || !Array.isArray(ctx.activeScope) || !Array.isArray(data.projects)) throw new Error('项目工作台上下文无效');
+      const seen = new Set();
+      for (const project of data.projects) {
+        if (!/^[A-Za-z0-9_-]+$/.test(project.projectId) || seen.has(project.projectId)
+            || typeof project.name !== 'string' || !Array.isArray(project.regions)) throw new Error('项目目录无效');
+        seen.add(project.projectId);
+        if (!this.isL1(ctx) && project.projectId !== ctx.projectId) throw new Error('项目目录超出账号归属');
+      }
+      return data;
+    },
+    scopes(context, project, regionId = '') {
+      if (!project) return [];
+      if (regionId && !project.regions.some(r => r.regionId === regionId)) throw new Error('区域不属于当前项目');
+      return context.allowedScopes.filter(s => s.projectId === project.projectId && (!regionId || s.regionId === regionId));
+    },
+    matches(context, scopes) {
+      if (context.scopeMode === 'GLOBAL') return false;
+      const key = s => JSON.stringify([s.projectId, s.regionId, s.subsystemCode]);
+      const expected = new Set(scopes.map(key));
+      return context.activeScope.length === expected.size && context.activeScope.every(s => expected.has(key(s)))
+        && (expected.size > 0 || context.scopeMode === 'DENY');
+    }
+  };
 
   // ==========================================
   // 2. 契约模型与校验器 (NavigationModel)
@@ -140,10 +177,16 @@
         throw new Error('data.systems must be an array');
       }
 
+      if (!Array.isArray(uc.allowedAppCodes) || uc.allowedAppCodes.some(code => !APP_CODE.test(code))) {
+        throw new Error('Authenticated allowedAppCodes is required');
+      }
+      const registeredCodes = new Set(uc.allowedAppCodes);
+      const seenSystems = new Set();
       for (const sys of data.systems) {
-        if (!ALLOWED_APP_CODES.includes(sys.appCode)) {
-          throw new Error(`Unauthorized or excluded appCode: "${sys.appCode}". DTS or lowercase codes are strictly rejected.`);
+        if (!APP_CODE.test(sys.appCode) || !registeredCodes.has(sys.appCode) || seenSystems.has(sys.appCode)) {
+          throw new Error(`Unauthorized or duplicate appCode: "${sys.appCode}"`);
         }
+        seenSystems.add(sys.appCode);
         if (!sys.displayName || typeof sys.sortOrder !== 'number' || !sys.entryBasePath) {
           throw new Error(`SystemNode ${sys.appCode} missing required fields (displayName, sortOrder, entryBasePath)`);
         }
@@ -290,11 +333,23 @@
         return {status:'FEATURE_UNAVAILABLE',badgeText:pageLeaf.featureStatus==='PLANNED'?'待接入':'待验证',
           badgeClass:'dest-badge pending',entryPath:'#',desc:pageLeaf.unavailableReason||'该功能尚未完成验证和发布。'};
       }
-      const sanitizedEntry = this.sanitizePath(pageLeaf.entryPath);
+      let sanitizedEntry = this.sanitizePath(pageLeaf.entryPath);
+      if (appCode === 'IAM' && activeWorkspace && (workspaceProject || workspaceGlobal)) {
+        const entry = new URL(sanitizedEntry, 'https://navigation.invalid');
+        entry.searchParams.delete('workspace'); entry.searchParams.delete('projectId');
+        if (workspaceProject) entry.searchParams.set('projectId', workspaceProject.projectId);
+        else entry.searchParams.set('workspace', 'global');
+        sanitizedEntry = entry.pathname + entry.search + entry.hash;
+      }
       const configuredAddress = this.resolveConfiguredAddress(system, sanitizedEntry);
       if (configuredAddress && system.ssoEnabled === true) {
         const launch = new URL('/sso/start', configuredAddress);
         launch.searchParams.set('page', pageLeaf.stableMenuKey);
+        if (appCode === 'IAM' && workspaceProject && activeWorkspace) {
+          launch.searchParams.set('projectId', workspaceProject.projectId);
+        } else if (appCode === 'IAM' && workspaceGlobal && activeWorkspace) {
+          launch.searchParams.set('workspace', 'global');
+        }
         return {status:'SSO_APPLICATION_ENTRY',badgeText:'统一登录入口',badgeClass:'dest-badge',
           entryPath:launch.href,desc:'使用平台身份进入所选业务功能，业务权限由目标系统核验。'};
       }
@@ -442,6 +497,22 @@
 
     setAuthToken(token) {
       this.authToken = token;
+    }
+
+    async workspaceRequest(path, body) {
+      const headers = { Accept: 'application/json', 'Content-Type': 'application/json' };
+      if (this.authToken) headers.Authorization = `Bearer ${this.authToken}`;
+      const response = await fetch('/api/v1/iam/auth/' + path, {
+        method: body === undefined ? 'GET' : 'POST', headers, cache: 'no-store',
+        body: body === undefined ? undefined : JSON.stringify(body)
+      });
+      const result = await response.json();
+      if (!response.ok || result.code !== 0) {
+        const error = new Error(result.message || '项目范围服务不可用');
+        error.code = response.status === 401 ? 40101 : response.status === 403 ? 40301 : 50001;
+        throw error;
+      }
+      return result.data;
     }
 
     async fetchNavigation() {
@@ -663,6 +734,13 @@
     },
 
     bindEvents() {
+      document.querySelector('#workspace-back')?.addEventListener('click', () => this.returnToProjects());
+      document.querySelector('#workspace-global')?.addEventListener('click', () => this.changeWorkspace(null, '', true));
+      document.querySelector('#workspace-home')?.addEventListener('click', () => this.renderWorkspaceHome());
+      document.querySelector('#workspace-region-select')?.addEventListener('change', e => {
+        if (workspaceProject) this.changeWorkspace(workspaceProject, e.target.value);
+      });
+      window.addEventListener('popstate', () => this.loadNavigation());
       // 移动端侧边栏切换
       if (sidebarToggle) {
         sidebarToggle.addEventListener('click', () => {
@@ -796,7 +874,7 @@
 
       // 目标页面导航按钮点击拦截 (防止脱离控制)
       if (btnNavigateEntry) {
-        btnNavigateEntry.addEventListener('click', e => {
+        btnNavigateEntry.addEventListener('click', async e => {
           e.preventDefault();
           if (!activePageNode || btnNavigateEntry.disabled) return;
           const targetUrl = btnNavigateEntry.dataset.targetUrl;
@@ -805,7 +883,7 @@
             alert('目标服务实例未部署或网关尚未接通，无法跳转。');
             return;
           }
-          window.location.assign(targetUrl);
+          await this.navigateInWorkspace(targetUrl);
         });
       }
 
@@ -857,11 +935,50 @@
      */
     async loadNavigation() {
       const requestId = ++currentRequestId;
+      this.hideWorkspaceViews();
+      pageLeafCard.hidden = true;
+      emptyStateCard.hidden = true;
+      errorStateCard.hidden = true;
+      activeSystemNode = null;
+      activePageNode = null;
+      activeNavigationData = null;
       sidebarLoading.hidden = false;
       sidebarLoading.textContent = '正在读取授权导航...';
       systemNav.replaceChildren(sidebarLoading);
 
       try {
+        if (currentProvider.workspaceRequest) {
+          const workspace = WorkspaceModel.validate(await currentProvider.workspaceRequest('workspace'));
+          if (requestId !== currentRequestId) return;
+          activeWorkspace = workspace.legacy ? null : workspace;
+          workspaceProject = null;
+          workspaceGlobal = false;
+          if (activeWorkspace) {
+            const context = workspace.userContext;
+            const params = new URLSearchParams(window.location.search);
+            const projectId = WorkspaceModel.isL1(context) ? params.get('projectId') : context.projectId;
+            workspaceGlobal = WorkspaceModel.isL1(context) && params.get('workspace') === 'global';
+            this.renderWorkspaceIdentity();
+            if (WorkspaceModel.isL1(context) && !projectId && !workspaceGlobal) {
+              this.renderProjectPicker();
+              return;
+            }
+            if (workspaceGlobal) {
+              if (context.scopeMode !== 'GLOBAL') {
+                activeWorkspace.userContext = await currentProvider.workspaceRequest('context/selection', { scopes: [], global: true });
+              }
+            } else {
+              workspaceProject = workspace.projects.find(p => p.projectId === projectId);
+              if (!workspaceProject) throw new Error('所选项目不存在或不在当前账号授权范围内');
+              const region = ['L3_SUBSYSTEM', 'L4_OPERATOR'].includes(context.adminLevel) ? context.regionId : (params.get('regionId') || '');
+              const scopes = WorkspaceModel.scopes(context, workspaceProject, region);
+              if (!WorkspaceModel.matches(context, scopes)) {
+                activeWorkspace.userContext = await currentProvider.workspaceRequest('context/selection', { scopes, global: false });
+              }
+            }
+            if (requestId !== currentRequestId) return;
+          }
+        }
         const rawJson = await currentProvider.fetchNavigation();
 
         // 并发竞态检查
@@ -884,8 +1001,167 @@
       } catch (err) {
         if (requestId !== currentRequestId) return;
         console.error('Navigation fetch or validation failed:', err);
-        this.renderError(50001, `导航服务访问异常: ${err.message}`);
+        this.renderError(err.code || 50001, `工作台服务访问异常: ${err.message}`);
       }
+    },
+
+    hideWorkspaceViews() {
+      for (const id of ['project-picker', 'project-workspace', 'workspace-toolbar']) {
+        const element = document.getElementById(id);
+        if (element) element.hidden = true;
+      }
+    },
+
+    renderWorkspaceIdentity() {
+      const ctx = activeWorkspace.userContext;
+      userDisplayName.textContent = ctx.displayName || ctx.username;
+      userAccessMode.textContent = LEVEL_NAMES[ctx.adminLevel];
+      userReadonlyBadge.hidden = !ctx.readOnly;
+      btnLogout.hidden = false;
+      document.querySelector('#portal-login-form').hidden = true;
+      document.querySelector('#workspace-toolbar').hidden = false;
+      document.querySelector('#workspace-back').hidden = !WorkspaceModel.isL1(ctx) || !workspaceProject && !workspaceGlobal;
+      document.querySelector('#workspace-home').hidden = !workspaceProject && !workspaceGlobal;
+      document.querySelector('#workspace-location').textContent = workspaceProject?.name || (workspaceGlobal ? '全局基础管理' : '平台项目列表');
+      const regions = new Set(ctx.activeScope.map(s => s.regionId));
+      document.querySelector('#workspace-region-label').textContent = workspaceProject
+        ? ' · ' + (regions.size === 1 ? (workspaceProject.regions.find(r => r.regionId === [...regions][0])?.name || [...regions][0]) : regions.size ? '全部获批区域' : '业务范围未配置') : '';
+      const control = document.querySelector('#workspace-region-control');
+      control.hidden = !workspaceProject || !['L1_SUPER', 'L1_READONLY', 'L2_PROJECT'].includes(ctx.adminLevel);
+      if (!control.hidden) {
+        const select = document.querySelector('#workspace-region-select');
+        select.replaceChildren();
+        const option = (value, label) => { const el = document.createElement('option'); el.value = value; el.textContent = label; select.append(el); };
+        option('', '全部获批区域');
+        for (const r of workspaceProject.regions) option(r.regionId, r.name);
+        select.value = new URLSearchParams(window.location.search).get('regionId') || '';
+      }
+    },
+
+    renderProjectPicker() {
+      this.hideWorkspaceViews();
+      this.renderWorkspaceIdentity();
+      systemNav.replaceChildren();
+      const intro = document.createElement('p');
+      intro.className = 'workspace-sidebar-note';
+      intro.textContent = '选择项目后显示该项目的应用与管理入口。';
+      systemNav.append(intro);
+      document.querySelector('#project-picker').hidden = false;
+      const grid = document.querySelector('#project-card-grid');
+      grid.replaceChildren();
+      for (const project of activeWorkspace.projects) {
+        const scopes = WorkspaceModel.scopes(activeWorkspace.userContext, project);
+        const card = document.createElement('article');
+        card.className = 'project-card';
+        card.dataset.projectId = project.projectId;
+        const code = document.createElement('p'); code.className = 'workspace-eyebrow'; code.textContent = project.projectId;
+        const name = document.createElement('h3'); name.textContent = project.name;
+        const details = document.createElement('p');
+        details.textContent = `${project.regions.length} 个登记区域 · ${new Set(scopes.map(s => s.subsystemCode)).size} 个可用系统`;
+        const state = document.createElement('span'); state.className = 'workspace-status';
+        state.textContent = project.status !== 'active' ? '项目已停用 · 可查看配置' : scopes.length ? '业务范围已配置' : '待配置业务范围';
+        const button = document.createElement('button'); button.className = 'workspace-button primary'; button.type = 'button';
+        button.textContent = '进入项目'; button.addEventListener('click', () => this.changeWorkspace(project));
+        card.append(code, name, details, state, button); grid.append(card);
+      }
+      if (!activeWorkspace.projects.length) grid.textContent = '尚无已登记项目。可从全局基础管理中配置项目。';
+      crumbSystemName.textContent = '平台'; crumbPageName.textContent = '项目选择'; pageTitle.textContent = '我的项目';
+    },
+
+    async changeWorkspace(project, regionId = '', global = false) {
+      if (workspaceBusy || !activeWorkspace) return;
+      workspaceBusy = true;
+      ++currentRequestId;
+      this.hideWorkspaceViews();
+      pageLeafCard.hidden = true;
+      systemNav.replaceChildren();
+      try {
+        const context = activeWorkspace.userContext;
+        if (global && !WorkspaceModel.isL1(context)) throw new Error('当前账号不能进入全局管理');
+        if (project && !activeWorkspace.projects.some(p => p.projectId === project.projectId)) throw new Error('项目未授权');
+        await currentProvider.workspaceRequest('context/selection', {
+          scopes: global ? [] : WorkspaceModel.scopes(context, project, regionId), global
+        });
+        const url = new URL(window.location.href);
+        for (const key of ['projectId', 'regionId', 'workspace', 'ssoReturn']) url.searchParams.delete(key);
+        if (project) url.searchParams.set('projectId', project.projectId);
+        if (regionId) url.searchParams.set('regionId', regionId);
+        if (global) url.searchParams.set('workspace', 'global');
+        window.history.pushState({}, '', url.pathname + url.search);
+        await this.loadNavigation();
+      } catch (error) {
+        this.renderError(error.code || 50001, '范围切换未完成，请重试。' + error.message);
+      } finally { workspaceBusy = false; }
+    },
+
+    returnToProjects() {
+      if (!activeWorkspace || !WorkspaceModel.isL1(activeWorkspace.userContext)) return;
+      const url = new URL(window.location.href);
+      for (const key of ['projectId', 'regionId', 'workspace', 'ssoReturn']) url.searchParams.delete(key);
+      window.history.pushState({}, '', url.pathname + url.search);
+      this.loadNavigation();
+    },
+
+    renderWorkspaceHome() {
+      if (!activeWorkspace || !activeNavigationData) return;
+      pageLeafCard.hidden = true; emptyStateCard.hidden = true; errorStateCard.hidden = true;
+      document.querySelector('#project-workspace').hidden = false;
+      this.renderWorkspaceIdentity();
+      const ctx = activeWorkspace.userContext;
+      const label = workspaceProject?.name || '全局基础管理';
+      document.querySelector('#project-workspace-title').textContent = label;
+      document.querySelector('#project-workspace-code').textContent = workspaceProject?.projectId || 'PLATFORM';
+      document.querySelector('#project-workspace-description').textContent = workspaceGlobal
+        ? '维护项目、区域、子系统和全局权限字典。进入项目后查看对应的业务功能。'
+        : `${LEVEL_NAMES[ctx.adminLevel]} · ${ctx.readOnly ? '当前为只读访问' : '在当前项目范围内开展工作'}。${ctx.subsystemCode ? '所属系统：' + ctx.subsystemCode : ''}`;
+      const notice = document.querySelector('#workspace-notice');
+      notice.hidden = ctx.scopeMode !== 'DENY';
+      notice.textContent = '当前项目或区域尚无可用业务授权。可查看管理配置，业务数据入口保持关闭。';
+      const grid = document.querySelector('#workspace-app-grid'); grid.replaceChildren();
+      const systems = this.workspaceSystems(activeNavigationData.systems);
+      for (const sys of systems) {
+        const page = this.findFirstPage(sys.children);
+        if (!page) continue;
+        const card = document.createElement('article'); card.className = 'project-card app-card'; card.dataset.appCode = sys.appCode;
+        const code = document.createElement('p'); code.className = 'workspace-eyebrow'; code.textContent = sys.appCode;
+        const title = document.createElement('h3'); title.textContent = sys.displayName;
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'workspace-button';
+        button.textContent = '查看功能'; button.addEventListener('click', () => this.selectPage(sys, page));
+        card.append(code, title, button); grid.append(card);
+      }
+      const iam = systems.find(s => s.appCode === 'IAM');
+      const flatten = nodes => nodes.flatMap(n => n.nodeType === 'DIRECTORY' ? flatten(n.children || []) : [n]);
+      const manage = iam && flatten(iam.children || []).find(n => n.canLaunch !== false && n.entryPath?.split('?')[0].endsWith('/system/scope-management'));
+      const button = document.querySelector('#workspace-manage');
+      button.hidden = !manage || !ctx.managementCapabilities?.includes('VIEW_MANAGEMENT');
+      button.onclick = manage ? () => this.selectPage(iam, manage) : null;
+      crumbSystemName.textContent = label; crumbPageName.textContent = '工作台'; pageTitle.textContent = workspaceGlobal ? label : '项目工作台';
+    },
+
+    workspaceSystems(systems) {
+      return workspaceGlobal ? systems.filter(s => ['IAM', 'SYS'].includes(s.appCode)) : systems;
+    },
+
+    async navigateInWorkspace(target) {
+      if (workspaceBusy) return;
+      if (activeWorkspace) {
+        workspaceBusy = true;
+        try {
+          const latest = WorkspaceModel.validate(await currentProvider.workspaceRequest('workspace'));
+          if (latest.legacy || latest.userContext.userId !== activeWorkspace.userContext.userId) throw new Error('登录身份已变更，请刷新工作台');
+          const project = workspaceProject && latest.projects.find(p => p.projectId === workspaceProject.projectId);
+          const region = new URLSearchParams(window.location.search).get('regionId') || '';
+          const expected = project && WorkspaceModel.scopes(latest.userContext, project,
+            ['L3_SUBSYSTEM', 'L4_OPERATOR'].includes(latest.userContext.adminLevel) ? latest.userContext.regionId : region);
+          if (workspaceGlobal ? latest.userContext.scopeMode !== 'GLOBAL' : !project || !WorkspaceModel.matches(latest.userContext, expected)) {
+            throw new Error('当前会话的项目范围已在其他页面变更，请重新选择项目');
+          }
+        } catch (error) {
+          this.renderError(error.code || 40301, error.message);
+          return;
+        } finally { workspaceBusy = false; }
+      }
+      window.location.assign(target);
     },
 
     /**
@@ -901,18 +1177,19 @@
 
       // 1. 更新顶部用户信息
       userDisplayName.textContent = uc.displayName;
-      userAccessMode.textContent = uc.accessMode;
+      userAccessMode.textContent = activeWorkspace ? LEVEL_NAMES[activeWorkspace.userContext.adminLevel] : uc.accessMode;
       userReadonlyBadge.hidden = !uc.readOnly;
       btnLogout.hidden = false;
 
       // 2. 清空并准备侧边栏容器
       systemNav.replaceChildren();
 
-      const systems = data.systems;
+      const systems = this.workspaceSystems(data.systems);
 
       // 3. 空系统树状态检查
       if (!systems || systems.length === 0) {
-        this.renderEmptyState();
+        if (activeWorkspace) this.renderWorkspaceHome();
+        else this.renderEmptyState();
         return;
       }
 
@@ -1042,7 +1319,7 @@
             pageBtn.addEventListener('click', () => {
               const destInfo = RouteAdapter.resolveDestination(sys, node);
               if (destInfo.entryPath && destInfo.status === 'SPA_ROUTE_ACTIVE') {
-                window.location.href = destInfo.entryPath;
+                this.navigateInWorkspace(destInfo.entryPath);
                 return;
               }
               this.selectPage(sys, node);
@@ -1079,7 +1356,9 @@
         return null;
       };
       const selectedPage = selectedSystem && selectedKey ? findSelected(selectedSystem.children) : null;
-      if (selectedPage) {
+      if (activeWorkspace) {
+        this.renderWorkspaceHome();
+      } else if (selectedPage) {
         this.selectPage(selectedSystem, selectedPage);
       } else if (firstPageToSelect) {
         this.selectPage(firstSystemOfPage, firstPageToSelect);
@@ -1106,6 +1385,8 @@
      * 选中并激活指定页面节点
      */
     selectPage(system, pageLeaf) {
+      document.querySelector('#project-workspace')?.setAttribute('hidden', '');
+      document.querySelector('#project-picker')?.setAttribute('hidden', '');
       activeSystemNode = system;
       activePageNode = pageLeaf;
 
@@ -1168,6 +1449,10 @@
      * 错误状态渲染 (400, 401, 403, 500)
      */
     renderError(code, message) {
+      this.hideWorkspaceViews();
+      activeWorkspace = null;
+      workspaceProject = null;
+      workspaceGlobal = false;
       activeNavigationData = null;
       activeSystemNode = null;
       activePageNode = null;
@@ -1253,6 +1538,7 @@
   window.__NAVIGATION_CLIENT__ = NavigationModel;
   window.__ROUTE_ADAPTER__ = RouteAdapter;
   window.__PERMISSION_EVALUATOR__ = PermissionEvaluator;
+  window.__WORKSPACE_MODEL__ = WorkspaceModel;
 
   // DOM 就绪后启动
   if (document.readyState === 'loading') {

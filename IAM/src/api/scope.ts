@@ -1,5 +1,6 @@
 import { createClient } from './request'
 import { TOKEN_KEY } from './iam'
+import type { OrgNode } from '@/iam/org-tree'
 
 const client = createClient({ tokenKey: TOKEN_KEY, prefix: 'iam' })
 export interface ScopeTriple { projectId: string; regionId: string; subsystemCode: string }
@@ -14,6 +15,9 @@ export interface UserContext {
   my_info_template: string; my_project_zone_info_template: string; scope_params: Record<string, string>
 }
 export interface Project { project_id: string; project_name: string; company_name: string | null; status: string; authz_version: number }
+export interface WorkspaceProject { projectId: string; name: string; status: string; regions: Array<{ regionId: string; name: string; status: string }> }
+export type Workspace = { legacy: false; userContext: UserContext; projects: WorkspaceProject[] }
+  | { legacy: true; userContext: null; projects: [] }
 export interface Region { project_id: string; region_id: string; region_name: string; region_type: string; status: string }
 export interface Application { app_code: string; display_name: string; enabled: number; context_contract_max: number; iam_system_code: string; entry_base_path: string; row_version: number }
 export interface Operation { op_code: string; op_name: string; op_category: string; effect_kind: string; allow_readonly: boolean; status: string }
@@ -34,9 +38,11 @@ export interface Action { menuKey: string; action: string }
 export interface ManagedRole { role_scope: string; project_id: string | null; id: string; role_name: string; business_role_code: string; status: 'active' | 'inactive'; operations: Action[] }
 export interface RoleOption extends Action { name: string }
 export const scopeApi = {
+  workspace: () => client.request<Workspace>('/auth/workspace'),
   context: () => client.request<UserContext>('/auth/context'),
   selectContext: (body: ScopeSelection) => client.request<UserContext>('/auth/context/selection', { method: 'POST', body }),
   overview: () => client.request<Overview>('/management/overview'),
+  organizations: () => client.request<OrgNode[]>('/management/organizations'),
   users: () => client.request<ManagedUser[]>('/management/users'),
   roles: () => client.request<ManagedRole[]>('/management/roles'),
   roleOptions: () => client.request<RoleOption[]>('/management/role-options'),

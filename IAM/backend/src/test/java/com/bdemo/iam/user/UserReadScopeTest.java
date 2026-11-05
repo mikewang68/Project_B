@@ -8,6 +8,11 @@ import com.bdemo.iam.permission.PermissionService;
 import com.bdemo.iam.provisioning.IdentityTasks;
 import com.bdemo.iam.role.mapper.RoleMapper;
 import com.bdemo.iam.security.LoginUser;
+import com.bdemo.iam.security.AppScopePolicy;
+import com.bdemo.iam.scope.ScopeProvisioning;
+import com.bdemo.iam.scope.ScopeContextService;
+import com.bproject.iam.context.UserContext;
+import com.bproject.iam.context.ScopeSql;
 import com.bdemo.iam.user.domain.User;
 import com.bdemo.iam.user.mapper.UserMapper;
 import java.util.*;
@@ -17,6 +22,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 class UserReadScopeTest {
   @AfterEach void clear() { SecurityContextHolder.clearContext(); }
@@ -38,6 +44,23 @@ class UserReadScopeTest {
     service.list(null,null,null);
     verify(mapper).selectList(UserMapper.COLUMNS,null,null,null,null,null);
     assertFalse(actor.isSuperAdmin());assertTrue(actor.isReadOnly());
+  }
+  @Test void newL2CanBeReadAfterCreationByL1InAnEmptyProjectButNotAfterManagementRevocation() {
+    var mapper=mock(UserMapper.class);var service=service(mapper);
+    var provisioning=new ScopeProvisioning(mock(JdbcTemplate.class),mock(ScopeContextService.class));
+    var policy=new AppScopePolicy(mock(RoleMapper.class));
+    ReflectionTestUtils.setField(policy,"scopeProvisioning",provisioning);
+    ReflectionTestUtils.setField(service,"appScopes",policy);
+    var context=mock(UserContext.class);when(context.adminLevel()).thenReturn("L1_SUPER");
+    when(context.scopeMode()).thenReturn(ScopeSql.Mode.DENY);when(context.mayManage()).thenReturn(true);
+    var actor=new LoginUser("self","manager","Manager",false,Set.of());actor.setUserContext(context);
+    authenticate(actor);
+    var created=new User();created.setId("new-l2");when(mapper.selectById("new-l2")).thenReturn(created);
+    assertEquals("new-l2",service.get("new-l2").getId(),
+        "createScoped and UserCreation both hydrate the created account through this exact read path");
+    assertFalse(actor.isSuperAdmin(),"Business superAdmin must stay disabled for the empty selection");
+    when(context.mayManage()).thenReturn(false);
+    assertEquals(404,assertThrows(BizException.class,()->service.get("new-l2")).getHttpStatus());
   }
   private UserService service(UserMapper mapper) {
     var service=new UserService(mapper,mock(RoleMapper.class),mock(OrgService.class),mock(PermissionService.class),mock(PasswordEncoder.class));

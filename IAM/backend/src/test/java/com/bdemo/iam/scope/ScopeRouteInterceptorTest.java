@@ -47,4 +47,10 @@ class ScopeRouteInterceptorTest {
     assertTrue(request("GET","/auth/me"));
     assertTrue(request("POST","/auth/logout"));
   }
+  @Test void deniedUsersCanReadTheirBoundedWorkspaceButCannotMutateOrEscapeThroughIt(){
+    actor(false);
+    assertTrue(request("GET","/auth/workspace"));
+    assertThrows(BizException.class,()->request("POST","/auth/workspace"));
+    assertThrows(BizException.class,()->request("GET","/auth/workspace/anything"));
+  }
 }

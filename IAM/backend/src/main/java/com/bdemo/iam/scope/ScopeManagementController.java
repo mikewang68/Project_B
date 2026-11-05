@@ -2,6 +2,8 @@ package com.bdemo.iam.scope;
 
 import com.bdemo.iam.common.*;
 import com.bdemo.iam.provisioning.UserCreation;
+import com.bdemo.iam.org.OrgService;
+import com.bdemo.iam.org.domain.OrgNode;
 import com.bdemo.iam.security.JwtAuthFilter;
 import com.bdemo.iam.user.UserService;
 import com.bdemo.iam.user.domain.User;
@@ -18,9 +20,19 @@ import org.springframework.web.bind.annotation.*;
 public class ScopeManagementController {
   private final ScopeManagementService service;private final ScopeContextService contexts;
   private final ScopeProvisioning scopes;private final UserCreation creation;private final UserService users;
+  private final OrgService organizations;
   public ScopeManagementController(ScopeManagementService service,ScopeContextService contexts,
-      ScopeProvisioning scopes,UserCreation creation,UserService users) {
+      ScopeProvisioning scopes,UserCreation creation,UserService users,OrgService organizations) {
     this.service=service;this.contexts=contexts;this.scopes=scopes;this.creation=creation;this.users=users;
+    this.organizations=organizations;
+  }
+  /** Management metadata remains available when an unconfigured project has no business tuple. */
+  @GetMapping("/organizations") public R<List<OrgNode>> organizations() {
+    var context=contexts.requireManager(false);
+    if(!"L1_SUPER".equals(context.adminLevel())||context.readOnly()
+        ||!context.managementCapabilities().contains("CONFIGURE_PLATFORM"))
+      throw BizException.forbidden("组织目录仅供L1配置人员使用");
+    return R.ok(organizations.tree());
   }
   @GetMapping("/overview") public R<Map<String,Object>> overview(){return R.ok(service.overview());}
   @GetMapping("/users") public R<List<Map<String,Object>>> users(){return R.ok(service.users());}

@@ -28,4 +28,34 @@ class ScopeProjectRoleVisibilityTest {
     var contexts=mock(ScopeContextService.class);var manager=actor("L2_PROJECT","PROJECT_TEST");when(contexts.requireManager(true)).thenReturn(manager);
     assertThrows(BizException.class,()->new ScopeProvisioning(database(),contexts).requireOwned("ROLE","role"));
   }
+  @Test void emptyBusinessSelectionPreservesOnlyExplicitPlatformManagementVisibility() {
+    var service=new ScopeProvisioning(database(),mock(ScopeContextService.class));
+    for(String level:List.of("L1_SUPER","L1_READONLY")) {
+      var manager=actor(level,null);when(manager.scopeMode()).thenReturn(ScopeSql.Mode.DENY);
+      when(manager.mayManage()).thenReturn(true);
+      assertTrue(service.visible("USER","new-l2",manager));
+      assertTrue(service.visible("ROLE","role",manager));
+      when(manager.mayManage()).thenReturn(false);
+      assertFalse(service.visible("USER","new-l2",manager));
+    }
+  }
+  @Test void deniedL2BusinessScopeStillUsesExactProjectManagementBoundary() {
+    var service=new ScopeProvisioning(database(),mock(ScopeContextService.class));
+    var manager=actor("L2_PROJECT","PROJECT_TEST");when(manager.scopeMode()).thenReturn(ScopeSql.Mode.DENY);
+    when(manager.mayManage()).thenReturn(true);
+    assertTrue(service.visible("ROLE","role",manager));
+    when(manager.projectId()).thenReturn("PROJECT_OTHER");
+    assertFalse(service.visible("ROLE","role",manager));
+    when(manager.projectId()).thenReturn("PROJECT_TEST");when(manager.mayManage()).thenReturn(false);
+    assertFalse(service.visible("ROLE","role",manager));
+  }
+  @Test void deniedL3AndL4NeverReuseThePlatformProjectManagementException() {
+    var service=new ScopeProvisioning(database(),mock(ScopeContextService.class));
+    for(String level:List.of("L3_SUBSYSTEM","L4_OPERATOR")) {
+      var actor=actor(level,"PROJECT_TEST");when(actor.scopeMode()).thenReturn(ScopeSql.Mode.DENY);
+      when(actor.mayManage()).thenReturn(true);
+      assertFalse(service.visible("ROLE","role",actor));
+      assertFalse(service.visible("USER","user",actor));
+    }
+  }
 }
