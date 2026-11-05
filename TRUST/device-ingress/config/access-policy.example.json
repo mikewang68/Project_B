@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "devices": [
+    {"device_id": "SIM-EXAMPLE", "project_id": "SIM-EXAMPLE-PROJECT", "area_id": "SIM-EXAMPLE-AREA"}
+  ],
+  "principals": [
+    {"principal_id": "example-writer", "token_sha256": "REPLACE_WITH_PRIVATE_TOKEN_SHA256", "read_devices": ["SIM-EXAMPLE"], "write_devices": ["SIM-EXAMPLE"]},
+    {"principal_id": "example-reader", "token_sha256": "REPLACE_WITH_DIFFERENT_PRIVATE_TOKEN_SHA256", "read_devices": ["SIM-EXAMPLE"], "write_devices": []}
+  ]
+}

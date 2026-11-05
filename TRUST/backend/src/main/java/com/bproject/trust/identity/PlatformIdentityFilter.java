@@ -54,7 +54,8 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
     }
     try {
       var nativeSession = request.getSession(false);
-      if (ssoSessions != null && nativeSession != null
+      if (!path.startsWith("/api/v1/integrations/") && !path.equals("/api/v1/iam/login")
+          && ssoSessions != null && nativeSession != null
           && nativeSession.getAttribute(TrustSsoSessions.ATTRIBUTE) instanceof TrustSsoSessions.Binding binding
           && !path.startsWith("/api/v1/auth/sso/") && !path.equals("/api/v1/logout")) {
         var current = ssoSessions.current(binding);
@@ -65,7 +66,7 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
         if(current.permissions().contains("trust:audit:read"))authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
         SecurityContextHolder.getContext().setAuthentication(
             UsernamePasswordAuthenticationToken.authenticated(current.principal(),null,authorities));
-        if(current.context()!=null&&!TrustCentralScope.permits(current.context(),request.getMethod(),path))throw new ApiError(403,"当前功能或操作未获授权");
+        if(current.context()!=null&&!TrustCentralScope.permits(current.context(),request.getMethod(),path,current.principal().readOnly()))throw new ApiError(403,"当前功能或操作未获授权");
         if(current.context()==null&&current.principal().readOnly()&&!ReadOnlyPolicy.permits(path,request.getMethod()))
           throw new ApiError(403,"当前身份为只读，禁止此操作");
         String permission=current.context()!=null&&path.endsWith("/download")?"trust:evidence:download":

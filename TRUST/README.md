@@ -17,6 +17,8 @@ Project_B 的平台公共能力，版本 **0.1.0，开发联调版**。支持统
 
 ## 工程与组件
 
+[设备公共接入](device-ingress/README.md) 位于独立 `device-ingress/` 子工程，提供模拟设备事件接收、范围授权、资产与 history 读取，单独构建和运行；不包含设备模拟器，不自动启用存证或业务消费。
+
 通用 JSON 机器接入采用独立来源凭据，默认关闭；不要求批次、不提供通用页面或附件上传。请求原文及清单归档、幂等、更正、回执和显式重试见 [通用 JSON 存证接入](docs/generic-evidence.md)。启用接口不会自动授予钱包或链上权限。
 
 `TRUST/` 是普通子目录，使用 Project_B 的 Git 历史；开发、打包与同步均从本模块发起。源代码按 `backend`、`frontend`、`contracts`、`deploy`、`scripts`、`tests`、`samples`、`docs` 组织，内部规则见 [目录与依赖约定](docs/project-structure.md)。

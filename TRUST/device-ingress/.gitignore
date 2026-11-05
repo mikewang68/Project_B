@@ -1,0 +1,8 @@
+.local/
+target/
+__pycache__/
+*.sqlite
+*.sqlite-*
+*.token
+*.jsonl
+*.log

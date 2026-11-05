@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
@@ -112,9 +113,13 @@ public class Security {
                     .addLogoutHandler(
                         (q, s, a) -> {
                           var session = q.getSession(false);
-                          if (session != null
-                              && session.getAttribute("IAM_USER") instanceof String user
-                              && session.getAttribute("IAM_ORG") instanceof String org) {
+                          var ssoBinding = session != null
+                              && session.getAttribute(TrustSsoSessions.ATTRIBUTE) instanceof TrustSsoSessions.Binding b ? b : null;
+                          String user = ssoBinding != null ? ssoBinding.subject() : session != null
+                              && session.getAttribute("IAM_USER") instanceof String u ? u : null;
+                          String org = ssoBinding != null ? ssoBinding.org() : session != null
+                              && session.getAttribute("IAM_ORG") instanceof String o ? o : null;
+                          if (user != null && org != null) {
                             String trace = java.util.UUID.randomUUID().toString();
                             // These values were installed by the successful IAM login, never by
                             // browser identity headers.
@@ -144,10 +149,23 @@ public class Security {
                                 "TRUST_LOGOUT_PRINCIPAL", new PlatformPrincipal(user, user, org));
                             q.setAttribute("TRUST_LOGOUT_TRACE", trace);
                           }
-                          if(session!=null&&session.getAttribute(TrustSsoSessions.ATTRIBUTE) instanceof TrustSsoSessions.Binding binding){
-                            var nativeSso=ssoSessions.getIfAvailable();
-                            if(nativeSso==null)throw new IllegalStateException("SSO not configured");
-                            nativeSso.logout(binding);
+                          if (ssoBinding != null) {
+                            var nativeSso = ssoSessions.getIfAvailable();
+                            try {
+                              if (nativeSso == null) throw new IllegalStateException("SSO unavailable");
+                              nativeSso.logout(ssoBinding);
+                              q.setAttribute("TRUST_CENTRAL_LOGOUT", "confirmed");
+                            } catch (RuntimeException unavailable) {
+                              q.setAttribute("TRUST_CENTRAL_LOGOUT", "unconfirmed");
+                              LoggerFactory.getLogger(Security.class).warn(
+                                  "SSO_CENTRAL_LOGOUT_UNCONFIRMED: local session will be cleared");
+                            } finally {
+                              if (nativeSso != null) nativeSso.forget(session);
+                              try { session.invalidate(); } catch (IllegalStateException alreadyRevoked) {
+                                // A concurrent IAM revoke may have already invalidated this session.
+                              }
+                              SecurityContextHolder.clearContext();
+                            }
                           }
                         })
                     .logoutSuccessHandler(
@@ -172,6 +190,8 @@ public class Security {
                               org.slf4j.LoggerFactory.getLogger(Security.class)
                                   .warn("AUDIT_LOGOUT_OUTCOME_UNCONFIRMED: local session cleared");
                             }
+                          if (q.getAttribute("TRUST_CENTRAL_LOGOUT") instanceof String central)
+                            s.setHeader("X-TRUST-Central-Logout", central);
                           s.setStatus(204);
                         }))
         .exceptionHandling(

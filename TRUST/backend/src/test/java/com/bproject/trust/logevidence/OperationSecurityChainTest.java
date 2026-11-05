@@ -32,7 +32,7 @@ class OperationSecurityChainTest {
   @Configuration
   @EnableWebMvc
   @EnableWebSecurity
-  @Import(Security.class)
+  @Import({Security.class, TrustSsoController.class, com.bproject.trust.shared.web.ErrorHandler.class})
   static class Config {
     @Bean
     IntegrationSettings settings() {
@@ -66,6 +66,9 @@ class OperationSecurityChainTest {
     LogOperations operations() {
       return mock(LogOperations.class);
     }
+
+    @Bean
+    TrustSsoSessions sso() { return mock(TrustSsoSessions.class); }
 
     @Bean
     Reads reads() {
@@ -105,13 +108,14 @@ class OperationSecurityChainTest {
   @org.springframework.beans.factory.annotation.Qualifier("iamClient")
   PlatformIdentity iam;
 
+  @Autowired TrustSsoSessions sso;
   @Autowired LogOperations operations;
   @Autowired JdbcTemplate db;
   MockMvc http;
 
   @BeforeEach
   void setup() {
-    reset(iam, operations, db);
+    reset(iam, operations, db, sso);
     when(operations.pagePrincipal(any())).thenReturn(
         new com.bproject.trust.identity.PlatformPrincipal("real-user", "user", "TRUST_ORG"));
     when(iam.current("synthetic-session-token"))
@@ -318,5 +322,31 @@ class OperationSecurityChainTest {
     http.perform(get("/api/v1/events").session(session()))
         .andExpect(status().isServiceUnavailable())
         .andExpect(jsonPath("$.code").value("AUDIT_OPERATION_UNCONFIRMED"));
+  }
+  @Test void ssoLogoutAlwaysClearsLocalSessionAndReportsCentralOutcome() throws Exception {
+    var binding=new TrustSsoSessions.Binding("u1","sid","local","TRUST_ORG");
+    for(boolean failure:List.of(false,true)) {
+      reset(sso);
+      if(failure)doThrow(new com.bproject.trust.shared.web.ApiError(503,"unavailable")).when(sso).logout(binding);
+      var session=new MockHttpSession();session.setAttribute(TrustSsoSessions.ATTRIBUTE,binding);
+      http.perform(post("/api/v1/logout").session(session).with(csrf()))
+          .andExpect(status().isNoContent())
+          .andExpect(header().string("X-TRUST-Central-Logout",failure?"unconfirmed":"confirmed"));
+      assertTrue(session.isInvalid());verify(sso).logout(binding);verify(sso).forget(session);
+      http.perform(get("/api/v1/events")).andExpect(status().isUnauthorized());
+    }
+    verify(operations,atLeastOnce()).enqueue(eq("TRUST_ORG"),eq("u1"),eq("LOGOUT"),anyString(),eq("STARTED"),
+        anyString(),anyString(),anyString(),anyString(),anyString(),anyString());
+  }
+  @Test void ssoWritesStillRequireCsrfAndServiceExchangeRequiresCredential() throws Exception {
+    var binding=new TrustSsoSessions.Binding("u1","sid","local","TRUST_ORG");
+    when(sso.current(binding)).thenReturn(new TrustSsoSessions.Current(
+        new PlatformPrincipal("u1","alice","TRUST_ORG",false),Set.of("trust:event:read")));
+    var session=new MockHttpSession();session.setAttribute(TrustSsoSessions.ATTRIBUTE,binding);
+    http.perform(post("/api/v1/events").session(session)).andExpect(status().isForbidden());
+    doThrow(new com.bproject.trust.shared.web.ApiError(403,"unauthorized")).when(sso).authorizeService(null);
+    http.perform(post("/api/v1/auth/sso/exchange").contentType("application/json")
+        .content("{\"ticket\":\"synthetic-ticket\"}")).andExpect(status().isForbidden());
+    verify(sso,never()).exchange(anyString());
   }
 }

@@ -29,6 +29,6 @@ public class TrustSsoController {
       @RequestHeader(value="X-SSO-Service-Token",required=false)String credential){
     sessions.authorizeService(credential);
     if(!"trust".equals(body.audience()))throw new com.bproject.trust.shared.web.ApiError(400,"目标系统不匹配");
-    return Map.of("ok",true,"revoked",sessions.revoke(body.iamSessionId()));
+    return Map.of("ok",true,"revoked",sessions.revoke(body.iamSessionId(),body.subject()));
   }
 }

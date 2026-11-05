@@ -34,6 +34,11 @@ management:
       exposure:
         include: health
 trust:
+  sso:
+    enabled: ${TRUST_SSO_ENABLED:false}
+    iam-base-url: ${TRUST_SSO_IAM_BASE_URL:}
+    service-token: ${TRUST_SSO_SERVICE_TOKEN:}
+    require-unified-session: ${TRUST_SSO_REQUIRE_UNIFIED_SESSION:false}
   instance: ${TRUST_INSTANCE:}
   instance-allowlist: ${TRUST_INSTANCE_ALLOWLIST:}
   dev-quick-login:
