@@ -29,19 +29,20 @@
 pnpm --dir IAM/context-client-ts install --ignore-workspace --frozen-lockfile
 pnpm --dir IAM/context-client-ts run build
 pnpm --dir IAM/context-client-ts test
-pnpm --dir PSMS/backend install --ignore-workspace --frozen-lockfile
+pnpm --dir PSMS/backend install --frozen-lockfile
 pnpm --dir PSMS/backend run typecheck
 pnpm --dir PSMS/backend run build
-pnpm --dir PSMS install --ignore-workspace --frozen-lockfile
+pnpm --dir PSMS install --frozen-lockfile
 pnpm --dir PSMS run build
 ```
 
 先执行冻结安装检查；锁文件不匹配时审查依赖差异，不直接放宽安装条件。
+PSMS 前后端各有独立 `pnpm-workspace.yaml`，安装时保留其精确构建脚本策略。
 `PSMS/backend` 的运行入口是 `pnpm start`，前端产物位于 `PSMS/dist`。
 
 ## 数据库与配置
 
-先核对已执行迁移，再补 `PSMS/backend/db/v21/001-central-scope.sql`；治理增量见 `backend/sql/028_governance_operations.sql`。
+先核对已执行迁移，再补 `PSMS/backend/db/v21/001-central-scope.sql`；治理增量见 `PSMS/backend/sql/028_governance_operations.sql`。
 旧行保留 `LEGACY / UNASSIGNED`，不能根据作业区名称批量推断归属。
 业务表、共享派单接口与原生作业区约束共同生效；跨系统共享读取仍需明确授权。
 

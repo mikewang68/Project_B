@@ -31,6 +31,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class DeviceIngestPreservationTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.bproject.safety.config.ScsScopedReferenceData scopeReferences;
     @Autowired MockMvc mvc;
     @Autowired CollisionRepository devices;
     @Autowired CollisionService collision;
@@ -40,6 +42,11 @@ class DeviceIngestPreservationTest {
     @Autowired UwbStationService stations;
 
     @BeforeEach void resetMasterData() {
+        // Explicit legacy ownership for this contract fixture; no all-ID fallback.
+        org.mockito.Mockito.when(scopeReferences.legacyIngestAllowed(
+                com.bproject.safety.config.ScsCentralScope.Root.AREA, "LOADING-A")).thenReturn(true);
+        org.mockito.Mockito.when(scopeReferences.legacyIngestAllowed(
+                com.bproject.safety.config.ScsCentralScope.Root.RUNTIME, "UWB:contract-A")).thenReturn(true);
         ((InMemoryCollisionRepository) devices).resetDemoData();
         ((InMemoryPersonnelRepository) people).resetDemoData();
         collision.resetAllPairs();

@@ -26,10 +26,12 @@ WMS 已将 `IAM/context-client` 的 `2.1.0` 源码内嵌至 `WMS/src/main/java/c
 完整仓库根目录执行：
 
 ```sh
-mvn -f WMS/pom.xml clean package
+cd WMS
+mvn clean package
+cd ..
 ```
 
-WMS 的 Maven 生命周期会安装前端锁定依赖，并自动执行 `typecheck`、`test:unit`、`build`。
+从 WMS 目录执行 Maven，以正确解析 `.mvn/maven.config` 引用的本模块设置。Maven 生命周期会安装前端锁定依赖，并自动执行 `typecheck`、`test:unit`、`build`。
 产物是 `WMS/target/mt-wms.jar`；不要再把另一版本前端覆盖进这个构建。
 若单独调试前端，可在 `WMS/frontend` 运行：
 

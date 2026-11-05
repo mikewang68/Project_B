@@ -6,7 +6,7 @@ SSO 外层协议仍为 1.3，`userContext.contextVersion=2`。`my_info`、`my_pr
 
 ## 源码与构建
 
-请在完整仓库上合并更新，保留各模块已有业务修改。构建需要 JDK 17、Maven、Node.js 24.x、pnpm 9+；数据库采用 openGauss PG 兼容模式。所有命令从仓库根目录执行。
+请在完整仓库上合并更新，保留各模块已有业务修改。构建需要 JDK 17、Maven、Node.js 24.x；本节使用 pnpm 10.34.5，PSMS 按模块声明使用 pnpm 11.10.0。数据库采用 openGauss PG 兼容模式。所有命令从仓库根目录执行。
 
 ```bash
 # 两项公共 Java 依赖必须先安装

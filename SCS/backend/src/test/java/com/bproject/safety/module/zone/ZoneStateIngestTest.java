@@ -42,6 +42,18 @@ import org.springframework.test.web.servlet.MockMvc;
 @DisplayName("装卸区状态上报（X-API-Key 机器凭据）")
 class ZoneStateIngestTest {
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.bproject.safety.config.ScsScopedReferenceData scopeReferences;
+
+    @org.junit.jupiter.api.BeforeEach
+    void registerInMemoryLegacyFixtures() {
+        // Only these in-memory roots are declared legacy. Unknown/owned roots stay denied.
+        for (String id : java.util.List.of("LOADING-A", "LOADING-B")) {
+            org.mockito.Mockito.when(scopeReferences.legacyIngestAllowed(
+                    com.bproject.safety.config.ScsCentralScope.Root.AREA, id)).thenReturn(true);
+        }
+    }
+
     private static final String KEY = "offline-unit-only-ingestion-key-never-deploy";
     private static final String PATH = "/api/v1/ingest/zone-state";
 

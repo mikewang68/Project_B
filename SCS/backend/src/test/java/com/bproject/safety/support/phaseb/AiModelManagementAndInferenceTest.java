@@ -130,6 +130,6 @@ class AiModelManagementAndInferenceTest {
         assertThat(res.success()).isTrue();
         assertThat(res.alertId()).startsWith("ALM-");
         assertThat(res.status()).isNotBlank();
-        assertThat(res.message()).contains("已成功生成安全告警");
+        assertThat(res.message()).contains("已创建模拟安全告警").contains("未向现场设备下发指令");
     }
 }

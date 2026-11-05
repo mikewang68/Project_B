@@ -50,7 +50,7 @@ class ServerProfileBeanSelectionTest {
     static class MockJdbcConfig {
         @Bean
         NamedParameterJdbcTemplate namedParameterJdbcTemplate() {
-            return mock(NamedParameterJdbcTemplate.class);
+            return new NamedParameterJdbcTemplate(mock(org.springframework.jdbc.core.JdbcTemplate.class));
         }
 
         @Bean

@@ -41,7 +41,8 @@ jobs:
           mvn -B -f AUDIT/pom.xml -pl client -am -DskipTests install
           mvn -B -f IAM/context-client/pom.xml -DskipTests install
       - name: Compile application and test sources
-        run: mvn -B -f '${{ matrix.module }}/pom.xml' -DskipTests -Dexec.skip=true package
+        working-directory: ${{ matrix.module }}
+        run: mvn -B -DskipTests -Dexec.skip=true package
       - name: Verify environment-independent IAM guards
         if: matrix.module == 'IAM/backend'
         run: mvn -B -f IAM/backend/pom.xml -Dtest=IdentityIsolationGuardTest,ScopeSqlTest,NativeScopeReadinessTest -Dsurefire.failIfNoSpecifiedTests=false test
@@ -64,7 +65,7 @@ jobs:
       - name: Compile PSMS backend
         working-directory: PSMS/backend
         run: |
-          pnpm install --ignore-workspace --frozen-lockfile
+          pnpm install --frozen-lockfile
           pnpm typecheck
           pnpm build
 
@@ -90,5 +91,9 @@ jobs:
       - name: Install locked dependencies and build
         working-directory: ${{ matrix.module }}
         run: |
-          pnpm install --ignore-workspace --frozen-lockfile
+          if [ '${{ matrix.module }}' = PSMS ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --ignore-workspace --frozen-lockfile
+          fi
           pnpm run '${{ matrix.command }}'

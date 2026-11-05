@@ -56,6 +56,9 @@ import org.springframework.web.socket.WebSocketSession;
 @ActiveProfiles("test")
 class OpsEdgeAutonomyIntegrationTest {
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.bproject.safety.common.realtime.ScopedLiveEventPolicy scopePolicy;
+
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
 
     @Autowired
@@ -82,6 +85,16 @@ class OpsEdgeAutonomyIntegrationTest {
     @BeforeEach
     void reset() {
         nodeRepository.resetDemoData();
+        // Resolve only roots in this in-memory fixture; missing roots remain excluded.
+        when(scopePolicy.resolve(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(com.fasterxml.jackson.databind.JsonNode.class)))
+            .thenAnswer(call -> {
+                String type = call.getArgument(0);
+                com.fasterxml.jackson.databind.JsonNode data = call.getArgument(1);
+                boolean known = type.startsWith("ops.") && nodeRepository.findById(data.path("nodeId").asText()).isPresent();
+                return new com.bproject.safety.common.realtime.ScopedLiveEventPolicy.Audience(
+                        java.util.Set.of(), false, known, known);
+            });
         ((com.bproject.safety.support.demo.DemoClearableStore) queueRepository).clearDemoData();
         logRepository.clearDemoData();
         // Phase B：补传幂等判重权威来自队列仓储，清空队列即完成幂等复位，无需 Service 进程内 reset。

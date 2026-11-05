@@ -23,11 +23,18 @@ import static org.mockito.Mockito.when;
 class JdbcAlertCountAggregationTest {
 
     private NamedParameterJdbcTemplate jdbcTemplate;
+    private com.bproject.safety.support.jdbc.LegacyRepositoryJdbcFixture jdbcFixture;
+
+    @org.junit.jupiter.api.AfterEach
+    void closeJdbcFixture() {
+        if (jdbcFixture != null) jdbcFixture.close();
+    }
     private JdbcAlertRepository repository;
 
     @BeforeEach
     void setUp() {
-        jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        jdbcFixture = new com.bproject.safety.support.jdbc.LegacyRepositoryJdbcFixture();
+        jdbcTemplate = jdbcFixture.named();
         repository = new JdbcAlertRepository(jdbcTemplate,
                 new com.fasterxml.jackson.databind.ObjectMapper(),
                 new com.bproject.safety.support.masterdata.DemoMasterData(),

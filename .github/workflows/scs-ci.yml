@@ -24,6 +24,7 @@ jobs:
   backend:
     name: 后端 mvn verify
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -42,6 +43,7 @@ jobs:
   frontend:
     name: 前端 typecheck + test + build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

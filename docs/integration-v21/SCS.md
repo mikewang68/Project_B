@@ -40,7 +40,7 @@ pnpm --dir SCS/frontend run build
 
 | 参数 | 填写规则 |
 |---|---|
-| `APP_SECURITY_IAM_BASE_URL` | `<IAM服务地址>`，按当前适配器的基础路径约定填写 |
+| `APP_SECURITY_IAM_BASE_URL` | `<IAM服务地址>/api/v1/iam`，适配器在此后追加 `/auth/sso/...` |
 | `APP_SECURITY_IAM_SERVICE_TOKEN` | 由受保护配置注入 |
 | `APP_SECURITY_IAM_AUDIENCE` | `scs` |
 | `app.security.machine-bindings-file` | `<受保护机器来源JSON>`，未登记时保持空 |
