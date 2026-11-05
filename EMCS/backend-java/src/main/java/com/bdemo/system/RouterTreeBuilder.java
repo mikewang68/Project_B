@@ -1,7 +1,10 @@
 package com.bdemo.system;
 
+import com.bproject.iam.context.UserContext;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -14,6 +17,28 @@ public final class RouterTreeBuilder {
 
     public static List<Map<String, Object>> build(List<MenuItem> menus) {
         return childrenOf(0, menus);
+    }
+
+    public static List<Map<String, Object>> build(List<MenuItem> menus, UserContext context) {
+        if (context == null) return build(menus);
+        var byId = new HashMap<Long, MenuItem>();
+        menus.forEach(menu -> byId.put(menu.menuId(), menu));
+        var retained = new HashSet<Long>();
+        for (var menu : menus) {
+            if (!"C".equals(menu.menuType()) || !context.hasAction("EMCS:" + menu.menuId(), "VIEW")) continue;
+            retained.add(menu.menuId());
+            long parent = menu.parentId();
+            var visited = new HashSet<Long>();
+            while (parent != 0 && visited.add(parent)) {
+                var directory = byId.get(parent);
+                if (directory == null || !"M".equals(directory.menuType())) break;
+                retained.add(parent);
+                parent = directory.parentId();
+            }
+        }
+        // Native role menus remain the ceiling; directories only preserve the
+        // route hierarchy of centrally authorized pages.
+        return build(menus.stream().filter(menu -> retained.contains(menu.menuId())).toList());
     }
 
     private static List<Map<String, Object>> childrenOf(long parentId, List<MenuItem> menus) {
@@ -36,6 +61,7 @@ public final class RouterTreeBuilder {
         router.put("meta", Map.of(
                 "title", menu.menuName(),
                 "icon", menu.icon() == null ? "#" : menu.icon(),
+                "stableMenuKey", "EMCS:" + menu.menuId(),
                 "noCache", menu.isCache() == 1));
         List<Map<String, Object>> children = childrenOf(menu.menuId(), menus);
         if (!children.isEmpty() && "M".equals(menu.menuType())) {

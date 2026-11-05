@@ -34,6 +34,9 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 @ActiveProfiles("test")
 class LiveWebSocketTest {
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    ScopedLiveEventPolicy scopePolicy;
+
     @LocalServerPort
     int port;
     @Autowired
@@ -69,6 +72,17 @@ class LiveWebSocketTest {
     void setUp() throws Exception {
         ((InMemoryAlertRepository) repository).clearDemoData();
         AlertDemoSeeder.buildSeeds(clock).forEach(repository::save);
+        // This profile uses an in-memory repository; declare only its actual seeded
+        // alert roots legacy. Production SQL resolution is covered by policy tests.
+        org.mockito.Mockito.when(scopePolicy.resolve(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(com.fasterxml.jackson.databind.JsonNode.class)))
+            .thenAnswer(call -> {
+                String type = call.getArgument(0);
+                com.fasterxml.jackson.databind.JsonNode data = call.getArgument(1);
+                return type.startsWith("alert.") && repository.findById(data.path("alertId").asText()).isPresent()
+                        ? ScopedLiveEventPolicy.Audience.verifiedLegacy()
+                        : ScopedLiveEventPolicy.Audience.denied();
+            });
         handlerA = new CollectHandler();
         handlerB = new CollectHandler();
         sessionA = connect(handlerA);
@@ -117,6 +131,14 @@ class LiveWebSocketTest {
         String b = handlerB.messages.poll(5, TimeUnit.SECONDS);
         assertThat(b).contains("alert.changed");
         assertThat(handlerA.messages.poll(300, TimeUnit.MILLISECONDS)).isNull();
+    }
+
+    @Test
+    @DisplayName("未登记根对象不向旧连接广播")
+    void unknownRootDoesNotBroadcast() throws Exception {
+        registry.broadcast(new TextMessage("{\"type\":\"alert.changed\",\"data\":{\"alertId\":\"missing-root\"}}"));
+        assertThat(handlerA.messages.poll(300, TimeUnit.MILLISECONDS)).isNull();
+        assertThat(handlerB.messages.poll(300, TimeUnit.MILLISECONDS)).isNull();
     }
 
     private void awaitOnline(int expected) throws InterruptedException {

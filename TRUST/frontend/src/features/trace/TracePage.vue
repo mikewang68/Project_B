@@ -5,6 +5,8 @@ import { useFeedback } from "../../shared/composables/useFeedback";
 import { fmt, label } from "../../shared/presentation";
 import { typeLabels } from "../events/presentation";
 import { traceEvents } from "./api";
+import { useAccess } from "../auth/access";
+const allowed = useAccess();
 const emit = defineEmits<{ open: [id: string] }>();
 const traceKind = ref("BATCH"),
   traceValue = ref("STEEL-2026-001"),
@@ -57,7 +59,7 @@ async function trace() {
               }}</span>
             </div>
             <p>{{ e.batch_id }} · {{ e.source_event_id }} · v{{ e.version }}</p>
-            <button class="text-button" @click="emit('open', e.id)">
+            <button class="text-button" :disabled="!allowed('trust:event:read')" @click="emit('open', e.id)">
               查看记录与证据 →
             </button>
           </div>

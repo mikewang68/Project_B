@@ -3,6 +3,7 @@ package com.mt.wms.stockin;
 import com.mt.wms.auth.AuthModels;
 import com.mt.wms.auth.TenantContextService;
 import com.mt.wms.auth.WmsPrincipal;
+import com.mt.wms.auth.sso.WmsCentralScope;
 import com.mt.wms.masterdata.BusinessSequenceService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,8 @@ class StockinService {
     private static final Set<String> SOURCES=Set.of("ERP","CUSTOM","IMPORT","QUICK");
     private static final Set<String> QUALITIES=Set.of("ZP","CC","DJ","ZT","JS","XS");
     private final StockinRepository repository;private final TenantContextService tenants;private final BusinessSequenceService sequences;
-    StockinService(StockinRepository repository,TenantContextService tenants,BusinessSequenceService sequences){this.repository=repository;this.tenants=tenants;this.sequences=sequences;}
+    private final PsmsReceiptRecorder psms;private final StockinReceiptIdempotency idempotency;
+    StockinService(StockinRepository repository,TenantContextService tenants,BusinessSequenceService sequences,PsmsReceiptRecorder psms,StockinReceiptIdempotency idempotency){this.repository=repository;this.tenants=tenants;this.sequences=sequences;this.psms=psms;this.idempotency=idempotency;}
 
     List<StockinModels.OrderSummary> list(WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);return repository.orders(s.c,s.w,s.o);}
     StockinModels.OrderDetail detail(long id,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);return detail(id,s);}
@@ -37,9 +39,15 @@ class StockinService {
     List<StockinModels.LocationSuggestion> locationSuggestions(String goodCode,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);StockinRepository.GoodRow good=repository.good(s.c,s.o,goodCode.trim());return repository.locationSuggestions(s.c,s.w,s.o,good.id());}
 
     @Transactional
-    StockinModels.OrderDetail create(StockinModels.CreateRequest request,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);return createInternal(request,principal,session,s);}
+    StockinModels.OrderDetail create(StockinModels.CreateRequest request,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);return createInternal(request,principal,s);}
 
-    private StockinModels.OrderDetail createInternal(StockinModels.CreateRequest request,WmsPrincipal principal,HttpSession session,Scope s){
+    @Transactional
+    StockinModels.OrderDetail createForPsms(StockinModels.CreateRequest request,WmsPrincipal principal,long warehouse,long owner){return createInternal(request,principal,new Scope(principal.companyId(),warehouse,owner),true);}
+
+    private StockinModels.OrderDetail createInternal(StockinModels.CreateRequest request,WmsPrincipal principal,Scope s){
+        return createInternal(request,principal,s,false);
+    }
+    private StockinModels.OrderDetail createInternal(StockinModels.CreateRequest request,WmsPrincipal principal,Scope s,boolean exactGoodCode){
         if(repository.createProcessed(s.c,request.idempotencyKey()))throw new IllegalArgumentException("该入库单请求已处理，请勿重复提交");
         String type=type(request.inboundType()),source=source(request.source());
         String external=optional(request.externalOrderCode());
@@ -47,12 +55,12 @@ class StockinService {
         Long partner=optional(request.partnerCode())==null?null:repository.partnerId(s.c,request.partnerCode().trim());
         record Prepared(StockinModels.LineRequest request,StockinRepository.GoodRow good,Long location,BigDecimal price){}
         List<Prepared> prepared=request.lines().stream().map(line->{
-            StockinRepository.GoodRow good=repository.good(s.c,s.o,line.goodCode().trim());
+            StockinRepository.GoodRow good=exactGoodCode?repository.goodExact(s.c,s.o,line.goodCode()):repository.good(s.c,s.o,line.goodCode().trim());
             Long location=optional(line.preferredLocationCode())==null?null:repository.locationId(s.c,s.w,line.preferredLocationCode().trim());
             BigDecimal price=line.unitPrice()==null?good.price():line.unitPrice();return new Prepared(line,good,location,price==null?ZERO:price);
         }).toList();
         BigDecimal amount=prepared.stream().map(x->x.request.plannedQty().multiply(x.price)).reduce(ZERO,BigDecimal::add);
-        String orderCode=sequences.next("R",principal,session);
+        String orderCode=sequences.nextScoped("R",s.c,s.w,s.o);
         long orderId=repository.createOrder(s.c,s.w,s.o,orderCode,external,optional(request.relatedOrderCode()),type,source,partner,request.plannedDate(),amount,principal.userId(),request.remark(),request.idempotencyKey());
         int no=1;for(Prepared x:prepared){StockinModels.LineRequest line=x.request;repository.createLine(orderId,no++,x.good.id(),line.plannedQty(),x.location,dimension(line.supplierCode()),quality(line.qualityType()),line.productDate(),line.expireDate(),dimension(line.batchCode()),x.price,line.remark());}
         return detail(orderId,s);
@@ -60,11 +68,17 @@ class StockinService {
 
     @Transactional
     StockinModels.ReceiveResult receive(long orderId,StockinModels.ReceiveRequest request,WmsPrincipal principal,HttpSession session){
-        Scope s=scope(principal,session);StockinRepository.OrderLock order=repository.lockOrder(orderId,s.c,s.w,s.o);
+        return receiveInternal(orderId,request,principal,scope(principal,session),"RECEIVE",request,request.idempotencyKey());
+    }
+    private StockinModels.ReceiveResult receiveInternal(long orderId,StockinModels.ReceiveRequest request,WmsPrincipal principal,Scope s,String kind,Object original,String replayKey){
+        StockinRepository.OrderLock order=repository.lockOrder(orderId,s.c,s.w,s.o);
+        var prior=idempotency.replay(s.c,s.w,s.o,orderId,replayKey,kind,original);
+        if(prior.isPresent())return prior.get();
         if(Set.of("COMPLETED","CANCELLED").contains(order.state()))throw new IllegalArgumentException("入库单已完成或已取消，不能继续收货");
         if(repository.operationProcessed(s.c,request.idempotencyKey()))throw new IllegalArgumentException("该收货请求已处理，请勿重复提交");
+        psms.beforeReceive(orderId,request);
         Set<Long> lineIds=new HashSet<>();for(StockinModels.ReceiveLineRequest line:request.lines())if(!lineIds.add(line.lineId()))throw new IllegalArgumentException("同一收货请求不能重复提交同一明细");
-        String operationCode=sequences.next("IR",principal,session);long operationId=repository.operation(s.c,s.w,s.o,operationCode,principal.userId(),"入库收货 "+order.orderCode(),request.idempotencyKey());
+        String operationCode=sequences.nextScoped("IR",s.c,s.w,s.o);long operationId=repository.operation(s.c,s.w,s.o,operationCode,principal.userId(),"入库收货 "+order.orderCode(),request.idempotencyKey());
         BigDecimal receivedTotal=ZERO;int receiptCount=0;Set<String> requestSerials=new HashSet<>();
         for(StockinModels.ReceiveLineRequest input:request.lines()){
             StockinRepository.LineLock line=repository.lockLine(input.lineId(),orderId);BigDecimal remaining=line.plannedQty().subtract(line.receivedQty());
@@ -80,29 +94,37 @@ class StockinService {
             for(String serial:serials)repository.serial(s.c,s.w,s.o,balance.id(),line.goodId(),location,serial,principal.userId());
             repository.addReceived(line.id(),input.quantity());receivedTotal=receivedTotal.add(input.quantity());receiptCount++;
         }
-        boolean completed=repository.allReceived(orderId);repository.state(orderId,completed?"COMPLETED":"RECEIVING",completed);
-        return new StockinModels.ReceiveResult(operationCode,detail(orderId,s),receiptCount,receivedTotal);
+        // Physical receipt and central CONFIRM remain separate actions in the current live contract.
+        boolean completed=repository.allReceived(orderId)&&WmsCentralScope.current()==null;repository.state(orderId,completed?"COMPLETED":"RECEIVING",completed);
+        var result=new StockinModels.ReceiveResult(operationCode,detail(orderId,s),receiptCount,receivedTotal);
+        psms.received(orderId,request,result);
+        idempotency.save(s.c,s.w,s.o,orderId,replayKey,kind,original,result);
+        return result;
     }
 
     @Transactional
     StockinModels.ReceiveResult scan(long orderId,StockinModels.ScanRequest request,WmsPrincipal principal,HttpSession session){
-        Scope s=scope(principal,session);repository.order(orderId,s.c,s.w,s.o);
+        Scope s=scope(principal,session);repository.lockOrder(orderId,s.c,s.w,s.o);
+        var prior=idempotency.replay(s.c,s.w,s.o,orderId,request.idempotencyKey(),"SCAN",request);
+        if(prior.isPresent())return prior.get();
         long lineId=repository.lineIdByBarcode(orderId,request.barcode().trim());
         StockinModels.ReceiveLineRequest line=new StockinModels.ReceiveLineRequest(lineId,request.quantity(),request.locationCode(),request.lpn(),request.serialCodes(),request.remark());
-        return receive(orderId,new StockinModels.ReceiveRequest(request.idempotencyKey(),request.allowOverReceipt(),List.of(line)),principal,session);
+        return receiveInternal(orderId,new StockinModels.ReceiveRequest(request.idempotencyKey(),request.allowOverReceipt(),List.of(line)),principal,s,"SCAN",request,request.idempotencyKey());
     }
 
     @Transactional
-    StockinModels.OrderDetail complete(long id,StockinModels.ActionRequest request,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);StockinRepository.OrderLock order=repository.lockOrder(id,s.c,s.w,s.o);if(order.state().equals("CANCELLED"))throw new IllegalArgumentException("已取消入库单不能完成");if(!order.state().equals("COMPLETED"))repository.state(id,"COMPLETED",true);return detail(id,s);}
+    StockinModels.OrderDetail complete(long id,StockinModels.ActionRequest request,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);StockinRepository.OrderLock order=repository.lockOrder(id,s.c,s.w,s.o);if(order.state().equals("CANCELLED"))throw new IllegalArgumentException("已取消入库单不能完成");if(psms.linked(id)&&!repository.allReceived(id))throw PsmsInboundException.conflict("调度关联入库单尚未实收齐，不允许强制完成；请协调差异处理");if(!order.state().equals("COMPLETED")){psms.beforeComplete(id);repository.state(id,"COMPLETED",true);}return detail(id,s);}
     @Transactional
-    StockinModels.OrderDetail cancel(long id,StockinModels.ActionRequest request,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);StockinRepository.OrderLock order=repository.lockOrder(id,s.c,s.w,s.o);if(order.state().equals("COMPLETED"))throw new IllegalArgumentException("已完成入库单不能取消");if(!order.state().equals("CANCELLED"))repository.cancel(id,request.remark());return detail(id,s);}
+    StockinModels.OrderDetail cancel(long id,StockinModels.ActionRequest request,WmsPrincipal principal,HttpSession session){Scope s=scope(principal,session);StockinRepository.OrderLock order=repository.lockOrder(id,s.c,s.w,s.o);if(psms.linked(id))throw PsmsInboundException.conflict("调度关联入库单首期不能直接取消，请与调度方协调并保留业务记录");if(order.state().equals("COMPLETED"))throw new IllegalArgumentException("已完成入库单不能取消");if(!order.state().equals("CANCELLED"))repository.cancel(id,request.remark());return detail(id,s);}
 
     @Transactional
     StockinModels.ReceiveResult quick(StockinModels.QuickRequest request,WmsPrincipal principal,HttpSession session){
-        Scope s=scope(principal,session);StockinModels.LineRequest line=new StockinModels.LineRequest(request.goodCode(),request.quantity(),request.locationCode(),request.supplierCode(),request.qualityType(),request.productDate(),request.expireDate(),request.batchCode(),request.unitPrice(),request.remark());
+        Scope s=scope(principal,session);idempotency.lockOwner(s.c,s.o);
+        var prior=idempotency.replay(s.c,s.w,s.o,null,request.idempotencyKey(),"QUICK",request);if(prior.isPresent())return prior.get();
+        StockinModels.LineRequest line=new StockinModels.LineRequest(request.goodCode(),request.quantity(),request.locationCode(),request.supplierCode(),request.qualityType(),request.productDate(),request.expireDate(),request.batchCode(),request.unitPrice(),request.remark());
         StockinModels.CreateRequest create=new StockinModels.CreateRequest(type(request.inboundType()),"QUICK",null,null,request.partnerCode(),null,request.remark(),request.idempotencyKey(),List.of(line));
-        StockinModels.OrderDetail order=createInternal(create,principal,session,s);StockinModels.ReceiveLineRequest receiveLine=new StockinModels.ReceiveLineRequest(order.lines().get(0).id(),request.quantity(),request.locationCode(),request.lpn(),request.serialCodes(),request.remark());
-        return receive(order.id(),new StockinModels.ReceiveRequest(request.idempotencyKey()+":RECEIVE",false,List.of(receiveLine)),principal,session);
+        StockinModels.OrderDetail order=createInternal(create,principal,s);StockinModels.ReceiveLineRequest receiveLine=new StockinModels.ReceiveLineRequest(order.lines().get(0).id(),request.quantity(),request.locationCode(),request.lpn(),request.serialCodes(),request.remark());
+        return receiveInternal(order.id(),new StockinModels.ReceiveRequest(request.idempotencyKey()+":RECEIVE",false,List.of(receiveLine)),principal,s,"QUICK",request,request.idempotencyKey());
     }
 
     private StockinModels.OrderDetail detail(long id,Scope s){StockinRepository.OrderHeader h=repository.order(id,s.c,s.w,s.o);List<StockinModels.LineView> lines=repository.lines(id);StockinRepository.PartnerRow p=repository.partner(h.partnerId());BigDecimal planned=lines.stream().map(StockinModels.LineView::plannedQty).reduce(ZERO,BigDecimal::add);BigDecimal received=lines.stream().map(StockinModels.LineView::receivedQty).reduce(ZERO,BigDecimal::add);return new StockinModels.OrderDetail(h.id(),h.orderCode(),h.externalOrderCode(),h.relatedOrderCode(),h.inboundType(),h.source(),h.state(),p.code(),p.name(),h.plannedDate(),planned,received,h.totalAmount(),h.remark(),h.createdAt(),h.finishedAt(),lines);}

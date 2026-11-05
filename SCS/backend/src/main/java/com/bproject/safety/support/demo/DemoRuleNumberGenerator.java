@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
  * 单实例口径，<b>不保证多实例唯一</b>；前缀映射与历史 Demo 完全一致。
  */
 @Component
+@org.springframework.context.annotation.Profile("!server")
 public class DemoRuleNumberGenerator implements RuleNumberGenerator {
 
     private final RuleRepository repository;

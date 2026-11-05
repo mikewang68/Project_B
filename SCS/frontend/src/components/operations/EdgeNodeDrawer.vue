@@ -99,9 +99,9 @@ function runDiagnose(): void {
             <button type="button" class="ops-btn" :disabled="diagnosing" @click="runDiagnose">
               {{ diagnosing ? '诊断中…' : '诊断' }}
             </button>
-            <button type="button" class="ops-btn" :disabled="node.online && !node.autonomy" @click="emit('reconnect', node)">重新连接</button>
-            <button type="button" class="ops-btn" :disabled="node.timeOffsetMs === null" @click="emit('resyncTime', node)">重新同步时间</button>
-            <button type="button" class="ops-btn" :disabled="!versionMismatch" @click="emit('redeliver', node)">重新下发规则</button>
+            <button v-permission="'safety:module:ops:execute'" type="button" class="ops-btn" :disabled="node.online && !node.autonomy" @click="emit('reconnect', node)">重新连接</button>
+            <button v-permission="'safety:module:ops:execute'" type="button" class="ops-btn" :disabled="node.timeOffsetMs === null" @click="emit('resyncTime', node)">重新同步时间</button>
+            <button v-permission="'safety:module:ops:execute'" type="button" class="ops-btn" :disabled="!versionMismatch" @click="emit('redeliver', node)">重新下发规则</button>
             <button type="button" class="ops-btn ghost" @click="showLogs = !showLogs">
               {{ showLogs ? '收起日志' : '查看日志' }}
             </button>

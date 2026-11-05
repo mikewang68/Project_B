@@ -14,6 +14,7 @@ import com.bproject.ehm.health.application.HealthAssessmentApplicationService;
 import com.bproject.ehm.platform.audit.application.EhmAuditRelay;
 import com.bproject.ehm.platform.persistence.opengauss.OpenGaussJsonStore;
 import com.bproject.ehm.platform.security.ProjectContext;
+import com.bproject.ehm.platform.security.EhmCentralScope;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,6 +40,10 @@ public class SimulationService {
     private final SimulationCatalog catalog;
     private final boolean shared;
     private final boolean auditRemote;
+    @Value("${ehm.simulation.auth-mode:LEGACY_ONLY}") private String backgroundAuthMode="LEGACY_ONLY";
+    @Value("${ehm.simulation.region-id:}") private String backgroundRegion="";
+    @Value("${ehm.simulation.subject-id:}") private String backgroundSubject="";
+    @Value("${ehm.simulation.session-id:}") private String backgroundSession="";
     public record Failure(String code,Instant at){}
     public record FaultSample(Map<String,Double> values,Instant at){}
 
@@ -81,16 +86,22 @@ public class SimulationService {
             throw new IllegalStateException("模拟运行仅允许SIM_隔离项目、sample时序、禁用外部日志投递与AI；拒绝连接现场/公共链");
     }
     @PostConstruct void initializeController(){
+        validateBackgroundExecution();
         scoped(()->{tx.executeWithoutResult(s->store.insertIfAbsent("simulation-control","control",
                 new Control(false,false,UUID.randomUUID().toString(),0,0,Settings.daily(),null,null)));return null;});
     }
     private <T>T scoped(Supplier<T> body){
+        // Configuration is checked on every access; request read scope is left to the existing store.
+        SimulationBackgroundPolicy.check(backgroundAuthMode,backgroundRegion,backgroundSubject,
+                backgroundSession,false);
         try(var ignored=ProjectContext.bind(project)){return body.get();}
         catch(RuntimeException e){throw e;}catch(Exception e){throw new IllegalStateException(e);}
     }
     public boolean currentProjectAllowed(){return project.equals(ProjectContext.require(defaultProject));}
     private Control control(){return store.find("simulation-control","control",Control.class).orElseThrow();}
-    private <T>T locked(Supplier<T> body){return scoped(()->tx.execute(s->{store.lockSimulationControl();return body.get();}));}
+    private void validateBackgroundExecution(){SimulationBackgroundPolicy.check(backgroundAuthMode,
+            backgroundRegion,backgroundSubject,backgroundSession,EhmCentralScope.current()!=null);}
+    private <T>T locked(Supplier<T> body){validateBackgroundExecution();return scoped(()->tx.execute(s->{store.lockSimulationControl();return body.get();}));}
     public Map<String,Object> status(){return scoped(()->{
         var c=control();var result=new LinkedHashMap<String,Object>();
         result.put("enabled",true);result.put("synthetic",true);result.put("projectId",project);result.put("control",c);
@@ -165,6 +176,7 @@ public class SimulationService {
         return execute(requestId,false);
     }
     public void scheduledTick(){
+        validateBackgroundExecution();
         var c=scoped(this::control);if(!c.running()||c.nextTickAt()==null||Instant.now().isBefore(c.nextTickAt()))return;
         execute("scheduled-"+c.nextTickAt().toEpochMilli(),true);
     }

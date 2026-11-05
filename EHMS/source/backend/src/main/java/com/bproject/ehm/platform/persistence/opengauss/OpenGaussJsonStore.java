@@ -24,6 +24,8 @@ import java.util.regex.Pattern;
 @Repository
 @Profile("server")
 public class OpenGaussJsonStore {
+    private String scope(){return com.bproject.ehm.platform.security.EhmCentralScope.readPredicate();}
+    private com.bproject.iam.context.ScopeTriple tuple(){return com.bproject.ehm.platform.security.EhmCentralScope.writeTuple(project());}
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_]{0,62}");
 
     private final JdbcTemplate jdbc;
@@ -55,11 +57,13 @@ public class OpenGaussJsonStore {
         jdbc.execute("""
                 CREATE TABLE IF NOT EXISTS %s (
                     project_id VARCHAR(64) NOT NULL,
+                    region_id VARCHAR(64) NOT NULL DEFAULT 'UNASSIGNED',
+                    subsystem_code VARCHAR(64) NOT NULL DEFAULT 'EHMS',
                     aggregate_type VARCHAR(64) NOT NULL,
                     aggregate_id VARCHAR(192) NOT NULL,
                     payload TEXT NOT NULL,
                     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (project_id, aggregate_type, aggregate_id)
+                    PRIMARY KEY (project_id, region_id, subsystem_code, aggregate_type, aggregate_id)
                 )
                 """.formatted(qualifiedTable));
         jdbc.execute("CREATE INDEX IF NOT EXISTS idx_ehm_aggregate_updated ON "
@@ -68,42 +72,44 @@ public class OpenGaussJsonStore {
 
     public <T> Optional<T> find(String type, String id, Class<T> valueType) {
         List<String> rows = jdbc.query(
-                "SELECT payload FROM " + qualifiedTable + " WHERE project_id = ? AND aggregate_type = ? AND aggregate_id = ?",
+                "SELECT payload FROM " + qualifiedTable + " o WHERE project_id = ? AND aggregate_type = ? AND aggregate_id = ?"+scope(),
                 (result, rowNum) -> result.getString(1), project(), type, id);
+        if(rows.size()>1)throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,"Select a single region to resolve this aggregate ID");
         return rows.stream().findFirst().map(value -> decode(value, valueType));
     }
 
     public <T> List<T> findAll(String type, Class<T> valueType) {
         return jdbc.query(
-                "SELECT payload FROM " + qualifiedTable + " WHERE project_id = ? AND aggregate_type = ? ORDER BY updated_at DESC",
+                "SELECT payload FROM " + qualifiedTable + " o WHERE project_id = ? AND aggregate_type = ?"+scope()+" ORDER BY updated_at DESC",
                 (result, rowNum) -> decode(result.getString(1), valueType), project(), type);
     }
 
     /** Restrict synthetic history reads to one point; timestamps are still filtered in the adapter. */
     public <T> List<T> findByIdPrefix(String type,String prefix,Class<T> valueType){
         String escaped=prefix.replace("!","!!").replace("%","!%").replace("_","!_");
-        return jdbc.query("SELECT payload FROM "+qualifiedTable+" WHERE project_id=? AND aggregate_type=? AND aggregate_id LIKE ? ESCAPE '!'",
+        return jdbc.query("SELECT payload FROM "+qualifiedTable+" o WHERE project_id=? AND aggregate_type=? AND aggregate_id LIKE ? ESCAPE '!'"+scope(),
                 (r,n)->decode(r.getString(1),valueType),project(),type,escaped+"%");
     }
 
     public <T> T save(String type, String id, T value) {
+        var tuple=tuple();
         String payload = encode(value);
         Timestamp updatedAt = Timestamp.from(Instant.now());
         int updated = jdbc.update(
                 "UPDATE " + qualifiedTable + " SET payload = ?, updated_at = ? "
-                        + "WHERE project_id = ? AND aggregate_type = ? AND aggregate_id = ?",
-                payload, updatedAt, project(), type, id);
+                        + "WHERE project_id = ? AND aggregate_type = ? AND aggregate_id = ? AND region_id = ? AND subsystem_code = ?",
+                payload, updatedAt, project(), type, id,tuple.regionId(),tuple.subsystemCode());
         if (updated == 0) {
             try {
                 jdbc.update(
                         "INSERT INTO " + qualifiedTable
-                                + " (project_id, aggregate_type, aggregate_id, payload, updated_at) VALUES (?, ?, ?, ?, ?)",
-                        project(), type, id, payload, updatedAt);
+                                + " (project_id, aggregate_type, aggregate_id, payload, updated_at,region_id,subsystem_code) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        project(), type, id, payload, updatedAt,tuple.regionId(),tuple.subsystemCode());
             } catch (DuplicateKeyException concurrentInsert) {
                 jdbc.update(
                         "UPDATE " + qualifiedTable + " SET payload = ?, updated_at = ? "
-                                + "WHERE project_id = ? AND aggregate_type = ? AND aggregate_id = ?",
-                        payload, updatedAt, project(), type, id);
+                                + "WHERE project_id = ? AND aggregate_type = ? AND aggregate_id = ? AND region_id = ? AND subsystem_code = ?",
+                        payload, updatedAt, project(), type, id,tuple.regionId(),tuple.subsystemCode());
             }
         }
         return value;
@@ -111,17 +117,18 @@ public class OpenGaussJsonStore {
 
     public long count(String type) {
         Long value = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM " + qualifiedTable + " WHERE project_id = ? AND aggregate_type = ?", Long.class, project(), type);
+                "SELECT COUNT(*) FROM " + qualifiedTable + " o WHERE project_id = ? AND aggregate_type = ?"+scope(), Long.class, project(), type);
         return value == null ? 0 : value;
     }
 
     /** Insert-only helper for opt-in sample bundles: never resets an existing business aggregate. */
     public boolean insertIfAbsent(String type, String id, Object value) {
+        var tuple=tuple();
         if (find(type, id, Object.class).isPresent()) return false;
         try {
             jdbc.update("INSERT INTO " + qualifiedTable
-                    + " (project_id, aggregate_type, aggregate_id, payload, updated_at) VALUES (?, ?, ?, ?, ?)",
-                    project(), type, id, encode(value), Timestamp.from(Instant.now()));
+                    + " (project_id, aggregate_type, aggregate_id, payload, updated_at,region_id,subsystem_code) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    project(), type, id, encode(value), Timestamp.from(Instant.now()),tuple.regionId(),tuple.subsystemCode());
             return true;
         } catch (DuplicateKeyException race) {
             throw new IllegalStateException("Concurrent sample import; retry after the current import finishes");
@@ -134,17 +141,21 @@ public class OpenGaussJsonStore {
 
     /** Caller must hold a transaction. Serializes a persisted simulation controller across JVMs. */
     public void lockSimulationControl() {
+        var tuple=tuple();
         jdbc.queryForObject("SELECT aggregate_id FROM " + qualifiedTable
-                + " WHERE project_id=? AND aggregate_type='simulation-control' AND aggregate_id='control' FOR UPDATE",
-                String.class, project());
+                + " WHERE project_id=? AND region_id=? AND subsystem_code=?"
+                + " AND aggregate_type='simulation-control' AND aggregate_id='control' FOR UPDATE",
+                String.class, project(),tuple.regionId(),tuple.subsystemCode());
     }
 
     /** Retention applies ONLY to this simulator's raw samples; never business/audit records. */
     public int pruneSimulationSamples(Instant before) {
         if(!project().startsWith("SIM_"))throw new IllegalStateException("Not a simulation project");
+        var tuple=tuple();
         return jdbc.update("DELETE FROM " + qualifiedTable
-                + " WHERE project_id=? AND aggregate_type='sample-telemetry'"
-                + " AND aggregate_id LIKE 'SAMPLE-LIVE-%' AND updated_at<?",project(),Timestamp.from(before));
+                + " WHERE project_id=? AND region_id=? AND subsystem_code=? AND aggregate_type='sample-telemetry'"
+                + " AND aggregate_id LIKE 'SAMPLE-LIVE-%' AND updated_at<?",
+                project(),tuple.regionId(),tuple.subsystemCode(),Timestamp.from(before));
     }
 
     private String encode(Object value) {

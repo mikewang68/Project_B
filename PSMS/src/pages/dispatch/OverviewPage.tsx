@@ -176,7 +176,7 @@ export default function OverviewPage({ viewState, errorCode }: OverviewPageProps
   return (
     <main className="dispatch-overview-page" style={overviewStyle}>
       {messageContext}
-      <LatestRailwayOrders/>
+      <LatestRailwayOrders />
       <LiveQueryFilters/>
       {rootState.liveOverview && <Alert type="info" title={`统计范围：${rootState.liveOverview.workArea} · ${rootState.liveOverview.date}（北京时间）`}
         description={`计划和完成工单按所选日期统计，设备和异常为当前状态${rootState.liveOverview.waitingVehicleScope==='GLOBAL'?'，车辆等待为全场汇总':''}。最近读取：${rootState.liveOverview.generatedAt}。`
@@ -201,7 +201,7 @@ export default function OverviewPage({ viewState, errorCode }: OverviewPageProps
                   void runScenarioReset(scenarioId, setScenarioLoading);
                 }
           }
-          onRoleChange={pageLoading ? undefined : switchRole}
+          onRoleChange={pageLoading || import.meta.env.VITE_PSMS_REAL_API === 'true' ? undefined : switchRole}
           onReset={
             pageLoading
               ? undefined

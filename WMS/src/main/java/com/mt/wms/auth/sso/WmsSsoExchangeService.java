@@ -115,6 +115,7 @@ public class WmsSsoExchangeService {
     }
     String subject = text(assertion, "subject");
     String sid = text(assertion, "sessionId");
+    WmsCentralScope.bind(WmsCentralScope.validate(assertion, mapper));
 
     // 3) 用**本地主体自己的**角色与权限构造 principal（不继承、不提权）
     List<String> roles = List.copyOf(authRepository.findRoles(b.localUserId()));
@@ -147,6 +148,7 @@ public class WmsSsoExchangeService {
     subjects.recordExchange(subject, b.localUserId(), sid, "OK");
     return new Result(true, null, null, principal, subject, sid);
   }
+  public boolean requiresUnifiedSession(){return properties.requiresUnifiedSession();}
 
   /** Validate the live IAM session even if a logout notification has not arrived. */
   public JsonNode currentAuthorization(String subject, String sid) {
@@ -211,10 +213,17 @@ public class WmsSsoExchangeService {
         || (zone != null && !zone.isNull() && (!zone.isTextual() || !zone.asText().isBlank()))) {
       throw new AssertionRejected("SSO_ZONE_UNSUPPORTED", "WMS 无法执行 zone 范围，拒绝扩大范围放行");
     }
-    // WMS has company/warehouse/owner isolation, not a project dimension. A supplied restriction
-    // cannot safely be translated to company-wide access (absent/null/empty means unrestricted here).
+    final com.bproject.iam.context.UserContext central;
+    try {
+      central = WmsCentralScope.validate(assertion, mapper);
+    } catch (SecurityException invalidScope) {
+      throw new AssertionRejected("SSO_SCOPE_MISMATCH", "IAM 中央数据范围无效");
+    }
+    // Legacy project assertions remain unsupported. V2 is enforced at the regional
+    // warehouse root in addition to every existing company/warehouse/owner check.
     JsonNode projects = assertion.get("projectIds");
-    if (projects != null && !projects.isNull() && (!projects.isArray() || !projects.isEmpty())) {
+    if (projects != null && !projects.isNull()
+        && (!projects.isArray() || !projects.isEmpty() && central == null)) {
       throw new AssertionRejected("SSO_SCOPE_MISMATCH", "WMS 尚不能执行 projectIds 范围");
     }
     // Changing an explicit mapping may never move an existing session to a different local identity.

@@ -57,6 +57,18 @@ public class DictService {
         mapper.logicDeleteItemsByType(type.getCode(), now);
     }
 
+    /** 批量删除分类；不存在的 id 跳过，返回实际删除数量。 */
+    @Transactional
+    public int deleteTypes(List<String> ids) {
+        int deleted = 0;
+        for (String id : ids == null ? List.<String>of() : ids) {
+            if (id == null || id.isBlank() || mapper.selectTypeById(id) == null) continue;
+            deleteType(id);
+            deleted++;
+        }
+        return deleted;
+    }
+
     private DictType mustGetType(String id) {
         DictType type = mapper.selectTypeById(id);
         if (type == null) {
@@ -100,6 +112,18 @@ public class DictService {
         mapper.logicDeleteItem(id, LocalDateTime.now());
     }
 
+    /** 批量删除字典项；不存在的 id 跳过，返回实际删除数量。 */
+    @Transactional
+    public int deleteItems(List<String> ids) {
+        int deleted = 0;
+        for (String id : ids == null ? List.<String>of() : ids) {
+            if (id == null || id.isBlank() || mapper.selectItemById(id) == null) continue;
+            deleteItem(id);
+            deleted++;
+        }
+        return deleted;
+    }
+
     private DictItem mustGetItem(String id) {
         DictItem item = mapper.selectItemById(id);
         if (item == null) {
@@ -110,5 +134,30 @@ public class DictService {
 
     private String emptyToNull(String s) {
         return s == null || s.isBlank() ? null : s;
+    }
+
+    /** 导出字典分类/字典项为 UTF-8 CSV（带 BOM，便于 Excel 直接打开）。 */
+    public String exportCsv(String typeCode) {
+        List<DictType> types = listTypes();
+        java.util.Map<String, String> typeNames = new java.util.HashMap<>();
+        for (DictType type : types) typeNames.put(type.getCode(), type.getName());
+        StringBuilder sb = new StringBuilder("\uFEFF");
+        sb.append("type_code,type_name,item_value,item_label,sort,status,tag_type,remark\r\n");
+        for (DictItem item : listItems(typeCode)) {
+            sb.append(csv(item.getTypeCode())).append(',')
+              .append(csv(typeNames.getOrDefault(item.getTypeCode(), ""))).append(',')
+              .append(csv(item.getValue())).append(',')
+              .append(csv(item.getLabel())).append(',')
+              .append(item.getSort() == null ? 0 : item.getSort()).append(',')
+              .append(csv(item.getStatus())).append(',')
+              .append(csv(item.getTagType())).append(',')
+              .append(csv(item.getRemark())).append("\r\n");
+        }
+        return sb.toString();
+    }
+
+    private static String csv(String value) {
+        String v = value == null ? "" : value;
+        return "\"" + v.replace("\"", "\"\"") + "\"";
     }
 }

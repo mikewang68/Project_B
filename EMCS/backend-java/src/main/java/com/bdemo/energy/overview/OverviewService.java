@@ -1,5 +1,7 @@
 package com.bdemo.energy.overview;
 
+import com.bdemo.config.EmcsCentralScope;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -165,7 +167,7 @@ public class OverviewService {
                 WHERE s.object_type='equipment' AND s.energy_type_code=?
                   AND to_char(CAST(s.stat_date AS timestamp),'YYYY-MM')=? %s
                 GROUP BY e.equipment_id,e.equipment_name,a.area_name ORDER BY value DESC LIMIT 5
-                """.formatted(areaId == null ? "" : "AND e.area_id=?"), paramsWithArea(areaId, energy, today.toString().substring(0, 7)));
+                """.formatted((areaId == null ? "" : " AND e.area_id=?")+EmcsCentralScope.area("e.area_id")), paramsWithArea(areaId, energy, today.toString().substring(0, 7)));
         return rank(rows, "electricity".equals(energy) ? "kWh" : "m³");
     }
 
@@ -176,7 +178,7 @@ public class OverviewService {
                 JOIN e_area a ON a.area_id=e.area_id
                 WHERE c.object_type='equipment' AND c.is_current=1 AND c.stat_month=? %s
                 GROUP BY e.equipment_id,e.equipment_name,a.area_name ORDER BY value DESC LIMIT 5
-                """.formatted(areaId == null ? "" : "AND e.area_id=?"), paramsWithArea(areaId, today.toString().substring(0, 7)));
+                """.formatted((areaId == null ? "" : " AND e.area_id=?")+EmcsCentralScope.area("e.area_id")), paramsWithArea(areaId, today.toString().substring(0, 7)));
         return rank(rows, "¥");
     }
 
@@ -203,7 +205,7 @@ public class OverviewService {
                 LEFT JOIN e_area a ON e.object_type='area' AND a.area_id=e.object_id
                 LEFT JOIN e_meter_point p ON e.object_type='point' AND p.point_id=e.object_id
                 WHERE 1=1 %s ORDER BY e.last_occur_time DESC LIMIT 6
-                """.formatted(areaId == null ? "" : " AND e.area_id=?"), paramsWithArea(areaId));
+                """.formatted((areaId == null ? "" : " AND e.area_id=?")+EmcsCentralScope.area("e.area_id")), paramsWithArea(areaId));
         return rows.stream().map(row -> map(
                 "time", dateTime(row.get("last_occur_time")).format(HOUR),
                 "level", level(row.get("level").toString()),
@@ -228,13 +230,13 @@ public class OverviewService {
             categories.add(map("key", key, "label", qualityLabel(key), "count", count,
                     "pct", (cells.isEmpty() ? 0 : round(count * 100.0 / cells.size(), 1)) + "%"));
         }
-        String latestIngest = scalarString("SELECT to_char(CAST(MAX(ingest_time) AS timestamp),'MM-DD HH24:MI') FROM e_raw_reading");
+        String latestIngest = scalarString("SELECT to_char(CAST(MAX(r.ingest_time) AS timestamp),'MM-DD HH24:MI') FROM e_raw_reading r JOIN e_meter_point p ON p.point_id=r.point_id WHERE 1=1"+areaClauseForPoint(areaId),paramsWithArea(areaId));
         return map("total", cells.size(), "latestIngestAt", latestIngest, "categories", categories,
                 "cells", cells, "zoneSplit", "A区24 / B区24", "coverage", coverage, "coverageThreshold", 95);
     }
 
     private double coverage(LocalDate today, Long areaId) {
-        String areaJoin = areaId == null ? "" : " AND p.area_id=?";
+        String areaJoin = areaClauseForPoint(areaId);
         long valid = number(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM e_raw_reading r JOIN e_meter_point p ON p.point_id=r.point_id
                 WHERE r.sample_time>=? AND r.sample_time<?
@@ -256,6 +258,11 @@ public class OverviewService {
     }
 
     private Double baselineDeviation(LocalDate day, String energy, Long areaId) {
+        // A global system baseline cannot be reused as a regional value. Use only attributable area rows.
+        if(EmcsCentralScope.current()!=null){
+            return jdbc.queryForObject("SELECT AVG(baseline_deviation_pct) FROM e_stat_day WHERE object_type='area' AND stat_date=? AND energy_type_code=?"+objectAreaClause(areaId),
+                Double.class,paramsWithArea(areaId,Date.valueOf(day),energy));
+        }
         String objectType = areaId == null ? "system" : "area";
         Object objectId = areaId == null ? 0L : areaId;
         List<Double> values = jdbc.query("""
@@ -280,9 +287,9 @@ public class OverviewService {
         };
     }
 
-    private String areaClause(Long areaId) { return areaId == null ? "" : " AND area_id=?"; }
-    private String objectAreaClause(Long areaId) { return areaId == null ? "" : " AND object_id=?"; }
-    private String areaClauseForPoint(Long areaId) { return areaId == null ? "" : " AND p.area_id=?"; }
+    private String areaClause(Long areaId) { return (areaId == null ? "" : " AND area_id=?")+EmcsCentralScope.area("area_id"); }
+    private String objectAreaClause(Long areaId) { return (areaId == null ? "" : " AND object_id=?")+EmcsCentralScope.area("object_id"); }
+    private String areaClauseForPoint(Long areaId) { return (areaId == null ? "" : " AND p.area_id=?")+EmcsCentralScope.area("p.area_id"); }
 
     private Object[] paramsWithArea(Long areaId, Object... values) {
         Object[] params = Arrays.copyOf(values, values.length + (areaId == null ? 0 : 1));

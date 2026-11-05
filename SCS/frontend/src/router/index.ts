@@ -1,5 +1,4 @@
 import { useAuthStore } from '@/stores/auth'
-import { pagePermission } from '@/permissions'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 const OverviewView = () => import('@/views/OverviewView.vue')
@@ -93,8 +92,7 @@ router.beforeEach(async to=>{
   if(!await auth.ensureLoaded())return to.path==='/forbidden'?true:'/forbidden'
   // 尾斜杠深链（如 /overview/）与权限表精确匹配不一致，先归一化再鉴权
   const path=to.path.replace(/\/+$/,'')||'/'
-  const permission=pagePermission(path)
-  if(path!=='/forbidden' && (!permission || !auth.can(permission)))return '/forbidden'
+  if(path!=='/forbidden' && !auth.canPage(path))return '/forbidden'
   return true
 })
 return router

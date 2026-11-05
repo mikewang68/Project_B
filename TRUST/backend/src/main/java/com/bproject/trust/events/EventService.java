@@ -16,6 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class EventService {
+  private static String scope(){return com.bproject.trust.identity.TrustCentralScope.predicate(com.bproject.trust.identity.TrustCentralScope.Root.EVENT,"events_read");}
   final JdbcTemplate db;
   final TransactionTemplate tx;
   private final AuditService audit;
@@ -30,6 +31,7 @@ public class EventService {
   }
 
   public Map<String, Object> submit(EventInput raw, String org, String actor, String previous) {
+    var tuple=com.bproject.trust.identity.TrustCentralScope.writeTuple();
     EventInput input = raw.normalized();
     String request =
         Json.write(Map.of("event", input, "supersedesId", previous == null ? "" : previous));
@@ -45,7 +47,7 @@ public class EventService {
             var existing =
                 db.queryForList(
                     "SELECT * FROM events_read WHERE org_id=? AND source_system=? AND"
-                        + " source_event_id=?",
+                        + " source_event_id=?"+scope(),
                     org,
                     input.sourceSystem(),
                     input.sourceEventId());
@@ -72,7 +74,7 @@ public class EventService {
               var rows =
                   db.queryForList(
                       "SELECT id,filename,mime,size_bytes,sha256 FROM evidence_read WHERE id=? AND"
-                          + " org_id=?",
+                          + " org_id=?"+com.bproject.trust.identity.TrustCentralScope.predicate(com.bproject.trust.identity.TrustCentralScope.Root.EVIDENCE,"evidence_read"),
                       eid,
                       org);
               if (rows.isEmpty()) throw new ApiError(400, "证据不存在或不在当前授权范围");
@@ -88,12 +90,13 @@ public class EventService {
             canonical.put("supersedesId", previous);
             canonical.put("event", input);
             canonical.put("evidence", evidence);
+            if(tuple!=null){canonical.put("projectId",tuple.projectId());canonical.put("regionId",tuple.regionId());canonical.put("subsystemCode",tuple.subsystemCode());}
             String json = Json.write(canonical),
                 sha = Json.sha(json.getBytes(StandardCharsets.UTF_8));
             db.update(
                 "INSERT INTO"
-                    + " events(id,org_id,source_system,source_event_id,event_type,batch_id,object_id,occurred_at,submitted_by,request_json,canonical_json,event_sha256,root_id,version,supersedes_id,signing_required)"
-                    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    + " events(id,org_id,source_system,source_event_id,event_type,batch_id,object_id,occurred_at,submitted_by,request_json,canonical_json,event_sha256,root_id,version,supersedes_id,signing_required,project_id,region_id,subsystem_code)"
+                    + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 id,
                 org,
                 input.sourceSystem(),
@@ -109,7 +112,8 @@ public class EventService {
                 root,
                 version,
                 previous,
-                actor.startsWith("iam:") || actor.startsWith("source:"));
+                actor.startsWith("iam:") || actor.startsWith("source:"),tuple==null?"LEGACY":tuple.projectId(),
+                tuple==null?"UNASSIGNED":tuple.regionId(),tuple==null?"TRUST":tuple.subsystemCode());
             for (String eid : input.evidenceIds())
               db.update("INSERT INTO event_evidence VALUES(?,?)", id, eid);
             link(id, "BATCH", input.batchId());
@@ -127,7 +131,7 @@ public class EventService {
     } catch (DuplicateKeyException e) {
       var existing =
           db.queryForList(
-              "SELECT * FROM events_read WHERE org_id=? AND source_system=? AND source_event_id=?",
+              "SELECT * FROM events_read WHERE org_id=? AND source_system=? AND source_event_id=?"+scope(),
               org,
               input.sourceSystem(),
               input.sourceEventId());
@@ -147,7 +151,7 @@ public class EventService {
   }
 
   public Map<String, Object> get(String id, String org) {
-    return db.queryForList("SELECT * FROM events_read WHERE id=? AND org_id=?", id, org).stream()
+    return db.queryForList("SELECT * FROM events_read WHERE id=? AND org_id=?"+scope(), id, org).stream()
         .findFirst()
         .orElseThrow(() -> new ApiError(404, "记录不存在或无权访问"));
   }
@@ -177,14 +181,14 @@ public class EventService {
         "evidence",
         db.queryForList(
             "SELECT v.* FROM evidence_read v JOIN event_evidence x ON x.evidence_id=v.id WHERE"
-                + " x.event_id=? AND v.org_id=? ORDER BY v.id",
+                + " x.event_id=? AND v.org_id=?"+com.bproject.trust.identity.TrustCentralScope.predicate(com.bproject.trust.identity.TrustCentralScope.Root.EVIDENCE,"v")+" ORDER BY v.id",
             id,
             org));
     row.put(
         "versions",
         db.queryForList(
             "SELECT id,version,supersedes_id,chain_state FROM events_read WHERE root_id=? AND"
-                + " org_id=? ORDER BY version",
+                + " org_id=?"+scope()+" ORDER BY version",
             row.get("root_id"),
             org));
     row.put("links", db.queryForList("SELECT kind,target FROM event_links WHERE event_id=?", id));
@@ -213,7 +217,7 @@ public class EventService {
     String q = "%" + (query == null ? "" : query) + "%";
     String where =
         " FROM events_read WHERE record_kind='LEGACY_V1' AND org_id=? AND (batch_id LIKE ? OR"
-            + " source_event_id LIKE ? OR object_id LIKE ?)";
+            + " source_event_id LIKE ? OR object_id LIKE ?)"+scope();
     if ("current".equals(view))
       where +=
           " AND EXISTS(SELECT 1 FROM event_heads h WHERE h.current_id=events_read.id AND"

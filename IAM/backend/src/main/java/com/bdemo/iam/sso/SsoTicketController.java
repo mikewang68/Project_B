@@ -45,6 +45,8 @@ public class SsoTicketController {
 
   @org.springframework.beans.factory.annotation.Autowired
   private com.bdemo.iam.navigation.service.NavigationAddressPublicationService addresses;
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bdemo.iam.scope.ApplicationRegistry registry;
 
   public record AddressRequest(String audience, Long version) {}
   @PostMapping("/navigation-address")
@@ -74,6 +76,8 @@ public class SsoTicketController {
       throw new SsoTicketService.SsoTicketException("缺少 audience");
     }
     if(!user.mayEnter(audience))throw new SsoTicketService.SsoTicketException("目标系统未被授权");
+    if(user.getUserContext()!=null && registry.contract(audience)<2)
+      throw new SsoTicketService.SsoTicketException("目标系统尚未支持区域上下文V2");
 
     // V1.1：必须有显式主体映射，无回退
     subjects.requireBound(user.getUserId(), user.getUsername(), audience);
@@ -100,7 +104,7 @@ public class SsoTicketController {
     body.put("contractVersion", "1.1");
     body.put("issuer", tickets.issuer());
     body.put("ttlSeconds", tickets.ttlSeconds());
-    body.put("allowedAudience", SsoTicketService.ALLOWED_AUDIENCE);
+    body.put("allowedAudience", registry==null?SsoTicketService.ALLOWED_AUDIENCE:registry.audiences());
     body.put("serviceIdentitiesConfigured", services.configured());
     body.put("serviceAudiences", services.audiences());
     body.put("consumptionPoint", "CENTRALIZED_IAM");

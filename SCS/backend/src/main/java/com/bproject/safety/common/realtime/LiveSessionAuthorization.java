@@ -70,13 +70,14 @@ public class LiveSessionAuthorization {
     }
     try {
       ScsLocalPolicy.Actor actor = policy.resolve(iam.current(binding.iamSubject(), binding.iamSid()));
+      if(actor.context()!=null&&!ScopedLiveEventPolicy.mayConnect(actor))throw new IllegalStateException("Realtime view authorization revoked");
       lastKnown.put(localId, new CachedActor(actor, System.currentTimeMillis()));
       return actor;
     } catch (ScsIamTicketValidator.IamUnavailableException unavailable) {
       CachedActor cached = lastKnown.get(localId);
       long now = System.currentTimeMillis();
       // graceMillis=0 表示不启用宽限：此时不得沿用任何缓存（<= 会让 0 宽限也命中）
-      if (graceMillis > 0 && cached != null && now - cached.atMillis() < graceMillis) {
+      if (graceMillis > 0 && cached != null && cached.actor().context()==null && now - cached.atMillis() < graceMillis) {
         log.debug("IAM 暂不可用，按最近授权继续投递 localSession={}", localId);
         return cached.actor();
       }
@@ -94,6 +95,8 @@ public class LiveSessionAuthorization {
 
   public boolean permits(ScsLocalPolicy.Actor actor, String eventType) {
     if (actor == null) return !required;
+    // V2 delivery requires the event-aware ScopedLiveEventPolicy, never this legacy branch.
+    if (actor.context() != null) return false;
     if (actor.admin()) return true;
     String permission;
     if (eventType.startsWith("alert.")) permission = "safety:module:alert:view";

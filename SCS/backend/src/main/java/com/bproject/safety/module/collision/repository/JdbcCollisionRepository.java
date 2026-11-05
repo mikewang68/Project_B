@@ -86,7 +86,7 @@ public class JdbcCollisionRepository implements CollisionRepository {
     public JdbcCollisionRepository(NamedParameterJdbcTemplate jdbcTemplate,
                                    DemoMasterData masterData,
                                    Clock clock) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = new com.bproject.safety.config.ScsScopedJdbcTemplate(jdbcTemplate);
         this.masterData = masterData;
         this.clock = clock;
         this.rowMapper = new CollisionDeviceRowMapper();
@@ -116,10 +116,12 @@ public class JdbcCollisionRepository implements CollisionRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public DemoCollisionDevice save(DemoCollisionDevice device) {
         Objects.requireNonNull(device, "device must not be null");
         Objects.requireNonNull(device.id, "device.id must not be null");
 
+        var centralStamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.COLLISION,device.id);
         DemoCollisionDevice toPersist = device.copy();
         MapSqlParameterSource params = createParams(toPersist);
 
@@ -128,6 +130,7 @@ public class JdbcCollisionRepository implements CollisionRepository {
             jdbcTemplate.update(INSERT_DEVICE, params);
         }
 
+        com.bproject.safety.config.ScsCentralScope.afterWrite(jdbcTemplate,centralStamp);
         return toPersist.copy();
     }
 

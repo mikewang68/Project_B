@@ -13,6 +13,7 @@ export const useAuthStore = defineStore('auth', () => {
   const sessionError = ref<string | null>(null)
   const authenticated = computed(() => user.value !== null)
   const readOnly = computed(() => user.value?.readOnly === true || user.value?.roles.some(role => READ_ONLY_ROLES.has(role.toUpperCase())) === true)
+  const centralAuthorization = computed(() => user.value?.menuOperations != null)
   let checkedAt = 0
   let generation = 0
   let pending: Promise<void> | null = null
@@ -89,6 +90,14 @@ export const useAuthStore = defineStore('auth', () => {
     return authenticated.value && !readOnly.value && !sessionError.value && hasPermission(permission)
   }
 
+  function canAction(menu: string, action: string, permission: string): boolean {
+    if (!authenticated.value || sessionError.value || !hasPermission(permission)) return false
+    const operations = user.value?.menuOperations
+    if (operations == null) return action === 'VIEW' || canWrite(permission)
+    if (readOnly.value && !['VIEW', 'DOWNLOAD', 'EXPORT', 'AUDIT_VERIFY'].includes(action)) return false
+    return operations[menu]?.includes(action) === true
+  }
+
   async function selectTenant(warehouseCode: string, ownerCode: string): Promise<void> {
     if (!user.value) return
     await authApi.prepareCsrf()
@@ -107,5 +116,5 @@ export const useAuthStore = defineStore('auth', () => {
     if (user.value) user.value.passwordChangeRequired = false
   }
 
-  return { user, initialized, authenticated, readOnly, sessionError, restoreSession, refreshSession, signIn, signOut, hasPermission, canWrite, selectTenant, updatePassword }
+  return { user, initialized, authenticated, readOnly, centralAuthorization, sessionError, restoreSession, refreshSession, signIn, signOut, hasPermission, canWrite, canAction, selectTenant, updatePassword }
 })

@@ -233,10 +233,11 @@ public class LogOperations {
     result.put(
         "canManage",
         !com.bproject.trust.identity.ReadOnlyPolicy.restricted(a)
-            && c.managerUserIds().contains(p.userId()));
+            && c.managerUserIds().contains(p.userId())
+            && com.bproject.trust.identity.TrustCentralScope.permits(com.bproject.trust.identity.TrustCentralScope.current(),"PATCH","/api/v1/audit/settings"));
     result.put("archivePaused", row.get("archive_paused"));
     result.put("revision", row.get("retention_revision"));
-    result.put("canReadHistory", c.managerUserIds().contains(p.userId()));
+    result.put("canReadHistory", c.managerUserIds().contains(p.userId())||centralSettingsHistory());
     result.put("chainPaused", row.get("chain_paused"));
     result.put("configured", c.enabled());
     result.put("collectionEnabled", true);
@@ -347,9 +348,14 @@ public class LogOperations {
         });
   }
 
+  private boolean centralSettingsHistory() {
+    var context=com.bproject.trust.identity.TrustCentralScope.current();
+    return context!=null&&com.bproject.trust.identity.TrustCentralScope.permits(context,"GET","/api/v1/audit/settings/history");
+  }
+
   public void requireSettingsHistory(Authentication a) {
     var p = verified(a);
-    if (!settings.read().managerUserIds().contains(p.userId()))
+    if (!settings.read().managerUserIds().contains(p.userId())&&!centralSettingsHistory())
       throw new IngressError(403, "LOG_MANAGER_REQUIRED", "无日志设置历史查看权限");
   }
 
@@ -436,11 +442,11 @@ public class LogOperations {
 
   public List<Map<String, Object>> deliveries(Authentication a) {
     var p = verified(a);
-    if (!settings.read().managerUserIds().contains(p.userId()))
+    if (!settings.read().managerUserIds().contains(p.userId())&&!centralSettingsHistory())
       throw new IngressError(403, "LOG_MANAGER_REQUIRED", "无日志投递管理权限");
     return db.queryForList(
         "SELECT id,action,outcome,state,attempts,last_error,created_at FROM audit_delivery_read"
-            + " WHERE state<>'DELIVERED' ORDER BY created_at LIMIT 200");
+            + " WHERE state<>'DELIVERED' AND org_id=? ORDER BY created_at LIMIT 200",p.orgId());
   }
 
   public Map<String, Object> retryDelivery(Authentication a, String id, RetryDelivery input) {
@@ -454,7 +460,7 @@ public class LogOperations {
     if (reason.isBlank()) throw new IllegalArgumentException();
     return tx.execute(
         t -> {
-          var rows = com.bproject.trust.shared.RetentionLock.rows(db, "audit_delivery", "id=?", id);
+          var rows = com.bproject.trust.shared.RetentionLock.rows(db, "audit_delivery", "id=? AND org_id=?", id,p.orgId());
           if (rows.isEmpty()) throw LogEvidenceService.missing();
           boolean queued = "FAILED".equals(rows.get(0).get("state"));
           if (queued) {

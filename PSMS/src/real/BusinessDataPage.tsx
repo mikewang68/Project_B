@@ -2,6 +2,7 @@ import { Alert, Button, Card, Descriptions, Drawer, Form, Input, Modal, Select, 
 import { useEffect, useState,useRef } from 'react';
 import { loadCurrentDemoSession, type SessionContext } from '../auth';
 import PageIdentity from '../features/plan-entry/components/PageIdentity';
+import WmsInboundPanel from './WmsInboundPanel';
 import { LiveApiError,liveApi } from './client';
 import { useDemoSelector } from '../runtime';
 import { canReadCollection, equipmentFreshness, liveBusinessPages, loadBusinessPage,
@@ -53,7 +54,7 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
     const controller=new AbortController();let active=true;setLoading(true);
     const query:Record<string,string>={page:String(page),pageSize:'50'};
     if(area)query.workArea=area;if(status)query.status=status;
-    void loadBusinessPage(collection,query,controller.signal).then(result=>{if(active){setData(result);setError('');}})
+    void loadBusinessPage(collection,query,controller.signal).then(result=>{if(active){setData(result);setError('');setSelected(current=>current?result.items.find(item=>item.id===current.id):undefined);}})
       .catch(e=>{if(active){setError(e instanceof Error?e.message:'查询失败');
         if(e instanceof LiveApiError&&[401,403].includes(e.status)){setData(undefined);setSelected(undefined);setCommand(undefined);}}})
       .finally(()=>{if(active)setLoading(false);});
@@ -89,6 +90,7 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
       pagination={{current:page,pageSize:50,total:data?.total??0,showSizeChanger:false,onChange:setPage}}/>
     <Drawer title={spec.title+'详情'} open={!!selected} onClose={()=>setSelected(undefined)} size="large">
       {selected&&<Descriptions column={1} items={Object.entries(selected).map(([key,value])=>({key,label:labels[key]??key,children:display(value)}))}/>}
+      {selected&&collection==='work-orders'&&<WmsInboundPanel key={selected.id} row={selected} session={session} onChanged={()=>setReload(value=>value+1)}/>}
     </Drawer>
     <Modal title={command?.action.label} open={!!command} confirmLoading={submitting} destroyOnHidden
       onCancel={()=>{if(!submitting)setCommand(undefined);}} onOk={async()=>{

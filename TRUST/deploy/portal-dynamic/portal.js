@@ -222,6 +222,9 @@
         throw new Error('Path must be a non-empty string');
       }
       const trimmed = path.trim();
+      if (/[\\\u0000-\u0020\u007f]/.test(trimmed)) {
+        throw new Error('Backslash and control/space characters are prohibited');
+      }
       // 必须单斜杠开头
       if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.startsWith('\\')) {
         throw new Error('Path must start with a single "/" and cannot be protocol-relative');
@@ -231,11 +234,51 @@
         throw new Error('Dangerous URI scheme detected');
       }
       // 路径遍历检查
-      const segments = trimmed.split('/');
-      if (segments.includes('..') || trimmed.includes('%2e%2e')) {
+      const decoded = decodeURIComponent(trimmed.split(/[?#]/, 1)[0]);
+      const segments = decoded.split('/');
+      if (segments.includes('..') || segments.includes('.') || /[\\\u0000-\u0020\u007f%]/.test(decoded) || decoded.startsWith('//')) {
         throw new Error('Path traversal sequence ".." is strictly prohibited');
       }
       return trimmed;
+    },
+
+    /** The base comes only from the authenticated IAM navigation response; never from query parameters. */
+    resolveConfiguredAddress(system, entryPath) {
+      if (!system.entryBaseUrl) return null;
+      const raw = system.entryBaseUrl;
+      if (typeof raw !== 'string' || /[\\\u0000-\u0020\u007f]/.test(raw)) throw new Error('Invalid configured address');
+      const base = new URL(raw);
+      if (!['https:', 'http:'].includes(base.protocol) || base.username || base.password
+          || base.search || base.hash || !base.pathname.endsWith('/')) throw new Error('Invalid configured address');
+      this.sanitizePath(base.pathname);
+      const prefix = this.sanitizePath(system.entryBasePath).replace(/\/$/, '');
+      const path = this.sanitizePath(entryPath);
+      const relative = new URL(path, 'https://navigation.invalid');
+      if (relative.pathname !== prefix && !relative.pathname.startsWith(prefix + '/')) {
+        throw new Error('Page does not belong to the configured application path');
+      }
+      // Never forward authentication material across application origins.
+      for (const key of relative.searchParams.keys()) {
+        if (/^(token|accesstoken|refreshtoken|idtoken|ticket|ssoticket|password|secret|authorization|session|sessionid|sid|code|authcode|csrf|csrftoken|apikey)$/i.test(key.replace(/[-_]/g, ''))) {
+          throw new Error('Authentication query parameters cannot be forwarded');
+        }
+      }
+      if (/token|ticket|password|secret|authorization|session|csrf/i.test(relative.hash)) {
+        throw new Error('Authentication fragments cannot be forwarded');
+      }
+      base.pathname += relative.pathname.slice(prefix.length).replace(/^\//, '');
+      base.search = relative.search;
+      base.hash = relative.hash;
+      return base.href;
+    },
+
+    isAllowedNavigationTarget(system, pageLeaf, target) {
+      if (!system || !pageLeaf || typeof target !== 'string' || target === '#') return false;
+      try {
+        return this.resolveDestination(system, pageLeaf).entryPath === target;
+      } catch (error) {
+        return false;
+      }
     },
 
     /**
@@ -243,7 +286,27 @@
      */
     resolveDestination(system, pageLeaf) {
       const appCode = system.appCode;
+      if (pageLeaf.canLaunch === false) {
+        return {status:'FEATURE_UNAVAILABLE',badgeText:pageLeaf.featureStatus==='PLANNED'?'待接入':'待验证',
+          badgeClass:'dest-badge pending',entryPath:'#',desc:pageLeaf.unavailableReason||'该功能尚未完成验证和发布。'};
+      }
       const sanitizedEntry = this.sanitizePath(pageLeaf.entryPath);
+      const configuredAddress = this.resolveConfiguredAddress(system, sanitizedEntry);
+      if (configuredAddress && system.ssoEnabled === true) {
+        const launch = new URL('/sso/start', configuredAddress);
+        launch.searchParams.set('page', pageLeaf.stableMenuKey);
+        return {status:'SSO_APPLICATION_ENTRY',badgeText:'统一登录入口',badgeClass:'dest-badge',
+          entryPath:launch.href,desc:'使用平台身份进入所选业务功能，业务权限由目标系统核验。'};
+      }
+      if (configuredAddress) {
+        return {
+          status: 'CONFIGURED_APPLICATION_ENTRY',
+          badgeText: '已配置应用地址',
+          badgeClass: 'dest-badge',
+          entryPath: configuredAddress,
+          desc: '应用访问地址已从导航配置生成；目标应用的登录与权限仍由其后端校验。'
+        };
+      }
 
       if (appCode === 'IAM' || appCode === 'SYS') {
         return {
@@ -699,14 +762,22 @@
               body: JSON.stringify({ username, password })
             });
             const res = await resp.json();
-            if (resp.ok && res.code === 0 && res.data && res.data.token) {
-              const token = res.data.token;
+            const data = res.data;
+            const cookieSession = data && data.authenticated === true && data.user && typeof data.user === 'object';
+            const memoryToken = data && typeof data.token === 'string' && data.token.length > 0;
+            if (resp.ok && res.code === 0 && (cookieSession || memoryToken)) {
+              const token = memoryToken ? data.token : null;
               if (currentProvider && currentProvider.setAuthToken) {
                 currentProvider.setAuthToken(token);
               }
               loginForm.hidden = true;
               if (msg) msg.hidden = true;
               if (passwordInput) passwordInput.value = '';
+              const resume = new URLSearchParams(window.location.search).get('ssoReturn');
+              if (resume && resume.startsWith('/sso/authorize?') && !/[\\\u0000-\u0020\u007f]/.test(resume)) {
+                window.location.replace(resume);
+                return;
+              }
               this.loadNavigation();
             } else {
               if (msg) {
@@ -726,12 +797,15 @@
       // 目标页面导航按钮点击拦截 (防止脱离控制)
       if (btnNavigateEntry) {
         btnNavigateEntry.addEventListener('click', e => {
-          if (!activePageNode) return;
-          const targetUrl = btnNavigateEntry.getAttribute('href');
-          if (targetUrl === '#' || !targetUrl.startsWith('/')) {
+          e.preventDefault();
+          if (!activePageNode || btnNavigateEntry.disabled) return;
+          const targetUrl = btnNavigateEntry.dataset.targetUrl;
+          if (!RouteAdapter.isAllowedNavigationTarget(activeSystemNode, activePageNode, targetUrl)) {
             e.preventDefault();
             alert('目标服务实例未部署或网关尚未接通，无法跳转。');
+            return;
           }
+          window.location.assign(targetUrl);
         });
       }
 
@@ -954,6 +1028,15 @@
             const pName = document.createElement('span');
             pName.className = 'page-name';
             pName.textContent = node.menuName;
+            if (node.canLaunch === false) {
+              pageBtn.disabled = true;
+              pageBtn.setAttribute('aria-disabled', 'true');
+              pageBtn.style.opacity = '0.55';
+              pName.textContent += node.featureStatus === 'PLANNED' ? ' · 待接入' : ' · 待验证';
+              pageBtn.title = node.unavailableReason || '尚未发布';
+            } else if (node.featureStatus === 'PARTIAL') {
+              pName.textContent += ' · 部分可用';
+            }
             pageBtn.append(pName);
 
             pageBtn.addEventListener('click', () => {
@@ -969,7 +1052,7 @@
             });
 
             container.append(pageBtn);
-            if (!firstPageToSelect) {
+            if (!firstPageToSelect && node.canLaunch !== false) {
               firstPageToSelect = node;
               firstSystemOfPage = sys;
             }
@@ -982,8 +1065,23 @@
         systemNav.append(group);
       }
 
-      // 6. 默认选中首个页面
-      if (firstPageToSelect) {
+      // 重新载入导航后只恢复新授权树中仍然存在的选择。
+      // 不复用旧节点，避免撤权后保留旧地址或旧放行状态。
+      const selectedKey = activePageNode?.stableMenuKey;
+      const selectedApp = activeSystemNode?.appCode;
+      const selectedSystem = sortedSystems.find(sys => sys.appCode === selectedApp);
+      const findSelected = nodes => {
+        for (const node of nodes || []) {
+          if (node.stableMenuKey === selectedKey && node.nodeType !== 'DIRECTORY') return node;
+          const nested = findSelected(node.children);
+          if (nested) return nested;
+        }
+        return null;
+      };
+      const selectedPage = selectedSystem && selectedKey ? findSelected(selectedSystem.children) : null;
+      if (selectedPage) {
+        this.selectPage(selectedSystem, selectedPage);
+      } else if (firstPageToSelect) {
         this.selectPage(firstSystemOfPage, firstPageToSelect);
       } else {
         this.renderEmptyState();
@@ -997,7 +1095,7 @@
       for (const n of nodes || []) {
         const isDir = (n.nodeType || 'PAGE').toUpperCase() === 'DIRECTORY'
           || (Array.isArray(n.children) && n.children.length > 0);
-        if (!isDir) return n;
+        if (!isDir && n.canLaunch !== false) return n;
         const inner = this.findFirstPage(n.children || []);
         if (inner) return inner;
       }
@@ -1035,9 +1133,13 @@
       cardPageName.textContent = pageLeaf.menuName;
       cardDestBadge.textContent = destInfo.badgeText;
       cardDestBadge.className = destInfo.badgeClass;
-      cardEntryPath.textContent = destInfo.entryPath;
+      const launchable = pageLeaf.canLaunch !== false && !!destInfo.entryPath && destInfo.entryPath !== '#';
+      cardEntryPath.textContent = launchable ? destInfo.entryPath : '尚未发布';
       cardDestDesc.textContent = destInfo.desc;
-      btnNavigateEntry.setAttribute('href', destInfo.entryPath);
+      btnNavigateEntry.disabled = !launchable;
+      btnNavigateEntry.setAttribute('aria-disabled', String(!launchable));
+      if (launchable) btnNavigateEntry.dataset.targetUrl = destInfo.entryPath;
+      else delete btnNavigateEntry.dataset.targetUrl;
 
       // 5. 只读状态展示
       const isReadOnly = Boolean(activeNavigationData?.userContext?.readOnly);

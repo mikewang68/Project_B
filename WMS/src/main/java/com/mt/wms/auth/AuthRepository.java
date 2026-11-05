@@ -86,19 +86,21 @@ public class AuthRepository {
     }
 
     public List<AuthModels.TenantOption> findWarehouses(long userId, long companyId, boolean all) {
+        var central = com.mt.wms.auth.sso.WmsCentralScope.warehouseFilter();
+        String scope = central == null ? "" : " AND EXISTS (SELECT 1 FROM wms_warehouse o WHERE o.id=w.id"
+                + central.my_info_template() + ")";
         String sql = all
                 ? """
                   SELECT w.id, w.code, w.name FROM wms_warehouse w
                    WHERE w.company_id = :companyId AND w.status = 'ENABLED'
-                   ORDER BY w.code
-                  """
+                  """ + scope + " ORDER BY w.code"
                 : """
                   SELECT w.id, w.code, w.name FROM wms_warehouse w
                    JOIN auth_user_warehouse uw ON uw.warehouse_id = w.id
                    WHERE uw.user_id = :userId AND uw.revoked_at IS NULL AND w.company_id = :companyId AND w.status = 'ENABLED'
-                   ORDER BY w.code
-                  """;
+                  """ + scope + " ORDER BY w.code";
         JdbcClient.StatementSpec statement = jdbc.sql(sql).param("companyId", companyId);
+        if (central != null) statement = statement.params(central.scope_params());
         if (!all) {
             statement = statement.param("userId", userId);
         }

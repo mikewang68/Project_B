@@ -83,6 +83,21 @@ class WmsSecurityFilterChainTest {
         mvc.perform(get("/api/v1/probe/download").session(session("ADMIN",true)))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("AUTH_READONLY"));
     }
+    @Test void readonlyOwnTenantSelectionStillRequiresAuthenticationAndCsrf() throws Exception {
+        String body="{\"warehouseCode\":\"approved\",\"ownerCode\":\"approved\"}";
+        mvc.perform(put("/api/v1/auth/tenant").with(csrf()).contentType("application/json").content(body))
+                .andExpect(status().isUnauthorized());
+        var local=session("READONLY",false);
+        mvc.perform(put("/api/v1/auth/tenant").session(local).contentType("application/json").content(body))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/v1/auth/tenant").session(local).with(csrf()).contentType("application/json").content(body))
+                .andExpect(status().isOk());
+        central(true);
+        mvc.perform(put("/api/v1/auth/tenant").session(session("READONLY",true)).with(csrf()).contentType("application/json").content(body))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/probe/write").session(local).with(csrf()))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("AUTH_READONLY"));
+    }
     @Test void revokedOrChangedScopeCannotReachBusinessHandler() throws Exception {
         when(iam.currentAuthorization(anyString(),anyString(),any(WmsPrincipal.class))).thenThrow(new SecurityException("scope changed"));
         var session=session("MANAGER",true);String id=session.getId();

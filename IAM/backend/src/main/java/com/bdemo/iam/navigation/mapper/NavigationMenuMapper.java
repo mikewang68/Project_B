@@ -21,7 +21,7 @@ public interface NavigationMenuMapper {
              in_nav_scope AS inNavScope, enabled, valid,
              mapping_status AS mappingStatus, approval_status AS approvalStatus
       FROM iam.iam_navigation_app
-      WHERE valid = 1 AND in_nav_scope = 1
+      WHERE valid = 1 AND enabled = 1 AND in_nav_scope = 1
       ORDER BY sort_order ASC
       """)
   List<NavigationAppEntity> selectActiveApps();

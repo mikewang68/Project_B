@@ -45,10 +45,12 @@ public class AuthService {
     }
 
     public AuthModels.CurrentUserView currentUser(WmsPrincipal principal, jakarta.servlet.http.HttpSession session) {
+        var central = com.mt.wms.auth.sso.WmsCentralScope.current();
         return new AuthModels.CurrentUserView(principal.userId(), principal.username(), principal.displayName(),
                 principal.companyCode(), principal.companyName(), principal.roles(), principal.permissions(),
                 principal.passwordChangeRequired(), repository.findMenus(principal.permissions()),
-                tenantContextService.current(principal, session), principal.readOnly(), authorizationVersion(principal));
+                tenantContextService.current(principal, session), principal.readOnly(), authorizationVersion(principal),
+                central == null ? null : central.menuOperations(), central == null ? null : central.adminLevel());
     }
 
     private static String authorizationVersion(WmsPrincipal principal) {

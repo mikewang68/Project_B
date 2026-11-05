@@ -8,6 +8,9 @@ import java.util.Set;
  * 认证后的当前登录用户（放入 SecurityContext principal）。
  */
 public class LoginUser {
+    private com.bproject.iam.context.UserContext userContext;
+    public com.bproject.iam.context.UserContext getUserContext(){return userContext;}
+    public void setUserContext(com.bproject.iam.context.UserContext value){userContext=value;}
 
     private String userId;
     private String username;
@@ -69,7 +72,8 @@ public class LoginUser {
     public Set<String> getAllowedAppCodes() { return getScopedApps(); }
 
     public boolean mayEnter(String app) {
-        return app != null && scopedApps.contains(app.toUpperCase(java.util.Locale.ROOT));
+        return app != null && (scopedApps.contains(app.toUpperCase(java.util.Locale.ROOT))
+            || com.bdemo.iam.scope.ScopeManagementAccess.allowed(userContext, app));
     }
 
     public void setScopedApps(Set<String> scopedApps) {

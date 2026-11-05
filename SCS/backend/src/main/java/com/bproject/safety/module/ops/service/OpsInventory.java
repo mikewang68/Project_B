@@ -21,6 +21,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class OpsInventory {
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private com.bproject.safety.config.ScsScopedReferenceData centralReferences;
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
 
@@ -58,14 +60,21 @@ public class OpsInventory {
     }
 
     public synchronized List<OpsDevice> devices() {
-        return devices.values().stream().sorted(Comparator.comparing(d -> d.id)).toList();
+        var result=devices.values().stream().sorted(Comparator.comparing(d -> d.id)).toList();
+        if(com.bproject.safety.config.ScsCentralScope.current()!=null)
+            return centralReferences==null?List.of():centralReferences.visible(com.bproject.safety.config.ScsCentralScope.Root.EDGE_NODE,result,OpsDevice::edgeNodeId);
+        return result;
     }
 
     public synchronized Optional<OpsDevice> device(String id) {
-        return Optional.ofNullable(devices.get(id));
+        return devices().stream().filter(d->d.id().equals(id)).findFirst();
     }
 
     public synchronized OpsDevice saveDevice(OpsDevice device) {
+        if(com.bproject.safety.config.ScsCentralScope.current()!=null){
+            com.bproject.safety.config.ScsCentralScope.writeScope();
+            if(device(device.id()).isEmpty())throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"设备不存在或不在授权范围");
+        }
         devices.put(device.id(), device);
         return device;
     }

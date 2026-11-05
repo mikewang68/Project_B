@@ -66,6 +66,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
     @Value("${app.security.browser-sso-only:${app.security.enabled:true}}") private boolean browserSsoOnly;
     public boolean isUnifiedSessionRequired(){return browserSsoOnly;}
     @org.springframework.beans.factory.annotation.Autowired private ScsLocalPolicy localPolicy;
+    @org.springframework.beans.factory.annotation.Autowired private ScsMachineRegistry machineRegistry;
 
     public SecurityInterceptor(
             boolean enabled, String expectedApiKey, String expectedBearerToken,
@@ -183,6 +184,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
             try{
                 var assertion=ticketValidator.current(binding.iamSubject(),binding.iamSid());
                 var actor=localPolicy.resolve(assertion);
+                ScsCentralScope.bind(request,actor.context());
                 request.setAttribute("SCS_AUTHORIZATION_VERSION",assertion.get("authorizationVersion"));
                 if(!localPolicy.permits(actor,request.getMethod(),path)){
                     sendForbidden(request,response,ErrorCodes.FORBIDDEN_READONLY_ROLE,"当前业务操作未获授权",Map.of());return false;
@@ -206,11 +208,22 @@ public class SecurityInterceptor implements HandlerInterceptor {
                 // 否则一次 IAM 超时就会把全站用户打回登录页。
                 sendServiceUnavailable(request,response,"统一身份服务暂不可用，请稍后重试");return false;
             }catch(ScsLocalPolicy.UnsupportedDataScopeException unsupported){
-                // 票据合法但 SCS 尚无对象过滤：403 并说明真实原因，
+                // 票据合法但旧组织字段尚无对象过滤：403 并说明真实原因，
                 // 不能笼统报成"票据无效"（会让排障误判为 IAM 侧问题）。
                 sendForbidden(request,response,ErrorCodes.FORBIDDEN_SCOPE_MISMATCH,
                         unsupported.getMessage(),Map.of());return false;
             }catch(ScsIamTicketValidator.InvalidTicketException denied){sendUnauthorized(request,response,"统一身份或业务映射不可用");return false;}
+        }
+        // A named source must use its independent registered key; never fall back to the old shared key.
+        String machineSource=request.getHeader("X-SCS-Source-ID");
+        if(machineSource!=null){
+            if(machineRegistry==null)throw ScsMachineRegistry.denied();
+            var machine=machineRegistry.authenticate(machineSource,request.getHeader("X-API-Key"),request.getMethod(),path);
+            ScsMachineRegistry.bind(request,machine);
+            request.setAttribute(ATTR_USER_SUB,"machine-"+machine.id());
+            request.setAttribute(ATTR_USER_ROLES,Set.of("ROLE_SCOPED_MACHINE"));
+            ScsRequestActor.set("machine-"+machine.id(),machine.id());
+            return true;
         }
         // 3. 边缘节点机器凭据检查 (X-API-Key，常量时间等值比较)
         String apiKey = request.getHeader("X-API-Key");
@@ -220,6 +233,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
                 sendForbidden(request,response,ErrorCodes.FORBIDDEN_READONLY_ROLE,"机器凭据不用于业务操作",Map.of());return false;
             }
             request.setAttribute(ATTR_USER_SUB, "edge-node");
+            request.setAttribute("SCS_LEGACY_MACHINE_INGRESS", Boolean.TRUE);
             request.setAttribute(ATTR_USER_ROLES, Set.of("ROLE_EDGE"));
             return true;
         }
@@ -300,7 +314,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
                     || HttpMethod.DELETE.matches(request.getMethod())
                     || HttpMethod.PATCH.matches(request.getMethod());
 
-            if (isWriteOperation) {
+            if (isWriteOperation && !ScsCentralScope.readOnlyQuery(request.getMethod(), path)) {
                 log.warn("硬拦截只读角色写操作: user={}, role={}, path={}, method={}",
                         principal.sub(), ROLE_PLATFORM_AUDITOR_READONLY, path, request.getMethod());
                 sendForbidden(request, response, ErrorCodes.FORBIDDEN_READONLY_ROLE,

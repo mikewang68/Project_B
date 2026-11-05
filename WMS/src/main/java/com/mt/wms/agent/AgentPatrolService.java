@@ -18,14 +18,20 @@ import static com.mt.wms.agent.AgentModels.*;
 class AgentPatrolService {
     private static final Logger log=LoggerFactory.getLogger(AgentPatrolService.class);
     private final AgentRepository repository;private final AgentAnalytics analytics;
+    private final WmsAgentAuthorization authorization;
     private final TransactionTemplate transaction;private final ObjectProvider<JavaMailSender> mail;
     private final String host,from;private final ZoneId zone=ZoneId.of("Asia/Shanghai");
     private final boolean enabled,mailEnabled;
+    // A disabled legacy scheduler must not silently disable newly authorized V2 jobs.
+    // The native/V1 flag and existing mail safety flag keep their prior meaning.
+    @Value("${wms.agent.central-patrol-enabled:true}")
+    private boolean centralEnabled=true;
     AgentPatrolService(AgentRepository repository,AgentAnalytics analytics,TransactionTemplate transaction,
             ObjectProvider<JavaMailSender> mail,@Value("${spring.mail.host:}")String host,
             @Value("${wms.agent.mail-from:}")String from,@Value("${wms.agent.enabled:true}")boolean enabled,
-            @Value("${wms.agent.mail-enabled:false}")boolean mailEnabled) {
+            @Value("${wms.agent.mail-enabled:false}")boolean mailEnabled,WmsAgentAuthorization authorization) {
         this.repository=repository;this.analytics=analytics;this.transaction=transaction;this.mail=mail;this.host=host;this.from=from;this.enabled=enabled;this.mailEnabled=mailEnabled;
+        this.authorization=authorization;
     }
     boolean mailReady() {return mailEnabled&&!host.isBlank()&&!from.isBlank()&&mail.getIfAvailable()!=null;}
     static String emails(String text) {
@@ -44,6 +50,7 @@ class AgentPatrolService {
         return String.join(",",result);
     }
     void save(Scope s,Long id,ScheduleRequest request) {
+        WmsAgentAuthorization.requireSave(id==null,request);
         if(!request.lowStock()&&!request.replenishment()&&!request.frozenStock()&&!request.capacity())throw new IllegalArgumentException("至少启用一种巡检规则");
         OffsetDateTime next=AgentMath.nextRun(request.frequency(),request.intervalMinutes(),request.dailyTime(),Clock.systemUTC(),zone);
         repository.saveSchedule(s,id,request,emails(request.emails()),next);
@@ -54,14 +61,15 @@ class AgentPatrolService {
     }
     @Scheduled(fixedDelayString="${wms.agent.poll-millis:60000}",initialDelay=30000)
     public void poll() {
-        if(!enabled)return;
-        try {for(Schedule job:repository.due())try{run(job,false);}catch(Exception e){log.warn("WMS patrol job {} failed; retry scheduled",job.id());}}
+        if(!enabled&&!centralEnabled)return;
+        try {for(Schedule job:(enabled?repository.due():repository.dueCentral()))try{run(job,false);}catch(Exception e){log.warn("WMS patrol job {} failed; retry scheduled",job.id());}}
         catch(Exception e){log.warn("WMS patrol storage unavailable; existing business remains available");}
     }
     Map<String,Object> run(Schedule job,boolean manual) {
         if(!repository.claim(job,manual))throw new IllegalArgumentException("该任务正在运行，请稍后重试");
         try {
             if(!repository.permitted(job))throw new IllegalArgumentException("任务创建人的账号、仓库或货主权限已失效，请重新配置");
+            authorization.require(job,!"-".equals(job.emails()));
             Scope s=new Scope(job.companyId(),job.warehouseId(),job.ownerId(),job.userId(),repository.allOwners(job.userId()));
             return transaction.execute(status->{
                 Map<String,Object> utilization=analytics.utilization(s,true);
@@ -98,7 +106,7 @@ class AgentPatrolService {
                 return Map.<String,Object>of("findings",findings.size(),"newNotifications",fresh.size(),"emailState",mailReady()?"QUEUED":"UNCONFIGURED");
             });
         } catch(Exception e) {
-            String error=e instanceof IllegalArgumentException?e.getMessage():"巡检数据暂时不可用，将在5分钟后重试";
+            String error=e instanceof IllegalArgumentException||e instanceof org.springframework.security.access.AccessDeniedException?e.getMessage():"巡检数据暂时不可用，将在5分钟后重试";
             repository.finishSchedule(job,OffsetDateTime.now().plusMinutes(5),error);
             throw new IllegalArgumentException(error);
         }
@@ -107,24 +115,31 @@ class AgentPatrolService {
         return repository.scoped("SELECT m.id,m.recipients,m.subject,m.state,m.attempts,m.last_error,m.sent_at,m.created_at FROM wms_agent_mail m JOIN wms_agent_schedule j ON j.id=m.schedule_id WHERE j.company_id=:c AND j.warehouse_id=:w AND j.owner_id=:o AND m.user_id=:u ORDER BY m.id DESC LIMIT 50",s).param("u",s.userId()).query().listOfRows();
     }
     void retryMail(Scope s,long id) {
+        var matching=repository.scoped("SELECT j.id FROM wms_agent_schedule j JOIN wms_agent_mail m ON m.schedule_id=j.id WHERE m.id=:id AND m.user_id=:u AND j.user_id=:u AND j.company_id=:c AND j.warehouse_id=:w AND j.owner_id=:o",s)
+                .param("id",id).param("u",s.userId()).query(Long.class).list();
+        if(matching.size()!=1)throw new IllegalArgumentException("邮件不存在或不属于当前范围");
+        Schedule schedule=repository.schedules(s).stream().filter(j->j.id()==matching.get(0)).findFirst().orElseThrow();
+        if(!repository.permitted(schedule))throw new IllegalArgumentException("任务权限已失效");
+        authorization.require(schedule,true);
         if(!mailReady())throw new IllegalArgumentException("邮件服务器尚未配置");
         int count=repository.scoped("UPDATE wms_agent_mail SET state='PENDING',attempts=0,next_attempt_at=CURRENT_TIMESTAMP,last_error=NULL WHERE id=:id AND user_id=:u AND state IN ('FAILED','UNCONFIGURED','RETRY') AND schedule_id IN (SELECT id FROM wms_agent_schedule WHERE company_id=:c AND warehouse_id=:w AND owner_id=:o AND user_id=:u)",s).param("id",id).param("u",s.userId()).update();
         if(count!=1)throw new IllegalArgumentException("邮件不存在、正在发送或已经发送");
     }
     @Scheduled(fixedDelay=30000,initialDelay=40000)
     public void sendMail() {
-        if(!enabled||!mailReady())return;
+        if((!enabled&&!centralEnabled)||!mailReady())return;
         var jdbc=repository.client();
         try {
             // 重启或中断后的租约恢复。SMTP为至少一次投递，极少数超时场景可能重复邮件。
             jdbc.sql("UPDATE wms_agent_mail SET state='RETRY' WHERE state='SENDING' AND next_attempt_at<CURRENT_TIMESTAMP").update();
-            List<Map<String,Object>> rows=jdbc.sql("SELECT * FROM wms_agent_mail WHERE state IN ('PENDING','RETRY','UNCONFIGURED') AND attempts<5 AND next_attempt_at<=CURRENT_TIMESTAMP ORDER BY id LIMIT 5").query().listOfRows();
+            List<Map<String,Object>> rows=jdbc.sql("SELECT * FROM wms_agent_mail WHERE state IN ('PENDING','RETRY','UNCONFIGURED') AND attempts<5 AND next_attempt_at<=CURRENT_TIMESTAMP AND (:includeLegacy OR EXISTS (SELECT 1 FROM wms_agent_schedule j WHERE j.id=wms_agent_mail.schedule_id AND j.scope_context_version=2)) ORDER BY id LIMIT 5").param("includeLegacy",enabled).query().listOfRows();
             for(var row:rows) {
                 long id=((Number)row.get("id")).longValue();int attempt=((Number)row.get("attempts")).intValue()+1;
                 if(jdbc.sql("UPDATE wms_agent_mail SET state='SENDING',attempts=attempts+1,next_attempt_at=CURRENT_TIMESTAMP+INTERVAL '10 minutes' WHERE id=:id AND state IN ('PENDING','RETRY','UNCONFIGURED')").param("id",id).update()!=1)continue;
                 try {
                     Schedule schedule=jdbc.sql("SELECT * FROM wms_agent_schedule WHERE id=:id").param("id",row.get("schedule_id")).query(Schedule.class).single();
                     if(!repository.permitted(schedule))throw new IllegalArgumentException("接收人的任务权限已失效");
+                    authorization.require(schedule,true);
                     SimpleMailMessage message=new SimpleMailMessage();message.setFrom(from);message.setTo(emails(row.get("recipients").toString()).split(","));
                     message.setSubject(row.get("subject").toString());message.setText(row.get("body").toString());
                     Objects.requireNonNull(mail.getIfAvailable()).send(message);

@@ -27,7 +27,7 @@ class DemoSeedDisabledServerTest {
     static class ServerContextConfig {
         @Bean
         NamedParameterJdbcTemplate namedParameterJdbcTemplate() {
-            return mock(NamedParameterJdbcTemplate.class);
+            return new NamedParameterJdbcTemplate(mock(org.springframework.jdbc.core.JdbcTemplate.class));
         }
 
         @Bean

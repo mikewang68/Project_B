@@ -21,18 +21,20 @@ public class SysSsoSessions {
   private final ObjectMapper json=new ObjectMapper();
   private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
   private final Map<String,HttpSession> sessions=new ConcurrentHashMap<>();
+  @org.springframework.beans.factory.annotation.Value("${sys.scope-v2.enabled:false}")
+  private boolean scopeV2;
   public SysSsoSessions(LoginUserLoader users,@Value("${sys.sso.iam-base-url:}")String base,
       @Value("${sys.sso.service-token:}")String credential,@Value("${sys.sso.enabled:false}")boolean enabled,
       @Value("${sys.sso.bindings-file:}")String file){
     this.users=users;this.base=base.replaceAll("/$","");this.credential=credential;this.enabled=enabled;this.file=file;
   }
   public void authorizeService(String actual){
-    if(!enabled||base.isBlank()||credential.length()<32||file.isBlank())throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
+    if(!enabled||base.isBlank()||credential.length()<32||!scopeV2&&file.isBlank())throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
     if(actual==null||!MessageDigest.isEqual(credential.getBytes(StandardCharsets.UTF_8),actual.getBytes(StandardCharsets.UTF_8)))
       throw new ResponseStatusException(HttpStatus.FORBIDDEN);
   }
   private JsonNode call(String path,Object body){
-    if(!enabled||base.isBlank()||credential.length()<32||file.isBlank())throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
+    if(!enabled||base.isBlank()||credential.length()<32||!scopeV2&&file.isBlank())throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
     try{
       var request=HttpRequest.newBuilder(URI.create(base+"/auth/sso/"+path)).timeout(Duration.ofSeconds(5))
           .header("Content-Type","application/json").header("X-SSO-Service-Token",credential)
@@ -57,6 +59,7 @@ public class SysSsoSessions {
   }
   public LoginUser current(Binding b){return resolve(b,call("session/introspect",Map.of("subject",b.subject(),"sessionId",b.sid(),"audience","sys")));}
   private LoginUser resolve(Binding b,JsonNode a){
+    if(a.path("userContext").path("contextVersion").asInt()==2)return resolveCentral(b,a);
     String localUserId;
     try{
       var mapping=json.readTree(java.nio.file.Files.readString(java.nio.file.Path.of(file))).path(b.subject());
@@ -75,6 +78,20 @@ public class SysSsoSessions {
       Set<String> permissions=new HashSet<>(user.getPermissions());permissions.retainAll(central);user.setPermissions(permissions);
     }
     return user;
+  }
+  private LoginUser resolveCentral(Binding b,JsonNode a) {
+    if(!scopeV2)throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Context version 2 is not enabled");
+    try {
+      if(!a.path("active").asBoolean(false)||b.sid().isBlank()||!b.subject().equals(a.path("subject").asText())
+          ||!b.sid().equals(a.path("sessionId").asText())||!b.local().equals(a.path("localSubject").asText())
+          ||!"sys".equals(a.path("audience").asText())||!a.path("readOnly").isBoolean()||!a.path("permissions").isArray())throw new IllegalArgumentException();
+      var context=com.bproject.iam.context.ContextRules.validate(json.treeToValue(a.path("userContext"),com.bproject.iam.context.UserContext.class),b.subject(),"SYS");
+      if(context.scopeMode()==com.bproject.iam.context.ScopeSql.Mode.DENY||context.readOnly()!=a.path("readOnly").asBoolean()
+          ||!context.username().equals(a.path("username").asText()))throw new IllegalArgumentException();
+      Set<String> permissions=new TreeSet<>();a.path("permissions").forEach(v->{if(v.isTextual()&&v.asText().startsWith("sys:"))permissions.add(v.asText());});
+      var user=new LoginUser(context.userId(),context.username(),context.displayName(),"L1_SUPER".equals(context.adminLevel())&&!context.readOnly(),permissions);
+      user.setReadOnly(context.readOnly());user.setGlobalRead(context.global());user.setUserContext(context);return user;
+    }catch(Exception invalid){throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Invalid central context");}
   }
   public void logout(Binding b){call("session/logout",Map.of("subject",b.subject(),"sessionId",b.sid(),"audience","sys"));}
   public int revoke(String sid){

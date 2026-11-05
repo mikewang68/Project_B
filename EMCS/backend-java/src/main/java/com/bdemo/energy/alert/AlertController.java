@@ -63,7 +63,12 @@ public class AlertController {
     // REQ-041: operator identity is accepted only from the verified JWT principal.
     @PostMapping("/{eventId}/transition")
     public AjaxResult transition(@PathVariable long eventId, @RequestBody TransitionRequest body,
-                                 @AuthenticationPrincipal AuthenticatedUser user) {
+                                 @AuthenticationPrincipal AuthenticatedUser user, Authentication authentication,
+                                 jakarta.servlet.http.HttpServletRequest request) {
+        if(request.getAttribute("EMCS_SSO_CURRENT") instanceof com.bdemo.auth.EmcsSsoSessions.Current current
+            && !com.bdemo.auth.EmcsAlertPermissions.permits(current,body.toStatus()))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"Alert transition is not authorized");
+        dataScope.checkAlert(authentication,eventId);
         return AjaxResult.success(service.transition(eventId, body, user.userName()))
                 .add("msg", "alert transitioned");
     }

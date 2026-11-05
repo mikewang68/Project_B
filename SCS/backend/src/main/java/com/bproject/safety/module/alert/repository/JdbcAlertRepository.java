@@ -91,7 +91,7 @@ public class JdbcAlertRepository implements AlertRepository {
                                ObjectMapper objectMapper,
                                DemoMasterData masterData,
                                Clock clock) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = new com.bproject.safety.config.ScsScopedJdbcTemplate(jdbcTemplate);
         this.objectMapper = objectMapper;
         this.masterData = masterData;
         this.clock = clock;
@@ -225,6 +225,7 @@ public class JdbcAlertRepository implements AlertRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public DemoAlert save(DemoAlert alert) {
         Objects.requireNonNull(alert, "alert must not be null");
         DemoAlert toPersist = alert.copy();
@@ -238,6 +239,7 @@ public class JdbcAlertRepository implements AlertRepository {
         String alertNo = toPersist.id;
 
         // 1. 保存 / 更新聚合根 safety_alert
+        var centralStamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.ALERT,alertNo);
         saveRootAlert(rootUuid, alertNo, toPersist);
 
         // 2. 追加审计时间线 safety_alert_timeline（严格 append-only）
@@ -252,6 +254,7 @@ public class JdbcAlertRepository implements AlertRepository {
         // 5. 保存现场联动 safety_alert_linkage 及步骤 safety_alert_linkage_step
         saveLinkage(rootUuid, toPersist);
 
+        com.bproject.safety.config.ScsCentralScope.afterWrite(jdbcTemplate,centralStamp);
         return toPersist.copy();
     }
 

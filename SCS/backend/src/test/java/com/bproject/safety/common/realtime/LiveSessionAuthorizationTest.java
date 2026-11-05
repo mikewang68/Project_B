@@ -11,5 +11,10 @@ class LiveSessionAuthorizationTest {
   LiveSessionAuthorization service=new LiveSessionAuthorization(iam,policy,true);
   @Test void anonymousSocketCannotConsumeEvents(){var socket=mock(WebSocketSession.class);when(socket.getAttributes()).thenReturn(Map.of());assertThrows(IllegalStateException.class,()->service.current(socket));}
   @Test void eventPermissionsAreIndependent(){var actor=new ScsLocalPolicy.Actor("subject","safety",Set.of("OPERATOR"),Set.of("safety:module:alert:view"),false,false);assertTrue(service.permits(actor,"alert.changed"));assertFalse(service.permits(actor,"rule.published"));assertFalse(service.permits(actor,"ai.reviewed"));assertFalse(service.permits(actor,"unknown.event"));}
+  @Test void legacyZoneEventsRequireTheMapPermission(){
+    var map=new ScsLocalPolicy.Actor("subject","safety",Set.of("OPERATOR"),Set.of("safety:home:map:view"),false,false);
+    var alerts=new ScsLocalPolicy.Actor("other","safety",Set.of("OPERATOR"),Set.of("safety:module:alert:view"),false,false);
+    assertTrue(service.permits(map,"zone.changed"));assertFalse(service.permits(alerts,"zone.changed"));
+  }
   @Test void revocationCannotBeBypassedWithAnOldBinding(){String local=UUID.randomUUID().toString();ScsSessionRegistry.bind(local,"subject","central",Set.of(),Set.of(),"scs");var binding=ScsSessionRegistry.get(local);ScsSessionRegistry.revokeByIamSid("central");var socket=mock(WebSocketSession.class);when(socket.getAttributes()).thenReturn(Map.of("SCS_WS_BINDING",binding));assertThrows(IllegalStateException.class,()->service.current(socket));verifyNoInteractions(iam);}
 }

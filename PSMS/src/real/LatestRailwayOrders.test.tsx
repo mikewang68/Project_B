@@ -1,11 +1,19 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {cleanup,render,screen} from '@testing-library/react';
 import LatestRailwayOrders from './LatestRailwayOrders';
-afterEach(()=>{cleanup();vi.unstubAllGlobals();sessionStorage.clear();});
+const identity = vi.hoisted(() => ({ regional: false }));
+vi.mock('../auth', () => ({ loadCurrentDemoSession: () => ({ menuOperations: identity.regional ? {} : null }) }));
+afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.unstubAllEnvs();identity.regional=false;sessionStorage.clear();});
 const snapshot={source:{kind:'SERVER_DATABASE',database:'psms'},
   runs:[{id:'SIM-RAIL-20261029',step:8}],orders:[{id:'SIM-RAIL-20261029-WO',business_date:'2026-10-29',train_no:'SIM-73512',
     cargo_type:'COAL',estimated_weight:'3112.000',status:'IN_PROGRESS',updated_at:'2026-10-29T05:00:00Z'}]};
 describe('latest railway orders on the existing overview',()=>{
+  it('does not start global railway polling for a regional V2 identity',()=>{
+    vi.stubEnv('VITE_PSMS_REAL_API','true');identity.regional=true;
+    const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+    const view=render(<LatestRailwayOrders/>);
+    expect(view.container).toBeEmptyDOMElement();expect(fetcher).not.toHaveBeenCalled();
+  });
   it('shows the date and native order read from the server database',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,data:snapshot})));
     render(<LatestRailwayOrders/>);

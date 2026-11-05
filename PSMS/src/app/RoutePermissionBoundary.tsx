@@ -4,6 +4,7 @@ import { createC03Element, routeCatalog, type RouteCatalogItem } from './routeCa
 import { Alert } from 'antd';
 import BusinessDataPage from '../real/BusinessDataPage';
 import { liveBusinessPages, type LiveBusinessPageId } from '../real/business';
+import GovernancePage,{governancePages,type GovernancePageId} from '../real/GovernancePage';
 
 export type RoutePermissionBoundaryProps = {
   route: RouteCatalogItem;
@@ -18,6 +19,8 @@ export default function RoutePermissionBoundary({
 }: RoutePermissionBoundaryProps) {
   const session = suppliedSession ?? loadCurrentDemoSession();
   const decision = authorizePage(session, route.id);
+  if (decision.allow && import.meta.env.VITE_PSMS_REAL_API === 'true' && Object.hasOwn(governancePages, route.id))
+    return createC03Element(GovernancePage, {pageId:route.id as GovernancePageId});
   if (decision.allow && import.meta.env.VITE_PSMS_REAL_API === 'true' && Object.hasOwn(liveBusinessPages, route.id))
     return createC03Element(BusinessDataPage, {pageId:route.id as LiveBusinessPageId});
   if (decision.allow && import.meta.env.VITE_PSMS_REAL_API === 'true' && !['UI-001','UI-002'].includes(route.id))

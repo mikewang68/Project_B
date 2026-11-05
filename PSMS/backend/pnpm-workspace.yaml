@@ -1,0 +1,6 @@
+# Keep the backend lock and install-script policy independent of the frontend.
+packages: []
+
+allowBuilds:
+  # tsx uses the platform binary validated by this exact esbuild release.
+  esbuild@0.27.7: true

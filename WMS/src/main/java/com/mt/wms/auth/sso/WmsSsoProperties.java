@@ -34,6 +34,9 @@ public class WmsSsoProperties {
   /** 是否启用。显式开关，默认关闭，避免误开。 */
   @Value("${wms.sso.enabled:false}")
   private boolean enabled;
+  @Value("${wms.sso.require-unified-session:false}")
+  private boolean requireUnifiedSession;
+  public boolean requiresUnifiedSession(){return enabled&&requireUnifiedSession;}
 
   /**
    * 允许调用 {@code /sso/exchange} 的来源地址（逗号分隔的 IP 或 CIDR）。

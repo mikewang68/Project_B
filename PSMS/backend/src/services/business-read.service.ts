@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import { attachObservations } from '../../integrations/psms_history/adapter.mjs';
 import { connectClient } from '../db/openGaussClient.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { centralPredicate } from '../middleware/central-scope.js';
 
 import { businessCollections, type BusinessCollection } from '../lib/businessCatalog.js';
 export { isBusinessCollection } from '../lib/businessCatalog.js';
@@ -31,7 +33,9 @@ export function businessReadQuery(collection: BusinessCollection, scopes: readon
   else if (!global) add('work_area=ANY(?::text[])', areas);
   if (f.status) add('status=?', f.status);
   if (f.planId) add('plan_id=?', f.planId);
-  return { table: spec.table, columns: spec.columns, where: where.join(' AND '), values,
+  const central = centralPredicate(spec.table, values.length);
+  return { table: spec.table, columns: spec.columns, where: '(' + where.join(' AND ') + ')' + central.text,
+    values: [...values, ...central.values],
     page: f.page, pageSize: f.pageSize, global };
 }
 
@@ -44,8 +48,9 @@ export async function readBusinessPage(collection: BusinessCollection, scopes: r
     const items = (await db.query(`SELECT ${q.columns},updated_at::text AS record_version FROM public.${q.table} WHERE ${q.where}
       ORDER BY updated_at DESC,id LIMIT $${q.values.length + 1} OFFSET $${q.values.length + 2}`,
       [...q.values, q.pageSize, (q.page - 1) * q.pageSize])).rows;
+    const enriched = collection === 'equipment' ? await attachObservations(db, items) : items;
     await db.query('COMMIT');
-    return { collection, items, total, page: q.page, pageSize: q.pageSize, generatedAt: new Date().toISOString() };
+    return { collection, items: enriched, total, page: q.page, pageSize: q.pageSize, generatedAt: new Date().toISOString() };
   } catch (error) {
     try { await db.query('ROLLBACK'); } catch { /* preserve original failure */ }
     throw error;

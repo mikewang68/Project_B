@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class SafetyProjectionService {
+    private static boolean centrallyScoped(){return com.bproject.safety.config.ScsCentralScope.current()!=null;}
 
     // ---- 暂无真实后端来源的台账常量（Demo aggregation） ----
     public static final int DEMO_ON_DUTY = 128;
@@ -146,11 +147,13 @@ public class SafetyProjectionService {
                     new DeviceHealth("边缘节点", (int) edgeOnline, (int) edgeTotal, false));
         } catch (RuntimeException ex) {
             // 无库/无表环境（本地 dev 自动 H2 等）回退演示口径
+            if(centrallyScoped())throw ex;
             return fallbackDeviceHealth();
         }
     }
 
     private List<DeviceHealth> fallbackDeviceHealth() {
+        if(centrallyScoped())return List.of(new DeviceHealth("摄像头",0,0,false),new DeviceHealth("防碰撞设备",0,0,false),new DeviceHealth("边缘节点",0,0,false));
         return List.of(
                 new DeviceHealth("摄像头", 22, 24, true),
                 new DeviceHealth("雷达", 8, 8, true),
@@ -163,7 +166,7 @@ public class SafetyProjectionService {
         if (template == null) {
             return 0L;
         }
-        java.util.List<Long> rows = template.query(sql,
+        java.util.List<Long> rows = template.query(com.bproject.safety.config.ScsScopedSql.apply(sql,com.bproject.safety.config.ScsCentralScope.current()),
                 (rs, rowNum) -> rs.getLong(1));
         return rows.isEmpty() ? 0L : rows.get(0);
     }
@@ -177,6 +180,7 @@ public class SafetyProjectionService {
             jdbc.queryForMap("SELECT 1");
             return jdbc;
         } catch (RuntimeException ex) {
+            if(centrallyScoped())throw ex;
             return null;
         }
     }
@@ -184,16 +188,17 @@ public class SafetyProjectionService {
     /** 复查②：在岗人数（personnel 表 online_status_code=ONLINE 真实聚合；无台账回退演示常量）。 */
     public long onDutyCount() {
         if (personnelRepository == null) {
-            return DEMO_ON_DUTY;
+            return centrallyScoped()?0:DEMO_ON_DUTY;
         }
         long online = personnelRepository.findAll().stream()
                 .filter(p -> com.bproject.safety.module.personnel.model.PersonStatuses.ONLINE.equals(p.statusCode))
                 .count();
-        return online > 0 ? online : DEMO_ON_DUTY;
+        return online > 0 || centrallyScoped() ? online : DEMO_ON_DUTY;
     }
 
     /** 在岗数是否为演示口径（0 在岗回退常量时为 true）。 */
     public boolean onDutyIsDemo() {
+        if(centrallyScoped())return false;
         if (personnelRepository == null) {
             return true;
         }
@@ -219,11 +224,13 @@ public class SafetyProjectionService {
             }
             return points;
         } catch (RuntimeException ex) {
+            if(centrallyScoped())throw ex;
             return fallbackTrend24h();
         }
     }
 
     private List<TrendPoint> fallbackTrend24h() {
+        if(centrallyScoped())return List.of();
         int[] totals = {2, 1, 1, 0, 1, 0, 1, 2, 3, 4, 3, 5, 4, 6, 5, 7, 6, 8, 7, 9, 6, 5, 4, 3};
         int[] high = {0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 2, 1, 2, 1, 2, 1, 3, 2, 1, 1, 1};
         java.util.List<TrendPoint> points = new java.util.ArrayList<>();
@@ -252,11 +259,13 @@ public class SafetyProjectionService {
             }
             return points;
         } catch (RuntimeException ex) {
+            if(centrallyScoped())throw ex;
             return fallbackTrend7d();
         }
     }
 
     private List<TrendPoint> fallbackTrend7d() {
+        if(centrallyScoped())return List.of();
         int[] totals = {9, 13, 11, 16, 14, 12, 17};
         int[] high = {2, 3, 2, 4, 3, 2, 4};
         String[] labels = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};

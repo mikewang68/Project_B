@@ -3,11 +3,12 @@ import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { auditOperation } from '../middleware/audit.js';
 import * as reportService from '../services/report.service.js';
 import { q } from '../lib/http.js';
+import { beijingToday } from '../services/report-period.js';
 
 export const reportsRouter = Router();
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return beijingToday();
 }
 
 // API-020 统计报表（数据库侧聚合）

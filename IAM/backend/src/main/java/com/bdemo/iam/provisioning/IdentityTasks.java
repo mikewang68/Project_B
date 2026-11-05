@@ -22,6 +22,8 @@ public class IdentityTasks {
   private final TransactionTemplate tx;
   private final ObjectMapper json;
   private final String configFile;
+  @Value("${iam.identity.delivery-enabled:true}")
+  private boolean deliveryEnabled = true;
   private final HttpClient http =
       HttpClient.newBuilder()
           .connectTimeout(Duration.ofSeconds(2))
@@ -212,7 +214,7 @@ public class IdentityTasks {
 
   @Scheduled(fixedDelayString = "${iam.identity.poll-ms:2000}")
   public void recover() {
-    if (configFile.isBlank()) return;
+    if (!deliveryEnabled || configFile.isBlank()) return;
     for (var row :
         db.queryForList(
             "SELECT user_id FROM iam.identity_task WHERE state IN"
@@ -226,7 +228,7 @@ public class IdentityTasks {
   }
 
   public void process(String userId, long deadline) {
-    if (System.nanoTime() >= deadline) return;
+    if (!deliveryEnabled || System.nanoTime() >= deadline) return;
     // This method must never be invoked with the user transaction open.
     if (org.springframework.transaction.support.TransactionSynchronizationManager
         .isActualTransactionActive())

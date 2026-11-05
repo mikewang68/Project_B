@@ -36,6 +36,12 @@ lineChart=function(primary=[],secondary=[],opts={}){
 };
 
 async function loadVisualOverview(showMessage=false){
+  if(typeof window!=='undefined'&&window.EhmAuth){
+    await window.EhmAuth.ready;
+    if(window.EhmCentralPolicy?.enabled(window.EhmAuth)&&!window.EhmCentralPolicy.page(window.EhmAuth,'dashboard')){
+      state.visual.overview=null;return;
+    }
+  }
   const v=state.visual,seq=++v.seq;v.loading=true;v.error='';if(VISUAL_PAGES.has(state.page))renderPage();
   try{const value=await apiRequest(`/analytics/overview?days=${v.days}`);if(seq!==v.seq)return;v.overview=value;v.readAt=new Date().toISOString();updateVisualBadges(value);
     if(showMessage)toast(`统计已刷新：${value.devices}台设备、${value.alarms}条告警、${value.workOrders}张工单。`);
@@ -44,6 +50,8 @@ async function loadVisualOverview(showMessage=false){
 }
 function visualAsset(){return EQUIPMENT.find(e=>e.code===state.visual.assetCode)||EQUIPMENT[0];}
 async function loadVisualPoints(showMessage=false){
+  if(typeof window!=='undefined'&&window.EhmCentralPolicy?.enabled(window.EhmAuth)
+    &&!['realtime','fleet','data-quality'].every(page=>window.EhmCentralPolicy.page(window.EhmAuth,page)))return;
   const v=state.visual,asset=visualAsset();if(!asset)return;
   v.assetCode=asset.code;const seq=++v.pointSeq;++v.sampleSeq;v.pointsLoading=true;v.samplesLoading=false;v.pointError='';v.telemetryError='';v.samples=[];v.points=[];v.quality=null;renderPage();
   const results=await Promise.allSettled([apiList(`/data-quality/points?assetCode=${encodeURIComponent(asset.code)}`),apiRequest(`/data-quality/summary?assetCode=${encodeURIComponent(asset.code)}`)]);
@@ -55,6 +63,8 @@ async function loadVisualPoints(showMessage=false){
   if(v.pointCode)await loadVisualSamples();
 }
 async function loadVisualSamples(showMessage=false){
+  if(typeof window!=='undefined'&&window.EhmCentralPolicy?.enabled(window.EhmAuth)
+    &&!window.EhmCentralPolicy.page(window.EhmAuth,'realtime'))return;
   const v=state.visual;if(!v.pointCode)return;
   const seq=++v.sampleSeq,point=v.points.find(p=>p.pointCode===v.pointCode);v.samplesLoading=true;v.telemetryError='';v.samples=[];renderPage();
   // Historical range is explicitly anchored to the latest stored source time, not relabelled as current.

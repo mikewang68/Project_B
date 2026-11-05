@@ -102,11 +102,24 @@ describe('C11 deterministic report metrics', () => {
     expect(metrics.distributions.planStatus.items.map(({ key }) => key)).toEqual([
       'RECEIVED', 'VALIDATING', 'PENDING_CONFIRM', 'CONFIRMED',
       'DECOMPOSED', 'BLOCKED', 'CANCELLED', 'ADJUSTED',
+      'IN_PROGRESS', 'COMPLETED',
     ]);
     expect(metrics.distributions.workOrderStatus.items.every(({ value }) => value === 0)).toBe(true);
     expect(metrics.distributions.exceptionLevel.items.every(({ value }) => value === 0)).toBe(true);
     expect(metrics.distributions.interlockAction.items.every(({ value }) => value === 0)).toBe(true);
     expect(metrics.distributions.offlineStatus.items.every(({ value }) => value === 0)).toBe(true);
+  });
+
+  it('counts executing and completed native plans as confirmed and keeps their own distribution', () => {
+    const store = createStore();
+    store.replaceDomainState(candidate => {
+      candidate.plan.plans[0].status = 'IN_PROGRESS';
+      candidate.plan.plans[1].status = 'COMPLETED';
+    });
+    const metrics = deriveReportMetrics(store.getState());
+    expect(metrics.kpis.confirmedPlanCount).toBe(2);
+    expect(metrics.distributions.planStatus.items.find(row => row.key === 'IN_PROGRESS')).toMatchObject({ value: 1 });
+    expect(metrics.distributions.planStatus.items.find(row => row.key === 'COMPLETED')).toMatchObject({ value: 1 });
   });
 
   it('publishes deterministic formula/source disclosure and a flat DO-012 snapshot', () => {

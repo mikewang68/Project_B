@@ -5,6 +5,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class LoginUser {
+    private com.bproject.iam.context.UserContext userContext;
+    public com.bproject.iam.context.UserContext getUserContext(){return userContext;}
+    public void setUserContext(com.bproject.iam.context.UserContext value){userContext=value;}
     private boolean globalRead;
     public boolean isGlobalRead(){return globalRead;}
     public void setGlobalRead(boolean value){globalRead=value;}

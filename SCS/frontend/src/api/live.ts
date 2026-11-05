@@ -27,6 +27,7 @@ type ReconnectHandler = () => void
  * - 只做“通知变了”，不缓存业务数据，REST 永远是权威读取来源。
  */
 class LiveSocket {
+  private enabled = true
   private socket?: WebSocket
   private reconnectTimer?: number
   private heartbeatTimer?: number
@@ -37,6 +38,12 @@ class LiveSocket {
   private readonly messageHandlers = new Set<MessageHandler>()
   private readonly stateHandlers = new Set<StateHandler>()
   private readonly reconnectHandlers = new Set<ReconnectHandler>()
+
+  /** Regional REST adapters do not authorize the older global push channel. */
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled
+    if (!enabled) this.stop()
+  }
 
   onMessage(handler: MessageHandler): () => void {
     this.messageHandlers.add(handler)
@@ -59,6 +66,10 @@ class LiveSocket {
   }
 
   connect(): void {
+    if (!this.enabled) {
+      this.emitState('disconnected')
+      return
+    }
     this.stopped = false
     if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
       return

@@ -40,9 +40,9 @@ public class JdbcOpsEventLogRepository implements OpsEventLogRepository {
 
     private static final String INSERT_LOG = """
             INSERT INTO safety.ops_event_log (
-                edge_node_code, log_level, event_type, message, occurred_at
+                edge_node_code, log_level, event_type, message, occurred_at, project_id, region_id, subsystem_code
             ) VALUES (
-                :nodeId, :level, :type, :text, :occurredAt
+                :nodeId, :level, :type, :text, :occurredAt, :scopeProject, :scopeRegion, :scopeSystem
             )
             RETURNING id
             """;
@@ -63,7 +63,7 @@ public class JdbcOpsEventLogRepository implements OpsEventLogRepository {
     private final RowMapper<OpsEventLog> rowMapper;
 
     public JdbcOpsEventLogRepository(NamedParameterJdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = new com.bproject.safety.config.ScsScopedJdbcTemplate(jdbcTemplate);
         this.rowMapper = new OpsEventLogRowMapper();
     }
 
@@ -80,6 +80,10 @@ public class JdbcOpsEventLogRepository implements OpsEventLogRepository {
                 .addValue("text", persisted.text)
                 .addValue("occurredAt", Timestamp.from(persisted.ts.toInstant()));
 
+        var scope=com.bproject.safety.config.ScsCentralScope.writeScope();
+        params.addValue("scopeProject",scope==null?null:scope.projectId(),Types.VARCHAR)
+              .addValue("scopeRegion",scope==null?null:scope.regionId(),Types.VARCHAR)
+              .addValue("scopeSystem",scope==null?null:scope.subsystemCode(),Types.VARCHAR);
         Long generatedId = jdbcTemplate.queryForObject(INSERT_LOG, params, Long.class);
         OpsEventLog returned = persisted.copy();
         if (generatedId != null) {

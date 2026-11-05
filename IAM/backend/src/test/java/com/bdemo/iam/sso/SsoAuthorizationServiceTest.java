@@ -38,4 +38,42 @@ class SsoAuthorizationServiceTest {
     user.setSuperAdmin(true);
     assertThrows(SsoTicketService.SsoTicketException.class,()->service.current("subject","sid","psms"));
   }
+  com.bdemo.iam.scope.ScopeContextService versionTwo() {
+    var scopes=mock(com.bdemo.iam.scope.ScopeContextService.class);
+    var registry=mock(com.bdemo.iam.scope.ApplicationRegistry.class);
+    when(registry.accepts("psms")).thenReturn(true);when(registry.contract("psms")).thenReturn(2);
+    when(registry.permissionSystem("psms")).thenReturn("pps");
+    org.springframework.test.util.ReflectionTestUtils.setField(service,"scopeContexts",scopes);
+    org.springframework.test.util.ReflectionTestUtils.setField(service,"registry",registry);
+    user.setUserContext(mock(com.bproject.iam.context.UserContext.class));
+    return scopes;
+  }
+  @Test void consumerAssertionLoadsTheCentralSidSelectionBeforeAudienceProjection() {
+    var scopes=versionTwo();
+    var selected=mock(com.bproject.iam.context.UserContext.class);
+    doAnswer(call->{user.setUserContext(selected);return null;}).when(scopes).forSession(user,"sid");
+    when(scopes.forAudience(user,"psms")).thenReturn(selected);
+    assertSame(selected,service.current("subject","sid","psms").get("userContext"));
+    var order=inOrder(scopes);order.verify(scopes).forSession(user,"sid");order.verify(scopes).forAudience(user,"psms");
+  }
+  @Test void currentSelectionRevocationCannotFallBackToDefaultAudience() {
+    var scopes=versionTwo();
+    doAnswer(call->{user.setScopedApps(Set.of());return null;}).when(scopes).forSession(user,"sid");
+    assertThrows(SsoTicketService.SsoTicketException.class,()->service.current("subject","sid","psms"));
+    verify(scopes,never()).forAudience(any(),anyString());
+  }
+  @Test void currentNativeReadinessIsCheckedAfterSessionSelectionOnEveryAssertion() {
+    var scopes=versionTwo();var selected=mock(com.bproject.iam.context.UserContext.class);
+    when(scopes.forAudience(user,"psms")).thenReturn(selected);
+    service.current("subject","sid","psms");verify(subjects).requireNativeScope("subject","psms",selected);
+    doThrow(new SsoTicketService.SsoTicketException("NATIVE_SCOPE_MAPPING_REQUIRED")).when(subjects).requireNativeScope("subject","psms",selected);
+    assertThrows(SsoTicketService.SsoTicketException.class,()->service.current("subject","sid","psms"));
+    verify(scopes,times(2)).forSession(user,"sid");
+  }
+  @Test void malformedOrExpiredSelectionUsesTheExistingSsoDenialContract() {
+    var scopes=versionTwo();
+    doThrow(com.bdemo.iam.common.BizException.unauthorized("invalid selection")).when(scopes).forSession(user,"sid");
+    assertThrows(SsoTicketService.SsoTicketException.class,()->service.current("subject","sid","psms"));
+    verifyNoInteractions(subjects);
+  }
 }

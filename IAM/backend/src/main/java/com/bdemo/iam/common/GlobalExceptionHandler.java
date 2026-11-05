@@ -52,6 +52,11 @@ public class GlobalExceptionHandler {
                 .body(R.fail(409, "数据已存在（唯一约束冲突），请检查编码/名称是否重复"));
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<R<Void>> invalidJson(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        return ResponseEntity.badRequest().body(R.fail(400,"请求格式或范围参数无效"));
+    }
+
     @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
     public ResponseEntity<R<Void>> handleStatus(org.springframework.web.server.ResponseStatusException ex) {
         int status = ex.getStatusCode().value();

@@ -27,10 +27,18 @@ public class AccountController {
         if(mode.equals("disabled"))return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("enabled",false,"mode",mode));
         if(actor==null)throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"请先登录");
         String csrf=request.getSession(false)==null?"":Objects.toString(request.getSession(false).getAttribute(EhmSsoSessions.CSRF),"");
-        if(actor instanceof EhmSsoSessions.Actor nativeActor)return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(
-            Map.of("enabled",true,"mode","iam","csrfToken",csrf,"projectIds",nativeActor.projects(),"permissions",nativeActor.permissions(),"readOnly",nativeActor.readOnly(),"globalRead",nativeActor.globalRead(),
+        if(actor instanceof EhmSsoSessions.Actor nativeActor){
+            var result=new LinkedHashMap<String,Object>(Map.of("enabled",true,"mode","iam","csrfToken",csrf,"projectIds",nativeActor.projects(),"permissions",nativeActor.permissions(),"readOnly",nativeActor.readOnly(),"globalRead",nativeActor.globalRead(),
                 "projectId",Objects.toString(request.getAttribute("EHM_PROJECT_ID"),""),"user",
                 Map.of("id",nativeActor.subject(),"username",nativeActor.localSubject(),"displayName",nativeActor.localSubject(),"role",nativeActor.admin()?"SUPER_ADMIN":"USER")));
+            var context=EhmCentralScope.current();
+            if(context!=null){
+                result.put("menuOperations",context.menuOperations());
+                result.put("centralAdminLevel",context.adminLevel());
+                result.put("authorizationVersion",context.authorizationVersion());
+            }
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);
+        }
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("enabled",true,"mode","iam","csrfToken",csrf,"user",Map.of("id",actor.getName(),"username",actor.getName(),"displayName",actor.getName(),"role",BusinessPermissionFilter.admin(request)?"SUPER_ADMIN":"USER")));
     }
     @PostMapping("/logout") public ResponseEntity<Void> logout(HttpServletRequest request){

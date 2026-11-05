@@ -23,6 +23,22 @@ public class OperationLogger {
     this.mapper = mapper;
   }
 
+  /** Called after the failed creation transaction ends, so the warning survives its rollback. */
+  @org.springframework.transaction.annotation.Transactional(
+      propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+  public void usernameConflict(String requestedUsername, String reason) {
+    String target = requestedUsername == null ? "" : requestedUsername.trim();
+    if (!target.matches("[A-Za-z0-9_.-]{3,64}")) target = "INVALID_USERNAME";
+    target = target.toLowerCase(java.util.Locale.ROOT);
+    var actor = com.bdemo.iam.security.JwtAuthFilter.currentUser();
+    String source = "UNIQUE_CONSTRAINT".equals(reason) ? "UNIQUE_CONSTRAINT" : "PRECHECK";
+    log.warn("Username creation rejected: actor={}, target={}, source={}",
+        actor == null ? "SYSTEM" : actor.getUserId(), target, source);
+    record(actor == null ? "SYSTEM" : actor.getUsername(),
+        actor == null ? null : actor.getUserId(), "operation", "user", "USERNAME_CONFLICT",
+        target, "Username conflict rejected (" + source + ")", "POST", null, null, "fail");
+  }
+
   public void record(
       String username,
       String userId,

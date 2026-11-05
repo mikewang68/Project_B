@@ -214,6 +214,8 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import useUserStore from '@/store/modules/user'
+import { resourceAction } from '@/utils/central-authorization'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts/core'
@@ -262,7 +264,9 @@ const statusOptions = Object.entries(alertStatusLabels).map(([value, label]) => 
 const thresholdEntries = computed(() => Object.entries(detail.value?.ruleSnapshot?.thresholds || {}))
 const transitionTitle = computed(() => alertStatusLabels[transitionForm.toStatus] || '告警处置')
 const profileJumpEnabled = computed(() => canJumpToProfile(detail.value))
-const suggestionConversionEnabled = computed(() => canConvertAlert(detail.value))
+const scopeUser = useUserStore()
+const scopeCan = (menu, action) => resourceAction(true, scopeUser.centralAuthorization, menu, action)
+const suggestionConversionEnabled = computed(() => canConvertAlert(detail.value) && scopeCan('EMCS:2011', 'ADD'))
 const availableActions = computed(() => {
   const status = detail.value?.event?.status
   const actions = {
@@ -271,7 +275,7 @@ const availableActions = computed(() => {
     dispatched: [{ value: 'processing', label: '开始人工处理' }],
     processing: [{ value: 'closed', label: '关闭告警' }, { value: 'false_closed', label: '误报关闭' }, { value: 'escalated', label: '升级告警' }]
   }
-  return actions[status] || []
+  return (actions[status] || []).filter(a => scopeCan('EMCS:2010', a.value === 'ack' ? 'CONFIRM' : 'EDIT'))
 })
 
 async function loadAlerts() {

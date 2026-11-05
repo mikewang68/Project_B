@@ -1,19 +1,17 @@
 {
   "schemaVersion": 1,
+  "blockedPorts": [],
   "instances": {
-    "identity-dev": {
-      "root": "/srv/b-project-identity/IAM",
-      "databaseUrl": "jdbc:postgresql://127.0.0.1:25432/iam_identity_dev?currentSchema=iam",
-      "appRole": "iam_identity_dev_app",
-      "migrationRole": "iam_identity_dev_migrate",
-      "port": 28184
-    },
-    "identity-test": {
-      "root": "/srv/b-project-identity-test/IAM",
-      "databaseUrl": "jdbc:postgresql://127.0.0.1:25432/iam_identity_dev_test?currentSchema=iam",
-      "appRole": "iam_identity_test_app",
-      "migrationRole": "iam_identity_test_migrate",
-      "port": 28186
+    "REPLACE_WITH_INSTANCE_NAME": {
+      "root": "REPLACE_WITH_ABSOLUTE_INSTANCE_ROOT_ENDING_IN_IAM",
+      "deploymentProfile": "STANDARD",
+      "databaseUrl": "REPLACE_WITH_EXACT_APPROVED_JDBC_URL",
+      "databaseHost": "REPLACE_WITH_DATABASE_HOST",
+      "databasePort": 0,
+      "databaseName": "REPLACE_WITH_DATABASE_NAME",
+      "appRole": "REPLACE_WITH_RESTRICTED_APP_ROLE",
+      "migrationRole": "REPLACE_WITH_SEPARATE_MIGRATION_ROLE",
+      "port": 0
     }
   }
 }

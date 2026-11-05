@@ -2,6 +2,7 @@
  * IAM 后端 REST API 封装（context-path: /api/v1/iam）。
  */
 import { createClient } from './request'
+import type { UserContext } from './scope'
 import type { Role, User, FabricIdentityTask } from '@/iam/types'
 import type { MenuNode } from '@/iam/menu-tree'
 import type { OrgNode } from '@/iam/org-tree'
@@ -15,6 +16,7 @@ export const TOKEN_KEY = 'b-iam-token'
 const client = createClient({ tokenKey: TOKEN_KEY, prefix: 'iam' })
 
 export interface LoginResult {
+  userContext?: UserContext | null
   superAdmin: boolean
   readOnly: boolean
   token: string
@@ -24,6 +26,7 @@ export interface LoginResult {
 }
 
 export interface MeResult {
+  userContext?: UserContext | null
   readOnly: boolean
   user: { id: string; username: string; name: string }
   roles: Array<Pick<Role, 'id' | 'name' | 'code'>>
@@ -53,6 +56,39 @@ export interface RoleUpsertPayload {
 /** 后端 User 不回传密码，前端表单统一按空串处理 */
 function normalizeUser(u: User): User {
   return { ...u, password: '' }
+}
+
+export interface NavigationMenuRow {
+  stableMenuKey: string
+  appCode: string
+  parentStableMenuKey: string | null
+  menuName: string
+  projectedDisplayTitle: string
+  menuKind: string
+  entryPath: string
+  routePath: string
+  visible: number
+  enabled: number
+  navEligible: number
+  featureStatus: string
+  unavailableReason: string
+  rowVersion: number
+  updatedBy: string
+  updatedAt: string
+}
+
+export interface NavigationMenuUpdatePayload {
+  parentStableMenuKey?: string
+  rowVersion?: number
+  menuName?: string
+  projectedDisplayTitle?: string
+  entryPath?: string
+  routePath?: string
+  visible?: number
+  enabled?: number
+  navEligible?: number
+  featureStatus?: string
+  unavailableReason?: string
 }
 
 export const iamApi = {
@@ -99,6 +135,17 @@ export const iamApi = {
   // ---------------- 权限目录 / 组织 ----------------
   permissionTree: () => client.request<MenuNode[]>('/permissions/tree'),
   orgTree: () => client.request<OrgNode[]>('/orgs/tree'),
+
+  // ---------------- 导航菜单维护 ----------------
+  navigationMenus: (appCode?: string) =>
+    client.request<NavigationMenuRow[]>('/navigation/menus', { query: { appCode } }),
+  createNavigationMenu: (payload: { appCode: string; stableMenuKey: string; parentStableMenuKey: string; menuKind: string; menuName: string; routePath: string; entryPath: string }) =>
+    client.request<void>('/navigation/menus', { method: 'POST', body: payload }),
+  updateNavigationMenu: (stableMenuKey: string, payload: NavigationMenuUpdatePayload) =>
+    client.request<NavigationMenuRow>(`/navigation/menus/${encodeURIComponent(stableMenuKey)}`, {
+      method: 'PUT',
+      body: payload,
+    }),
 
   // ---------------- 有效权限 / 权限健康 ----------------
   effectivePermissions: (id: string) =>

@@ -71,7 +71,7 @@ const visible = ref(false)
 const saving = ref(false)
 const configText = ref('')
 const form = reactive({ ruleName: '', scope: 'area', method: 'ratio', effectiveFrom: '', remark: '' })
-const access = computed(() => costBusinessAccess(useUserStore().roles))
+const access = computed(() => costBusinessAccess(useUserStore().roles, useUserStore().centralAuthorization))
 const displayConfig = (value) => JSON.stringify(value || {})
 const scopeLabel = (value) => ({ area: '区域', equipment: '设备', meter: '计量点' }[value] || value || '—')
 

@@ -13,9 +13,11 @@ import { seedDatabase } from './seeds/seed-data.js';
 
 import { authRouter } from './routes/auth.routes.js';
 import { ssoRouter, ssoGuard } from './middleware/sso.js';
+import { sharedDispatchRouter } from './routes/shared-dispatch.routes.js';
 import { plansRouter } from './routes/plans.routes.js';
 import { overviewRouter } from './routes/overview.routes.js';
 import { businessRouter } from './routes/business.routes.js';
+import { governanceRouter } from './routes/governance.routes.js';
 import { workOrdersRouter } from './routes/workOrders.routes.js';
 import { appointmentsRouter } from './routes/appointments.routes.js';
 import { monitorRouter } from './routes/monitor.routes.js';
@@ -65,11 +67,13 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.use('/api/auth/sso', ssoRouter);
+app.use('/api/shared/dispatch', sharedDispatchRouter);
 app.use(ssoGuard);
 app.use('/api/auth', authRouter);
 app.use('/api/plans', plansRouter);
 app.use('/api/overview', overviewRouter);
 app.use('/api/business', businessRouter);
+app.use('/api/governance', governanceRouter);
 app.use('/api/work-orders', workOrdersRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/monitor', monitorRouter);
@@ -124,7 +128,7 @@ async function waitForOpenGauss(attempts = 4, delayMs = 5000) {
   }
   throw new Error(
     `openGauss 连接失败: ${last}。请确认隧道已建立：`
-    + ` ssh -N -L ${env.OPENGAUSS_PORT}:<node4>:${env.OPENGAUSS_PORT} lrz@<跳板机>`,
+    + ` ssh -N -L ${env.OPENGAUSS_PORT}:<DB_HOST>:${env.OPENGAUSS_PORT} <SSH_USER>@<BASTION_HOST>`,
   );
 }
 

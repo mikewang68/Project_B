@@ -10,4 +10,7 @@ export interface CurrentUser {
   readOnly?: boolean
   authorizationVersion?: string
   csrfToken?: string
+  menuOperations?: Record<string, string[]> | null
+  centralAdminLevel?: string | null
+  scopedRealtime?: boolean
 }

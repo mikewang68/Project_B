@@ -42,10 +42,10 @@ const stats = computed(() => {
   const activeCount = models.value.filter((m) => m.status === 'ACTIVE').length
   const avgLatency = total > 0
     ? (models.value.reduce((acc, m) => acc + m.latencyMs, 0) / total).toFixed(1)
-    : '38.5'
+    : '—'
   const avgMap = total > 0
     ? ((models.value.reduce((acc, m) => acc + m.accuracyMap, 0) / total) * 100).toFixed(1)
-    : '94.0'
+    : '—'
   return { total, activeCount, avgLatency, avgMap }
 })
 
@@ -124,7 +124,7 @@ onMounted(() => {
           <el-icon><Cpu /></el-icon>
         </div>
         <div class="stat-data">
-          <small>工业AI模型库</small>
+          <small>AI 模型参考目录</small>
           <strong>{{ stats.total }} <span class="stat-unit">款</span></strong>
           <span class="stat-sub">涵盖PPE/禁区/烟火/姿态</span>
         </div>
@@ -135,8 +135,8 @@ onMounted(() => {
           <el-icon><Check /></el-icon>
         </div>
         <div class="stat-data">
-          <small>当前生效选用模型</small>
-          <strong class="stat-highlight">{{ selectedModel?.name || 'YOLOv8-Safety' }}</strong>
+          <small>当前选用参考模型</small>
+          <strong class="stat-highlight">{{ selectedModel?.name || '未加载模型' }}</strong>
           <span class="stat-sub">{{ selectedModel?.engine }} · {{ selectedModel?.taskType }}</span>
         </div>
       </div>
@@ -146,9 +146,9 @@ onMounted(() => {
           <el-icon><Timer /></el-icon>
         </div>
         <div class="stat-data">
-          <small>平均端到端推理时延</small>
+          <small>参考平均推理时延</small>
           <strong>{{ stats.avgLatency }} <span class="stat-unit">ms</span></strong>
-          <span class="stat-sub">边缘加速卡 NPU / TensorRT FP16</span>
+          <span class="stat-sub">模型目录参考值，非现场测量</span>
         </div>
       </div>
 
@@ -157,9 +157,9 @@ onMounted(() => {
           <el-icon><DataLine /></el-icon>
         </div>
         <div class="stat-data">
-          <small>工业场景基准 mAP</small>
+          <small>参考 mAP</small>
           <strong>{{ stats.avgMap }}<span class="stat-unit">%</span></strong>
-          <span class="stat-sub">严格评测集 mAP@0.5 指标</span>
+          <span class="stat-sub">目录参考指标，非本轮实测精度</span>
         </div>
       </div>
     </div>
@@ -169,8 +169,8 @@ onMounted(() => {
       <div class="section-header">
         <div class="section-title">
           <el-icon><Operation /></el-icon>
-          <h2>工业视觉 AI 模型库与选用管理</h2>
-          <span class="badge-count">已接入 {{ models.length }} 款模型</span>
+          <h2>视觉 AI 模型参考目录与配置</h2>
+          <span class="badge-count">已登记 {{ models.length }} 款参考模型</span>
         </div>
         <div class="section-actions">
           <button type="button" class="btn-refresh" @click="loadModels">
@@ -210,14 +210,14 @@ onMounted(() => {
           <!-- 核心指标条 -->
           <div class="card-metrics">
             <div class="metric-item">
-              <small>检测精度 mAP</small>
+              <small>参考精度 mAP</small>
               <b>{{ (item.accuracyMap * 100).toFixed(1) }}%</b>
               <div class="mini-bar">
                 <div class="mini-bar-fill" :style="{ width: `${item.accuracyMap * 100}%` }"></div>
               </div>
             </div>
             <div class="metric-item">
-              <small>推理时延</small>
+              <small>参考时延</small>
               <b>{{ item.latencyMs }} ms</b>
               <span class="fps-note">{{ item.fps }} FPS</span>
             </div>
@@ -245,7 +245,7 @@ onMounted(() => {
               <button
                 type="button"
                 class="btn-config"
-                v-permission="'safety:module:ai:model:edit'" @click.stop="openConfigDialog(item)"
+                v-permission="{permission:'safety:module:ai:model:edit',menu:'SCS:ai-models',action:'EDIT',globalManagement:true}" @click.stop="openConfigDialog(item)"
               >
                 <el-icon><Setting /></el-icon>
                 <span>调参配置</span>
@@ -255,7 +255,7 @@ onMounted(() => {
                 v-if="!item.isSelected"
                 type="button"
                 class="btn-select"
-                v-permission="'safety:module:ai:model:edit'" @click.stop="selectModel(item.id)"
+                v-permission="{permission:'safety:module:ai:model:edit',menu:'SCS:ai-models',action:'CONFIRM',globalManagement:true}" @click.stop="selectModel(item.id)"
               >
                 <span>选用此模型</span>
               </button>
@@ -268,16 +268,16 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 核心板块 2：现场实际识别案例工作台（Real Recognition Case） -->
+    <!-- 核心板块 2：本地模拟识别案例工作台 -->
     <div class="case-section">
       <div class="section-banner">
         <div class="banner-title">
           <el-icon><Odometer /></el-icon>
-          <h2>实际工况 AI 视觉识别案例工作台</h2>
-          <span class="live-tag">真实前向推理闭环</span>
+          <h2>本地模拟 AI 识别案例工作台</h2>
+          <span class="live-tag">模拟软件流程</span>
         </div>
         <p class="banner-subtitle">
-          选用工业 AI 检测模型，在典型现场工况监控画面上执行目标检测识别，查看毫秒级推理耗时与目标标定，并可一键闭环生成安全告警
+          使用示意画面和预设结果验证识别、复核与告警的软件流程；当前执行本地模拟，模型指标为参考数据，未调用现场推理硬件或广播设备。
         </p>
       </div>
 
@@ -334,7 +334,7 @@ onMounted(() => {
         <span class="dialog-footer">
           <el-button @click="configDialogVisible = false">取消</el-button>
           <el-button
- v-permission="'safety:module:ai:model:edit'"            type="primary"
+ v-permission="{permission:'safety:module:ai:model:edit',menu:'SCS:ai-models',action:'EDIT',globalManagement:true}"            type="primary"
             :loading="isSavingConfig"
             @click="saveConfig"
           >

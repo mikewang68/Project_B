@@ -11,21 +11,26 @@ import org.springframework.stereotype.Service;
 public class AppScopePolicy {
   private final RoleMapper roles;
   public AppScopePolicy(RoleMapper roles) { this.roles=roles; }
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bdemo.iam.scope.ScopeProvisioning scopeProvisioning;
   public static Set<String> allApps() {
     Set<String> values=new TreeSet<>();for(var app:AppCodeEnum.values())values.add(app.name());return values;
   }
   public Set<String> allowedApps(String userId) { return new TreeSet<>(roles.selectAllowedApps(userId)); }
   public static boolean globalRead(LoginUser actor) {
+    if(actor!=null&&actor.getUserContext()!=null)return actor.getUserContext().global();
     return actor!=null && (actor.isSuperAdmin() || actor.isReadOnly() && actor.getRoles().stream()
         .anyMatch(r->"PLATFORM_AUDITOR_READONLY".equalsIgnoreCase(r)));
   }
   public boolean visible(String kind,String id) {
     var actor=JwtAuthFilter.currentUser();
+    if(actor!=null&&actor.getUserContext()!=null)return scopeProvisioning.visible(kind,id,actor.getUserContext());
     if(actor==null || globalRead(actor))return true;
     return "IAM".equals(roles.selectManagementOwner(kind,id)) && actor.getScopedApps().contains("IAM");
   }
   public void requireOwned(String kind,String id) {
     var actor=JwtAuthFilter.currentUser();
+    if(actor!=null&&actor.getUserContext()!=null){scopeProvisioning.requireOwned(kind,id);return;}
     if(actor==null || actor.isReadOnly())throw BizException.forbidden("管理操作未获授权");
     if(!actor.isSuperAdmin() && (!visible(kind,id) || kind.equals("USER") &&
         roles.selectAllowedApps(id).stream().anyMatch(a->!"IAM".equals(a)) || kind.equals("ROLE") &&
@@ -34,6 +39,11 @@ public class AppScopePolicy {
   }
   public void recordCreated(String kind,String id) {
     var actor=JwtAuthFilter.currentUser();
+    if(actor!=null&&actor.getUserContext()!=null) {
+      String owner=actor.getUserContext().subsystemCode();
+      roles.insertManagementOwner(kind,id,owner==null?"GLOBAL":owner);
+      return;
+    }
     String owner=actor!=null && !actor.isSuperAdmin()?"IAM":"GLOBAL";
     roles.insertManagementOwner(kind,id,owner);
     if(kind.equals("ROLE")) updateRoleScopes(id);
@@ -58,6 +68,12 @@ public class AppScopePolicy {
   }
   public void requireAssignableRole(String roleId,String code) {
     var actor=JwtAuthFilter.currentUser();
+    if(actor!=null&&actor.getUserContext()!=null) {
+      if(actor.isReadOnly())throw BizException.forbidden("只读用户不能分配角色");
+      if(!Set.of("L1_SUPER").contains(actor.getUserContext().adminLevel())&&!scopeProvisioning.visible("ROLE",roleId,actor.getUserContext()))
+        throw BizException.forbidden("不能分配其他范围的角色");
+      return;
+    }
     if(actor==null || actor.isReadOnly())throw BizException.forbidden("角色分配未获授权");
     boolean reserved=Set.of("SUPER_ADMIN","PLATFORM_ADMIN_FULL","PLATFORM_AUDITOR_READONLY").contains(code.toUpperCase(Locale.ROOT));
     if(!actor.isSuperAdmin() && (reserved || !visible("ROLE",roleId)

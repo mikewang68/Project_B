@@ -9,7 +9,7 @@ import {
 } from '@/utils/transportCryptoPolicy'
 import cache from '@/plugins/cache'
 
-const TRANSPORT_BASE_URL = import.meta.env.VITE_APP_BASE_API
+const TRANSPORT_BASE_URL = import.meta.env.VITE_APP_BASE_API || '/emcs-api'
 const TRANSPORT_ENABLE_HEADER = 'X-Transport-Encrypt'
 const TRANSPORT_KEY_ID_HEADER = 'X-Key-Id'
 const ENCRYPTED_RESPONSE_HEADER = 'x-body-encrypted'

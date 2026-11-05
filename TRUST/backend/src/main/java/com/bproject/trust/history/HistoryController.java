@@ -164,8 +164,10 @@ public class HistoryController {
       Authentication a, @PathVariable String id, @RequestParam(defaultValue = "0") int page) {
     return history(
         "v.file_state,v.chain_state,v.manifest_cid,v.tx_id,v.block_number,v.last_error",
-        "FROM events_versions v JOIN events b ON b.id=v.id WHERE b.id=? AND b.org_id=? AND"
-            + " b.record_kind='LEGACY_V1'",
+        "FROM events_versions v JOIN events e ON e.id=v.id WHERE e.id=? AND e.org_id=? AND"
+            + " e.record_kind='LEGACY_V1'"
+            + com.bproject.trust.identity.TrustCentralScope.predicate(
+                com.bproject.trust.identity.TrustCentralScope.Root.EVENT, "e"),
         page,
         id,
         identity.org(a));

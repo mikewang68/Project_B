@@ -7,11 +7,11 @@
         <b>报表导出中心</b>
         <small>预览 / 导出 Excel / 冻结归档 复用同一份口径快照</small>
       </div>
-      <el-button @click="$router.push('/energy/cost/record')">返回成本核算</el-button>
+      <el-button v-if="!user.centralAuthorization" @click="$router.push('/energy/cost/record')">返回成本核算</el-button>
     </header>
     <el-empty
       v-if="!access.report"
-      description="报表中心仅财务与能源管理员可用（PRD 附录 K.6 · 契约 §6.8）"
+      :description="user.centralAuthorization ? '当前账号未获得报表查看权限' : '报表中心仅财务与能源管理员可用（PRD 附录 K.6 · 契约 §6.8）'"
       class="report-forbidden"
     >
       <template #image><el-icon :size="56"><Lock /></el-icon></template>
@@ -52,8 +52,8 @@
           placeholder="设备编号"
         />
         <el-button type="primary" :loading="loading" @click="preview">生成预览</el-button>
-        <el-button :disabled="!snapshot || formalBlocked" @click="exportExcel">导出 Excel</el-button>
-        <el-button :disabled="!snapshot || formalBlocked" @click="archive">冻结归档</el-button>
+        <el-button v-if="access.export" :disabled="!snapshot || formalBlocked" @click="exportExcel">导出 Excel</el-button>
+        <el-button v-if="access.archive" :disabled="!snapshot || formalBlocked" @click="archive">冻结归档</el-button>
         <el-tooltip :content="subscription.label">
           <span><el-button :disabled="!subscription.enabled">{{ subscription.label || '报表订阅' }}</el-button></span>
         </el-tooltip>
@@ -84,7 +84,7 @@
           </div>
         </aside>
       </section>
-      <ReportArchiveTable ref="archives" class="archives" />
+      <ReportArchiveTable ref="archives" class="archives" :can-export="access.export" />
     </template>
   </div>
 </template>
@@ -95,10 +95,14 @@ import { Lock } from '@element-plus/icons-vue'
 import downloadPlugin from '@/plugins/download'
 import { archiveReport, getReportTemplates, previewReport } from '@/api/reports'
 import useUserStore from '@/store/modules/user'
+import { reportAccess } from '@/utils/central-authorization'
 import ReportPreview from './components/ReportPreview.vue'
 import ReportArchiveTable from './components/ReportArchiveTable.vue'
 import { compactPayload, costBusinessAccess, costWriteFailurePolicy, energyTypeLabels, errorStatus, reportTemplateLabels, reportTemplateSectionSummary } from '../shared/act5'
-const access = computed(() => costBusinessAccess(useUserStore().roles))
+const user = useUserStore()
+const access = computed(() => reportAccess(user.centralAuthorization
+  ? user.permissions.includes('energy:cost:report')
+  : costBusinessAccess(user.roles).report, user.centralAuthorization))
 const templates = ref([])
 const subscription = ref({ enabled: false, label: '报表订阅' })
 const snapshot = ref(null)

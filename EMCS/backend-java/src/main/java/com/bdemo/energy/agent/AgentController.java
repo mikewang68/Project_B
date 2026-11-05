@@ -32,5 +32,5 @@ public class AgentController {
     }
     @GetMapping("/inspections") public AjaxResult list(@RequestParam(defaultValue="1")int pageNum,@RequestParam(defaultValue="20")int pageSize){return AjaxResult.success(service.list(pageNum,pageSize)).add("msg","inspections");}
     @GetMapping("/inspections/{id}") public AjaxResult detail(@PathVariable long id){return AjaxResult.success(service.detail(id)).add("msg","inspection detail");}
-    @PostMapping("/inspections/run") public AjaxResult run(@RequestBody(required=false)Map<String,Object>b){return AjaxResult.success(Map.of("reportId",service.run(b==null?"manual":String.valueOf(b.getOrDefault("triggerType","manual"))))).add("msg","inspection completed");}
+    @PostMapping("/inspections/run") public AjaxResult run(@RequestBody(required=false)Map<String,Object>b){return AjaxResult.success(Map.of("reportId",service.run(b==null?"manual":String.valueOf(b.getOrDefault("triggerType","manual"))))).add("msg","scoped summary recorded; device diagnosis not performed");}
 }

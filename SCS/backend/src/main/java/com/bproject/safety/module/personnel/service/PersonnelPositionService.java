@@ -27,6 +27,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class PersonnelPositionService {
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private com.bproject.safety.config.ScsScopedReferenceData centralReferences;
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
 
@@ -83,11 +85,13 @@ public class PersonnelPositionService {
      * @return 是否命中已登记人员；未知/已删除人员返回 false，调用方据此回传 ignored。
      *         上报方不能成为第二条人员主数据来源，不允许新建人员。
      */
+    @org.springframework.transaction.annotation.Transactional
     public boolean apply(String id, Double x, Double y, Integer battery, Double accuracy) {
         if (id == null || id.isBlank() || x == null || y == null) {
             return false;
         }
         String key = id.trim();
+        if(com.bproject.safety.config.ScsMachineRegistry.current()!=null&&(centralReferences==null||!centralReferences.scopedMachineIngestAllowed(com.bproject.safety.config.ScsCentralScope.Root.PERSONNEL,key)))return false;
         var person = repository.findById(key).orElse(null);
         if (person == null || person.isDeleted) {
             return false;

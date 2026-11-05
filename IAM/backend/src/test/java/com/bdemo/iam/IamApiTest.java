@@ -476,6 +476,7 @@ class IamApiTest {
 
   @Test
   void inactiveAndDeletedRolesCannotExplainImplicitSuperAdminGrant() throws Exception {
+    allowViewerToInspect("user-admin");
     var inactive = role("role-super-admin", "super_admin", "管理员");
     inactive.setStatus("inactive");
     when(roleMapper.selectById("role-super-admin")).thenReturn(inactive);
@@ -492,6 +493,7 @@ class IamApiTest {
 
   @Test
   void ordinaryUserExplanationMatchesEffectiveRoleAndAuthentication() throws Exception {
+    allowViewerToInspect("user-viewer");
     var brief = new com.bdemo.iam.role.dto.RoleBrief();
     brief.setId("role-viewer"); brief.setCode("viewer"); brief.setName("观摩员");
     var row = new com.bdemo.iam.role.dto.RolePermissionRow();
@@ -506,6 +508,22 @@ class IamApiTest {
     mockMvc.perform(get("/users/user-viewer/permission-explanation").param("code", "uncatalogued:operation")
         .header("Authorization", "Bearer " + viewerToken)).andExpect(status().isOk())
         .andExpect(jsonPath("$.data.owned").value(false));
+  }
+
+  @Test
+  void permissionInspectionRejectsInvisibleTargets() throws Exception {
+    mockMvc.perform(get("/users/user-admin/effective-permissions")
+        .header("Authorization", "Bearer " + viewerToken)).andExpect(status().isNotFound());
+    mockMvc.perform(get("/users/user-admin/permission-explanation").param("code", "iam:user:list:view")
+        .header("Authorization", "Bearer " + viewerToken)).andExpect(status().isNotFound());
+  }
+
+  private void allowViewerToInspect(String targetId) {
+    User viewer = userMapper.selectById("user-viewer");
+    viewer.setZoneCode("offline-authorized-zone");
+    User target = userMapper.selectById(targetId);
+    target.setZoneCode("offline-authorized-zone");
+    when(roleMapper.selectManagementOwner("USER", targetId)).thenReturn("IAM");
   }
 
   @Test

@@ -19,6 +19,8 @@ export interface CurrentUser {
   roles: string[]
   readOnly?: boolean
   authorizationVersion?: string
+  menuOperations?: Record<string, string[]> | null
+  centralAdminLevel?: string | null
   permissions: string[]
   passwordChangeRequired: boolean
   menus: MenuItem[]

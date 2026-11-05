@@ -1,5 +1,6 @@
 import { connectClient } from '../db/openGaussClient.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { centralPredicate } from '../middleware/central-scope.js';
 
 export function overviewScope(scopes: readonly string[], workArea: unknown, date: unknown) {
   if (typeof workArea !== 'string' || !/^AREA-[A-Z0-9_-]+$/.test(workArea)
@@ -20,34 +21,44 @@ export async function readBusinessOverview(scopes: readonly string[], workArea: 
   const db = await connect();
   try {
     await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    const plansScope=centralPredicate('plans',2), ordersScope=centralPredicate('work_orders',2),
+      equipmentScope=centralPredicate('equipment',1), exceptionsScope=centralPredicate('exceptions',1),
+      interlocksScope=centralPredicate('interlocks',1), offlineScope=centralPredicate('offline_packets',1),
+      dateScope=centralPredicate('plans',1), appointmentsScope=centralPredicate('appointments',0);
     const plans = (await db.query(`SELECT count(*)::int AS total,
       count(CASE WHEN status='PENDING_CONFIRM' THEN 1 END)::int AS pending,
       count(CASE WHEN status='CONFIRMED' THEN 1 END)::int AS confirmed,
       count(CASE WHEN status='BLOCKED' THEN 1 END)::int AS blocked
       FROM public.plans WHERE valid=1 AND work_area=$1
-        AND (arrive_time AT TIME ZONE 'Asia/Shanghai')::date=$2::date`, [filter.workArea, filter.date])).rows[0];
+        AND (arrive_time AT TIME ZONE 'Asia/Shanghai')::date=$2::date${plansScope.text}`,
+      [filter.workArea, filter.date,...plansScope.values])).rows[0];
     const workOrders = (await db.query(`SELECT count(*)::int AS total FROM public.work_orders
       WHERE valid=1 AND work_area=$1 AND status='COMPLETED'
-        AND (actual_end_time AT TIME ZONE 'Asia/Shanghai')::date=$2::date`, [filter.workArea, filter.date])).rows[0];
+        AND (actual_end_time AT TIME ZONE 'Asia/Shanghai')::date=$2::date${ordersScope.text}`,
+      [filter.workArea, filter.date,...ordersScope.values])).rows[0];
     const equipment = (await db.query(`SELECT count(*)::int AS total,
       count(CASE WHEN status IN ('IDLE','AVAILABLE','ONLINE') THEN 1 END)::int AS available,
       count(CASE WHEN GREATEST(last_heartbeat,last_telemetry_at)>CURRENT_TIMESTAMP-INTERVAL '120 seconds' THEN 1 END)::int AS fresh
-      FROM public.equipment WHERE valid=1 AND work_area=$1`, [filter.workArea])).rows[0];
+      FROM public.equipment WHERE valid=1 AND work_area=$1${equipmentScope.text}`,
+      [filter.workArea,...equipmentScope.values])).rows[0];
     const exceptions = (await db.query(`SELECT count(*)::int AS total FROM public.exceptions
-      WHERE valid=1 AND work_area=$1 AND status NOT IN ('CLOSED','RESOLVED')`, [filter.workArea])).rows[0];
+      WHERE valid=1 AND work_area=$1 AND status NOT IN ('CLOSED','RESOLVED')${exceptionsScope.text}`,
+      [filter.workArea,...exceptionsScope.values])).rows[0];
     const risks = (await db.query(`SELECT id,'EXCEPTION' AS source,type,status,severity AS level
-      FROM public.exceptions WHERE valid=1 AND work_area=$1 AND status NOT IN ('CLOSED','RESOLVED')
+      FROM public.exceptions WHERE valid=1 AND work_area=$1 AND status NOT IN ('CLOSED','RESOLVED')${exceptionsScope.text}
       UNION ALL SELECT id,'INTERLOCK' AS source,type,status,'MAJOR' AS level
-      FROM public.interlocks WHERE valid=1 AND work_area=$1 AND status IN ('TRIGGERED','BLOCKED','OVERRIDDEN')
+      FROM public.interlocks WHERE valid=1 AND work_area=$1 AND status IN ('TRIGGERED','BLOCKED','OVERRIDDEN')${interlocksScope.text}
       UNION ALL SELECT id,'OFFLINE' AS source,'OFFLINE_PACKET' AS type,status,'MAJOR' AS level
-      FROM public.offline_packets WHERE valid=1 AND work_area=$1 AND status IN ('CONFLICT','REJECTED','FAILED')
-      ORDER BY id LIMIT 50`, [filter.workArea])).rows;
+      FROM public.offline_packets WHERE valid=1 AND work_area=$1 AND status IN ('CONFLICT','REJECTED','FAILED')${offlineScope.text}
+      ORDER BY id LIMIT 50`, [filter.workArea,...exceptionsScope.values])).rows;
     // Appointments have no work-area column. Do not expose global counts to an area-only account.
     const appointments = filter.global ? (await db.query(`SELECT count(*)::int AS total
-      FROM public.appointments WHERE valid=1 AND status IN ('QUEUED','CALLED')`)).rows[0] : null;
+      FROM public.appointments WHERE valid=1 AND status IN ('QUEUED','CALLED')${appointmentsScope.text}`,
+      appointmentsScope.values)).rows[0] : null;
     const dates = (await db.query(`SELECT min((arrive_time AT TIME ZONE 'Asia/Shanghai')::date)::text AS earliest,
       max((arrive_time AT TIME ZONE 'Asia/Shanghai')::date)::text AS latest,
-      count(*)::int AS total FROM public.plans WHERE valid=1 AND work_area=$1`, [filter.workArea])).rows[0];
+      count(*)::int AS total FROM public.plans WHERE valid=1 AND work_area=$1${dateScope.text}`,
+      [filter.workArea,...dateScope.values])).rows[0];
     await db.query('COMMIT');
     return { workArea: filter.workArea, date: filter.date, generatedAt: new Date().toISOString(),
       timeZone: 'Asia/Shanghai',

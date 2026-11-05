@@ -5,7 +5,7 @@
  * 巡检列表/详情/手动触发走标准 axios 封装（复用传输加密与统一错误提示）。
  */
 import request from '@/utils/request'
-import { getToken } from '@/utils/auth'
+import { getToken, hasNativeSession } from '@/utils/auth'
 
 const BASE = import.meta.env.VITE_APP_BASE_API
 
@@ -25,9 +25,18 @@ export async function streamChat(body, handlers, signal) {
   const { onEvent, onDone, onError } = handlers || {}
   let response
   try {
+    const csrfHeaders = {}
+    if (hasNativeSession()) {
+      const csrfResponse = await fetch(`${BASE}/auth/sso/csrf`, { credentials: 'same-origin', cache: 'no-store', signal })
+      if (!csrfResponse.ok) throw new Error('统一登录会话不可用')
+      const csrf = await csrfResponse.json()
+      if (csrf.code !== 200 || !csrf.csrfToken) throw new Error('统一登录CSRF凭据缺失')
+      csrfHeaders['X-EMCS-CSRF'] = csrf.csrfToken
+    }
     response = await fetch(`${BASE}/agent/chat`, {
       method: 'POST',
       headers: {
+        ...csrfHeaders,
         'Content-Type': 'application/json;charset=utf-8',
         'Accept': 'text/event-stream',
         'Authorization': getToken() ? `Bearer ${getToken()}` : '',

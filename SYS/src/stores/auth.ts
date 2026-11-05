@@ -30,6 +30,9 @@ export const useAuthStore = defineStore('auth', () => {
   const hydrated = ref(false)
   const readOnly = ref(false)
   const fullAdmin = ref(false)
+  const scopeVersion = ref(1)
+  const scopeActions = ref<Record<string,string[]>>({})
+  const hasOperation = (menu: string, action: string) => scopeVersion.value < 2 || (scopeActions.value[menu] ?? []).includes(action)
 
   const isLoggedIn = computed(() => session.value !== null && currentUser.value !== null)
   const isSuperAdmin = computed(() => fullAdmin.value && !readOnly.value)
@@ -41,7 +44,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   function hydrate(user: { id: string; username: string; name: string },
                   roles: Array<{ id: string; name: string; code: string }>,
-                  permissions: string[], token: string, superAdmin: boolean, readonly = false) {
+                  permissions: string[], token: string, superAdmin: boolean, readonly = false, contextVersion = 1, actions: Record<string,string[]> = {}) {
+    scopeVersion.value=contextVersion; scopeActions.value=actions
     readOnly.value = readonly
     fullAdmin.value = superAdmin && !readonly
     currentUser.value = {
@@ -62,7 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
       for (const p of collectAllPerms()) codes.add(p.code)
     }
     permCodes.value = codes
-    if (readOnly.value) for (const p of codes) if (!/:(view|read|list|query|detail)$/.test(p)) codes.delete(p)
+    if (readOnly.value && contextVersion < 2) for (const p of codes) if (!/:(view|read|list|query|detail)$/.test(p)) codes.delete(p)
     menuTree.value = filterMenuByPerms(MENU_TREE, codes)
     session.value = {
       token,
@@ -77,6 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function reset() {
     readOnly.value = false
+    scopeVersion.value=1; scopeActions.value={}
     fullAdmin.value = false
     session.value = null
     currentUser.value = null
@@ -93,7 +98,7 @@ export const useAuthStore = defineStore('auth', () => {
       const result: LoginResult = await sysApi.login(req.username.trim(), req.password)
       sysApi.token.setToken(result.token)
       hydrate(result.user, result.roles, result.permissions, result.token,
-        result.superAdmin, result.readOnly)
+        result.superAdmin, result.readOnly, result.userContext?.contextVersion, result.userContext?.menuOperations)
       return {
         success: true,
         session: session.value || undefined,
@@ -116,7 +121,7 @@ export const useAuthStore = defineStore('auth', () => {
     const token = sysApi.token.getToken()
     try {
       const me: MeResult = await sysApi.me()
-      hydrate(me.user, me.roles, me.permissions, token || '', me.superAdmin, me.readOnly)
+      hydrate(me.user, me.roles, me.permissions, token || '', me.superAdmin, me.readOnly, me.userContext?.contextVersion, me.userContext?.menuOperations)
     } catch {
       reset()
     } finally {
@@ -126,7 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     session, currentUser, userRoles, permCodes, menuTree, hydrated, readOnly,
-    isLoggedIn, isSuperAdmin, landingPath,
+    isLoggedIn, isSuperAdmin, landingPath, hasOperation,
     login, logout, restoreFromSession,
   }
 })

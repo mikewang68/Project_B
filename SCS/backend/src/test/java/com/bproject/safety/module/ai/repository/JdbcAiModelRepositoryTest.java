@@ -32,11 +32,18 @@ class JdbcAiModelRepositoryTest {
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
 
     private NamedParameterJdbcTemplate jdbcTemplate;
+    private com.bproject.safety.support.jdbc.LegacyRepositoryJdbcFixture jdbcFixture;
+
+    @org.junit.jupiter.api.AfterEach
+    void closeJdbcFixture() {
+        if (jdbcFixture != null) jdbcFixture.close();
+    }
     private Clock clock;
 
     @BeforeEach
     void setUp() {
-        jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        jdbcFixture = new com.bproject.safety.support.jdbc.LegacyRepositoryJdbcFixture();
+        jdbcTemplate = jdbcFixture.named();
         clock = Clock.fixed(Instant.parse("2026-10-24T04:00:00Z"), ZONE);
     }
 

@@ -4,7 +4,7 @@ const vm=require('node:vm');
 const test=require('node:test');
 const assert=require('node:assert/strict');
 function context(authOverrides={}){
-  const auth={ready:Promise.resolve(),user:{id:'test-user'},mode:'iam',canWrite:()=>true,globalRead:false,...authOverrides};
+  const auth={ready:Promise.resolve(),user:{id:'test-user',username:'test-user'},mode:'local',canWrite:()=>true,globalRead:false,...authOverrides};
   const elements=new Map();
   const make=()=>({textContent:'',innerHTML:'',value:'',classList:{add(){},remove(){},toggle(){}},setAttribute(){},addEventListener(){},focus(){},querySelectorAll(){return []},querySelector(){return make()}});
   const el=id=>{if(!elements.has(id))elements.set(id,make());return elements.get(id)};
@@ -35,6 +35,13 @@ test('legacy responses and local fallback remain correctly labeled',()=>{
   c.aiResult(fallback,{answer:'records',mode:'local-fallback',warning:'连接失败',answeredAt:new Date().toISOString(),sources:[]});
   assert.match(fallback.innerHTML,/模型调用失败，显示本地检索/);assert.doesNotMatch(fallback.innerHTML,/Token /);
 });
+test('regional central users do not probe an unadapted assistant endpoint',async()=>{
+  const {c,el}=context({mode:'iam',canWrite:()=>false});
+  let requests=0;c.apiRequest=async()=>{requests++;return {};};
+  await c.refreshAssistantStatus();
+  assert.equal(requests,0);
+  assert.equal(el('assistantEntry').hidden,true);
+});
 test('anonymous identity cannot query model status',async()=>{
   const {c,el}=context({user:null});let calls=0;
   c.apiRequest=async()=>{calls++;throw new Error('must not request')};
@@ -42,7 +49,7 @@ test('anonymous identity cannot query model status',async()=>{
   assert.equal(calls,0);assert.equal(el('assistantEntry').hidden,true);
 });
 test('IAM read-only identity without global read cannot query model status',async()=>{
-  const {c,el}=context({canWrite:()=>false,globalRead:false});let calls=0;
+  const {c,el}=context({mode:'iam',canWrite:()=>false,globalRead:false});let calls=0;
   c.apiRequest=async()=>{calls++;throw new Error('must not request')};
   await c.refreshAssistantStatus();
   assert.equal(calls,0);assert.equal(el('assistantEntry').hidden,true);

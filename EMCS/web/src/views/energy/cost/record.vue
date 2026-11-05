@@ -235,7 +235,7 @@ const factorFields = [{key:'energyScale',label:'能耗规模'},{key:'costImpact'
 const tariffTable = ref()
 const allocationTable = ref()
 const recomputeTable = ref()
-const access = computed(() => costBusinessAccess(useUserStore().roles))
+const access = computed(() => costBusinessAccess(useUserStore().roles, useUserStore().centralAuthorization))
 let activeTraceQuery = null
 let requestSequence = 0
 

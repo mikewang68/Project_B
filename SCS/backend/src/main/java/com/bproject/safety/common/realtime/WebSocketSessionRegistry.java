@@ -12,7 +12,7 @@ import org.springframework.web.socket.WebSocketSession;
 /**
  * WebSocket 在线会话注册表（单实例 Demo）。
  *
- * <p>node4 / node5 多实例下的跨节点广播后续通过 RocketMQ 解决，本阶段只做单实例。
+ * <p>多实例下的跨节点广播后续通过 RocketMQ 解决，本阶段只做单实例。
  * 所有发送均为 best-effort：发送失败只记录日志，不影响业务写操作。</p>
  */
 @Component
@@ -22,6 +22,7 @@ public class WebSocketSessionRegistry {
 
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     @org.springframework.beans.factory.annotation.Autowired private LiveSessionAuthorization authorization;
+    @org.springframework.beans.factory.annotation.Autowired private ScopedLiveEventPolicy scopedEvents;
     private final com.fasterxml.jackson.databind.ObjectMapper json=new com.fasterxml.jackson.databind.ObjectMapper();
 
     /** 复查-D7：慢客户端防护参数——发送阻塞超 2s 或缓冲超 256KB 即关闭该连接，不拖住业务提交线程。 */
@@ -56,11 +57,17 @@ public class WebSocketSessionRegistry {
      * <b>不关闭连接</b>——否则一次 IAM 超时会把全部客户端踢下线并触发重连风暴。
      */
     public void broadcast(TextMessage message) {
-        String type;
-        try{type=json.readTree(message.getPayload()).path("type").asText();}catch(Exception invalid){return;}
+        String type;com.fasterxml.jackson.databind.JsonNode event;
+        try{event=json.readTree(message.getPayload());type=event.path("type").asText();}catch(Exception invalid){return;}
+        var audience=scopedEvents==null?ScopedLiveEventPolicy.Audience.denied():scopedEvents.resolve(type,event.path("data"));
+        TextMessage scopedMessage;
+        try{scopedMessage=new TextMessage(json.writeValueAsString(Map.of("type",type,"eventId",event.path("eventId").asText(),"ts",event.path("ts").asText(),"data",Map.of("refresh",true))));}
+        catch(Exception invalid){return;}
         for(var session:sessions.values())try{
             var actor=authorization==null?null:authorization.current(session);
-            if(authorization==null || authorization.permits(actor,type))send(session,message);
+            if(actor!=null&&actor.context()!=null){
+                if(ScopedLiveEventPolicy.permits(actor,type,audience))send(session,scopedMessage);
+            }else if((audience.legacy()||audience.globalReference())&&(authorization==null || authorization.permits(actor,type)))send(session,message);
         }catch(LiveSessionAuthorization.DeliverySuspendedException suspended){
             log.debug("IAM 暂不可用，跳过本次投递 session={}", session.getId());
         }catch(Exception revoked){closeUnauthorized(session);}

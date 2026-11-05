@@ -172,7 +172,7 @@ public class AiModelService {
         String riskLevel = violations >= 2 ? RiskLevels.SEVERE : (violations == 1 ? RiskLevels.WARNING : RiskLevels.NORMAL);
         String scenarioName = resolveScenarioName(scenario);
 
-        String summary = generateSummary(scenario, violations, detectedObjects);
+        String summary = "【本地模拟推理】" + generateSummary(scenario, violations, detectedObjects);
         String suggestion = generateSuggestion(scenario, violations);
 
         String timestamp = OffsetDateTime.now(clock).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
@@ -252,8 +252,8 @@ public class AiModelService {
                 req.modelName() != null ? req.modelName() : "YOLOv8-SafetyHelmet-v2.3",
                 0,
                 evidence,
-                "现场 AI 视觉模型实时检测推理命中违规目标",
-                "识别案例经人工确认有效，一键上报为安全管控中心正式告警"
+                "本地模拟推理场景，经人工确认上报告警",
+                "模拟案例人工上报；不是现场设备检测事实"
         ));
 
         return new EscalateCaseResult(
@@ -261,7 +261,7 @@ public class AiModelService {
                 alert.id,
                 alert.getRisk(),
                 alert.getStatus(),
-                "已成功生成安全告警 " + alert.id + "，已联动广播至现场广播大屏与安全监管台"
+                "已创建模拟安全告警 " + alert.id + "；仅供软件流程验证，未向现场设备下发指令"
         );
     }
 

@@ -241,11 +241,15 @@ export async function listTasks(filter: { planId?: string; workOrderId?: string;
  * 为指定计划重建任务列表。
  *
  * planBatchNo / workArea 从计划上取，避免调用方漏传导致校验失败；
- * 请求体中的同名字段可覆盖默认值。
+ * 作业区及中央归属由可信计划和上下文决定，设备必须属于该作业区。
  */
 export async function createTasksForPlan(planId: string, tasks: TaskInput[]) {
   const plan = await Plan.findById(planId).lean();
   if (!plan) throw new AppError(404, 'PLAN_NOT_FOUND', '计划不存在');
+  for (const equipmentId of new Set(tasks.flatMap(task => task.equipmentId ? [task.equipmentId] : []))) {
+    const equipment = await Equipment.findOne({ equipmentId, workArea: plan.workArea }).lean();
+    if (!equipment) throw new AppError(403, 'EQUIPMENT_SCOPE_DENIED', '任务设备不在计划的授权作业区');
+  }
 
   const docs = tasks.map((task, index) => {
     const taskNo = `TASK-${String(index + 1).padStart(3, '0')}`;

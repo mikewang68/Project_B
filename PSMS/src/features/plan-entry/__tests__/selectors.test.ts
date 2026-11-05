@@ -50,6 +50,16 @@ function createState(
 }
 
 describe('plan entry selectors', () => {
+  it('keeps native railway execution and completion states visible without reopening confirmation', () => {
+    const state = structuredClone(createState('SCN-01'));
+    const first = state.plan.plans[0];
+    state.plan.plans = [{ ...first, id: 'RUNNING', status: 'IN_PROGRESS' }, { ...first, id: 'DONE', status: 'COMPLETED' }];
+    const ledger = selectPlanLedger(state, query, unresolvedWorkflow);
+    expect(ledger.items.find(row => row.id === 'RUNNING')).toMatchObject({ status: 'IN_PROGRESS',
+      progress: { label: '已下达执行（进度见工单）', status: 'normal' } });
+    expect(ledger.items.find(row => row.id === 'DONE')).toMatchObject({ status: 'COMPLETED',
+      statusTone: 'success', progress: { percent: 100, label: '已完成', status: 'success' } });
+  });
   it('filters live plans and detail by the selected authorized work area', () => {
     const state = structuredClone(createState('SCN-01'));
     const first = state.plan.plans[0];

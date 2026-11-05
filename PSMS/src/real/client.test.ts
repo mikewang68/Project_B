@@ -6,6 +6,12 @@ function plan(id:string){return {_id:id,planBatchNo:'batch',trainNo:'train',carg
   createdAt:'2026-10-26T00:00:00Z',updatedAt:'2026-10-26T00:00:00Z'};}
 afterEach(()=>vi.unstubAllGlobals());
 describe('live ledger pagination',()=>{
+  it.each(['IN_PROGRESS', 'COMPLETED'])('preserves actual railway plan state %s',status=>{
+    expect(planProjection({...plan('RAIL-LIVE'),status}).status).toBe(status);
+  });
+  it('continues rejecting unknown server states',()=>{
+    expect(()=>planProjection({...plan('INVALID'),status:'UNKNOWN_LIVE_STATUS'})).toThrow();
+  });
   it('matches the server business day in Asia/Shanghai rather than the UTC calendar day',()=>{
     const projected=planProjection({...plan('P1'),arriveTime:'2026-08-27T23:30:00Z'});
     expect(projected.arrivalDepartureTime).toBe('2026-08-28T07:30:00+08:00');

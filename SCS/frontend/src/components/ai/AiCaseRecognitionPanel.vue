@@ -17,7 +17,8 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
-const canExecute = computed(() => !!auth.user && !auth.user.readOnly && auth.can('safety:module:ai:model:execute'))
+const canExecute = computed(() => auth.canAction('SCS:ai-models','VIEW','safety:module:ai:model:view'))
+const canEscalate = computed(() => auth.canAction('SCS:ai-models','FAULT_ALARM','safety:module:ai:model:execute'))
 
 const props = defineProps<{
   activeModel?: AiModelInfo | undefined
@@ -131,7 +132,7 @@ async function executeInference(): Promise<void> {
 
 // 一键上报为正式安全告警
 async function escalateToAlert(): Promise<void> {
-  if (!canExecute.value || !inferenceResult.value) return
+  if (!canEscalate.value || !inferenceResult.value) return
   isEscalating.value = true
   try {
     const res = await aiModelApi.escalate({
@@ -345,7 +346,7 @@ function goToAlerts(): void {
           <!-- 推理加载中动画 -->
           <div v-if="isInferring" class="inferring-overlay">
             <div class="infer-spinner"></div>
-            <span>神经网络前向推理中 (NPU/TensorRT)…</span>
+            <span>正在生成本地模拟识别结果…</span>
           </div>
         </div>
 
@@ -375,14 +376,14 @@ function goToAlerts(): void {
                 :min="0.30"
                 :max="0.95"
                 :step="0.05"
-                @change="executeInference"
+
               />
             </div>
           </div>
 
           <div class="control-actions">
             <button
- v-permission="'safety:module:ai:model:execute'"              type="button"
+ v-permission="{permission:'safety:module:ai:model:view',menu:'SCS:ai-models',action:'VIEW'}"              type="button"
               class="primary-infer-btn"
               :disabled="isInferring"
               @click="executeInference"
@@ -391,7 +392,7 @@ function goToAlerts(): void {
               <span>{{ isInferring ? '模型推理计算中…' : '执行 AI 智能识别推理' }}</span>
             </button>
             <button
- v-permission="'safety:module:ai:model:execute'"              type="button"
+ v-permission="{permission:'safety:module:ai:model:view',menu:'SCS:ai-models',action:'VIEW'}"              type="button"
               class="refresh-btn"
               title="重新检测"
               @click="executeInference"
@@ -475,7 +476,7 @@ function goToAlerts(): void {
             </template>
             <template v-else-if="inferenceResult.violationCount > 0">
               <button
- v-permission="'safety:module:ai:model:execute'"                type="button"
+ v-permission="{permission:'safety:module:ai:model:execute',menu:'SCS:ai-models',action:'FAULT_ALARM'}"                type="button"
                 class="escalate-btn"
                 :disabled="isEscalating"
                 @click="escalateToAlert"

@@ -45,7 +45,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 LoginUser user=nativeSessions.current(binding);
                 boolean write=!java.util.Set.of("GET","HEAD","OPTIONS").contains(request.getMethod());
                 String path=request.getRequestURI();
-                if(user.isReadOnly()&&(write||path.contains("/export")||path.contains("/download"))&&!path.endsWith("/auth/sso/logout")){
+                if(user.getUserContext()==null && user.isReadOnly()&&(write||path.contains("/export")||path.contains("/download"))&&!path.endsWith("/auth/sso/logout")){
                     response.setStatus(403);response.setContentType("application/json;charset=UTF-8");response.getWriter().write("{\"code\":403,\"message\":\"只读账号禁止此操作\"}");return;
                 }
                 if(write){

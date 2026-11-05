@@ -134,17 +134,21 @@ public class JdbcEdgeEventQueueRepository implements EdgeEventQueueRepository {
     private final RowMapper<EdgePendingEvent> rowMapper;
 
     public JdbcEdgeEventQueueRepository(NamedParameterJdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = new com.bproject.safety.config.ScsScopedJdbcTemplate(jdbcTemplate);
         this.objectMapper = objectMapper;
         this.rowMapper = new EdgePendingEventRowMapper();
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public EdgePendingEvent save(EdgePendingEvent event) {
         Objects.requireNonNull(event, "event must not be null");
         Objects.requireNonNull(event.idempotencyKey, "event.idempotencyKey must not be null");
         Objects.requireNonNull(event.eventId, "event.eventId must not be null");
 
+        var centralStamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.EDGE_EVENT,event.idempotencyKey);
+        com.bproject.safety.config.ScsCentralScope.requireReference(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.EDGE_NODE,event.edgeNodeId);
+        com.bproject.safety.config.ScsCentralScope.requireReference(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.ALERT,event.linkedAlertId);
         EdgePendingEvent toPersist = event.copy();
         MapSqlParameterSource params = createParams(toPersist);
 
@@ -160,6 +164,7 @@ public class JdbcEdgeEventQueueRepository implements EdgeEventQueueRepository {
                 }
             }
         }
+        com.bproject.safety.config.ScsCentralScope.afterWrite(jdbcTemplate,centralStamp);
         return toPersist.copy();
     }
 

@@ -14,6 +14,7 @@
 import type { PoolClient } from 'pg';
 import { connectClient, getPool } from './openGaussClient.js';
 import { logger } from '../lib/logger.js';
+import { centralPredicate, scopedInsert, checkScopeUpdate } from '../middleware/central-scope.js';
 
 export type Filter = Record<string, unknown>;
 
@@ -276,8 +277,8 @@ function buildWhere(spec: TableSpec, filter: Filter | undefined): BuiltWhere {
   }
 
   return {
-    sql: parts.length > 0 ? `WHERE ${parts.join(' AND ')}` : '',
-    params,
+    sql: `WHERE ${parts.length > 0 ? parts.join(' AND ') : '1=1'}` + centralPredicate(spec.table, params.length).text,
+    params: [...params, ...centralPredicate(spec.table, params.length).values],
   };
 }
 
@@ -431,7 +432,8 @@ class DocQuery<T = any> implements PromiseLike<T | null> {
 
 export class Table {
   private readonly spec: TableSpec;
-  constructor(spec: TableSpec) { this.spec = { ...spec, columns: { ...spec.columns, valid: 'valid' } }; }
+  constructor(spec: TableSpec) { this.spec = { ...spec, columns: { ...spec.columns, valid: 'valid',
+    ...(spec.table === 'users' ? {} : { projectId: 'project_id', regionId: 'region_id', subsystemCode: 'subsystem_code' }) } }; }
 
   get tableName(): string {
     return this.spec.table;
@@ -491,7 +493,10 @@ export class Table {
 
       const json = new Set(this.spec.jsonColumns ?? []);
       const skip = childKeys(this.spec);
-      const flats = docs.map((doc) => (this.spec.beforeWrite ? this.spec.beforeWrite(doc) : doc));
+      const flats = docs.map((doc) => {
+        const scoped = scopedInsert(this.spec.table, doc);
+        return this.spec.beforeWrite ? this.spec.beforeWrite(scoped) : scoped;
+      });
 
       // 把每个文档摊平成「列名 → 值」，并收集全部出现过的列（保持首次出现顺序）
       const colOrder: string[] = [];
@@ -593,6 +598,7 @@ export class Table {
     options: UpdateOptions = { new: true },
   ): DocQuery<T> {
     return new DocQuery<T>(this.spec, { _id: id }, async () => {
+      checkScopeUpdate(update);
       const pk = this.spec.primaryKey ?? 'id';
 
       // 多值字段整体替换：旧行 valid=0，新行使用新的 row_version。
@@ -611,10 +617,11 @@ export class Table {
         if (set.sql) {
           const hasUpdatedAt = Object.prototype.hasOwnProperty.call(scalarUpdate, 'updatedAt');
           const touch = this.spec.columns.updatedAt && !hasUpdatedAt ? ', updated_at = now()' : '';
-          const params = [...set.params, id];
+          const scope = centralPredicate(this.spec.table, set.params.length + 1);
+          const params = [...set.params, id, ...scope.values];
           const runner = client ?? getPool();
           const res = await runner.query(
-            `UPDATE ${this.spec.table} SET ${set.sql}${touch} WHERE valid = 1 AND ${pk} = $${params.length} RETURNING ${pk}`,
+            `UPDATE ${this.spec.table} SET ${set.sql}${touch} WHERE valid = 1 AND ${pk} = $${set.params.length + 1}${scope.text} RETURNING ${pk}`,
             params as never[],
           );
           if (res.rows.length === 0) {
@@ -624,7 +631,8 @@ export class Table {
         } else if (childUpdates.length > 0) {
           // 仅更新子表时也要确认父记录存在
           const runner = client ?? getPool();
-          const exists = await runner.query(`SELECT 1 FROM ${this.spec.table} WHERE valid = 1 AND ${pk} = $1 FOR UPDATE`, [id]);
+          const scope = centralPredicate(this.spec.table, 1);
+          const exists = await runner.query(`SELECT 1 FROM ${this.spec.table} WHERE valid = 1 AND ${pk} = $1${scope.text} FOR UPDATE`, [id, ...scope.values]);
           if (exists.rows.length === 0) {
             if (client) await client.query('ROLLBACK');
             return null;
@@ -656,6 +664,7 @@ export class Table {
   }
 
   async updateMany(filter: Filter, update: Record<string, unknown>): Promise<number> {
+    checkScopeUpdate(update);
     const set = buildSet(this.spec, update, 1);
     if (!set.sql) return 0;
     const where = buildWhere(this.spec, filter);

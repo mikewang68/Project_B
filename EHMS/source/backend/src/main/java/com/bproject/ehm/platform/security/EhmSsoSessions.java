@@ -22,11 +22,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class EhmSsoSessions {
     public static final String ACTOR=EhmSsoSessions.class.getName()+".actor";
     public static final String CSRF=EhmSsoSessions.class.getName()+".csrf";
-    private final String base,token;private final ObjectMapper mapper;private final JsonNode bindings;
+    private final String base,token;private final ObjectMapper mapper;private final Path bindingsFile;
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
     private final Map<String,HttpSession> sessions=new ConcurrentHashMap<>();
     private final Set<String> revoked=ConcurrentHashMap.newKeySet();
-    public record Actor(String subject,String localSubject,String role,String iamSid,boolean readOnly,Set<String> projects,Set<String> permissions,boolean globalRead) implements java.security.Principal {
+    public record Actor(String subject,String localSubject,String role,String iamSid,boolean readOnly,Set<String> projects,Set<String> permissions,boolean globalRead,com.bproject.iam.context.UserContext context) implements java.security.Principal {
+        public Actor(String subject,String localSubject,String role,String iamSid,boolean readOnly,Set<String> projects,Set<String> permissions,boolean globalRead){this(subject,localSubject,role,iamSid,readOnly,projects,permissions,globalRead,null);}
         public Actor(String subject,String localSubject,String role,String iamSid,boolean readOnly,Set<String> projects){this(subject,localSubject,role,iamSid,readOnly,projects,Set.of(),false);}
         public String getName(){return subject;}public boolean admin(){return role.equals("SUPER_ADMIN")&&!readOnly;}
     }
@@ -34,8 +35,12 @@ public class EhmSsoSessions {
         @Value("${ehm.sso.service-token:}") String token,@Value("${ehm.sso.bindings-file:}") String file) throws Exception {
         this.mapper=mapper;this.base=base.replaceAll("/+$","");this.token=token;
         if(base.isBlank()||token.length()<24||file.isBlank())throw new IllegalArgumentException("IAM SSO requires private service identity and explicit bindings");
-        bindings=mapper.readTree(Files.readString(Path.of(file)));
-        if(!bindings.isObject())throw new IllegalArgumentException("Invalid EHM SSO bindings");
+        bindingsFile=Path.of(file);bindings();
+    }
+    private JsonNode bindings(){
+        try{var value=mapper.readTree(Files.readString(bindingsFile));
+            if(value==null||!value.isObject())throw new IllegalArgumentException();return value;
+        }catch(Exception unavailable){throw fail(503,"SSO_LOCAL_REGISTRY_UNAVAILABLE");}
     }
     public Actor exchange(String ticket,HttpServletRequest request) throws Exception {
         if(!Set.of("127.0.0.1","::1","0:0:0:0:0:0:0:1").contains(request.getRemoteAddr()))throw fail(403,"SSO_SOURCE_DENIED");
@@ -48,7 +53,7 @@ public class EhmSsoSessions {
         if(!root.path("code").isIntegralNumber()||root.path("code").intValue()!=0)throw fail(401,"SSO_TICKET_REJECTED");
         String sub=data.path("subject").asText(),sid=data.path("sessionId").asText(),local=data.path("localSubject").asText();
         if(!sub.matches("[a-fA-F0-9]{32}"))try{UUID.fromString(sub);}catch(IllegalArgumentException invalid){throw fail(401,"SSO_BAD_SUBJECT");}
-        var binding=bindings.path(sub);String role=binding.path("role").asText();
+        var binding=bindings().path(sub);String role=binding.path("role").asText();
         if(sid.isBlank()||revoked.contains(sid))throw fail(401,"SSO_REVOKED");
         if(!binding.isObject()||local.isBlank()||!binding.path("localSubject").asText().equals(local)
             ||!Set.of("USER","SUPER_ADMIN").contains(role))throw fail(403,"SSO_NO_LOCAL_MAPPING");
@@ -95,7 +100,8 @@ public class EhmSsoSessions {
         catch(Exception e){throw fail(503,"SSO_IAM_UNAVAILABLE");}
     }
     private Actor resolve(JsonNode data,String sub,String sid,String local,String role){
-        var binding=bindings.path(sub);
+        var binding=bindings().path(sub);
+        if(!role.equals(binding.path("role").asText()))throw fail(403,"SSO_ROLE_MAPPING_CHANGED");
         if(!binding.path("enabled").asBoolean(false)||!local.equals(binding.path("localSubject").asText())
             ||!sub.equals(data.path("subject").asText())||!sid.equals(data.path("sessionId").asText())
             ||!local.equals(data.path("localSubject").asText())||!"ehms".equals(data.path("audience").asText())
@@ -105,12 +111,14 @@ public class EhmSsoSessions {
         Set<String> localProjects=new HashSet<>();binding.path("projectIds").forEach(v->localProjects.add(ProjectContext.validate(v.asText())));
         granted.retainAll(localProjects);if(granted.isEmpty())throw fail(403,"SSO_PROJECT_NOT_GRANTED");
         boolean readOnly=data.path("readOnly").asBoolean();
+        var context=EhmCentralScope.validate(data,sub,mapper);
         if(role.equals("SUPER_ADMIN")&&!readOnly&&!data.path("superAdmin").asBoolean(false)){
             boolean allowed=false;for(var p:data.path("permissions"))if(p.asText().equals("ehealth:admin"))allowed=true;
             if(!allowed)throw fail(403,"SSO_ADMIN_NOT_GRANTED");
         }
         Set<String> permissions=new HashSet<>();data.path("permissions").forEach(p->permissions.add(p.asText()));
-        return new Actor(sub,local,role,sid,readOnly,Set.copyOf(granted),Set.copyOf(permissions),readOnly&&data.path("globalRead").asBoolean(false));
+        if(context!=null){permissions.clear();binding.path("permissions").forEach(p->permissions.add(p.asText()));}
+        return new Actor(sub,local,role,sid,readOnly,Set.copyOf(granted),Set.copyOf(permissions),readOnly&&data.path("globalRead").asBoolean(false),context);
     }
     private static ResponseStatusException fail(int code,String message){return new ResponseStatusException(HttpStatus.valueOf(code),message);}
 }

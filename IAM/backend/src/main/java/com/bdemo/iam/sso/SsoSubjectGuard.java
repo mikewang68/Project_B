@@ -69,6 +69,17 @@ public class SsoSubjectGuard {
     var values=bindings.projects(subject,audience);return values==null?java.util.List.of():java.util.List.copyOf(values);
   }
 
+  public void requireNativeScope(String subject,String audience,com.bproject.iam.context.UserContext context) {
+    if(!com.bdemo.iam.provisioning.NativeScopeReadiness.required(context,audience))return;
+    var binding=bindings.find(subject,audience.toLowerCase(java.util.Locale.ROOT));
+    try {
+      com.bdemo.iam.provisioning.NativeScopeReadiness.require(context,audience,
+          binding==null?null:(String)binding.get("native_scope_json"));
+    }catch(IllegalStateException unavailable) {
+      throw new SsoTicketService.SsoTicketException(unavailable.getMessage());
+    }
+  }
+
   private static boolean isEnabled(Map<String, Object> binding) {
     Object enabled = binding.get("enabled");
     if (enabled == null) return true;

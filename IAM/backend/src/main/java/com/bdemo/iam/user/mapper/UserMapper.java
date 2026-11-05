@@ -32,7 +32,7 @@ public interface UserMapper {
   // 别名必须双引号：openGauss/PG 会把未加引号的驼峰别名折叠为小写，导致 Map 取不到 passwordHash
   @Select(
       "SELECT id, username, display_name AS \"name\", status, password_hash AS \"passwordHash\" "
-          + "FROM iam_user WHERE username = #{username} AND deleted = 0 FOR UPDATE")
+          + "FROM iam_user WHERE lower(trim(username)) = lower(trim(#{username})) AND deleted = 0 FOR UPDATE")
   java.util.Map<String, Object> selectAuthByUsername(@Param("username") String username);
 
   @Select(
@@ -167,7 +167,7 @@ WHERE id = #{id} AND deleted = 0
   int updateLastLogin(@Param("id") String id, @Param("now") LocalDateTime now);
 
   // The unique username constraint resolves concurrent creates; an aggregate cannot lock rows.
-  @Select("SELECT COUNT(1) FROM iam_user WHERE username = #{username} AND deleted = 0")
+  @Select("SELECT COUNT(1) FROM iam_user WHERE lower(trim(username)) = lower(trim(#{username})) AND deleted = 0")
   int countByUsername(@Param("username") String username);
 
   // ---- 用户-角色关系 ----

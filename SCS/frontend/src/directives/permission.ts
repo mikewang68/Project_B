@@ -1,7 +1,8 @@
 import { watch, type ObjectDirective } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
-type State = { permission: string; businessDisabled: boolean; originalTitle: string | null; stop?: () => void }
+type PermissionBinding = string | { permission: string; menu: string; action: string; adapted?: boolean; globalManagement?: boolean }
+type State = { permission: PermissionBinding; businessDisabled: boolean; originalTitle: string | null; stop?: () => void }
 const states = new WeakMap<HTMLElement, State>()
 const disabledProp = (value: unknown): boolean => value === '' || Boolean(value)
 
@@ -9,7 +10,10 @@ function apply(el: HTMLElement): void {
   const state = states.get(el)
   if (!state) return
   const auth = useAuthStore()
-  const allowed = auth.can(state.permission) && (!auth.user?.readOnly || state.permission.endsWith(':export'))
+  const permission=state.permission
+  const allowed = typeof permission === 'string'
+    ? auth.can(permission) && (!auth.user?.readOnly || permission.endsWith(':export') || permission.endsWith(':view'))
+    : auth.canAction(permission.menu,permission.action,permission.permission,permission.adapted!==false,permission.globalManagement===true)
   if (!allowed) {
     el.setAttribute('disabled', '')
     el.setAttribute('aria-disabled', 'true')
@@ -25,17 +29,17 @@ function apply(el: HTMLElement): void {
   }
 }
 
-export const permissionDirective: ObjectDirective<HTMLElement, string> = {
+export const permissionDirective: ObjectDirective<HTMLElement, PermissionBinding> = {
   mounted(el, binding, vnode) {
-    const state: State = { permission: String(binding.value), businessDisabled: disabledProp(vnode.props?.disabled), originalTitle: el.getAttribute('title') }
+    const state: State = { permission: binding.value, businessDisabled: disabledProp(vnode.props?.disabled), originalTitle: el.getAttribute('title') }
     states.set(el, state)
     const auth = useAuthStore()
-    state.stop = watch(() => [auth.user, auth.can(state.permission), auth.user?.readOnly], () => apply(el), { immediate: true })
+    state.stop = watch(() => auth.user, () => apply(el), { immediate: true, deep: true })
   },
   updated(el, binding, vnode) {
     const state = states.get(el)
     if (!state) return
-    state.permission = String(binding.value)
+    state.permission = binding.value
     state.businessDisabled = disabledProp(vnode.props?.disabled)
     apply(el)
   },

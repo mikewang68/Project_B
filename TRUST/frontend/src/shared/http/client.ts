@@ -26,7 +26,7 @@ async function consume<T>(
     async (r) => {
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        throw new Error(
+        throw Object.assign(new Error(
           data.message ||
             (
               {
@@ -36,7 +36,7 @@ async function consume<T>(
               } as Record<number, string>
             )[r.status] ||
             `请求失败 (${r.status})`,
-        );
+        ), { status: r.status });
       }
       return read(r);
     },

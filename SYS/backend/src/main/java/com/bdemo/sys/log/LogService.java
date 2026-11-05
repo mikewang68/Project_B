@@ -35,6 +35,8 @@ public class LogService {
             Map.entry("assignRoles", "分配角色"), Map.entry("assignPerms", "分配权限"));
 
     private final LogMapper mapper;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private org.springframework.jdbc.core.JdbcTemplate scopeDb;
 
     public LogService(LogMapper mapper) {
         this.mapper = mapper;
@@ -186,17 +188,27 @@ public class LogService {
         }
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void record(LoginUser user, String kind, String moduleName, String action,
                        String target, String detail, String method, String uri, String ip,
                        String result) {
         String username = user == null ? "anonymous" : user.getUsername();
         String userId = user == null ? null : user.getUserId();
-        try {
-            mapper.insert("l" + UUID.randomUUID().toString().replace("-", "").substring(0, 16),
-                    kind, username, userId, moduleName, action, target, detail,
-                    method, uri, ip, normalize(result), null, LocalDateTime.now());
-        } catch (Exception e) {
-            // 日志失败不阻断主业务
+        String id="l" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        mapper.insert(id,
+                kind, username, userId, moduleName, action, target, detail,
+                method, uri, ip, normalize(result), null, LocalDateTime.now());
+        if(user!=null && user.getUserContext()!=null) {
+            if(scopeDb==null)throw new IllegalStateException("Version-2 log scope writer is unavailable");
+            var context=user.getUserContext();
+            // Only a concrete trusted source scope is written. Unauthenticated history stays LEGACY.
+            var single=context.activeScope().size()==1?context.activeScope().get(0):null;
+            boolean global=context.global()||context.adminLevel().startsWith("L1_")&&single==null;
+            String project=global?null:single!=null?single.projectId():context.projectId();
+            String region=global?null:single!=null?single.regionId():context.regionId();
+            String scope=global?"GLOBAL":region==null?"PROJECT":"REGION_SYSTEM";
+            scopeDb.update("UPDATE sys_operation_log SET scope_kind=?,project_id=?,region_id=?,subsystem_code=? WHERE id=?",
+                scope,project,region,global?null:"SYS",id);
         }
     }
 

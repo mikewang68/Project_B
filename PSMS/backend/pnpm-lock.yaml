@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@bproject/iam-context-client':
+        specifier: file:../../IAM/context-client-ts
+        version: file:../../IAM/context-client-ts
       bcryptjs:
         specifier: 3.0.2
         version: 3.0.2
@@ -37,7 +40,7 @@ importers:
         version: 4.4.3
     devDependencies:
       '@electric-sql/pglite':
-        specifier: ^0.5.12
+        specifier: 0.5.12
         version: 0.5.12
       '@types/bcryptjs':
         specifier: 2.4.6
@@ -71,6 +74,10 @@ importers:
         version: 5.9.3
 
 packages:
+
+  '@bproject/iam-context-client@file:../../IAM/context-client-ts':
+    resolution: {directory: ../../IAM/context-client-ts, type: directory}
+    engines: {node: '>=20.19.0'}
 
   '@electric-sql/pglite@0.5.12':
     resolution: {integrity: sha512-IiAxv1ld1V9QP0AWsflliDqrGRo+20O+yXOr2fjk6YzBHsCvTPclwQhCB1uZ7eHtPrxUrSllNzWgqy/Ot76PEw==}
@@ -808,6 +815,8 @@ packages:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
 snapshots:
+
+  '@bproject/iam-context-client@file:../../IAM/context-client-ts': {}
 
   '@electric-sql/pglite@0.5.12': {}
 

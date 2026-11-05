@@ -23,6 +23,55 @@ beforeEach(() => {
 })
 
 describe('current effective authorization', () => {
+  it('keeps ADD separate from EDIT and CONFIRM even with native stockin write permission', async () => {
+    api.currentUser.mockResolvedValue({ ...current(), menuOperations: { 'WMS:stockin': ['VIEW', 'ADD'] } })
+    const auth = useAuthStore()
+    await auth.restoreSession()
+    expect(auth.centralAuthorization).toBe(true)
+    expect(auth.canAction('WMS:stockin', 'ADD', 'stockin:write')).toBe(true)
+    expect(auth.canAction('WMS:stockin', 'EDIT', 'stockin:write')).toBe(false)
+    expect(auth.canAction('WMS:stockin', 'CONFIRM', 'stockin:write')).toBe(false)
+    expect(auth.canAction('WMS:stockout', 'ADD', 'stockin:write')).toBe(false)
+    api.currentUser.mockResolvedValue({ ...current(), menuOperations: {} })
+    await auth.refreshSession()
+    expect(auth.canAction('WMS:stockin', 'ADD', 'stockin:write')).toBe(false)
+  })
+
+  it('permits explicitly authorized readonly exports and downloads while denying uploads', async () => {
+    api.currentUser.mockResolvedValue({ ...current(), readOnly: true, permissions: ['integration:manage'],
+      menuOperations: { 'WMS:integration': ['VIEW', 'EXPORT', 'DOWNLOAD', 'UPLOAD'] } })
+    const auth = useAuthStore()
+    await auth.restoreSession()
+    expect(auth.canAction('WMS:integration', 'EXPORT', 'integration:manage')).toBe(true)
+    expect(auth.canAction('WMS:integration', 'DOWNLOAD', 'integration:manage')).toBe(true)
+    expect(auth.canAction('WMS:integration', 'UPLOAD', 'integration:manage')).toBe(false)
+    expect(auth.canAction('WMS:integration', 'CONFIRM', 'integration:manage')).toBe(false)
+    api.currentUser.mockResolvedValue({ ...current(), readOnly: true, permissions: ['integration:manage'],
+      menuOperations: { 'WMS:integration': ['VIEW'] } })
+    await auth.refreshSession()
+    expect(auth.canAction('WMS:integration', 'EXPORT', 'integration:manage')).toBe(false)
+  })
+
+  it('requires the native grant and pauses central actions when authorization is unavailable', async () => {
+    api.currentUser.mockResolvedValue({ ...current(), menuOperations: { 'WMS:stockin': ['ADD'] } })
+    const auth = useAuthStore()
+    await auth.restoreSession()
+    expect(auth.canAction('WMS:stockin', 'ADD', 'finance:write')).toBe(false)
+    api.currentUser.mockRejectedValue(new ApiError(503, 'SSO_UNAVAILABLE', '不可用'))
+    await expect(auth.refreshSession()).rejects.toMatchObject({ status: 503 })
+    expect(auth.canAction('WMS:stockin', 'ADD', 'stockin:write')).toBe(false)
+  })
+
+  it('retains legacy readonly transfer policy until that account is activated', async () => {
+    const auth = useAuthStore()
+    await auth.restoreSession()
+    expect(auth.centralAuthorization).toBe(false)
+    expect(auth.canAction('WMS:stockin', 'ADD', 'stockin:write')).toBe(true)
+    api.currentUser.mockResolvedValue({ ...current(), readOnly: true })
+    await auth.refreshSession()
+    expect(auth.canAction('WMS:stockin', 'ADD', 'stockin:write')).toBe(false)
+  })
+
   it('deduplicates concurrent restoration and throttles unchanged navigation polls', async () => {
     vi.useFakeTimers()
     const auth = useAuthStore()

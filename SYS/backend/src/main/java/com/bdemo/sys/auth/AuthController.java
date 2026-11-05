@@ -32,16 +32,16 @@ public class AuthController {
         if (user == null) {
             throw BizException.unauthorized("未登录或登录已过期");
         }
-        List<Map<String, Object>> roles = identityService.loadRoles(user.getUserId());
+        List<Map<String, Object>> roles = user.getUserContext()==null?identityService.loadRoles(user.getUserId()):
+            user.getUserContext().roles().stream().sorted().map(code->Map.<String,Object>of("id",code,"code",code,"name",code)).toList();
         Object me = Map.of(
                 "id", user.getUserId(),
                 "username", user.getUsername(),
                 "name", user.getDisplayName());
-        return R.ok(Map.of(
-                "user", me,
-                "roles", roles,
-                "permissions", user.getPermissions().stream().sorted().toList(),
-                "superAdmin", user.isSuperAdmin(),
-                "readOnly", user.isReadOnly()));
+        var result=new java.util.LinkedHashMap<String,Object>();
+        result.put("user",me);result.put("roles",roles);result.put("permissions",user.getPermissions().stream().sorted().toList());
+        result.put("superAdmin",user.isSuperAdmin());result.put("readOnly",user.isReadOnly());
+        if(user.getUserContext()!=null)result.put("userContext",user.getUserContext());
+        return R.ok(result);
     }
 }

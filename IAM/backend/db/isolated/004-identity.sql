@@ -1,7 +1,7 @@
 -- Run by the IAM migration role, in the approved IAM-only database.
 CREATE TABLE iam.iam_session (
  id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(32) NOT NULL,
- expires_at TIMESTAMP NOT NULL, revoked_at TIMESTAMP
+ expires_at TIMESTAMP NOT NULL, revoked_at TIMESTAMP, scope_selection_json TEXT
 );
 CREATE INDEX iam_session_user ON iam.iam_session(user_id);
 CREATE TABLE iam.iam_audit (

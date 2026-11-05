@@ -85,7 +85,7 @@ onUnmounted(clearDiagTimers)
     </div>
     <template #footer>
       <button type="button" class="ops-btn" @click="emit('update:modelValue', false)">关闭</button>
-      <button type="button" class="ops-btn primary" :disabled="phase !== 'done'" @click="reconnect">重新连接设备</button>
+      <button v-permission="'safety:module:ops:execute'" type="button" class="ops-btn primary" :disabled="phase !== 'done'" @click="reconnect">重新连接设备</button>
     </template>
   </el-dialog>
 </template>

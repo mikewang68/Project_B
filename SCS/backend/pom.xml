@@ -24,7 +24,13 @@
     <maven-surefire-plugin.version>3.1.2</maven-surefire-plugin.version>
   </properties>
 
-  <dependencies>
+    <dependencies>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    <dependency><groupId>com.bproject.iam</groupId><artifactId>context-client</artifactId><version>2.1.0</version></dependency>
     <!-- Web / 校验 / 监控 / JDBC / Redis(Kvrocks 兼容协议) -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

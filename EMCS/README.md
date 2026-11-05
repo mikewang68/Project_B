@@ -2,15 +2,17 @@
 
 前端 Vue 3 + Element Plus，后端 Spring Boot + JDK 17。关系数据库为 **openGauss**，缓存使用 **Kvrocks** 的 Redis 协议。初始化数据为固定 SQL，无需 Python。
 
+可选的六类设备标准事件接收、模拟守护进程和页面展示见 [设备采集说明](tools/collection/README.md)。该功能使用新增027迁移，默认关闭；Python仅用于可选模拟工具。模拟闭环不代表厂家协议或现场数据验收。
+
 ## 环境与目录
 
 | 组件 | 版本 / 位置 |
 |---|---|
-| openGauss | 6.0.5，node4（192.168.101.57） |
-| Kvrocks | 2.16.0，node4 |
+| openGauss | 6.x，PG兼容模式，地址由环境配置 |
+| Kvrocks | Redis协议兼容缓存，地址由环境配置 |
 | Java / Maven | JDK 17 / Maven 3.9.16 |
 | Node / pnpm | Node 24.18.0 / pnpm 10.34.5 |
-| Nginx | node6（192.168.101.74） |
+| Nginx | 反向代理，按部署环境配置 |
 
 - `backend-java/`：后端代码和云端模型配置。
 - `web/`：前端代码、依赖锁文件、版本配置。
@@ -27,7 +29,7 @@
 
 ```bash
 for file in sql/*.sql; do
-  gsql -h 192.168.101.57 -p 5432 -U emcs -d emcs -v ON_ERROR_STOP=1 -f "$file" || break
+  gsql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "$file" || break
 done
 ```
 
@@ -41,6 +43,7 @@ Kvrocks 管理员须分配独立 EMCS namespace token，将其填入 `REDIS_PASS
 
 ```bash
 cd backend-java
+mvn -f ../../IAM/context-client/pom.xml install
 mvn clean verify
 ```
 
@@ -48,7 +51,7 @@ mvn clean verify
 
 本地调试先将数据库、缓存及 `JWT_SECRET_KEY` 配置为环境变量，再运行 `mvn spring-boot:run`。Spring 不会自动读取 `.env` 文件。默认端口 18103，健康检查为 `/actuator/health`。
 
-## 3. 在 node4 安装后端服务
+## 3. 安装后端服务
 
 1. 创建低权限系统账号 `emcs`，准备 `/opt/emcs/config`、`/etc/emcs`、`/var/lib/emcs`。
 2. 将 JAR 放到 `/opt/emcs/emcs.jar`，将 `backend-java/config/agent.yml` 放到 `/opt/emcs/config/agent.yml`。
@@ -64,7 +67,7 @@ sudo journalctl -u emcs -n 100 --no-pager
 curl http://127.0.0.1:18103/actuator/health
 ```
 
-后端端口只允许 node6 或网关内网访问。数据库与缓存端口按现有服务器访问策略配置。
+后端端口只允许 已登记反向代理或网关内网访问。数据库与缓存端口按现有服务器访问策略配置。
 
 ### 云端模型
 
@@ -86,22 +89,22 @@ pnpm run build:prod
 
 安装命令中的 `--ignore-workspace` 确保在 Project_B/EMCS 子目录使用本模块锁文件，避免加入上级其他模块的工作区。
 
-默认部署路径 `/emcs/`，API 前缀 `/emcs-api`。将 `dist/` 内容发布到 node6 的 `/srv/www/emcs/`，不要覆盖其他模块目录。把 `deploy/nginx-emcs.conf` 加入已有 Nginx 的 `server` 块：
+默认部署路径 `/emcs/`，API 前缀 `/emcs-api`。将 `dist/` 内容发布到前端服务器的 `/srv/www/emcs/`，不要覆盖其他模块目录。把 `deploy/nginx-emcs.conf` 加入已有 Nginx 的 `server` 块：
 
 ```bash
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-浏览器访问 `http://node6地址/emcs/`。Nginx 将 `/emcs-api/` 代理到 node4:18103，代理保留 SSE 流式响应。已有 Easegress 可按同一转发目标接入，但不要同时重复剥离 API 前缀。
+浏览器访问 `https://<frontend-host>/emcs/`。Nginx 将 `/emcs-api/` 代理到 配置的后端地址与端口，代理保留 SSE 流式响应。已有 Easegress 可按同一转发目标接入，但不要同时重复剥离 API 前缀。
 
 本地开发创建 `.env.development`，设置 `VITE_APP_BASE_PATH=/`、`VITE_APP_BASE_API=/dev-api`、`VITE_API_TARGET=http://127.0.0.1:18103`，运行 `pnpm dev`，默认端口 5173。
 
 ## 5. 初始化业务与验证
 
-演示账号：`admin`、`energy_mgr`、`ops_user`、`dispatch_user`、`finance_user`，初始密码均为 `admin123`。仅用于隔离演示环境。
+演示用户由维护者在隔离环境创建；正式接入使用 IAM 统一身份和显式授权，不使用初始化演示凭据。
 
-首次导入后，用 `energy_mgr` 登录，从登录响应取得 token，调用 `POST /pipeline/bootstrap` 初始化统计、基线、成本和告警。请求需携带 `Authorization: Bearer <token>`，通过前端入口调用时加 `/emcs-api` 前缀。
+首次导入后，用已获授权的业务身份登录，从登录响应取得 token，调用 `POST /pipeline/bootstrap` 初始化统计、基线、成本和告警。请求需携带 `Authorization: Bearer <token>`，通过前端入口调用时加 `/emcs-api` 前缀。
 
 部署检查：验证码及登录、菜单权限、能源总览、采集质量、设备画像、告警、建议、成本、报表导出、AI 汇总、服务重启后登录。定时任务仅在启用时验证。
 

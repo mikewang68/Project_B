@@ -163,7 +163,7 @@ const {
       </div>
       <button class="primary" :disabled="busy">提交事件</button>
     </form>
-    <article v-if="allowed('trust:event:submit')" class="panel import-panel">
+    <article v-if="allowed('trust:event:import')" class="panel import-panel">
       <h2>批量导入</h2>
       <p class="muted">
         导入 UTF-8 JSON 数组或 CSV。每次最多 200 条、1 MiB；每行单独返回结果。

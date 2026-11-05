@@ -18,3 +18,22 @@ test('single point and non-100 units produce finite SVG',()=>{const html=c.lineC
 test('units, labels and tooltip names are escaped',()=>{const html=c.lineChart([1,2],[],{live:true,unit:'<img>',labels:['<bad>','now']});assert.doesNotMatch(html,/<img>|<bad>/);assert.match(html,/&lt;img&gt;/);});
 test('CSV escaping prevents spreadsheet formula execution',()=>{assert.equal(c.csvCell('=1+1'),'"\'=1+1"');assert.equal(c.csvCell('a"b'),'"a""b"');});
 test('assessment trend requires history, not factor utilization',()=>{assert.match(c.healthHistoryChart(),/至少需要2次评估/);c.state.healthFlow.history=[{healthScore:72,generatedAt:'2026-10-07T10:00:00Z',method:'规则评估'},{healthScore:79,generatedAt:'2026-10-07T11:00:00Z',method:'规则评估'}];const html=c.healthHistoryChart();assert.match(html,/79 分/);assert.doesNotMatch(html,/NaN|示意曲线/);});
+test('visual bootstrap waits for trusted identity and never probes ungranted cockpit',async()=>{
+  let release,calls=0;
+  c.window={EhmAuth:{ready:new Promise(resolve=>release=resolve)},
+    EhmCentralPolicy:{enabled:()=>true,page:()=>false}};
+  const prior=c.apiRequest;c.apiRequest=()=>{calls++;assert.fail('Ungrantable cockpit request');};
+  try{
+    c.state.visual.overview={devices:99};
+    const pending=c.loadVisualOverview();await new Promise(setImmediate);
+    assert.equal(calls,0);release();await pending;
+    assert.equal(calls,0);assert.equal(c.state.visual.overview,null);
+  }finally{delete c.window;c.apiRequest=prior;}
+});
+test('device VIEW alone cannot preload realtime points or historical samples',async()=>{
+  c.window={EhmAuth:{},EhmCentralPolicy:{enabled:()=>true,page:(_auth,page)=>page==='fleet'}};
+  const prior=c.apiRequest,priorList=c.apiList;
+  c.apiRequest=c.apiList=()=>assert.fail('Ungranted telemetry preload');
+  try{await c.loadVisualPoints();await c.loadVisualSamples();}
+  finally{delete c.window;c.apiRequest=prior;c.apiList=priorList;}
+});

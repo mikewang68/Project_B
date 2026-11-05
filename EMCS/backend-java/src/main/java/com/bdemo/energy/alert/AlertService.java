@@ -1,6 +1,7 @@
 package com.bdemo.energy.alert;
 
 import com.bdemo.common.BusinessException;
+import com.bdemo.config.EmcsCentralScope;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -107,9 +108,13 @@ public class AlertService {
 
     @Transactional
     public Map<String, Object> transition(long eventId, AlertController.TransitionRequest body, String operator) {
-        List<Map<String, Object>> rows = jdbc.queryForList("SELECT status FROM e_alert_event WHERE event_id=? FOR UPDATE", eventId);
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT status FROM e_alert_event WHERE event_id=?"+EmcsCentralScope.area("area_id")+" FOR UPDATE", eventId);
         if (rows.isEmpty()) throw new BusinessException(404, "告警事件不存在");
         String current = string(rows.get(0).get("status"));
+        var scope = EmcsCentralScope.current();
+        if (scope != null && "new".equals(current) && "dispatched".equals(body.toStatus())
+                && !scope.hasAction("EMCS:2010", "CONFIRM"))
+            throw new BusinessException(403, "直接派发会同时确认告警，必须具备 CONFIRM 权限");
         if (body.remark() == null || body.remark().isBlank()) throw new IllegalArgumentException("流转备注 remark 不能为空");
         List<String[]> steps = plan(current, body);
         for (String[] step : steps) jdbc.update("""
@@ -155,6 +160,7 @@ public class AlertService {
                 LEFT JOIN e_meter_point p ON e.object_type='point' AND p.point_id=e.object_id WHERE 1=1
                 """);
         List<Object> params = new ArrayList<>();
+        sql.append(EmcsCentralScope.area("e.area_id"));
         add(sql, params, " AND e.level=?", level); add(sql, params, " AND e.status=?", status);
         add(sql, params, " AND e.rule_code=?", ruleCode);
         if (zone != null && !"ALL".equalsIgnoreCase(zone)) add(sql, params, " AND a.area_code=?", "AREA-" + zone.toUpperCase());

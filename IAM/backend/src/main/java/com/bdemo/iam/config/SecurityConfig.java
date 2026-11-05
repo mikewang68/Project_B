@@ -28,6 +28,8 @@ public class SecurityConfig implements WebMvcConfigurer {
   private final PermInterceptor permInterceptor;
   private final ReadonlyHardVetoInterceptor readonlyHardVetoInterceptor;
   private final ObjectMapper objectMapper = new ObjectMapper();
+  @org.springframework.beans.factory.annotation.Autowired(required=false)
+  private com.bdemo.iam.scope.ScopeRouteInterceptor scopeRoutes=new com.bdemo.iam.scope.ScopeRouteInterceptor();
 
   public SecurityConfig(
       JwtService jwtService,
@@ -41,7 +43,8 @@ public class SecurityConfig implements WebMvcConfigurer {
   }
 
   @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http, com.bdemo.iam.sso.SsoAuthorizationService nativeAuthorization) throws Exception {
+  public SecurityFilterChain filterChain(HttpSecurity http, com.bdemo.iam.sso.SsoAuthorizationService nativeAuthorization,
+      org.springframework.beans.factory.ObjectProvider<com.bdemo.iam.scope.ScopeContextService> scopeContexts) throws Exception {
     http.csrf(csrf -> csrf.disable())
         // JWT 无状态 API：显式关闭表单登录、HTTP Basic 与默认登出，避免 Spring Security 默认认证入口残留
         .httpBasic(basic -> basic.disable())
@@ -60,7 +63,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                     .permitAll()
                     // SSO 服务间校验端点：鉴权由票据签名 + 一次性消费完成，
                     // 不依赖 IAM 登录态（调用方是目标业务系统的后端）。
-                    .requestMatchers("/auth/sso/verify-and-consume", "/auth/sso/session/introspect", "/auth/sso/session/logout", "/auth/sso/exchange", "/auth/sso/native/revoke", "/auth/sso/navigation-address")
+                    .requestMatchers("/auth/sso/verify-and-consume", "/auth/sso/session/introspect", "/auth/sso/session/logout", "/auth/sso/exchange", "/auth/sso/native/revoke", "/auth/sso/navigation-address", "/auth/sso/resource-filter")
                     .permitAll()
                     // 诊断端点：只返回契约版本、受众列表与是否已配置服务身份，
                     // 不含任何密钥或凭据。
@@ -77,13 +80,14 @@ public class SecurityConfig implements WebMvcConfigurer {
                         (request, response, ex) ->
                             writeError(request, response, HttpServletResponse.SC_FORBIDDEN, "没有访问权限")))
         .addFilterBefore(
-            new JwtAuthFilter(jwtService, loginUserLoader).withNativeAuthorization(nativeAuthorization),
+            new JwtAuthFilter(jwtService, loginUserLoader).withNativeAuthorization(nativeAuthorization).withScopeContexts(scopeContexts.getIfAvailable()),
             UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
+    registry.addInterceptor(scopeRoutes).addPathPatterns("/**");
     registry.addInterceptor(readonlyHardVetoInterceptor).addPathPatterns("/**");
     registry.addInterceptor(permInterceptor).addPathPatterns("/**");
   }

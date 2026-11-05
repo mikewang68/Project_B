@@ -12,5 +12,10 @@ public record LoginResponse(
         List<String> permissions,
         boolean superAdmin,
         boolean readOnly,
-        String accessMode) {
+        String accessMode,
+        com.bproject.iam.context.UserContext userContext) {
+    public LoginResponse(String token,User user,List<Role> roles,List<String> permissions,
+        boolean superAdmin,boolean readOnly,String accessMode) {
+      this(token,user,roles,permissions,superAdmin,readOnly,accessMode,null);
+    }
 }

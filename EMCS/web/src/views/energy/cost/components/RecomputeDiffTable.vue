@@ -1,9 +1,10 @@
 <!-- 重算版本与差异｜PRD §5.9 · REQ-055 -->
 <template>
   <section class="panel recompute-panel">
+    <el-alert title="当前版本仅记录重算申请与复核，尚未执行费用重算；空差异不表示费用无变化。" type="warning" :closable="false" />
     <header class="panel-head">
       <div class="head-title">
-        <b>重算版本与差异</b>
+        <b>重算申请与复核</b>
         <small>旧版本 → 新版本 · diffSummary 冻结为审计证据</small>
       </div>
       <el-button
@@ -13,7 +14,7 @@
         size="small"
         @click="createVisible=true"
       >
-        发起重算
+        提交重算申请
       </el-button>
     </header>
     <el-table
@@ -68,7 +69,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="createVisible" title="发起完整月成本重算" width="520px" append-to-body class="cockpit-modal">
+    <el-dialog v-model="createVisible" title="记录月成本重算申请" width="520px" append-to-body class="cockpit-modal">
       <el-form label-position="top">
         <el-form-item label="统计月"><el-input :model-value="statMonth" disabled /></el-form-item>
         <el-form-item label="介质"><el-input :model-value="energyTypeLabels[energyType] || energyType" disabled /></el-form-item>
@@ -78,7 +79,7 @@
       </el-form>
       <template #footer>
         <el-button @click="createVisible=false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="create">确认重算</el-button>
+        <el-button type="primary" :loading="saving" @click="create">提交申请</el-button>
       </template>
     </el-dialog>
 
@@ -116,7 +117,7 @@ const createVisible = ref(false)
 const reviewVisible = ref(false)
 const createForm = reactive({ triggerReason: '', tariffVersion: null, allocRuleVersion: null })
 const reviewForm = reactive({ recomputeId: null, action: 'approve', remark: '' })
-const access = computed(() => costBusinessAccess(useUserStore().roles))
+const access = computed(() => costBusinessAccess(useUserStore().roles, useUserStore().centralAuthorization))
 
 async function load() {
   if (!props.statMonth || !props.energyType) return

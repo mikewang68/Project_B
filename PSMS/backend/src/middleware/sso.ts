@@ -5,13 +5,15 @@ import { z } from 'zod';
 import { User, type UserDoc } from '../db/tables.js';
 import { env } from '../config/env.js';
 import { mayReadBusinessRoute, mayWriteBusinessRoute } from './sso-policy.js';
+import { centralAssertion, centralRoute, runWithCentralScope } from './central-scope.js';
 
 const bindingsSchema = z.record(z.string().regex(/^(?:[a-f\d]{32}|[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12})$/i),
   z.object({ userId: z.string().min(1), enabled: z.boolean() }).strict());
 const assertionSchema = z.object({ subject: z.string(), sessionId: z.string().min(1), localSubject: z.string().min(1),
   audience: z.union([z.literal('psms'), z.literal('[psms]'), z.tuple([z.literal('psms')])]),
   readOnly:z.boolean(),superAdmin:z.boolean(),applicationAdmin:z.boolean().optional().default(false),permissions:z.array(z.string()),
-  company: z.string().nullish(), org: z.string().nullish(), domain: z.string().nullish(), zone: z.string().nullish() });
+  company: z.string().nullish(), org: z.string().nullish(), domain: z.string().nullish(), zone: z.string().nullish(),
+  userContext: z.unknown().optional() });
 type Session = { userId: string; subject: string; iamSid: string; csrf: string; expires: number };
 const sessions = new Map<string, Session>();
 const revoked = new Map<string, number>();
@@ -20,11 +22,15 @@ const digest = (value: string) => createHash('sha256').update(value).digest('hex
 const loopback = (req: Request) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '');
 const fail = (res: Response, status: number, code: string) => { res.status(status).json({ ok: false, errorCode: code, message: code }); };
 const enabled = env.PSMS_SSO_ENABLED;
-const bindings = enabled ? bindingsSchema.parse(JSON.parse(readFileSync(env.PSMS_SSO_BINDINGS_FILE, 'utf8'))) : {};
+// Re-read the atomically published registry so new people and local revocations
+// take effect without restarting the service or reusing an existing identity.
+function currentBindings() {
+  return enabled ? bindingsSchema.parse(JSON.parse(readFileSync(env.PSMS_SSO_BINDINGS_FILE, 'utf8'))) : {};
+}
 if (enabled) {
   const url = new URL(env.PSMS_IAM_BASE_URL);
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash
-      || env.PSMS_SSO_SERVICE_TOKEN.length < 24 || !Object.keys(bindings).length) throw new Error('SSO configuration is incomplete');
+      || env.PSMS_SSO_SERVICE_TOKEN.length < 24 || !Object.keys(currentBindings()).length) throw new Error('SSO configuration is incomplete');
 }
 function sweep() {
   const now = Date.now();
@@ -90,9 +96,10 @@ ssoRouter.post('/exchange', async (req, res, next) => {
     const assertion = assertionSchema.safeParse(result.data);
     if (!assertion.success) { fail(res, 403, 'SSO_BAD_ASSERTION'); return; }
     const a = assertion.data;
+    centralAssertion(a.userContext, a.subject);
     // There is no company/domain/zone model in PSMS. Do not silently widen unsupported scopes.
     if ([a.company, a.org, a.domain, a.zone].some((value) => value?.trim())) { fail(res, 403, 'SSO_SCOPE_UNSUPPORTED'); return; }
-    const binding = bindings[a.subject];
+    const binding = currentBindings()[a.subject];
     if (!binding?.enabled) { fail(res, 403, 'SSO_NO_LOCAL_MAPPING'); return; }
     const user = await User.findById(binding.userId).lean<UserDoc>();
     if (!usable(user) || user.username !== a.localSubject || revoked.has(a.sessionId)) { fail(res, 403, 'SSO_LOCAL_IDENTITY_REJECTED'); return; }
@@ -125,12 +132,13 @@ ssoRouter.post('/revoke', (req, res) => {
 
 export async function ssoGuard(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!enabled || !req.path.startsWith('/api/')) { next(); return; }
+  if (/^\/api\/demo(?:\/|$)/.test(req.path)) { fail(res,403,'DEMO_DISABLED_IN_REAL_MODE');return; }
   sweep();
   const cookie = req.headers.cookie?.split(';').map((v) => v.trim()).find((v) => v.startsWith('PSMS_SSO='))?.slice(9);
   const session = cookie && /^[\w-]{43}$/.test(cookie) ? sessions.get(digest(cookie)) : undefined;
   if (!session || revoked.has(session.iamSid)) { fail(res, 401, 'UNAUTHORIZED'); return; }
   try {
-    const binding = bindings[session.subject];
+    const binding = currentBindings()[session.subject];
     const user = await User.findById(session.userId).lean<UserDoc>();
     if (!binding?.enabled || binding.userId !== session.userId || !usable(user)) { fail(res, 401, 'SSO_LOCAL_IDENTITY_REJECTED'); return; }
     const response=await iamSession(session);
@@ -140,9 +148,12 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
     if(result.code!==0||!assertion.success||assertion.data.subject!==session.subject||assertion.data.sessionId!==session.iamSid
         ||assertion.data.localSubject!==user.username){fail(res,401,'SSO_LOCAL_IDENTITY_REJECTED');return;}
     const current=assertion.data;
+    const central = centralAssertion(current.userContext, current.subject);
+    if (central) centralRoute(central, req.method, req.path, req.body?.action ?? req.body?.command);
     const effective = {readOnly: current.readOnly || user.roleCode === 'viewer',
       superAdmin: current.superAdmin && ['super_admin','admin'].includes(user.roleCode),
-      applicationAdmin: current.applicationAdmin && ['super_admin','admin'].includes(user.roleCode), permissions: current.permissions};
+      applicationAdmin: current.applicationAdmin && ['super_admin','admin'].includes(user.roleCode), permissions: current.permissions,
+      ...(central ? {menuOperations: central.menuOperations} : {})};
     res.locals.platformAuthorization = effective;
     res.locals.platformSubject = session.subject;
     if([current.company,current.org,current.domain,current.zone].some(value=>value?.trim())){fail(res,403,'SSO_SCOPE_UNSUPPORTED');return;}
@@ -151,23 +162,31 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
     const all=user.dataScope.some(scope=>['*','GLOBAL'].includes(scope));
     if (!all && req.path !== '/api/auth/me' && req.path !== '/api/overview'
         && req.path !== '/api/plans' && !req.path.startsWith('/api/plans/')
+        && !/^\/api\/governance\/(interlocks|interlock-requests|offline|reports|settings|audit-logs)(\/|$)/.test(req.path)
         && !(req.method === 'GET' && /^\/api\/business\/(work-orders|tasks|equipment|exceptions)$/.test(req.path))
         && !(req.method==='POST' && (req.path==='/api/business/work-orders'
           || /^\/api\/business\/(work-orders|exceptions)\/[^/]+\/actions$/.test(req.path)))) {
       fail(res, 403, 'SSO_ROUTE_NOT_ADAPTED'); return;
     }
     req.user = { userId: user._id, actorId: user.actorId, roleCode: user.roleCode, dataScope: [...user.dataScope] };
-    if (['GET', 'HEAD'].includes(req.method) && !mayReadBusinessRoute(effective, req.path)) {
+    if (!central && ['GET', 'HEAD'].includes(req.method) && !mayReadBusinessRoute(effective, req.path)) {
       fail(res, 403, 'READ_PERMISSION_DENIED'); return;
     }
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-      if (effective.readOnly) { fail(res, 403, 'READ_ONLY'); return; }
-      if(!mayWriteBusinessRoute(effective,req.path,req.body?.action)){
+      if (effective.readOnly && !(central && req.method==='POST' && req.path==='/api/governance/reports/export')) {
+        fail(res, 403, 'READ_ONLY'); return;
+      }
+      // Retired demo commands lack atomic version/scope checks. Keep read contracts, route real writes to the adapter.
+      if (/^\/api\/(interlocks|offline|settings)(\/|$)/.test(req.path)) {
+        fail(res,409,'USE_GOVERNANCE_COMMAND');return;
+      }
+      if(!central && !mayWriteBusinessRoute(effective,req.path,req.body?.action??req.body?.command)){
         fail(res,403,'OPERATION_PERMISSION_DENIED');return;
       }
       if (req.header('X-PSMS-CSRF') !== session.csrf) { fail(res, 403, 'CSRF_REJECTED'); return; }
     }
-    if(req.path.includes('/export')&&!(effective.superAdmin&&!effective.readOnly)&&!current.permissions.includes('pps:export')){fail(res,403,'EXPORT_PERMISSION_DENIED');return;}
-    next();
+    if(!central&&req.path.includes('/export')&&!(effective.superAdmin&&!effective.readOnly)&&!current.permissions.includes('pps:export')){fail(res,403,'EXPORT_PERMISSION_DENIED');return;}
+    if (central) runWithCentralScope(central, next);
+    else next();
   } catch (error) { next(error); }
 }

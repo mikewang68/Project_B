@@ -34,7 +34,7 @@ defineEmits<{
       <div class="person-detail-actions">
         <button type="button" @click="$emit('locate')"><el-icon><Location /></el-icon>定位人员</button>
         <button type="button" class="primary" @click="$emit('playback')"><el-icon><VideoPlay /></el-icon>轨迹回放</button>
-        <button type="button" @click="$emit('remind')"><el-icon><Message /></el-icon>发送提醒</button>
+        <button v-permission="{permission:'safety:person:detail:execute',menu:'SCS:people',action:'CONFIRM'}" type="button" @click="$emit('remind')"><el-icon><Message /></el-icon>发送提醒</button>
         <button type="button" @click="$emit('alerts')">查看相关告警</button>
       </div>
     </template>

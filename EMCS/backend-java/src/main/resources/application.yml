@@ -51,3 +51,9 @@ b-demo:
     register-enabled: false
     jwt-secret: ${JWT_SECRET_KEY:change-this-development-secret-change-this-development-secret}
     token-minutes: ${JWT_EXPIRE_MINUTES:120}
+
+emcs:
+  collection:
+    enabled: ${EMCS_COLLECTION_ENABLED:false}
+    allow-live: ${EMCS_COLLECTION_ALLOW_LIVE:false}
+    ingest-token: ${EMCS_COLLECTION_INGEST_TOKEN:}

@@ -15,7 +15,7 @@ public interface SsoSubjectMapper {
   java.util.List<String> projects(@Param("subject")String subject,@Param("audience")String audience);
 
   @Select(
-      "SELECT subject, audience, local_subject, company_code, org_code, domain_code, zone_code, enabled"
+      "SELECT subject, audience, local_subject, company_code, org_code, domain_code, zone_code, enabled, native_scope_json"
           + " FROM iam.sso_subject_binding WHERE subject=#{subject} AND audience=#{audience}")
   Map<String, Object> find(@Param("subject") String subject, @Param("audience") String audience);
 

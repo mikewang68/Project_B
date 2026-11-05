@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ZoneStateService {
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private com.bproject.safety.config.ScsScopedReferenceData centralReferences;
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
 
@@ -44,6 +46,8 @@ public class ZoneStateService {
     }
 
     public synchronized List<ZoneSnapshot> list() {
+        if(com.bproject.safety.config.ScsCentralScope.current()!=null)
+            return centralReferences==null?List.of():centralReferences.visible(com.bproject.safety.config.ScsCentralScope.Root.AREA,states.values(),ZoneSnapshot::code);
         return new ArrayList<>(states.values());
     }
 
@@ -52,12 +56,20 @@ public class ZoneStateService {
      *
      * @return 是否命中已知区域；未知编码返回 false，调用方据此回传 ignored
      */
+    @org.springframework.transaction.annotation.Transactional
     public synchronized boolean apply(String code, Boolean personnelWorking, Boolean vehiclePresent,
                                       Integer distanceMm, String signal) {
         if (code == null) {
             return false;
         }
+        if(com.bproject.safety.config.ScsMachineRegistry.current()!=null&&(centralReferences==null||!centralReferences.scopedMachineIngestAllowed(com.bproject.safety.config.ScsCentralScope.Root.AREA,code.trim())))return false;
+        if(com.bproject.safety.config.ScsCentralScope.legacyMachineIngress()
+                &&(centralReferences==null||!centralReferences.legacyIngestAllowed(com.bproject.safety.config.ScsCentralScope.Root.AREA,code.trim())))return false;
         ZoneSnapshot current = states.get(code.trim());
+        if(current==null&&com.bproject.safety.config.ScsMachineRegistry.current()!=null&&centralReferences!=null){
+            var name=centralReferences.machineAreaName(code.trim());
+            if(name.isPresent())current=ZoneSnapshot.unknown(code.trim(),name.get(),"已登记设备来源");
+        }
         if (current == null) {
             return false;
         }

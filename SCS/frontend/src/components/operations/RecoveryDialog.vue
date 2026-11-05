@@ -196,8 +196,8 @@ watch(
             </div>
             <div class="recovery-actions__btns">
               <button type="button" class="ops-btn small" @click="ruleDiffOpen = !ruleDiffOpen">查看差异</button>
-              <button type="button" class="ops-btn small primary" @click="redeliverRule">重新下发</button>
-              <button type="button" class="ops-btn small ghost" @click="keepRule">保持当前版本</button>
+              <button v-permission="'safety:module:ops:execute'" type="button" class="ops-btn small primary" @click="redeliverRule">重新下发</button>
+              <button v-permission="'safety:module:ops:execute'" type="button" class="ops-btn small ghost" @click="keepRule">保持当前版本</button>
             </div>
             <div v-if="ruleDiffOpen" class="recovery-diff">
               <p class="mono">RULE-PER-001：v3.2 → v3.3</p>
@@ -208,7 +208,7 @@ watch(
           <!-- 时间同步操作 -->
           <div v-if="s.key === 'time' && phase === 'time-wait'" class="recovery-actions">
             <div class="recovery-actions__btns">
-              <button type="button" class="ops-btn small primary" @click="resyncTime">重新同步</button>
+              <button v-permission="'safety:module:ops:execute'" type="button" class="ops-btn small primary" @click="resyncTime">重新同步</button>
             </div>
           </div>
         </div>

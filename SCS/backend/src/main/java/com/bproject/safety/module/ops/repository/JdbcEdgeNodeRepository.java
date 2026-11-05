@@ -101,7 +101,7 @@ public class JdbcEdgeNodeRepository implements EdgeNodeRepository {
 
     public JdbcEdgeNodeRepository(NamedParameterJdbcTemplate jdbcTemplate,
                                   DemoMasterData masterData) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.jdbcTemplate = new com.bproject.safety.config.ScsScopedJdbcTemplate(jdbcTemplate);
         this.masterData = masterData;
         this.rowMapper = new EdgeNodeRowMapper();
     }
@@ -130,10 +130,12 @@ public class JdbcEdgeNodeRepository implements EdgeNodeRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public DemoEdgeNode save(DemoEdgeNode node) {
         Objects.requireNonNull(node, "node must not be null");
         Objects.requireNonNull(node.id, "node.id must not be null");
 
+        var centralStamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.EDGE_NODE,node.id);
         DemoEdgeNode toPersist = node.copy();
         MapSqlParameterSource params = createParams(toPersist);
 
@@ -142,6 +144,7 @@ public class JdbcEdgeNodeRepository implements EdgeNodeRepository {
             jdbcTemplate.update(INSERT_NODE, params);
         }
 
+        com.bproject.safety.config.ScsCentralScope.afterWrite(jdbcTemplate,centralStamp);
         return toPersist.copy();
     }
 

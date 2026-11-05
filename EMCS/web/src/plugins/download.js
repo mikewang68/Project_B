@@ -1,12 +1,27 @@
 ﻿import axios from 'axios'
 import { ElLoading, ElMessage } from 'element-plus'
 import { saveAs } from 'file-saver'
-import { getToken } from '@/utils/auth'
+import { getToken, hasNativeSession } from '@/utils/auth'
 import errorCode from '@/utils/errorCode'
 import { blobValidate } from '@/utils/ruoyi'
 
 const baseURL = import.meta.env.VITE_APP_BASE_API
 let downloadLoadingInstance;
+
+async function sessionHeaders(write = false) {
+  const token = getToken()
+  const headers = token ? { Authorization: 'Bearer ' + token } : {}
+  if (write && hasNativeSession()) {
+    const response = await fetch(baseURL.replace(/\/$/, '') + '/auth/sso/csrf', { credentials: 'same-origin', cache: 'no-store' })
+    if (!response.ok) throw new Error('无法核验统一登录会话')
+    const session = await response.json()
+    if (session.code !== 200 || typeof session.csrfToken !== 'string' || !session.csrfToken) {
+      throw new Error('统一登录CSRF凭据缺失')
+    }
+    headers['X-EMCS-CSRF'] = session.csrfToken
+  }
+  return headers
+}
 
 export default {
   name(name, isDelete = true) {
@@ -72,7 +87,7 @@ export default {
     try {
       const res = await axios({
         method: 'post', url: baseURL + url, data, responseType: 'blob',
-        headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json;charset=utf-8' }
+        headers: { ...await sessionHeaders(true), 'Content-Type': 'application/json;charset=utf-8' }
       })
       if (!blobValidate(res.data)) {
         await this.printErrMsg(res.data)
@@ -92,7 +107,7 @@ export default {
   async getBlob(url, fallbackName = 'energy-report.xlsx') {
     downloadLoadingInstance = ElLoading.service({ text: "正在下载归档，请稍候", background: "rgba(0, 0, 0, 0.7)" })
     try {
-      const res = await axios({ method: 'get', url: baseURL + url, responseType: 'blob', headers: { 'Authorization': 'Bearer ' + getToken() } })
+      const res = await axios({ method: 'get', url: baseURL + url, responseType: 'blob', headers: await sessionHeaders() })
       if (!blobValidate(res.data)) { await this.printErrMsg(res.data); throw new Error('归档接口返回业务错误') }
       const disposition = res.headers['content-disposition'] || ''
       const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || fallbackName

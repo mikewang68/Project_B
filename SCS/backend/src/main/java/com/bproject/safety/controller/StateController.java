@@ -69,8 +69,16 @@ public class StateController {
     }
 
     private static boolean allowed(com.bproject.safety.config.ScsLocalPolicy.Actor actor,String permission){
+        if(actor!=null&&actor.context()!=null){
+            String menu=Map.of("safety:person:map:view","SCS:people","safety:fence:list:view","SCS:fences",
+                "safety:module:collision:view","SCS:devices","safety:module:ai:view","SCS:ai",
+                "safety:module:alert:view","SCS:alarms","safety:module:rule:view","SCS:rules",
+                "safety:module:ops:view","SCS:operations").get(permission);
+            return menu!=null&&actor.context().hasAction(menu,"VIEW")&&(actor.admin()||actor.permissions().contains(permission));
+        }
         return actor==null||actor.admin()||actor.permissions().contains(permission);
     }
+    private boolean scopedSeedEnabled(){return demoGuard.isSeedEnabled()&&com.bproject.safety.config.ScsCentralScope.current()==null;}
 
     @GetMapping("/state")
     @Operation(summary = "获取全局安全态势快照 (SafetySnapshot)")
@@ -99,7 +107,7 @@ public class StateController {
         List<Map<String, Object>> peopleList = new ArrayList<>();
         List<DemoPersonnel> persons = allowed(actor,"safety:person:map:view")?personnelRepository.findAll():List.of();
         if (persons.isEmpty()) {
-            if(demoGuard.isSeedEnabled())peopleList.addAll(defaultPeople(now));
+            if(scopedSeedEnabled())peopleList.addAll(defaultPeople(now));
         } else {
             for (DemoPersonnel p : persons) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -124,7 +132,7 @@ public class StateController {
         List<Map<String, Object>> fencesList = new ArrayList<>();
         List<DemoFence> fences = allowed(actor,"safety:fence:list:view")?fenceRepository.findAll():List.of();
         if (fences.isEmpty()) {
-            if(demoGuard.isSeedEnabled())fencesList.addAll(defaultFences());
+            if(scopedSeedEnabled())fencesList.addAll(defaultFences());
         } else {
             for (DemoFence f : fences) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -151,7 +159,7 @@ public class StateController {
         List<Map<String, Object>> deviceList = new ArrayList<>();
         List<DemoCollisionDevice> devices = allowed(actor,"safety:module:collision:view")?collisionRepository.findAll():List.of();
         if (devices.isEmpty()) {
-            if(demoGuard.isSeedEnabled())deviceList.addAll(defaultDevices());
+            if(scopedSeedEnabled())deviceList.addAll(defaultDevices());
         } else {
             for (DemoCollisionDevice d : devices) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -180,7 +188,7 @@ public class StateController {
         snapshot.put("aiEventWindow", Map.of("limit",50,"returned",aiEvents.size(),
                 "total",aiTotal,"truncated",aiTotal>aiEvents.size()));
         if (aiEvents.isEmpty()) {
-            if(demoGuard.isSeedEnabled())aiList.addAll(defaultAiEvents(now));
+            if(scopedSeedEnabled())aiList.addAll(defaultAiEvents(now));
         } else {
             for (DemoAiEvent e : aiEvents) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -206,7 +214,7 @@ public class StateController {
         List<Map<String, Object>> alarmList = new ArrayList<>();
         List<DemoAlert> alerts = allowed(actor,"safety:module:alert:view")?alertRepository.findAll():List.of();
         if (alerts.isEmpty()) {
-            if(demoGuard.isSeedEnabled())alarmList.addAll(defaultAlarms(now));
+            if(scopedSeedEnabled())alarmList.addAll(defaultAlarms(now));
         } else {
             for (DemoAlert a : alerts) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -230,7 +238,7 @@ public class StateController {
         List<Map<String, Object>> ruleList = new ArrayList<>();
         List<DemoRule> rules = allowed(actor,"safety:module:rule:view")?ruleRepository.findAll():List.of();
         if (rules.isEmpty()) {
-            if(demoGuard.isSeedEnabled())ruleList.addAll(defaultRules());
+            if(scopedSeedEnabled())ruleList.addAll(defaultRules());
         } else {
             for (DemoRule r : rules) {
                 Map<String, Object> item = new LinkedHashMap<>();
@@ -266,7 +274,7 @@ public class StateController {
                 )
         ));
 
-        if(!demoGuard.isSeedEnabled()){
+        if(!scopedSeedEnabled()){
             snapshot.put("dataQuality","partial");
             snapshot.put("workPlan",Map.of("id","","name","未接入生产计划","shift","","team","","area","","progress",0,"status","未接入"));
             snapshot.put("scenarios",List.of());snapshot.put("auditLogs",List.of());

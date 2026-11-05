@@ -43,7 +43,7 @@ const abnormalOf = (c: DeviceCategory) => c.devices.filter((d) => d.state !== 'n
           <small>{{ d.name }} · 挂载 {{ d.edgeId }}</small>
         </div>
         <OpsHealthBadge :state="d.state" :label="d.state === 'offline' ? '离线' : d.issue" />
-        <button type="button" class="ops-btn small" @click="emit('reconnect', d)">重新连接</button>
+        <button v-permission="'safety:module:ops:execute'" type="button" class="ops-btn small" @click="emit('reconnect', d)">重新连接</button>
       </div>
     </div>
   </div>

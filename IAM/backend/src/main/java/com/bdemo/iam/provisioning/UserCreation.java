@@ -22,6 +22,10 @@ public class UserCreation {
   private final TransactionTemplate tx;
   private final ObjectMapper json;
   private final String pepper;
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bdemo.iam.scope.ScopeProvisioning scopes;
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.bdemo.iam.log.OperationLogger operationLogger;
 
   public UserCreation(
       UserService users,
@@ -44,19 +48,23 @@ public class UserCreation {
       throw BizException.badRequest("需要有效 Idempotency-Key");
     if (r.blockchainId() != null || r.blockchainAddress() != null)
       throw BizException.badRequest("Fabric 身份由服务端供给");
-    String hash = hash(r);
+    var planned=scopes==null?null:scopes.plan(r);
+    String hash = hash(planned==null?new LegacyRequest(r.username(),r.name(),r.phone(),r.email(),r.password(),r.roleIds(),r.orgCodes(),r.status(),r.blockchainId(),r.blockchainAddress()):new ScopedRequest(planned.actorId(),planned,r));
     String id;
     try {
       id =
           tx.execute(
               s -> {
+                // Recheck permissions, inherited attributes and roles before idempotent replay too.
+                var current=scopes==null?null:scopes.plan(r);
+                if(!java.util.Objects.equals(planned,current))throw BizException.conflict("创建范围已变化，请重新检查");
                 var prior =
                     db.queryForList(
                         "SELECT request_hash,user_id FROM iam.user_creation_request WHERE"
                             + " request_key=?",
                         key);
                 if (!prior.isEmpty()) return replay(prior.get(0), hash);
-                var user =
+                var user = current!=null ? users.createScoped(r,current) :
                     users.create(
                         r.username(),
                         r.name(),
@@ -81,7 +89,16 @@ public class UserCreation {
           db.queryForList(
               "SELECT request_hash,user_id FROM iam.user_creation_request WHERE request_key=?",
               key);
-      if (prior.isEmpty()) throw BizException.conflict("用户名已存在");
+      if (prior.isEmpty()) {
+        Integer matches = db.queryForObject(
+            "SELECT count(*) FROM iam.iam_user WHERE lower(trim(username))=lower(trim(?))",
+            Integer.class, r.username());
+        if (matches != null && matches > 0) {
+          operationLogger.usernameConflict(r.username(), "UNIQUE_CONSTRAINT");
+          throw new com.bdemo.iam.user.UsernameConflictException();
+        }
+        throw BizException.conflict("创建请求冲突，请重试");
+      }
       id = replay(prior.get(0), hash);
     } catch (BizException e) {
       if (e.getHttpStatus() != 409) throw e;
@@ -89,7 +106,11 @@ public class UserCreation {
           db.queryForList(
               "SELECT request_hash,user_id FROM iam.user_creation_request WHERE request_key=?",
               key);
-      if (prior.isEmpty()) throw e;
+      if (prior.isEmpty()) {
+        if (e instanceof com.bdemo.iam.user.UsernameConflictException)
+          operationLogger.usernameConflict(r.username(), "PRECHECK");
+        throw e;
+      }
       id = replay(prior.get(0), hash);
     }
     // The committed durable task survives a timeout here. Each HTTP request is bounded to 4 s.
@@ -111,6 +132,10 @@ public class UserCreation {
     if (!hash.equals(row.get("request_hash"))) throw BizException.conflict("相同幂等键的请求内容不同");
     return (String) row.get("user_id");
   }
+
+  private record LegacyRequest(String username,String name,String phone,String email,String password,
+      java.util.List<String> roleIds,java.util.List<String> orgCodes,String status,String blockchainId,String blockchainAddress) {}
+  private record ScopedRequest(String actorId,com.bdemo.iam.scope.ScopeProvisioning.Plan plan,UserUpsertRequest request) {}
 
   private String hash(Object r) {
     try {

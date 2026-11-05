@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
  * 防范间隙碰撞与静默覆盖）。单实例口径，<b>不保证多实例唯一</b>。
  */
 @Component
+@org.springframework.context.annotation.Profile("!server")
 public class DemoFenceNumberGenerator implements FenceNumberGenerator {
 
     private static final Logger log = LoggerFactory.getLogger(DemoFenceNumberGenerator.class);

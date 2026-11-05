@@ -68,7 +68,7 @@ public class EventRelations {
             row.get("id")))
       if (db.queryForObject(
               "SELECT COUNT(*) FROM events_read WHERE record_kind='LEGACY_V1' AND org_id=? AND"
-                  + " source_system||':'||source_event_id=?",
+                  + " source_system||':'||source_event_id=?"+com.bproject.trust.identity.TrustCentralScope.predicate(com.bproject.trust.identity.TrustCentralScope.Root.EVENT,"events_read"),
               Long.class,
               org,
               ref)
