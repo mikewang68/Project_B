@@ -16,7 +16,7 @@ export function usePageLoad(load: () => Promise<void>, menuId?: string, options:
     if (options.auto !== false) timer = setInterval(() => {
       if (!active.value || pending.value || busy.value || document.hidden) return;
       if (document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')) return;
-      if ([...document.querySelectorAll('[role="dialog"],dialog[open]')].some(node => (node as HTMLElement).getClientRects().length)) return;
+      if (Array.from(document.querySelectorAll('[role="dialog"],dialog[open]')).some(node => (node as HTMLElement).getClientRects().length)) return;
       pending.value = true;
     }, 30_000);
   });

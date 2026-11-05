@@ -14,7 +14,7 @@ const out = process.env.TRUST_TEST_RESULTS || path.join(__dirname, '../.local/te
     const req = route.request(), p = new URL(req.url()).pathname.replace('/api/v1', '');
     let status = 200, body = {};
     if (p === '/csrf') body = { token: 'synthetic' };
-    else if (p === '/me') body = { username: 'synthetic', orgId: 'TEST', identityProvider: 'IAM', roles: ['ROLE_ADMIN', 'ROLE_EDITOR'] };
+    else if (p === '/me') body = { username: 'synthetic', orgId: 'TEST', identityProvider: 'IAM', contextContractVersion: 2, roles: ['trust:event:read', 'trust:task:read', 'trust:evidence:verify', 'trust:evidence:export'] };
     else if (p === '/audit/page-actions') {
       const action = req.postDataJSON(); actions.push(action);
       status = reject ? 503 : 200; body = { requestId: action.requestId, state: 'RECORDED' };
@@ -71,5 +71,8 @@ const out = process.env.TRUST_TEST_RESULTS || path.join(__dirname, '../.local/te
     assert.deepEqual(errors, []);
     fs.writeFileSync(path.join(out, 'summary.json'), JSON.stringify({ passed: true, mode: 'headless HTTP fixtures', businessReads: reads.length, actions: actions.length, periodicReadWindows: 3, errors }, null, 2));
     console.log('PASS: periodic reads on all three pages; initial/reactivation correlation; fail-closed manual refresh; state-dependent export updates');
+  } catch (error) {
+    fs.writeFileSync(path.join(out, 'failure.json'), JSON.stringify({ reads, actions, errors, body: await page.locator('body').innerText() }, null, 2));
+    throw error;
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
