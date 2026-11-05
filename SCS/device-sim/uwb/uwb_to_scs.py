@@ -3,6 +3,9 @@
 监听 UWB 引擎的 UDP JSON 输出（uwb_sim.py 默认 127.0.0.1:9000），把标签坐标换算成
 首页底图的百分比坐标，批量 POST /api/v1/ingest/person-position，让人物标记在地图上真的走动。
 
+同一条 UDP 流里的基站帧（type=station）另走 /api/v1/ingest/uwb-station，
+按 --station-interval（默认 5s）上报在线/时钟同步/信噪比，供基站健康度与覆盖盲区监测。
+
 说明：正式的定位引擎→底座链路由网关负责；本脚本只是联调替身，让
 「UWB 标签 → SCS 人员位置」这条链路可以端到端跑通，不代表正式网关实现。
 
@@ -60,6 +63,7 @@ class Collector:
         self.stale_seconds = stale_seconds
         self.latest: dict[str, dict] = {}
         self.unknown_tags: set[str] = set()
+        self.stations: dict[str, dict] = {}
 
     def feed(self, pkt: dict, now: float) -> None:
         kind = pkt.get("type")
@@ -67,8 +71,21 @@ class Collector:
             # SOS/围栏事件暂不改位置，只打日志，便于演示时肉眼确认链路是通的
             print(f"[uwb] event tag={pkt.get('tagId')} {pkt.get('event')}={pkt.get('value')}")
             return
+        if kind == "station":
+            # 基站健康（IF-IN-UWB-STATION）：只做在线/同步/信噪比的透传，不参与定位解算
+            sid = str(pkt.get("stationId") or "").strip()
+            if sid:
+                self.stations[sid] = {
+                    "stationId": sid,
+                    "online": bool(pkt.get("online", True)),
+                    "clockSynced": bool(pkt.get("clockSynced", True)),
+                    "snrDb": pkt.get("snrDb"),
+                    "powerOk": bool(pkt.get("powerOk", True)),
+                    "tagCount": pkt.get("tagCount"),
+                }
+            return
         if kind != "tag":
-            return  # 基站帧等与本链路的职责无关
+            return
         tag = str(pkt.get("tagId") or "").strip()
         person = self.tag_map.get(tag) or str(pkt.get("personId") or "").strip()
         if not person:
@@ -99,9 +116,9 @@ class Collector:
         return fresh
 
 
-def push(scs: str, api_key: str, positions: list[dict]) -> tuple[int, str]:
-    url = scs.rstrip("/") + "/api/v1/ingest/person-position"
-    body = json.dumps({"source": "device-sim/uwb", "positions": positions},
+def push(scs: str, api_key: str, path: str, key: str, items: list[dict]) -> tuple[int, str]:
+    url = scs.rstrip("/") + path
+    body = json.dumps({"source": "device-sim/uwb", key: items},
                       ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json; charset=utf-8")
@@ -127,6 +144,7 @@ def main():
     ap.add_argument("--site-height-m", type=float, default=100.0, help="站场高度（米）")
     ap.add_argument("--interval", type=float, default=1.0, help="批量上报间隔（秒）；UWB 可到 5Hz，别跟着刷")
     ap.add_argument("--stale-seconds", type=float, default=10.0, help="超过该时长没收到帧的标签停止上报")
+    ap.add_argument("--station-interval", type=float, default=5.0, help="基站状态上报间隔（秒）")
     ap.add_argument("--duration", type=float, default=0, help=">0 运行秒数；0 持续")
     ap.add_argument("--dry-run", action="store_true", help="只打印换算结果，不上报")
     a = ap.parse_args()
@@ -151,6 +169,7 @@ def main():
 
     started = time.time()
     last_post = 0.0
+    last_station_post = 0.0
     while True:
         now = time.time()
         if a.duration > 0 and now - started >= a.duration:
@@ -178,8 +197,15 @@ def main():
             print(f"[uwb] dry-run {len(positions)} position(s): "
                   + json.dumps(positions, ensure_ascii=False))
             continue
-        status, text = push(a.scs, api_key, positions)
+        status, text = push(a.scs, api_key, "/api/v1/ingest/person-position", "positions", positions)
         print(f"[uwb] push {len(positions)} position(s) -> HTTP {status} {text[:140]}")
+
+        # 基站状态变化慢，单独按 --station-interval 上报（默认 5s），不跟着 1s 的位置批次刷
+        if collector.stations and now - last_station_post >= max(1.0, a.station_interval):
+            last_station_post = now
+            s_status, s_text = push(a.scs, api_key, "/api/v1/ingest/uwb-station",
+                                    "stations", list(collector.stations.values()))
+            print(f"[uwb] push {len(collector.stations)} station(s)  -> HTTP {s_status} {s_text[:140]}")
 
     sock.close()
     return 0

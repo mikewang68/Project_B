@@ -83,7 +83,10 @@ SCS 侧只更新已登记设备（`CRANE-01` / `TIP-02` 等）的展示字段并
 device-sim/
   docs/01~04-资料卡.md     # 协议依据、点位映射、构造扩展声明（群内提交格式）
   common/modbus_tcp.py     # 极简 Modbus TCP 从站（FC03/04/06/16）
-  uwb/uwb_sim.py           # UDP JSON 输出 + 下行注入回执
+  uwb/uwb_sim.py           # UDP JSON 输出（标签 + 基站）+ 下行注入回执
+  uwb/uwb_to_scs.py        # UDP 收帧 → 人员位置 /api/v1/ingest/person-position
+                           #           → 基站状态 /api/v1/ingest/uwb-station（5s 一批）
+  uwb/routes.json          # 每人独立路线（形状/速度/起始偏移）
   radar/radar_sim.py       # Modbus TCP 寄存器（距离/速度/健康/配对编码）
   aibox/aibox_sim.py       # Webhook 推送 + JPEG 快照服务
   alarmlight/alarmlight_sim.py  # 灯位/蜂鸣/时长/防抖 + 回执区

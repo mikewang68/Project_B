@@ -26,13 +26,15 @@
 
 ## 1. 构建
 
-将源码上传到任一已安装统一构建工具的节点，在项目根目录运行：
+将完整仓库源码上传到任一已安装统一构建工具的节点，保留同级的 `SCS/` 与 `IAM/context-client/`，在 `SCS` 目录运行：
 
 ```bash
 bash deploy/scripts/build-server.sh
 ```
 
-脚本会严格核对服务器清单中的 Java 17、Maven 3.9.16、Node.js 24.18.0、npm 11.16.0 和 pnpm 10.34.5，然后执行前端类型检查、测试、生产构建和后端测试打包。产物写入 `deploy/generated/<时间戳>/`，不会覆盖以前的发布包。
+脚本会严格核对 Java 17、Maven 3.9.16、Node.js 24.18.0 和 pnpm 10.34.5，然后执行前端类型检查、测试、生产构建、公共 Java SDK 安装和后端测试打包。产物写入 `deploy/generated/<时间戳>/`，不会覆盖以前的发布包。
+
+启用中央 V2 的数据库增量、IAM 配置及可信机器来源登记见 [`../README.md`](../README.md) 和 [`../backend/db/v21/README.md`](../backend/db/v21/README.md)；构建脚本不执行数据库迁移。可信机器来源文件目前依赖 POSIX 文件权限检查，应在 Linux 文件系统上配置和验证。
 
 ## 2. node4 安装后端
 

@@ -98,3 +98,15 @@
   .personnel-workspace { height: auto; grid-template-columns: 1fr; }.personnel-map-card { height: 600px; }.personnel-list-card { height: 460px; }
   .fence-workspace { height: auto; grid-template-columns: 1fr; }.fence-list-card { height: 330px; }.fence-map-card { height: 620px; }.fence-detail-card { min-height: 560px; }
 }
+
+/* UWB 基站健康条（IF-IN-UWB-STATION）：基站状态变化慢，单独一条，不挤占人员列表 */
+.uwb-station-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-height: 44px; margin-bottom: 14px; padding: 8px 12px; }
+.uwb-station-bar__label { color: var(--color-primary); font-size: 7px; font-weight: 750; letter-spacing: .15em; text-transform: uppercase; }
+.uwb-station-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--color-primary-soft); color: var(--color-text-secondary); font-size: 10px; font-weight: 600; }
+.uwb-station-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); }
+.uwb-station-chip em { color: var(--color-text-tertiary); font-style: normal; font-weight: 500; }
+.uwb-station-chip.is-warn { background: var(--color-warning-soft); }
+.uwb-station-chip.is-warn i { background: var(--color-warning); }
+.uwb-station-chip.is-offline { background: var(--color-danger-soft); }
+.uwb-station-chip.is-offline i { background: var(--color-danger); }
+.uwb-station-bar__summary { margin-left: auto; color: var(--color-text-tertiary); font-size: 9px; }

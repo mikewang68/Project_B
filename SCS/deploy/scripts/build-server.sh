@@ -30,6 +30,14 @@ pnpm --filter b-project-safety-gate-web typecheck
 pnpm --filter b-project-safety-gate-web test
 pnpm --filter b-project-safety-gate-web build
 
+# The handoff SDK is a sibling repository module, not a published Maven artifact.
+sdk_pom="${project_root}/../IAM/context-client/pom.xml"
+[[ -f "$sdk_pom" ]] || { echo "ERROR: IAM/context-client is required; build from the complete repository" >&2; exit 1; }
+mvn -f "$sdk_pom" \
+  -gs backend/.mvn/settings.xml \
+  -s backend/.mvn/settings.xml \
+  clean install
+
 mvn -f backend/pom.xml \
   -gs backend/.mvn/settings.xml \
   -s backend/.mvn/settings.xml \

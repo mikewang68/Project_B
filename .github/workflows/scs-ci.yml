@@ -35,7 +35,7 @@ jobs:
           cache: maven
       - name: Install current IAM context client
         working-directory: .
-        run: mvn -B -f IAM/context-client/pom.xml install
+        run: mvn -B -gs SCS/backend/.mvn/settings.xml -s SCS/backend/.mvn/settings.xml -f IAM/context-client/pom.xml clean install
       - name: Test & package
         working-directory: SCS/backend
         run: mvn -B -gs .mvn/settings.xml -s .mvn/settings.xml verify
