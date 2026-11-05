@@ -117,6 +117,25 @@ def one(query, key):
     return values[0]
 
 
+def project_hint(query, audience):
+    """Optional IAM page context, never an authorization or scope grant."""
+    if "projectId" not in query:
+        return None
+    value = one(query, "projectId")
+    if audience != "iam" or "workspace" in query or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", value):
+        raise Denied(400, "Invalid IAM project context")
+    return value
+
+
+def workspace_hint(query, audience):
+    if "workspace" not in query:
+        return None
+    value = one(query, "workspace")
+    if audience != "iam" or "projectId" in query or value != "global":
+        raise Denied(400, "Invalid IAM workspace context")
+    return value
+
+
 def read_json(handler):
     if handler.headers.get("Transfer-Encoding"):
         raise Denied(400, "Unsupported request framing")
@@ -166,12 +185,19 @@ class CentralBridge:
                     and hmac.compare_digest(v["challenge"], challenge(verifier)))
                 # Mint only now: re-check current IAM session/mapping at redemption.
                 ticket = self.ticket(record["session"], aud)
-                reply(handler, 200, {"ticket": ticket, "target": record["target"], "page": record["page"]})
+                result = {"ticket": ticket, "target": record["target"], "page": record["page"]}
+                if record.get("projectId") is not None:
+                    result["projectId"] = record["projectId"]
+                if record.get("workspace") is not None:
+                    result["workspace"] = record["workspace"]
+                reply(handler, 200, result)
                 return True
             if handler.command != "GET":
                 raise Denied(405, "GET required")
             q = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
             aud, page = one(q, "app"), one(q, "page")
+            project_id = project_hint(q, aud)
+            workspace = workspace_hint(q, aud)
             state, pkce = one(q, "state"), one(q, "code_challenge")
             if not re.fullmatch(r"[A-Za-z0-9_-]{43}", state) or not re.fullmatch(r"[A-Za-z0-9_-]{43}", pkce):
                 raise Denied(400, "Invalid browser transaction")
@@ -215,8 +241,16 @@ class CentralBridge:
             decoded = urllib.parse.unquote(target_path)
             if any(part in (".", "..") for part in decoded.split("/")) or re.search(r"[\\\x00-\x20\x7f%]", decoded):
                 raise Denied(403, "Invalid function path")
-            target = urllib.parse.urlunsplit((base.scheme, base.netloc, target_path, source.query, source.fragment))
-            code = self.codes.put({"audience": aud, "page": page, "target": target, "challenge": pkce, "session": session})
+            target_query = source.query
+            if project_id is not None or workspace is not None:
+                # The path still comes exclusively from authorized IAM navigation.
+                # IAM must validate this presentation hint against its workspace.
+                parameters = [(k, v) for k, v in urllib.parse.parse_qsl(source.query, keep_blank_values=True)
+                              if k not in ("projectId", "workspace")]
+                parameters.append(("projectId", project_id) if project_id is not None else ("workspace", workspace))
+                target_query = urllib.parse.urlencode(parameters)
+            target = urllib.parse.urlunsplit((base.scheme, base.netloc, target_path, target_query, source.fragment))
+            code = self.codes.put({"audience": aud, "page": page, "target": target, "challenge": pkce, "session": session, "projectId": project_id, "workspace": workspace})
             callback = registered_origin + "/sso/callback?" + urllib.parse.urlencode({"code": code, "state": state})
             reply(handler, 303, location=callback)
         except Denied as failure:
@@ -261,16 +295,23 @@ class EdgeBridge:
                 return True
             if parsed.path == "/sso/start":
                 page = one(q, "page")
+                project_id = project_hint(q, self.audience)
+                workspace = workspace_hint(q, self.audience)
                 if not re.fullmatch(r"[A-Za-z0-9_:.\-]{1,160}", page):
                     raise Denied(400, "Invalid page identifier")
                 state, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
                 address = self.address_provider(self.audience) if self.address_provider else None
                 public = address["origin"] if address else self.public
                 if address and handler.headers.get("Host", "").lower() != urllib.parse.urlsplit(public).netloc.lower():
-                    reply(handler, 303, location=public + "/sso/start?" + urllib.parse.urlencode({"page": page}))
+                    parameters = {"page": page}
+                    if project_id is not None: parameters["projectId"] = project_id
+                    if workspace is not None: parameters["workspace"] = workspace
+                    reply(handler, 303, location=public + "/sso/start?" + urllib.parse.urlencode(parameters))
                     return True
-                transaction = self.transactions.put({"state": state, "verifier": verifier, "page": page, "origin": public})
+                transaction = self.transactions.put({"state": state, "verifier": verifier, "page": page, "origin": public, "projectId": project_id, "workspace": workspace})
                 parameters = {"app": self.audience, "page": page, "state": state, "code_challenge": challenge(verifier)}
+                if project_id is not None: parameters["projectId"] = project_id
+                if workspace is not None: parameters["workspace"] = workspace
                 if address: parameters["addressVersion"] = address["version"]
                 location = self.central + "/sso/authorize?" + urllib.parse.urlencode(parameters)
                 reply(handler, 303, location=location, cookies=[self.cookie(transaction, 180)])
@@ -287,7 +328,9 @@ class EdgeBridge:
                 {"audience": self.audience, "code": code, "verifier": record["verifier"]},
                 {"X-SSO-Service-Token": self.credential})
             target = result.get("target", "")
-            if result.get("page") != record["page"] or not target.startswith(record["origin"] + "/"):
+            if result.get("page") != record["page"] or result.get("projectId") != record.get("projectId") \
+                    or result.get("workspace") != record.get("workspace") \
+                    or not target.startswith(record["origin"] + "/"):
                 raise Denied(403, "Unregistered callback target")
             native, cookies = request_json(self.exchange_url, {"ticket": result["ticket"]},
                 {"X-SSO-Service-Token": self.credential})

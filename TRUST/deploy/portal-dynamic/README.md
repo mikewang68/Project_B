@@ -50,7 +50,8 @@ GET /api/v1/iam/navigation/tree
     "userContext": {
       "displayName": "超级管理员",
       "accessMode": "FULL_ADMIN",
-      "readOnly": false
+      "readOnly": false,
+      "allowedAppCodes": ["PSMS"]
     },
     "systems": [
       {
@@ -84,7 +85,7 @@ GET /api/v1/iam/navigation/tree
 - `nodeType` 只能是 `PAGE` 或 `DIRECTORY`
 - `DIRECTORY` 不得携带 `entryPath`
 - 层级上限 6 层
-- `appCode` 必须属于允许集合：`WMS PSMS SCS EHMS EMCS TRUST IAM SYS`
+- `appCode` 必须属于本次可信响应的 `userContext.allowedAppCodes`，且符合大写标识格式；不在前端固定系统数量，新登记系统沿用同一校验。
 - 拒绝旧版根级 `categories` 结构
 
 ### 2. 会话
@@ -116,7 +117,7 @@ POST /api/v1/portal/session/logout → 200
 
 | # | 检查 | 预期 |
 |---|---|---|
-| 1 | admin 登录 | 左侧 8 个系统 |
+| 1 | L1 登录 | 显示真实登记的项目目录，选项目后才显示对应应用 |
 | 2 | 展开含目录的系统 | 目录可展开，子页缩进 |
 | 3 | 点击目录标题 | 不跳转，只折叠/展开 |
 | 4 | 点击叶子页 | 卡片显示 `entryPath`，「尝试打开服务页面」指向该路径 |
@@ -128,6 +129,25 @@ POST /api/v1/portal/session/logout → 200
 | 10 | 主题/布局切换 | 4 主题 × 3 布局均生效 |
 
 自动化脚本见仓库 `TRUST/tests/`（既有 `portal-browser.cjs` 面向静态目录版，不适用于本目录）。
+
+## 分级项目工作台
+
+门户读取 `GET /api/v1/iam/auth/workspace`：`{code:0,data:{legacy:false,userContext,projects:[{projectId,name,status,regions:[{regionId,name,status}]}]}}`。
+L1（含只读用户）首先选择项目；L2直接进入所属项目；L3/L4固定在服务端给出的项目、区域和子系统。
+目录包含真实登记但尚未配置业务授权的项目，这些项目仍可进入获准的管理页面，业务范围保持 `DENY`。
+明确返回 `legacy:true,userContext:null,projects:[]` 的旧账号保留原导航流程；请求失败不降级成全局范围。
+
+选择项目/区域使用已有 `POST /api/v1/iam/auth/context/selection`，等待服务端保存成功，再重读上下文与导航。
+URL中的 `projectId`、`regionId` 只作为选择提示，必须在服务端返回的目录和 `allowedScopes` 中找到；不改变账号身份。
+进入业务前再检查当前会话范围，发现另一页面改变范围时停止跳转。
+返回项目列表只隐藏业务入口，不扩大服务器授权；全局基础管理由L1显式进入。
+
+IAM管理入口经已有SSO传递可选 `projectId`，需要同时更新中央和IAM边缘SSO桥接组件。
+该参数绑定一次性事务并由IAM页面重新核验目录，不能作为身份或数据权限依据。
+IAM前端构建配置 `VITE_PORTAL_URL` 指向平台入口，以提供跨域返回入口；未配置时使用同源 `/portal/`。
+
+针对性校验：`node TRUST/tests/portal-workspace.cjs`、`node TRUST/tests/portal-addresses.cjs`；
+跨域参数绑定校验在 `deploy/isolated-gateway/test_cross_domain_sso.py`。
 
 ---
 

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useWorkspaceStore } from '@/stores/workspace'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -113,7 +114,7 @@ router.beforeEach(async (to, _from, next) => {
 
   // 已登录：校验路由级权限（meta.perm）；超级管理员在 permCodes 中已动态拥有全部权限
   if(auth.userContext && to.redirectedFrom?.path === '/' && to.path !== auth.landingPath) {
-    next(auth.landingPath)
+    next({ path: auth.landingPath, query: to.query })
     return
   }
   if(to.meta.scopeManagement && !auth.canManageScope || to.meta.scopeContext && !auth.userContext) {
@@ -124,6 +125,8 @@ router.beforeEach(async (to, _from, next) => {
     next('/403')
     return
   }
+
+  if (to.meta.scopeManagement) await useWorkspaceStore().prepare(to.query)
 
   next()
 })

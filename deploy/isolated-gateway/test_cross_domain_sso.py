@@ -125,6 +125,136 @@ class BrowserFlowTests(unittest.TestCase):
         self.assertEqual(403,self.request(self.central_url+'/sso/code/exchange',body={'audience':'wms','code':code,'verifier':'v'*43},headers={'X-SSO-Service-Token':self.secret})[0])
         self.assertFalse(self.exchanges)
 
+    def configure_iam(self):
+        self.central.apps = {'iam': self.central.apps['wms']}
+        self.edge.audience = 'iam'
+        self.central.navigation = lambda session: {'systems': [{
+            'appCode': 'IAM', 'entryBaseUrl': self.edge_url+'/', 'entryBasePath': '/iam/',
+            'children': [{'stableMenuKey': 'IAM:scope-management',
+                'entryPath': '/iam/system/scope-management?tab=users', 'canLaunch': self.authorized}]}]}
+
+    def begin_iam(self, suffix=''):
+        status, headers, _ = self.request(self.edge_url+'/sso/start?page=IAM%3Ascope-management'+suffix)
+        self.assertEqual(303, status)
+        return headers['Location'], headers['Set-Cookie'].split(';')[0]
+
+    def test_iam_project_context_preserves_authorized_target_and_stays_out_of_native_ticket_request(self):
+        self.configure_iam()
+        authorization, cookie = self.begin_iam('&projectId=PROJECT_B')
+        self.assertEqual(['PROJECT_B'], urllib.parse.parse_qs(urllib.parse.urlsplit(authorization).query)['projectId'])
+        status, headers, _ = self.request(authorization)
+        self.assertEqual(303, status)
+        status, headers, _ = self.request(headers['Location'], cookie)
+        self.assertEqual(303, status)
+        self.assertEqual(self.edge_url+'/system/scope-management?tab=users&projectId=PROJECT_B', headers['Location'])
+        self.assertEqual([{'ticket': 'ticket-stays-on-server'}], self.exchanges)
+        self.assertEqual(['iam'], self.minted)
+
+    def test_iam_without_project_hint_keeps_global_entry_unchanged(self):
+        self.configure_iam()
+        authorization, cookie = self.begin_iam()
+        _, headers, _ = self.request(authorization)
+        status, headers, _ = self.request(headers['Location'], cookie)
+        self.assertEqual(303, status)
+        self.assertEqual(self.edge_url+'/system/scope-management?tab=users', headers['Location'])
+
+    def test_selected_project_replaces_conflicting_registered_workspace_hint(self):
+        self.configure_iam()
+        navigation = self.central.navigation
+        def with_old_hint(session):
+            tree = navigation(session)
+            tree['systems'][0]['children'][0]['entryPath'] += '&workspace=global&projectId=OLD_PROJECT'
+            return tree
+        self.central.navigation = with_old_hint
+        authorization, cookie = self.begin_iam('&projectId=PROJECT_B')
+        _, headers, _ = self.request(authorization)
+        status, headers, _ = self.request(headers['Location'], cookie)
+        self.assertEqual(303, status)
+        self.assertEqual(self.edge_url+'/system/scope-management?tab=users&projectId=PROJECT_B', headers['Location'])
+
+    def test_explicit_iam_global_workspace_survives_sso_and_replaces_registered_project(self):
+        self.configure_iam()
+        navigation = self.central.navigation
+        def with_old_hint(session):
+            tree = navigation(session)
+            tree['systems'][0]['children'][0]['entryPath'] += '&projectId=OLD_PROJECT'
+            return tree
+        self.central.navigation = with_old_hint
+        authorization, cookie = self.begin_iam('&workspace=global')
+        self.assertEqual(['global'], urllib.parse.parse_qs(urllib.parse.urlsplit(authorization).query)['workspace'])
+        _, headers, _ = self.request(authorization)
+        status, headers, _ = self.request(headers['Location'], cookie)
+        self.assertEqual(303, status)
+        self.assertEqual(self.edge_url+'/system/scope-management?tab=users&workspace=global', headers['Location'])
+        self.assertEqual([{'ticket':'ticket-stays-on-server'}], self.exchanges)
+
+    def test_workspace_hint_is_iam_only_global_only_and_exclusive_with_project(self):
+        self.assertEqual(400, self.request(self.edge_url+'/sso/start?page=WMS%3Abalances&workspace=global')[0])
+        authorization, _ = self.begin()
+        self.assertEqual(400, self.request(authorization+'&workspace=global')[0])
+        self.configure_iam()
+        for suffix in ('&workspace=', '&workspace=all', '&workspace=global&workspace=global',
+                       '&workspace=global&projectId=PROJECT_B'):
+            with self.subTest(suffix=suffix):
+                self.assertEqual(400, self.request(self.edge_url+'/sso/start?page=IAM%3Ascope-management'+suffix)[0])
+        authorization, _ = self.begin_iam('&workspace=global')
+        self.assertEqual(400, self.request(authorization+'&projectId=PROJECT_B')[0])
+        self.assertFalse(self.minted)
+
+    def test_global_workspace_removed_in_transit_cannot_establish_native_session(self):
+        self.configure_iam()
+        authorization, cookie = self.begin_iam('&workspace=global')
+        status, headers, _ = self.request(authorization.replace('&workspace=global',''))
+        self.assertEqual(303, status)
+        self.assertEqual(403, self.request(headers['Location'], cookie)[0])
+        self.assertFalse(self.exchanges)
+
+    def test_project_context_is_rejected_for_business_audiences(self):
+        self.assertEqual(400, self.request(self.edge_url+'/sso/start?page=WMS%3Abalances&projectId=PROJECT_B')[0])
+        authorization, _ = self.begin()
+        self.assertEqual(400, self.request(authorization+'&projectId=PROJECT_B')[0])
+        self.assertFalse(self.minted)
+
+    def test_invalid_or_duplicate_project_context_fails_before_transaction(self):
+        self.configure_iam()
+        for suffix in ('&projectId=', '&projectId=PROJECT_B&projectId=PROJECT_A',
+                       '&projectId=%27OR%201%3D1', '&projectId=../PROJECT_B', '&projectId='+'A'*65):
+            with self.subTest(suffix=suffix):
+                self.assertEqual(400, self.request(self.edge_url+'/sso/start?page=IAM%3Ascope-management'+suffix)[0])
+        self.assertFalse(self.edge.transactions.values)
+        self.assertFalse(self.minted)
+
+    def test_project_hint_cannot_make_an_unauthorized_menu_available(self):
+        self.configure_iam(); self.authorized = False
+        authorization, _ = self.begin_iam('&projectId=PROJECT_B')
+        self.assertEqual(403, self.request(authorization)[0])
+        self.assertFalse(self.minted)
+
+    def test_project_hint_changed_or_removed_in_transit_cannot_establish_native_session(self):
+        self.configure_iam()
+        for replacement in ('&projectId=PROJECT_A', ''):
+            with self.subTest(replacement=replacement):
+                authorization, cookie = self.begin_iam('&projectId=PROJECT_B')
+                tampered = authorization.replace('&projectId=PROJECT_B', replacement)
+                status, headers, _ = self.request(tampered)
+                self.assertEqual(303, status)
+                self.assertEqual(403, self.request(headers['Location'], cookie)[0])
+        self.assertFalse(self.exchanges)
+
+    def test_duplicate_hint_at_central_is_rejected(self):
+        self.configure_iam()
+        authorization, _ = self.begin_iam('&projectId=PROJECT_B')
+        self.assertEqual(400, self.request(authorization+'&projectId=PROJECT_A')[0])
+        self.assertFalse(self.minted)
+
+    def test_iam_canonical_address_redirect_retains_project_context(self):
+        self.configure_iam()
+        self.edge.address_provider = lambda audience: {'origin':self.edge_url,'version':1}
+        status, headers, _ = self.request(self.edge_url+'/sso/start?page=IAM%3Ascope-management&projectId=PROJECT_B',
+                                         headers={'Host':'old.example.test'})
+        self.assertEqual(303, status)
+        self.assertEqual(self.edge_url+'/sso/start?page=IAM%3Ascope-management&projectId=PROJECT_B', headers['Location'])
+
     def dynamic_addresses(self):
         self.address_version = 1
         def published(audience, version=None):

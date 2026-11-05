@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#24364a">
-  <title>B项目 · 统一应用导航门户</title>
+  <title>统一管理平台 · 项目工作台</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%2324364a'/%3E%3Ctext x='32' y='45' text-anchor='middle' font-size='42' font-family='Georgia' fill='white'%3EB%3C/text%3E%3C/svg%3E">
   <script>
     (() => {
@@ -20,8 +20,8 @@
       }
     })();
   </script>
-  <link rel="stylesheet" href="/portal-assets/portal.css?v=20261026-1">
-  <script src="/portal-assets/portal.js?v=c5d18d6ad530" defer></script>
+  <link rel="stylesheet" href="/portal-assets/portal.css?v=project-workspace-1">
+  <script src="/portal-assets/portal.js?v=project-workspace-1" defer></script>
 </head>
 <body>
   <div class="portal-frame" id="portal-frame" data-layout="side">
@@ -29,9 +29,9 @@
     <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
 
     <aside class="portal-sidebar" id="portal-sidebar" aria-label="侧边栏主导航">
-      <a class="brand sidebar-brand" href="/" aria-label="B项目应用导航首页">
+      <a class="brand sidebar-brand" href="/portal/" aria-label="平台项目首页">
         <span class="brand-mark">B</span>
-        <span class="brand-copy">B项目<span class="brand-sub internal-only">统一应用导航门户</span></span>
+        <span class="brand-copy">统一管理平台<span class="brand-sub internal-only">项目与应用工作台</span></span>
       </a>
 
       <div class="sidebar-nav-container">
@@ -53,11 +53,11 @@
             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
 
-          <a class="brand topbar-brand" href="/" aria-label="B项目应用导航首页">
+          <a class="brand topbar-brand" href="/portal/" aria-label="平台项目首页">
             <span class="brand-mark">B</span>
-            <span class="brand-copy">B项目<span class="brand-sub internal-only">统一应用导航门户</span></span>
+            <span class="brand-copy">统一管理平台<span class="brand-sub internal-only">项目与应用工作台</span></span>
           </a>
-          <strong class="topbar-title">统一应用导航</strong>
+          <strong class="topbar-title">项目工作台</strong>
 
           <div class="topbar-user-area">
             <div class="user-context-pill" id="user-context-pill" aria-label="当前登录用户信息">
@@ -77,6 +77,14 @@
       </header>
 
       <main class="page-shell">
+        <section class="workspace-toolbar" id="workspace-toolbar" hidden aria-label="当前工作范围">
+          <div><strong id="workspace-location">平台项目列表</strong><span id="workspace-region-label"></span></div>
+          <div class="workspace-toolbar-actions">
+            <label id="workspace-region-control" hidden>区域 <select id="workspace-region-select" aria-label="当前查看区域"></select></label>
+            <button class="workspace-button" id="workspace-home" type="button" hidden>项目工作台</button>
+            <button class="workspace-button" id="workspace-back" type="button" hidden>返回项目列表</button>
+          </div>
+        </section>
         <!-- 顶部面包屑与标题区 (纯净正式视图) -->
         <section class="view-header" aria-labelledby="page-title">
           <div class="breadcrumb" id="view-breadcrumb">
@@ -93,6 +101,21 @@
 
         <!-- 动态视图核心区域 -->
         <div class="dynamic-view-area" id="dynamic-view-area">
+          <section id="project-picker" hidden aria-labelledby="project-picker-title">
+            <div class="workspace-intro">
+              <div><p class="workspace-eyebrow">平台总览</p><h2 id="project-picker-title">选择要进入的项目</h2><p>先选择项目，再查看该项目的区域、人员与应用。</p></div>
+              <button class="workspace-button" id="workspace-global" type="button">全局基础管理</button>
+            </div>
+            <div class="project-card-grid" id="project-card-grid"></div>
+          </section>
+          <section id="project-workspace" hidden aria-labelledby="project-workspace-title">
+            <div class="workspace-intro">
+              <div><p class="workspace-eyebrow" id="project-workspace-code"></p><h2 id="project-workspace-title"></h2><p id="project-workspace-description"></p></div>
+              <button class="btn-primary" id="workspace-manage" type="button" hidden>人员与权限管理</button>
+            </div>
+            <p class="workspace-notice" id="workspace-notice" role="status" hidden></p>
+            <div class="project-card-grid" id="workspace-app-grid"></div>
+          </section>
 
           <!-- 1. 功能叶子节点展示卡片 (已选中菜单时显示) -->
           <article class="page-leaf-card" id="page-leaf-card" hidden>
@@ -166,6 +189,7 @@
 
             <div class="error-actions" id="error-actions">
               <button type="button" class="btn-primary" id="btn-error-retry">刷新重试</button>
+              <a class="workspace-button" href="/portal/">返回平台首页</a>
             </div>
           </section>
 
@@ -181,7 +205,7 @@
       </main>
 
       <footer class="page-shell footer">
-        <span>B项目 · 统一身份与功能门户</span>
+        <span>统一管理平台 · 项目与应用工作台</span>
         <span class="internal-only">统一应用导航</span>
       </footer>
     </div>

@@ -17,6 +17,7 @@ public class ScopeRouteInterceptor implements HandlerInterceptor {
     var context=user.getUserContext();
     String path=request.getRequestURI().substring(request.getContextPath().length());
     if(Set.of("/auth/me","/auth/logout","/auth/context","/auth/context/selection","/auth/sso/csrf","/health").contains(path))return true;
+    if(path.equals("/auth/workspace")&&request.getMethod().equals("GET"))return true;
     if((path.startsWith("/management/")||path.equals("/management"))&&context.mayManage())return true;
     // A newly appointed L2 must reach the bounded management service before
     // any business grant exists. Ticket audience checks still run downstream.

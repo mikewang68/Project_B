@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { LEVEL_LABELS, portalEntry } from '@/iam/project-workspace'
 import ScopeSelectionBar from '@/components/ScopeSelectionBar.vue'
 import {
   usePreferenceStore,
@@ -13,6 +15,8 @@ import {
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const workspace = useWorkspaceStore()
+const portalUrl = portalEntry(import.meta.env.VITE_PORTAL_URL)
 const prefs = usePreferenceStore()
 
 // side 布局下可手动折叠；compact 固定窄栏；top 无侧栏
@@ -45,14 +49,23 @@ const filteredMenu = computed(() => {
   return result
 })
 const activeMenu = computed(() => route.path)
-const scopeViewKey = computed(() => JSON.stringify([auth.userContext?.scopeMode, auth.userContext?.activeScope]))
+const scopeViewKey = computed(() => JSON.stringify([auth.userContext?.scopeMode, auth.userContext?.activeScope, route.fullPath]))
 
 async function handleScopeChanged() {
   if (!filteredMenu.value.some(item => item.path === route.path)) await router.replace(auth.landingPath)
 }
 
-function handleSelect(path: string) {
-  if (path && path !== route.path) router.push(path)
+async function handleSelect(path: string) {
+  if (!path || path === route.path) return
+  if (auth.userContext && ['L1_SUPER', 'L1_READONLY'].includes(auth.userContext.adminLevel)
+      && !['/system/scope-management', '/account/scope'].includes(path)) {
+    if (!await workspace.prepare({ workspace: 'global' })) { ElMessage.error(workspace.error); return }
+  }
+  const query = path === '/system/scope-management'
+    ? workspace.target.mode === 'project' ? { projectId: workspace.target.projectId! }
+      : { workspace: workspace.target.mode }
+    : {}
+  await router.push({ path, query })
 }
 
 async function handleLogout() {
@@ -63,6 +76,7 @@ async function handleLogout() {
       type: 'warning',
     })
     await auth.logout()
+    workspace.reset()
     router.push('/login')
   } catch {
     /* 取消 */
@@ -128,12 +142,14 @@ const prefVisible = ref(false)
         </div>
 
         <div class="topbar-right">
+          <a :href="portalUrl" class="portal-link">返回平台入口</a>
           <el-tooltip content="外观设置：切换皮肤与布局" placement="bottom">
             <el-button circle size="small" class="pref-btn" @click="prefVisible = true">
               <el-icon><Brush /></el-icon>
             </el-button>
           </el-tooltip>
-          <el-tag v-if="auth.isSuperAdmin" type="danger" size="small" effect="dark" class="super-tag">超级管理员</el-tag>
+          <el-tag v-if="auth.userContext" :type="auth.readOnly ? 'info' : 'primary'" size="small" effect="dark" class="super-tag">{{ LEVEL_LABELS[auth.userContext.adminLevel] }}</el-tag>
+          <el-tag v-else-if="auth.isSuperAdmin" type="danger" size="small" effect="dark" class="super-tag">超级管理员</el-tag>
           <el-tooltip :content="roleNames" placement="bottom">
             <span class="user-roles">{{ roleNames }}</span>
           </el-tooltip>
@@ -160,10 +176,10 @@ const prefVisible = ref(false)
         </div>
       </header>
 
-      <ScopeSelectionBar @changed="handleScopeChanged" />
+      <ScopeSelectionBar v-if="!route.meta.scopeManagement" @changed="handleScopeChanged" />
 
       <main class="content">
-        <el-empty v-if="auth.scopeRefreshRequired" description="等待重新读取当前权限范围" />
+        <el-empty v-if="auth.scopeRefreshRequired || workspace.loading && route.meta.scopeManagement" description="等待重新读取当前权限范围" />
         <RouterView v-else v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <component :is="Component" :key="scopeViewKey" />
@@ -417,6 +433,7 @@ const prefVisible = ref(false)
   align-items: center;
   gap: 16px;
 }
+.portal-link { color: var(--iam-primary); font-size: 13px; white-space: nowrap; }
 
 .pref-btn {
   color: var(--iam-primary);

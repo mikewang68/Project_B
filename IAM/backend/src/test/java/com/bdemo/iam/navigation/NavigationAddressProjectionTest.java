@@ -119,17 +119,22 @@ class NavigationAddressProjectionTest {
     var user=new LoginUser("test-id","test-user","Test",false,Set.of());
     user.setUserContext(context("L3_SUBSYSTEM","WMS",Set.of("VIEW_MANAGEMENT"),Map.of()));
     login(user);user.setScopedApps(Set.of("WMS"));
-    var systems=service.projectNavigationTree("IAM",false).getSystems();
+    var navigation=service.projectNavigationTree("IAM",false);
+    var systems=navigation.getSystems();
     assertEquals(1,systems.size());
     assertEquals("IAM:scope-management",systems.get(0).getChildren().get(0).getStableMenuKey());
     assertTrue(systems.get(0).getChildren().get(0).isCanLaunch());
     assertEquals(Set.of("WMS"),user.getAllowedAppCodes());
+    assertEquals(Set.of("WMS","IAM"),navigation.getUserContext().getAllowedAppCodes(),
+        "The navigation allowlist includes the bounded management audience, not a new business affiliation");
     page.setRoutePath("/system/users");
     assertTrue(service.projectNavigationTree("IAM",false).getSystems().isEmpty(),
         "The management exception must not be repurposed as global IAM user management");
     page.setRoutePath("/system/scope-management");
     user.setUserContext(context("L4_OPERATOR","WMS",Set.of(),Map.of()));
-    assertTrue(service.projectNavigationTree("IAM",false).getSystems().isEmpty());
+    var operatorNavigation=service.projectNavigationTree("IAM",false);
+    assertTrue(operatorNavigation.getSystems().isEmpty());
+    assertEquals(Set.of("WMS"),operatorNavigation.getUserContext().getAllowedAppCodes());
   }
   @Test void newV2ApplicationLaunchesOnlyItsPublishedExplicitViewWithoutLegacyMapping() {
     address.setAppCode("V21NEW");
@@ -142,7 +147,9 @@ class NavigationAddressProjectionTest {
     var user=new LoginUser("test-id","test-user","Test",false,Set.of());
     user.setUserContext(context("L4_OPERATOR","V21NEW",Set.of(),Map.of("V21NEW:records",Set.of("VIEW"))));
     login(user);user.setScopedApps(Set.of("V21NEW"));
-    assertTrue(service.projectNavigationTree("V21NEW",false).getSystems().get(0).getChildren().get(0).isCanLaunch());
+    var navigation=service.projectNavigationTree("V21NEW",false);
+    assertTrue(navigation.getSystems().get(0).getChildren().get(0).isCanLaunch());
+    assertEquals(Set.of("V21NEW"),navigation.getUserContext().getAllowedAppCodes());
     page.setFeatureStatus("PLANNED");
     assertTrue(service.projectNavigationTree("V21NEW",false).getSystems().isEmpty());
     page.setFeatureStatus("READY");

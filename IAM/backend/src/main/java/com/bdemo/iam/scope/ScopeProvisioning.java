@@ -182,7 +182,11 @@ public class ScopeProvisioning {
     }
   }
   public boolean visible(String kind,String id,UserContext actor) {
-    if(actor.scopeMode()==ScopeSql.Mode.DENY)return false;
+    // An empty business selection must not hide management objects from an active
+    // platform/project manager. Revoked managers have no VIEW_MANAGEMENT capability.
+    boolean managementWithoutBusiness=actor.mayManage()
+        && Set.of("L1_SUPER","L1_READONLY","L2_PROJECT").contains(actor.adminLevel());
+    if(actor.scopeMode()==ScopeSql.Mode.DENY&&!managementWithoutBusiness)return false;
     if(Set.of("L1_SUPER","L1_READONLY").contains(actor.adminLevel()))return true;
     if(kind.equals("USER")) {
       var rows=db.queryForList("SELECT admin_level,scope_state,project_id,region_id,subsystem_code FROM iam.iam_user WHERE id=? AND deleted=0",id);

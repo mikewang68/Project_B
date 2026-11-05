@@ -11,6 +11,7 @@ on:
       - 'EMCS/**'
       - 'TRUST/**'
       - 'AUDIT/client/**'
+      - 'deploy/isolated-gateway/**'
       - '.github/workflows/iam-v21-ci.yml'
   workflow_dispatch:
 
@@ -45,7 +46,27 @@ jobs:
         run: mvn -B -DskipTests -Dexec.skip=true package
       - name: Verify environment-independent IAM guards
         if: matrix.module == 'IAM/backend'
-        run: mvn -B -f IAM/backend/pom.xml -Dtest=IdentityIsolationGuardTest,ScopeSqlTest,NativeScopeReadinessTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -B -f IAM/backend/pom.xml -Dtest=IdentityIsolationGuardTest,ScopeSqlTest,NativeScopeReadinessTest,ScopeWorkspaceServiceTest,ScopeManagementOrganizationsTest,ScopeRouteInterceptorTest,NavigationAddressProjectionTest,ScopeProjectRoleVisibilityTest,UserReadScopeTest -Dsurefire.failIfNoSpecifiedTests=false test
+
+  project-workspace-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Project selection and navigation guards
+        run: |
+          node --test IAM/tests/project-workspace.test.mjs IAM/tests/scope-selection.test.mjs
+          node TRUST/tests/portal-workspace.cjs
+          node TRUST/tests/portal-addresses.cjs
+      - name: SSO workspace transaction binding
+        working-directory: deploy/isolated-gateway
+        run: python -m unittest test_cross_domain_sso test_gateway_routes
 
   typescript:
     runs-on: ubuntu-latest

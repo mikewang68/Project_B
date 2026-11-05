@@ -37,7 +37,7 @@ import org.springframework.stereotype.Service;
  * 核心设计规则：
  * 1. 严格仅输出两级结构：Level 1 为已授权系统 (SystemNode)，Level 2 为具体功能页 (PageLeafNode)；
  * 2. 彻底移除旧 categories、ALL、BUSINESS、COMMON；
- * 3. 严格八系统枚举 (WMS:10 -> SYS:80)，任何 DTS 编码或非枚举值报 400；
+ * 3. V1保留八系统兼容目录；V2使用数据库已登记且启用的系统，不依赖固定枚举；
  * 4. 严格三维审批门禁判定：当前目标环境获批发布页数需通过数据库核验；
  * 5. 一级系统无已授权二级功能时整个一级系统裁掉 (Pruning)；
  * 6. 只读硬否决 (Readonly Hard Veto)：只读模式下隐藏纯写功能页 (TRUST:TRUST-M-create)，
@@ -143,7 +143,10 @@ public class NavigationProjectionService {
         ? user.getDisplayName() : user.getUsername());
     userContext.setAccessMode(accessMode.name());
     userContext.setReadOnly(isReadonly);
-    userContext.setAllowedAppCodes(user.getAllowedAppCodes());
+    var allowedAppCodes = new java.util.TreeSet<>(user.getAllowedAppCodes());
+    if (com.bdemo.iam.scope.ScopeManagementAccess.allowed(user.getUserContext(), "IAM"))
+      allowedAppCodes.add("IAM");
+    userContext.setAllowedAppCodes(allowedAppCodes);
 
     // 3. 解析当前数据提供者并读取候选菜单与权限映射（Fail-Closed 保证：若 DB 异常直接外抛 50001）
     NavigationDataProvider provider = v2?databaseProvider:resolveActiveProvider();

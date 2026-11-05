@@ -2,6 +2,8 @@
 
 /** 自定义环境变量类型声明（BASE_URL/DEV/MODE/PROD 由 vite/client 提供）。 */
 interface ImportMetaEnv {
+  /** Platform portal entry (HTTPS URL or same-origin absolute path). */
+  readonly VITE_PORTAL_URL?: string
   /** 后端 REST 入口，默认 /api/v1，可配置为网关完整地址 */
   readonly VITE_API_BASE_URL?: string
   /** 本地开发 /api 代理目标 */

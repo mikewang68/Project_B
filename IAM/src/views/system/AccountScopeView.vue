@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
+import { LEVEL_LABELS } from '@/iam/project-workspace'
 const auth = useAuthStore()
-const labels: Record<string,string> = { L1_SUPER: '全局管理员', L1_READONLY: '全局只读用户', L2_PROJECT: '项目管理员', L3_SUBSYSTEM: '子系统管理员', L4_OPERATOR: '业务操作员' }
 </script>
 
 <template>
@@ -9,7 +9,7 @@ const labels: Record<string,string> = { L1_SUPER: '全局管理员', L1_READONLY
     <template #header><h2>我的权限范围</h2></template>
     <el-descriptions :column="2" border>
       <el-descriptions-item label="用户">{{ auth.userContext.displayName }}</el-descriptions-item>
-      <el-descriptions-item label="管理层级">{{ labels[auth.userContext.adminLevel] }}</el-descriptions-item>
+      <el-descriptions-item label="管理层级">{{ LEVEL_LABELS[auth.userContext.adminLevel] }}</el-descriptions-item>
       <el-descriptions-item label="项目">{{ auth.userContext.projectId || '全局' }}</el-descriptions-item>
       <el-descriptions-item label="区域">{{ auth.userContext.regionId || '按已授权范围' }}</el-descriptions-item>
       <el-descriptions-item label="子系统">{{ auth.userContext.subsystemCode || '按已授权范围' }}</el-descriptions-item>
