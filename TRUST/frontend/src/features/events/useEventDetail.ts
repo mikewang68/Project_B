@@ -1,4 +1,4 @@
-import { ref, computed, watch, type Ref } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, type Ref } from "vue";
 import type { ApiRecord } from "../../shared/types";
 import { useFeedback } from "../../shared/composables/useFeedback";
 import { pageReadId, withPageAction } from "../../shared/http/actionContext";
@@ -14,8 +14,24 @@ export function useEventDetail(id: Ref<string>) {
   async function load() {
     const requested = id.value;
     const record = await getEvent(requested);
-    if (id.value === requested) selected.value = record;
+    if (id.value === requested) {
+      if (selected.value && (selected.value.version !== record.version
+          || selected.value.canonical_json !== record.canonical_json
+          || selected.value.chain_state !== record.chain_state
+          || selected.value.file_state !== record.file_state)) check.value = null;
+      selected.value = record;
+    }
   }
+  let visible = true;
+  let timer: ReturnType<typeof setInterval> | undefined;
+  onActivated(() => { visible = true; });
+  onDeactivated(() => { visible = false; });
+  onMounted(() => { timer = setInterval(() => {
+    if (!visible || !id.value || busy.value || document.hidden) return;
+    if (document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')) return;
+    void run(() => withPageAction(pageReadId(`event:${id.value}`), load));
+  }, 30_000); });
+  onUnmounted(() => { visible = false; clearInterval(timer); });
   let pendingId = id.value;
   watch(
     id,

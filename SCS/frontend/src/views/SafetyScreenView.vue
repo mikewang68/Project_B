@@ -30,7 +30,7 @@ onMounted(() => {
   void store.loadAll()
   // 告警变更（含移动端处置、管理端操作）经 WS 自动刷新大屏
   unsubscribeLive = liveStore.onAlertEvent(() => store.scheduleRefresh())
-  unsubscribeReconnect = liveStore.onReconnected(() => { void store.loadAll() })
+  unsubscribeReconnect = liveStore.onReconnected(() => store.loadAll())
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', fit)

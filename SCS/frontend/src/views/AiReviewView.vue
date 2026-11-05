@@ -312,7 +312,7 @@ onMounted(() => {
         .catch(() => undefined)
     }
   })
-  disposeReconnect = liveStore.onReconnected(() => void loadList())
+  disposeReconnect = liveStore.onReconnected(() => loadList())
 })
 
 onUnmounted(() => {

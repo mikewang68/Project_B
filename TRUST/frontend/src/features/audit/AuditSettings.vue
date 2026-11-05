@@ -39,7 +39,8 @@ async function load() {
     throw error;
   }
 }
-usePageLoad(load, "status");
+// This read populates an editable form; never overwrite an unsaved choice.
+usePageLoad(load, "status", { auto: false });
 async function save() {
   if (props.readOnly || !settings.value?.canManage) return;
   await act(

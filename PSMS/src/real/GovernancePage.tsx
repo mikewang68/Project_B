@@ -25,6 +25,14 @@ export default function GovernancePage({pageId}:{pageId:GovernancePageId}){
  const [report,setReport]=useState<Record<string,unknown>>(),[error,setError]=useState(''),[loading,setLoading]=useState(true),[revision,setRevision]=useState(0);
  const [selected,setSelected]=useState<Row>(),[operation,setOperation]=useState<{action:string;row?:Row}>(),[commandError,setCommandError]=useState('');
  const [form]=Form.useForm(),busy=useRef(false);
+ useEffect(()=>{
+  const timer=window.setInterval(()=>{
+   if(document.hidden||busy.current||loading||selected||operation)return;
+   if(document.activeElement?.matches('input,textarea,select,[contenteditable="true"]'))return;
+   setRevision(v=>v+1);
+  },30000);
+  return()=>window.clearInterval(timer);
+ },[loading,selected,operation]);
  const all=session.dataScope.some(s=>['GLOBAL','*'].includes(s));
  const allowed=(operationName:string,resource=spec.resource)=>!session.readOnly&&(session.fullAdmin||session.permissions?.includes(`pps:api:${resource}:${operationName}`));
  const allowedCommand=(action:string)=>{

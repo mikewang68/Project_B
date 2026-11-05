@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useLiveRead } from '@/composables/useLiveRead'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { deleteMasterData, listMasterData, saveMasterData, type MasterItem, type MasterResource, type SaveMasterItem } from '@/api/masterData'
@@ -29,6 +30,7 @@ async function remove(row:MasterItem){
   try{await deleteMasterData(resource,row.id);ElMessage.success('已删除，历史数据保留');if(resource==='warehouses'||resource==='owners')await auth.refreshSession();await load()}catch(e){ElMessage.error(e instanceof ApiError?e.message:'删除失败')}
 }
 onMounted(load)
+useLiveRead(load, () => !loading.value && !saving.value)
 </script>
 
 <template>

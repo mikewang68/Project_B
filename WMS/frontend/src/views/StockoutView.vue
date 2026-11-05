@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useLiveRead } from '@/composables/useLiveRead'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { listMasterData, type MasterItem } from '@/api/masterData'
@@ -57,6 +58,7 @@ async function createWave(){const ids=selectedRows.value.filter(x=>x.state==='DR
 async function waveAllocate(wave:StockoutWave){try{await allocateStockoutWave(wave.id,{allowPartial:false,idempotencyKey:key(),remark:'波次整单分配'});ElMessage.success('波次分配完成');await load()}catch(e){fail(e,'波次分配失败')}}
 async function wavePick(wave:StockoutWave){try{await pickStockoutWave(wave.id,{idempotencyKey:key(),remark:'波次快速拣货'});ElMessage.success('波次拣货完成');await load()}catch(e){fail(e,'波次拣货失败')}}
 onMounted(load)
+useLiveRead(load, () => !loading.value && !saving.value)
 </script>
 
 <template>

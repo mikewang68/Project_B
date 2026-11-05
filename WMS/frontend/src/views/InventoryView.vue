@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useLiveRead } from '@/composables/useLiveRead'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
@@ -13,6 +14,7 @@ import {
 
 type OperationType='MOVE'|'FREEZE'|'UNFREEZE'|'COUNT'|'SERIAL'
 const active=ref('balances'),loading=ref(false),saving=ref(false)
+useLiveRead(load, () => !loading.value && !saving.value)
 const balances=ref<InventoryBalance[]>([]),transactions=ref<InventoryTransaction[]>([]),warnings=ref<InventoryWarning[]>([]),serials=ref<InventorySerial[]>([])
 const replenishmentRules=ref<ReplenishmentRule[]>([])
 const goods=ref<MasterItem[]>([]),locations=ref<MasterItem[]>([])

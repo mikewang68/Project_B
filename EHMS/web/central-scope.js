@@ -95,15 +95,16 @@
         ${(overview.dailyEvents||[]).map(day=>`<tr><td>${esc(day.date)}</td><td>${Number(day.alarmsCreated)}</td><td>${Number(day.workOrdersCreated)}</td><td>${Number(day.workOrdersClosed)}</td></tr>`).join('')}
       </tbody></table></div><p>${esc(overview.interpretation)}</p></section></div>`;
   }
-  renderPage=function(){
+  renderPage=function(preserveScroll=false){
     if(!active())return previous.render();
+    const content=$('#content'),scrollTop=content.scrollTop;
     if(!policy.page(auth,state.page)){denied();apply();return;}
     const renderers={dashboard,fleet:renderDeviceCrud,'asset-detail':detail,
       workorders:renderMaintenanceLive,'alarm-center':renderAlarmCenterLive,realtime:renderVisualMonitor,'data-quality':quality};
     for(const [page,entry] of Object.entries(governance))renderers[page]=entry[2];
     for(const page of RELIABILITY_PAGES)renderers[page]=renderReliabilityGovernance;
     $('#pageView').innerHTML=(state.backendError?`<div class="callout warning" role="alert">${esc(state.backendError)}</div>`:'')+renderers[state.page]();
-    syncNav();$('#content').scrollTop=0;bindPageEvents();apply();
+    syncNav();content.scrollTop=preserveScroll?scrollTop:0;bindPageEvents();apply();
   };
   setPage=function(page,options={}){
     if(!active())return previous.page(page,options);
@@ -112,14 +113,18 @@
     if(policy.page(auth,page))void loadBackendData();
     return policy.page(auth,page);
   };
-  loadBackendData=async function(show=false){
+  loadBackendData=async function(show=false,background=false){
     if(!active())return previous.load(show);
+    if(background&&window.EhmLiveRead?.editing())return;
     const current=++generation;
     // Never render static prototype arrays or a previously authorized tuple after a failure.
-    EQUIPMENT=[];ALARMS=[];WORK_ORDERS=[];state.summary=null;
-    clearGovernance();
-    state.visual.overview=null;state.visual.points=[];state.visual.quality=null;
-    state.backendConnected=false;state.backendError='';
+    const clearReadData=()=>{
+      EQUIPMENT=[];ALARMS=[];WORK_ORDERS=[];state.summary=null;
+      clearGovernance();
+      state.visual.overview=null;state.visual.points=[];state.visual.quality=null;
+      state.backendConnected=false;state.backendError='';
+    };
+    if(!background)clearReadData();
     const requests=[];
     if(policy.page(auth,'fleet'))requests.push(['devices',apiList('/devices')]);
     if(policy.page(auth,'alarm-center'))requests.push(['alarms',apiList('/alarms')]);
@@ -140,6 +145,9 @@
     }
     const results=await Promise.allSettled(requests.map(row=>row[1]));
     if(current!==generation)return;
+    // A form may have opened while the read was in flight. Do not replace its objects.
+    if(background&&window.EhmLiveRead?.editing())return;
+    if(background)clearReadData();
     const errors=[];
     results.forEach((result,index)=>{
       if(result.status==='rejected'){errors.push(result.reason.message);return;}
@@ -165,7 +173,9 @@
       if(policy.page(auth,'fleet')&&policy.page(auth,'data-quality'))await loadVisualPoints();
       else state.visual.pointError='监测设备与质量快照还需要相应查看授权。';
     }
-    renderPage();if(show)toast(errors.length?'授权数据读取失败，未使用示例数据替代。':'已刷新授权范围数据。');
+    if(current!==generation)return;
+    renderPage(background);if(show)toast(errors.length?'授权数据读取失败，未使用示例数据替代。':'已刷新授权范围数据。');
+    return errors.length===0;
   };
   // All legacy render/loader wrappers have been registered; V2 dispatch above does
   // not enter unrelated global, BOM, assistant or service-configuration loaders.

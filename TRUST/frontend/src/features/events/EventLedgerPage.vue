@@ -16,7 +16,7 @@ const { rows, total, page, query, loadEvents, busy, act } = useEventLedger();
     <div><span>可信登记</span><strong class="word">Fabric</strong></div>
   </div>
   <p class="small muted" role="status">
-    状态不会自动更新。请点击“查询”查看最新事件和处理结果。
+    每30秒读取当前授权范围的最新事件；输入查询条件时暂停自动刷新。
   </p>
   <article class="panel">
     <form

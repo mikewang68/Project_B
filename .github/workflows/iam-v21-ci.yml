@@ -64,6 +64,8 @@ jobs:
           node --test IAM/tests/project-workspace.test.mjs IAM/tests/scope-selection.test.mjs
           node TRUST/tests/portal-workspace.cjs
           node TRUST/tests/portal-addresses.cjs
+      - name: Authorized database refresh and editing guards
+        run: node --test EHMS/tests/central-scope-policy.test.cjs EHMS/tests/central-scope-dashboard.test.cjs EHMS/tests/live-read.test.cjs
       - name: SSO workspace transaction binding
         working-directory: deploy/isolated-gateway
         run: python -m unittest test_cross_domain_sso test_gateway_routes
@@ -118,3 +120,21 @@ jobs:
             pnpm install --ignore-workspace --frozen-lockfile
           fi
           pnpm run '${{ matrix.command }}'
+      - name: PSMS database page tests
+        if: matrix.module == 'PSMS'
+        working-directory: PSMS
+        run: pnpm exec vitest run src/real
+      - name: TRUST authorized refresh browser fixtures
+        if: matrix.module == 'TRUST/frontend'
+        working-directory: TRUST/frontend
+        run: |
+          pnpm test:unit
+          pnpm exec playwright install --with-deps chromium
+          python3 -m http.server 28388 --bind 127.0.0.1 --directory dist > /tmp/trust-refresh-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for i in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:28388/ > /dev/null; then break; fi
+            sleep 1
+          done
+          TRUST_TEST_BUNDLED_CHROMIUM=1 node ../tests/manual-refresh-ui.cjs

@@ -65,7 +65,7 @@ const { selected, check, detailEvent, busy, act, verify, refresh } =
       </div>
     </div>
     <p class="small muted" role="status">
-      状态不会自动更新。请点击“刷新状态”查看最新归档和上链结果。
+      每30秒读取最新归档和上链结果，也可点击“刷新状态”立即查询。
     </p>
     <VersionHistory
       :url="`/events/${selected.id}/processing-history`"

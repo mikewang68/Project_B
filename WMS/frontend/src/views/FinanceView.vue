@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useLiveRead } from '@/composables/useLiveRead'
 import * as echarts from 'echarts'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ApiError } from '@/api/http'
@@ -35,6 +36,11 @@ function error(e:unknown){ElMessage.error(e instanceof ApiError?e.message:e inst
 function resize(){chart?.resize()}
 onMounted(()=>{void loadAll();window.addEventListener('resize',resize)})
 onBeforeUnmount(()=>{window.removeEventListener('resize',resize);chart?.dispose()})
+useLiveRead(async () => {
+  if (active.value === 'partners') await loadPartners()
+  else if (active.value === 'report') await loadReport()
+  else await loadAll()
+}, () => !loading.value, 30_000)
 </script>
 
 <template>

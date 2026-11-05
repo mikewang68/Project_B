@@ -2,7 +2,7 @@
   能源总览（驾驶舱） — B-Demo 第一幕主页面
   视觉方向：方向 A 深色工控调度控制台风（2026-07-13 定稿）
   REQ 锚点：REQ-057 至 062 · REQ-019 · REQ-053 · REQ-029
-  数据契约：src/api/overview.js（后端未就绪，走 src/views/dashboard/mock.js）
+  数据契约：src/api/overview.js，读取后端 /overview/summary。
   依赖：Element Plus 2.13 + ECharts 5.6（团队纪律：不引入新 UI/图表库）
   骨架注：本文件替换了 RuoYi 自带的 ant-design-vue + G2Plot dashboard；
          editable-link-group.vue 已删除（任务 #8 冗余清理）。
@@ -23,10 +23,12 @@
       <div class="fg fg-end">
         <span class="refresh-dot" :class="{ pulsing: !loading }" />
         <span class="refresh-txt">
-          {{ loading ? '正在拉取…' : `AUTO REFRESH · ${refreshInterval}s · 下次 ${nextRefreshLabel}` }}
+          {{ loading ? '正在读取…' : refreshError ? '自动刷新失败' : `每${refreshInterval}秒读取 · 最近成功 ${lastReadAt || '尚未读取'}` }}
         </span>
       </div>
     </div>
+
+    <el-alert v-if="refreshError" :title="refreshError" description="当前保留上次成功读取的数据，连接恢复后自动重试。" type="warning" :closable="false" show-icon />
 
     <!-- ============ 演示态声明条 REQ-029 ============ -->
     <div v-if="payload?.demoState?.enabled" class="ov-demo-banner">
@@ -263,19 +265,30 @@ const payload = ref(null)
 const loading = ref(false)
 const refreshInterval = ref(30) // REQ-060 默认 30s
 let refreshTimer = null
-const nextRefreshAt = ref(Date.now() + refreshInterval.value * 1000)
+let overviewRequest = 0
+let disposed = false
+const refreshError = ref('')
+const lastReadAt = ref('')
 
 async function loadOverview() {
+  const request = ++overviewRequest
   loading.value = true
   try {
     const resp = await getOverview({ ...filters })
+    if (disposed || request !== overviewRequest) return
     payload.value = resp.data
-    nextRefreshAt.value = Date.now() + refreshInterval.value * 1000
+    refreshError.value = ''
+    lastReadAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
     // 图表数据变更后重新渲染
     await nextTick()
-    renderTrend()
+    if (!disposed && request === overviewRequest) renderTrend()
+  } catch (error) {
+    if (!disposed && request === overviewRequest) {
+      refreshError.value = error?.message || '数据刷新失败'
+      if ([401, 403].includes(Number(error?.status ?? error?.response?.status ?? error?.code))) payload.value = null
+    }
   } finally {
-    loading.value = false
+    if (!disposed && request === overviewRequest) loading.value = false
   }
 }
 
@@ -432,16 +445,10 @@ function renderTrend() {
 function scheduleAutoRefresh() {
   clearInterval(refreshTimer)
   refreshTimer = setInterval(() => {
-    // 演示 demo 不真跑接口刷新（避免每 30s 全量重绘扰乱评审视觉），
-    // 只更新下次刷新的倒计时展示；真接口接入后取消 else 分支即可全量刷新。
-    nextRefreshAt.value = Date.now() + refreshInterval.value * 1000
+    if (!document.hidden && !loading.value) void loadOverview()
   }, refreshInterval.value * 1000)
 }
-
-const nextRefreshLabel = computed(() => {
-  const d = new Date(nextRefreshAt.value)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
-})
+function refreshOnVisible() { if (!document.hidden && !loading.value) void loadOverview() }
 
 // 图表随窗口变化重排
 function resizeChart() {
@@ -450,17 +457,21 @@ function resizeChart() {
 
 onMounted(async () => {
   await loadOverview()
+  if (disposed) return
   window.addEventListener('resize', resizeChart)
+  document.addEventListener('visibilitychange', refreshOnVisible)
   scheduleAutoRefresh()
 })
 onBeforeUnmount(() => {
+  disposed = true; overviewRequest++
   window.removeEventListener('resize', resizeChart)
+  document.removeEventListener('visibilitychange', refreshOnVisible)
   clearInterval(refreshTimer)
   trendChart?.dispose()
   trendChart = null
 })
 
-// 筛选器变更时重新拉取（演示：目前所有 case 都返回同一份 mock）
+// 筛选器变更时从后端重新读取，较早请求不能覆盖当前筛选结果。
 watch(filters, () => { loadOverview() }, { deep: true })
 // 双主题响应：主题切换时以最新 palette 重绘趋势图
 watch(theme, () => { renderTrend() })

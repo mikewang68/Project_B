@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useLiveRead } from '@/composables/useLiveRead'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ApiError } from '@/api/http'
 import PsmsInboundTasks from '@/components/PsmsInboundTasks.vue'
@@ -69,6 +70,7 @@ async function submitQuick(){
 async function forceComplete(){if(!selected.value)return;try{await ElMessageBox.confirm(fullyReceived(selected.value)?'确认完成当前入库单？':'将保留已收数量并关闭剩余未收数量，确认完成？',fullyReceived(selected.value)?'确认完成':'提前完成',{type:'warning'});selected.value=await completeStockin(selected.value.id,{idempotencyKey:key(),remark:'手动完成'});ElMessage.success('入库单已完成');await load()}catch(e){if(e!=='cancel')fail(e,'完成入库单失败')}}
 async function cancelOrder(){if(!selected.value)return;try{await ElMessageBox.confirm('取消后不再允许收货，已收库存保留。','取消入库单',{type:'warning'});selected.value=await cancelStockin(selected.value.id,{idempotencyKey:key(),remark:'手动取消'});ElMessage.success('入库单已取消');await load()}catch(e){if(e!=='cancel')fail(e,'取消入库单失败')}}
 onMounted(load)
+useLiveRead(load, () => !loading.value && !saving.value)
 </script>
 
 <template>
