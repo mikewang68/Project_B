@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { isLiveEvent, sharedLiveSocket, type LiveConnection, type LiveEvent } from '@/api/live'
 
 type AlertEventListener = (event: LiveEvent) => void
-type ReconnectedListener = () => void
+type ReconnectedListener = () => void | Promise<unknown>
 
 /**
  * 全局实时连接 store：统一管理 /ws/live 单例连接的状态展示与事件分发。
@@ -16,6 +16,29 @@ export const useLiveStore = defineStore('live', () => {
   const alertListeners = new Set<AlertEventListener>()
   const reconnectedListeners = new Set<ReconnectedListener>()
   let started = false
+  let readTimer: ReturnType<typeof setInterval> | undefined
+  const pendingReads = new Set<ReconnectedListener>()
+
+  function refreshSubscribers(): void {
+    reconnectedListeners.forEach(listener => {
+      if (pendingReads.has(listener)) return
+      pendingReads.add(listener)
+      void Promise.resolve().then(listener).catch(() => {
+        // Each page owns its read error display; a failure must not stop other readers.
+      }).finally(() => pendingReads.delete(listener))
+    })
+  }
+
+  function startDatabaseRefresh(): void {
+    if (readTimer) return
+    readTimer = setInterval(() => {
+      if (document.hidden || document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')) return
+      if ([...document.querySelectorAll('.el-dialog,.el-drawer,[role="dialog"]')].some(node => (node as HTMLElement).getClientRects().length)) return
+      // Read reconciliation also observes committed database changes made outside
+      // this process, which cannot emit its WebSocket invalidation event.
+      refreshSubscribers()
+    }, 30_000)
+  }
 
   const connected = computed(() => status.value === 'connected')
   /** 移动端 / 大屏顶栏文案状态：在线 / 重连中 / 已断开 */
@@ -44,7 +67,7 @@ export const useLiveStore = defineStore('live', () => {
     })
     sharedLiveSocket.onReconnected(() => {
       // 重连后主动全量同步，避免断线期间遗漏增量
-      reconnectedListeners.forEach((listener) => listener())
+      refreshSubscribers()
     })
     sharedLiveSocket.connect()
   }
@@ -60,7 +83,11 @@ export const useLiveStore = defineStore('live', () => {
   function onReconnected(listener: ReconnectedListener): () => void {
     start()
     reconnectedListeners.add(listener)
-    return () => reconnectedListeners.delete(listener)
+    startDatabaseRefresh()
+    return () => {
+      reconnectedListeners.delete(listener)
+      if (!reconnectedListeners.size) { clearInterval(readTimer); readTimer = undefined }
+    }
   }
 
   return { status, lastEventAt, connected, online, label, start, onAlertEvent, onReconnected }

@@ -29,7 +29,7 @@ usePageLoad(load, "tasks");
 
 <template>
   <p class="small muted" role="status">
-    状态不会自动更新。请点击“刷新”查看最新补办结果。
+    每30秒读取最新处理结果；补办仍需点击操作按钮提交。
   </p>
   <article class="panel">
     <div class="section-title">

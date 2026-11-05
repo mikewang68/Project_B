@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useLiveRead } from '@/composables/useLiveRead'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -90,6 +91,7 @@ async function saveWeight(row: AgentRow) {
   try { await saveAgentWeight(Number(row.id), Number(row.weight_kg)); ElMessage.success('每单位重量已保存'); await refresh() } catch(e) { failure(e) }
 }
 onMounted(refresh)
+useLiveRead(refresh, () => !loading.value && !saving.value && !busy.value)
 </script>
 
 <template>

@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { fetchDashboardSummary, type DashboardSummary } from '@/api/dashboard'
+import { useLiveRead } from '@/composables/useLiveRead'
 
 const loading = ref(true)
 const error = ref('')
 const summary = ref<DashboardSummary>()
+const lastReadAt = ref('')
 
-async function load() {
-  loading.value = true
+async function load(background = false) {
+  if (!background) loading.value = true
   error.value = ''
   try {
     summary.value = await fetchDashboardSummary()
+    lastReadAt.value = new Date().toLocaleTimeString('zh-CN', { hour12: false })
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : '工作台加载失败'
   } finally {
@@ -19,13 +22,14 @@ async function load() {
 }
 
 onMounted(load)
+useLiveRead(() => load(true), () => !loading.value)
 </script>
 
 <template>
   <div class="page-stack">
     <section class="page-heading">
       <div><p class="eyebrow">WAREHOUSE OVERVIEW</p><h1>仓储工作台</h1><p>按当前公司、仓库和货主汇总仓储业务。</p></div>
-      <el-button type="primary" :loading="loading" @click="load">刷新数据</el-button>
+      <div><small>每15秒读取 · 最近成功 {{ lastReadAt || '尚未读取' }}</small> <el-button type="primary" :loading="loading" @click="load()">刷新数据</el-button></div>
     </section>
     <el-skeleton v-if="loading" :rows="5" animated />
     <el-result v-else-if="error" icon="error" title="数据加载失败" :sub-title="error">

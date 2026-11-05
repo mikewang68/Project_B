@@ -350,7 +350,7 @@ onMounted(() => {
     }, 300)
   })
   unsubscribeReconnect = liveStore.onReconnected(() => {
-    void refreshAlertContext({ metrics: true, list: true, detail: true })
+    return refreshAlertContext({ metrics: true, list: true, detail: true })
   })
 })
 
