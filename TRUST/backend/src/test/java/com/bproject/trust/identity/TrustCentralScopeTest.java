@@ -6,6 +6,17 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TrustCentralScopeTest {
+    @Test void localReadonlyRestrictsGlobalAdminButPreservesGrantedReadActions(){
+        var c=globalContext("L1_SUPER",false,Map.of("TRUST:status",Set.of("VIEW","EDIT"),
+            "TRUST:events",Set.of("VIEW","UPLOAD","CHAIN_SUBMIT","AUDIT_VERIFY","DOWNLOAD","EXPORT")));
+        assertFalse(TrustCentralScope.permits(c,"PATCH","/api/v1/audit/settings",true));
+        assertFalse(TrustCentralScope.permits(c,"POST","/api/v1/events",true));
+        assertFalse(TrustCentralScope.permits(c,"POST","/api/v1/evidence",true));
+        assertTrue(TrustCentralScope.permits(c,"GET","/api/v1/status",true));
+        assertTrue(TrustCentralScope.permits(c,"POST","/api/v1/events/one/verify",true));
+        assertTrue(TrustCentralScope.permits(c,"POST","/api/v1/events/one/export",true));
+        assertTrue(TrustCentralScope.permits(c,"GET","/api/v1/evidence/one/download",true));
+    }
     UserContext walletContext(String level,boolean readonly,Set<String> actions){
         return globalContext(level,readonly,Map.of("TRUST:wallets",actions));
     }

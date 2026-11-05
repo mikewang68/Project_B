@@ -31,6 +31,9 @@ public final class TrustCentralScope {
         return c.activeScope().get(0);
     }
     public static boolean permits(UserContext c,String method,String path){
+        return permits(c,method,path,false);
+    }
+    public static boolean permits(UserContext c,String method,String path,boolean localReadOnly){
         if(c==null)return true;
         if(Set.of("GET","HEAD").contains(method)&&Set.of("/api/v1/me","/api/v1/csrf","/api/v1/identity-mode").contains(path)
             ||method.equals("POST")&&path.equals("/api/v1/logout"))return true;
@@ -88,7 +91,7 @@ public final class TrustCentralScope {
             else return false;
         }
         else return false;
-        return c.hasAction(menu,action)&&(!c.readOnly()||Set.of("VIEW","DOWNLOAD","EXPORT","AUDIT_VERIFY").contains(action));
+        return c.hasAction(menu,action)&&(!(c.readOnly()||localReadOnly)||Set.of("VIEW","DOWNLOAD","EXPORT","AUDIT_VERIFY").contains(action));
     }
     private static boolean globalManagement(UserContext c){
         return Set.of("L1_SUPER","L1_READONLY").contains(c.adminLevel())&&c.scopeMode()==ScopeSql.Mode.GLOBAL;

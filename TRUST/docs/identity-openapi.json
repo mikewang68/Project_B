@@ -1330,6 +1330,141 @@
           }
         }
       }
+    },
+    "/api/v1/auth/sso/exchange": {
+      "post": {
+        "operationId": "ssoExchange",
+        "summary": "以一次性票据换本地会话",
+        "description": "服务端调用 IAM verify-and-consume，校验显式本地主体/组织映射；替换旧会话。响应Cookie需由BFF正确转交浏览器，不能以200代替Cookie及真实IAM联验。",
+        "security": [
+          {
+            "ssoService": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SsoExchange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": {
+                  "ok": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求字段不合法"
+          },
+          "401": {
+            "description": "中央票据或会话失效"
+          },
+          "403": {
+            "description": "服务凭据、绑定或权限拒绝"
+          },
+          "503": {
+            "description": "未启用、身份服务/本地映射不可用或中央响应不符合契约"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sso/revoke": {
+      "post": {
+        "operationId": "ssoRevoke",
+        "summary": "按中央会话与主体撤销本地会话",
+        "description": "audience必须trust，重复撤销成功且revoked=0。索引仅本进程内存，不承诺跨实例广播。",
+        "security": [
+          {
+            "ssoService": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SsoRevoke"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": {
+                  "ok": true,
+                  "revoked": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求字段不合法"
+          },
+          "401": {
+            "description": "中央票据或会话失效"
+          },
+          "403": {
+            "description": "服务凭据、绑定或权限拒绝"
+          },
+          "503": {
+            "description": "未启用、身份服务/本地映射不可用或中央响应不符合契约"
+          }
+        }
+      }
+    },
+    "/api/v1/logout": {
+      "post": {
+        "operationId": "logoutLocalSession",
+        "summary": "退出本地会话并尝试中央退出",
+        "description": "保留原退出接口；本地清除不依赖IAM可达。SSO中央失败时响应204+unconfirmed，只表示本地退出完成。",
+        "security": [
+          {
+            "localSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "本地会话已清除",
+            "headers": {
+              "X-TRUST-Central-Logout": {
+                "description": "仅SSO退出返回；unconfirmed不代表全局成功",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "confirmed",
+                    "unconfirmed"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF拒绝"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1344,6 +1479,17 @@
         "scheme": "bearer",
         "bearerFormat": "JWT",
         "description": "真实IAM会话，在线校验当前用户和角色权限"
+      },
+      "ssoService": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-SSO-Service-Token",
+        "description": "服务器间服务凭据，禁止下发浏览器；默认关闭。与来源系统Bearer独立。"
+      },
+      "localSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "JSESSIONID"
       }
     },
     "schemas": {
@@ -1720,6 +1866,48 @@
           },
           "hasMore": {
             "type": "boolean"
+          }
+        }
+      },
+      "SsoExchange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ticket"
+        ],
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 8192
+          }
+        }
+      },
+      "SsoRevoke": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "iamSessionId",
+          "subject",
+          "audience"
+        ],
+        "properties": {
+          "iamSessionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "trust"
+            ]
+          },
+          "reason": {
+            "type": "string"
           }
         }
       }

@@ -157,4 +157,50 @@ class PlatformIdentityFilterTest {
     response=new MockHttpServletResponse();filter.doFilter(req,response,new MockFilterChain());
     assertEquals(403,response.getStatus());
   }
+  @Test void ssoCookieCannotSubstituteForServiceCredential() throws Exception {
+    var sso=mock(TrustSsoSessions.class);filter.withSso(sso);
+    var req=request("/api/v1/integrations/wms/events");
+    req.getSession().setAttribute(TrustSsoSessions.ATTRIBUTE,new TrustSsoSessions.Binding("u1","s1","local1","B-PROJECT"));
+    var response=new MockHttpServletResponse();filter.doFilter(req,response,new MockFilterChain());
+    assertEquals(401,response.getStatus());verifyNoInteractions(sso);
+    var service=new IntegrationSettings.Service("source1",Json.sha("service-token".getBytes()),"B-PROJECT","WMS","COMPANY","WAREHOUSE","OWNER");
+    Files.writeString(root.resolve("runtime/secrets/integration.json"),Json.write(
+        new IntegrationSettings.Settings("http://localhost",Map.of("COMPANY","B-PROJECT"),List.of(service))));
+    req=request("/api/v1/integrations/wms/events");req.addHeader("Authorization","Bearer service-token");
+    req.getSession().setAttribute(TrustSsoSessions.ATTRIBUTE,new TrustSsoSessions.Binding("u1","s1","local1","B-PROJECT"));
+    var chain=new MockFilterChain();filter.doFilter(req,new MockHttpServletResponse(),chain);
+    assertNotNull(chain.getRequest());assertEquals(service,req.getAttribute("TRUST_SERVICE"));verifyNoInteractions(sso);
+  }
+
+  @Test void v2LocalReadonlyCannotEditGlobalSettingsEvenWithCentralAdminGrant() throws Exception {
+    var sso=mock(TrustSsoSessions.class);filter.withSso(sso);
+    var binding=new TrustSsoSessions.Binding("u1","s1","local1","B-PROJECT");
+    var context=new TrustCentralScopeTest().globalContext("L1_SUPER",false,Map.of("TRUST:status",Set.of("VIEW","EDIT")));
+    when(sso.current(binding)).thenReturn(new TrustSsoSessions.Current(
+        new PlatformPrincipal("u1","alice","B-PROJECT",true),Set.of("trust:audit:read"),context));
+    var req=request("/api/v1/audit/settings");req.setMethod("PATCH");
+    req.getSession().setAttribute(TrustSsoSessions.ATTRIBUTE,binding);
+    var response=new MockHttpServletResponse();var chain=new MockFilterChain();filter.doFilter(req,response,chain);
+    assertEquals(403,response.getStatus());assertNull(chain.getRequest());
+    assertNull(TrustCentralScope.current());
+  }
+
+  @Test void ssoRetryAndUploadRetainLegacyEditorRoleAndReadonlyRestriction() throws Exception {
+    var sso=mock(TrustSsoSessions.class);filter.withSso(sso);
+    var binding=new TrustSsoSessions.Binding("u1","s1","local1","B-PROJECT");
+    for(String permission:List.of("trust:task:retry","trust:evidence:upload")) {
+      when(sso.current(binding)).thenReturn(new TrustSsoSessions.Current(
+          new PlatformPrincipal("u1","alice","B-PROJECT",false),Set.of(permission)));
+      var req=request(permission.endsWith("retry")?"/api/v1/tasks/1/retry":"/api/v1/evidence");
+      req.getSession().setAttribute(TrustSsoSessions.ATTRIBUTE,binding);
+      var chain=new MockFilterChain();filter.doFilter(req,new MockHttpServletResponse(),chain);
+      assertNotNull(chain.getRequest());assertTrue(SecurityContextHolder.getContext().getAuthentication()
+          .getAuthorities().stream().anyMatch(a->a.getAuthority().equals("ROLE_EDITOR")));
+    }
+    when(sso.current(binding)).thenReturn(new TrustSsoSessions.Current(
+        new PlatformPrincipal("u1","alice","B-PROJECT",true),Set.of("trust:evidence:upload")));
+    var req=request("/api/v1/evidence");req.getSession().setAttribute(TrustSsoSessions.ATTRIBUTE,binding);
+    var response=new MockHttpServletResponse();filter.doFilter(req,response,new MockFilterChain());
+    assertEquals(403,response.getStatus());
+  }
 }
