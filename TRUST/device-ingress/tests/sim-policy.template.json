@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "devices": [
+    {"device_id": "SIM-PDA-01", "project_id": "SIM-B-INTEGRATION", "area_id": "SIM-AREA-SCAN"},
+    {"device_id": "SIM-SCALE-01", "project_id": "SIM-B-INTEGRATION", "area_id": "SIM-AREA-WEIGH"},
+    {"device_id": "SIM-SILO-01", "project_id": "SIM-B-INTEGRATION", "area_id": "SIM-AREA-PROCESS"},
+    {"device_id": "SIM-UNBOX-01", "project_id": "SIM-B-INTEGRATION", "area_id": "SIM-AREA-PROCESS"},
+    {"device_id": "SIM-CHUTE-01", "project_id": "SIM-B-INTEGRATION", "area_id": "SIM-AREA-PROCESS"}
+  ],
+  "principals": [
+    {
+      "principal_id": "synthetic-publisher-scan",
+      "token_sha256": "<REPLACE_WITH_UNIQUE_SECRET_SHA256_HEX>",
+      "read_devices": ["SIM-PDA-01"],
+      "write_devices": ["SIM-PDA-01"]
+    },
+    {
+      "principal_id": "synthetic-publisher-weigh",
+      "token_sha256": "<REPLACE_WITH_UNIQUE_SECRET_SHA256_HEX>",
+      "read_devices": ["SIM-SCALE-01"],
+      "write_devices": ["SIM-SCALE-01"]
+    },
+    {
+      "principal_id": "synthetic-publisher-process",
+      "token_sha256": "<REPLACE_WITH_UNIQUE_SECRET_SHA256_HEX>",
+      "read_devices": ["SIM-SILO-01", "SIM-UNBOX-01", "SIM-CHUTE-01"],
+      "write_devices": ["SIM-SILO-01", "SIM-UNBOX-01", "SIM-CHUTE-01"]
+    },
+    {
+      "principal_id": "synthetic-reader",
+      "token_sha256": "<REPLACE_WITH_UNIQUE_SECRET_SHA256_HEX>",
+      "read_devices": ["SIM-PDA-01", "SIM-SCALE-01", "SIM-SILO-01", "SIM-UNBOX-01", "SIM-CHUTE-01"],
+      "write_devices": []
+    }
+  ]
+}
