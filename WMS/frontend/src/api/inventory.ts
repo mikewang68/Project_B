@@ -3,7 +3,19 @@ import { apiFetch } from './http'
 export interface InventoryBalance {
   id:number; goodCode:string; goodName:string; barcode:string; locationCode:string; batchCode:string
   qualityType:string; supplierCode:string; productDate?:string; expireDate?:string; lpn:string
-  availableQty:number; allocatedQty:number; frozenQty:number; totalQty:number; version:number
+  availableQty:number; allocatedQty:number; frozenQty:number; totalQty:number; version:number; unit?:string
+}
+export type CountState = 'PENDING'|'POSTED'|'REJECTED'
+export interface InventoryCount {
+  id:number; balanceId:number; balanceVersion:number; goodCode:string; goodName:string; locationCode:string
+  batchCode:string; qualityType:string; supplierCode:string; lpn:string; unit?:string; state:CountState
+  bookQty:number; actualQty:number; differenceQty:number; lossQty:number; missingQty:number
+  reason?:string; createdBy:string; createdAt:string; reviewedBy?:string; reviewedAt?:string; reviewNote?:string
+  operationCode?:string
+}
+export interface CountSubmission {
+  balanceId:number; balanceVersion:number; actualQuantity:string; lossQuantity:string; missingQuantity:string
+  reason:string; idempotencyKey:string
 }
 export interface InventoryTransaction {
   id:number; transactionType:string; operationCode:string; goodCode:string; locationCode:string
@@ -37,7 +49,12 @@ export const adjustInventory=(data:unknown):Promise<OperationResult>=>mutate('/a
 export const moveInventory=(data:unknown):Promise<MoveResult>=>mutate('/api/v1/inventory/moves',data)
 export const freezeInventory=(data:unknown):Promise<OperationResult>=>mutate('/api/v1/inventory/freeze',data)
 export const unfreezeInventory=(data:unknown):Promise<OperationResult>=>mutate('/api/v1/inventory/unfreeze',data)
-export const countInventory=(data:unknown):Promise<OperationResult>=>mutate('/api/v1/inventory/counts',data)
+export const listInventoryCounts=(state?:CountState,beforeId?:number):Promise<InventoryCount[]> =>
+  apiFetch('/api/v1/inventory/count-records',{params:{state,beforeId}})
+export const submitInventoryCount=(data:CountSubmission):Promise<InventoryCount> =>
+  mutate('/api/v1/inventory/count-records',data)
+export const reviewInventoryCount=(id:number,decision:'POST'|'REJECT',note:string):Promise<InventoryCount> =>
+  mutate(`/api/v1/inventory/count-records/${id}/review`,{decision,note})
 export const createInventorySerial=(data:unknown):Promise<InventorySerial>=>mutate('/api/v1/inventory/serials',data)
 export const generateReplenishment=(data:unknown):Promise<ReplenishmentResult>=>mutate('/api/v1/inventory/replenishments/generate',data)
 export async function saveReplenishmentRule(id:number|null,data:unknown):Promise<ReplenishmentRule>{

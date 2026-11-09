@@ -1,6 +1,7 @@
 package com.mt.wms.inventory;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -15,7 +16,7 @@ public final class InventoryModels {
     public record BalanceView(Long id,String goodCode,String goodName,String barcode,String locationCode,
                               String batchCode,String qualityType,String supplierCode,LocalDate productDate,
                               LocalDate expireDate,String lpn,BigDecimal availableQty,BigDecimal allocatedQty,
-                              BigDecimal frozenQty,BigDecimal totalQty,long version) {}
+                              BigDecimal frozenQty,BigDecimal totalQty,long version,String unit) {}
     public record TransactionView(Long id,String transactionType,String operationCode,String goodCode,
                                   String locationCode,BigDecimal quantityBefore,BigDecimal quantityChange,
                                   BigDecimal quantityAfter,String relatedLocationCode,String remark,
@@ -39,8 +40,8 @@ public final class InventoryModels {
     public record QuantityRequest(@NotNull Long balanceId,
                                   @NotNull @DecimalMin(value="0",inclusive=false) BigDecimal quantity,
                                   @NotBlank @Size(max=80) String idempotencyKey,String remark) {}
-    public record CountRequest(@NotNull Long balanceId,@NotNull @DecimalMin("0") BigDecimal actualQuantity,
-                               @NotBlank @Size(max=80) String idempotencyKey,String remark) {}
+    public record CountRequest(@NotNull Long balanceId,@NotNull @DecimalMin("0") @Digits(integer=15,fraction=3) BigDecimal actualQuantity,
+                               @NotBlank @Size(max=80) String idempotencyKey,@Size(max=256) String remark) {}
     public record SerialRequest(@NotNull Long balanceId,String serialCode,
                                 @NotNull @DecimalMin(value="0",inclusive=false) BigDecimal quantity,
                                 BigDecimal weightKg,String source) {}

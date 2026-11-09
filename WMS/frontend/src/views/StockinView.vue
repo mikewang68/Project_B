@@ -75,7 +75,7 @@ useLiveRead(load, () => !loading.value && !saving.value)
 
 <template>
   <div class="page-stack">
-    <header class="page-heading"><div><p class="eyebrow">INBOUND OPERATIONS</p><h1>入库管理</h1><p>从预期到货、分批收货到库存入账的完整入库链路。</p></div><div class="heading-actions"><el-button @click="load">刷新</el-button><el-button :disabled="!auth.canAction('WMS:stockin', 'ADD', 'stockin:write') || !auth.canAction('WMS:stockin', 'EDIT', 'stockin:write')" @click="openQuick">快捷入库</el-button><el-button :disabled="!auth.canAction('WMS:stockin', 'ADD', 'stockin:write')" type="primary" @click="openCreate">新建入库单</el-button></div></header>
+    <header class="page-heading"><div><p class="eyebrow">INBOUND OPERATIONS</p><h1>入库管理</h1><p>从预期到货、分批收货到库存入账的完整入库链路。</p></div><div class="heading-actions"><el-button @click="load">刷新</el-button><el-button v-if="auth.canAction('WMS:inventory', 'VIEW', 'inventory:read')" tag="a" href="#/inventory?tab=counts">库存盘点</el-button><el-button :disabled="!auth.canAction('WMS:stockin', 'ADD', 'stockin:write') || !auth.canAction('WMS:stockin', 'EDIT', 'stockin:write')" @click="openQuick">快捷入库</el-button><el-button :disabled="!auth.canAction('WMS:stockin', 'ADD', 'stockin:write')" type="primary" @click="openCreate">新建入库单</el-button></div></header>
     <section class="stockin-stats"><div><span>入库单数</span><strong>{{ orders.length }}</strong></div><div><span>待处理</span><strong class="warning">{{ pendingCount }}</strong></div><div><span>已完成</span><strong>{{ completedCount }}</strong></div><div><span>累计实收</span><strong>{{ qty(receivedTotal) }}</strong></div></section>
     <PsmsInboundTasks ref="psmsTasks" @open-order="openDetail" />
     <el-alert v-if="receiveUncertain" :title="receiveUncertain" type="warning" :closable="false" show-icon />

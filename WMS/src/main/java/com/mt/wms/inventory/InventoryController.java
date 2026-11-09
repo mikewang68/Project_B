@@ -54,10 +54,6 @@ class InventoryController {
     ApiResponse<InventoryModels.OperationResult> unfreeze(@Valid @RequestBody InventoryModels.QuantityRequest body, Authentication auth, HttpSession session, HttpServletRequest request) {
         return ApiResponse.ok(service.unfreeze(body, principal(auth), session), id(request));
     }
-    @PostMapping("/counts") @PreAuthorize("hasAuthority('inventory:write')")
-    ApiResponse<InventoryModels.OperationResult> count(@Valid @RequestBody InventoryModels.CountRequest body, Authentication auth, HttpSession session, HttpServletRequest request) {
-        return ApiResponse.ok(service.count(body, principal(auth), session), id(request));
-    }
     @PostMapping("/serials") @PreAuthorize("hasAuthority('inventory:write')")
     ApiResponse<InventoryModels.SerialView> createSerial(@Valid @RequestBody InventoryModels.SerialRequest body, Authentication auth, HttpSession session, HttpServletRequest request) {
         return ApiResponse.ok(service.createSerial(body, principal(auth), session), id(request));

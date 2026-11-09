@@ -155,7 +155,9 @@ public final class WmsCentralScope {
         else if(suffix.matches("/money/[^/]+/cancel"))op="EDIT";
         else return false;
       }else {
-        if(Set.of("/counts","/serials","/replenishment-rules").contains(suffix))op="ADD";
+        if(suffix.equals("/counts"))return allowed(c,"WMS:inventory","ADD")&&allowed(c,"WMS:inventory","CONFIRM");
+        if(suffix.matches("/count-records/[0-9]+/review"))op="CONFIRM";
+        else if(Set.of("/count-records","/serials","/replenishment-rules").contains(suffix))op="ADD";
         else if(Set.of("/adjustments","/moves","/freeze","/unfreeze","/replenishments/generate").contains(suffix))op="EDIT";
         else return false;
       }

@@ -208,25 +208,6 @@ class InventoryService {
     }
 
     @Transactional
-    InventoryModels.OperationResult count(InventoryModels.CountRequest request, WmsPrincipal principal, HttpSession session) {
-        Scope scope = scope(principal, session);
-        rejectDuplicate(scope.companyId(), request.idempotencyKey());
-        InventoryRepository.BalanceRow balance = lock(request.balanceId(), scope);
-        BigDecimal before = balance.total();
-        BigDecimal delta = request.actualQuantity().subtract(before);
-        BigDecimal availableAfter = balance.availableQty().add(delta);
-        requireNonNegative(availableAfter, "实盘数量不能小于已分配量与冻结量之和");
-        String operationCode = sequences.next("IC", principal, session);
-        long operationId = repository.operation(scope.companyId(), scope.warehouseId(), scope.ownerId(), operationCode, "COUNT", principal.userId(), request.remark());
-        repository.updateQuantities(balance.id(), availableAfter, balance.allocatedQty(), balance.frozenQty());
-        repository.line(operationId, balance.goodId(), balance.locationId(), null, balance.id(), before, request.actualQuantity(), request.actualQuantity(), delta, balance.batchCode(), balance.qualityType(), request.remark());
-        repository.transaction(scope.companyId(), scope.warehouseId(), scope.ownerId(), balance.id(), balance.goodId(), balance.locationId(), "COUNT", operationCode,
-                before, delta, request.actualQuantity(), balance.availableQty(), delta, availableAfter,
-                balance.frozenQty(), ZERO, balance.frozenQty(), null, request.idempotencyKey(), principal.userId(), request.remark());
-        return new InventoryModels.OperationResult(operationCode, repository.view(balance.id(), scope.companyId(), scope.warehouseId(), scope.ownerId()));
-    }
-
-    @Transactional
     InventoryModels.SerialView createSerial(InventoryModels.SerialRequest request, WmsPrincipal principal, HttpSession session) {
         Scope scope = scope(principal, session);
         InventoryRepository.BalanceRow balance = lock(request.balanceId(), scope);
