@@ -69,6 +69,7 @@ export interface DispatchDetails {
   vehiclePlate?: string;
   driverName?: string;
   sourceWarehouseCode?: string;
+  wagonNo?: string;
   lines?: DispatchLine[];
   draftSource?: 'AI' | 'MANUAL';
   [key: string]: unknown;

@@ -11,7 +11,7 @@ export function mayWriteBusinessRoute(current:CurrentAuthorization,path:string,a
   if(path.startsWith('/api/business/')) {
     // 工单 AI 草稿/人工修改/确认：不属于通用 collection/actions 规则。
     if(/^\/api\/business\/work-orders\/[^/]+\/confirm$/.test(path))
-      return current.superAdmin || current.applicationAdmin === true || current.permissions.includes('pps:api:work-orders:execute');
+      return current.superAdmin || current.applicationAdmin === true || current.permissions.includes('pps:api:work-orders:confirm');
     if(path==='/api/business/work-orders/ai-draft'||/^\/api\/business\/work-orders\/[^/]+$/.test(path))
       return current.superAdmin || current.applicationAdmin === true || current.permissions.includes('pps:api:work-orders:write');
     if(path==='/api/business/work-orders')return current.superAdmin || current.applicationAdmin===true
@@ -26,7 +26,7 @@ export function mayWriteBusinessRoute(current:CurrentAuthorization,path:string,a
   const resource=selectedResource==='interlock-requests'?'interlocks':selectedResource;
   if (action !== undefined && typeof action !== 'string') return false;
   const bodyActions:Record<string,Record<string,string>>={
-    'work-orders':{assign:'write',accept:'execute',start:'execute',pause:'execute',complete:'execute',cancel:'execute'},
+    'work-orders':{assign:'write',accept:'execute',start:'execute',pause:'execute',complete:'execute',cancel:'execute',confirm:'confirm'},
     appointments:{approve:'approve',checkin:'write',call:'execute',enter:'execute',complete:'execute'},
     exceptions:{acknowledge:'write',resolve:'write',close:'write'},
     interlocks:{requestOverride:'write',requestReset:'write',approve:'approve',cancel:'write'},

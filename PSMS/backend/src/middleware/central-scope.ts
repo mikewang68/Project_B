@@ -109,6 +109,7 @@ export function centralRoute(context: UserContext, method: string, path: string,
       operation=['requestOverride','requestReset'].includes(String(action))?'ADD':action==='approve'?'CONFIRM':'EDIT';
   }
   else if (path === '/api/plans/import' || path === '/api/plans/import-file') operation = 'UPLOAD';
+  else if (path.endsWith('/actions') && action === 'confirm') operation = 'CONFIRM';
   else if (path.endsWith('/confirm') || ['approve', 'complete', 'close'].includes(String(action))) operation = 'CONFIRM';
   else if (path.endsWith('/actions')) operation = 'EDIT';
   try { requireAction(context, menu, operation); }

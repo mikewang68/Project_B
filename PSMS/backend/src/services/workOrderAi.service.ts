@@ -37,11 +37,43 @@ const detailsSchema = z.object({
   vehiclePlate: z.string().trim().max(50).optional(),
   driverName: z.string().trim().max(50).optional(),
   sourceWarehouseCode: z.string().trim().max(100).optional(),
+  wagonNo: z.string().trim().max(50).optional(),
   lines: z.array(lineSchema).max(100).optional(),
   draftSource: z.enum(['AI', 'MANUAL']).optional(),
 });
 
 export type DispatchDetailsInput = z.output<typeof detailsSchema>;
+
+/** PATCH 的 dispatchDetails：按字段合并；null 表示清空该字段。 */
+const nullableText = (max: number) => z.string().trim().max(max).nullable().optional();
+const patchDetailsSchema = z.object({
+  plannedWorkAt: nullableText(50),
+  operationLocation: nullableText(200),
+  channel: nullableText(200),
+  transferMode: nullableText(50),
+  expectedArrivalAt: nullableText(50),
+  vehiclePlate: nullableText(50),
+  driverName: nullableText(50),
+  sourceWarehouseCode: nullableText(100),
+  wagonNo: nullableText(50),
+  lines: z.array(lineSchema).max(100).nullable().optional(),
+}).strict();
+export type DispatchDetailsPatch = z.output<typeof patchDetailsSchema>;
+
+export function mergeDispatchDetails(
+  current: DispatchDetailsInput | null | undefined,
+  patch: DispatchDetailsPatch | undefined,
+): DispatchDetailsInput {
+  const merged: Record<string, unknown> = { ...(current ?? {}) };
+  if (patch) {
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) continue;
+      if (value === null) delete merged[key];
+      else merged[key] = value;
+    }
+  }
+  return merged as DispatchDetailsInput;
+}
 
 export interface WorkOrderAiActor {
   actorId: string;
@@ -101,7 +133,7 @@ JSON 结构：
 {"orderType":"LOADING|UNLOADING|TRANSFER|MAINTENANCE|OTHER","priority":"HIGH|MEDIUM|LOW","description":"作业说明",
  "dispatchDetails":{"plannedWorkAt":"ISO8601 带时区","operationLocation":"作业地点","channel":"通道",
  "transferMode":"DIRECT|SHUTTLE|OTHER","expectedArrivalAt":"ISO8601（卸车必填）","vehiclePlate":"车牌（仅 SHUTTLE）",
- "driverName":"司机（仅 SHUTTLE）","sourceWarehouseCode":"来源仓库编码（装车必填）",
+ "driverName":"司机（仅 SHUTTLE）","sourceWarehouseCode":"来源仓库编码（装车必填）","wagonNo":"车皮号",
  "lines":[{"lineId":"1","goodCode":"物料编码","goodName":"物料名称","unit":"吨","plannedQty":1.025}]},
  "warnings":["需要人工核对的事项"]}
 硬性规则：只能使用输入中已给出的计划、物料、仓库、车辆、司机信息；没有给出的字段直接省略，禁止编造编码、车牌、司机或数量；
@@ -109,7 +141,9 @@ JSON 结构：
 
 export interface AiDraftResponse {
   id: string;
+  version: string;
   recordVersion: string;
+  status: 'DRAFT';
   draft: WorkOrderDraft;
   missingFields: string[];
   warnings: string[];
@@ -233,8 +267,8 @@ export async function createAiWorkOrderDraft(input: unknown, actor: WorkOrderAiA
         centralScope.projectId, centralScope.regionId, centralScope.subsystemCode],
     );
     return {
-      id, recordVersion: item.record_version, draft, missingFields, warnings,
-      model: config.model, source: config.source,
+      id, version: item.record_version, recordVersion: item.record_version, status: 'DRAFT',
+      draft, missingFields, warnings, model: config.model, source: config.source,
     };
   } finally {
     db.release();
@@ -251,14 +285,18 @@ export interface WorkOrderPatch {
 
 export async function patchWorkOrder(id: string, input: unknown, actor: WorkOrderAiActor,
   connect: typeof connectClient = connectClient) {
+  const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  // 李润泽补充表：{expectedVersion, changes}；同时兼容旧的平铺字段，便于滚动升级。
+  const source = raw.changes && typeof raw.changes === 'object' && !Array.isArray(raw.changes)
+    ? raw.changes as Record<string, unknown>
+    : raw;
   const parsed = z.object({
     expectedVersion: z.string().min(1).max(80),
     description: z.string().trim().min(1).max(1000).optional(),
     priority: z.enum(priorities).optional(),
-    orderType: z.enum(orderTypes).optional(),
-    dispatchDetails: detailsSchema.optional(),
+    dispatchDetails: patchDetailsSchema.optional(),
   }).strict().refine((value) => value.description !== undefined || value.priority !== undefined
-    || value.orderType !== undefined || value.dispatchDetails !== undefined, '至少修改一个字段').safeParse(input);
+    || value.dispatchDetails !== undefined, '至少修改一个字段').safeParse({ expectedVersion: raw.expectedVersion, ...source });
   if (!parsed.success) throw new AppError(400, 'INVALID_PATCH', '工单修改字段格式无效');
   assertLocalRole(actor);
   const scope = businessReadQuery('work-orders', actor.dataScope, {});
@@ -274,13 +312,15 @@ export async function patchWorkOrder(id: string, input: unknown, actor: WorkOrde
     if (!before) throw new AppError(404, 'BUSINESS_OBJECT_NOT_FOUND', '工单不存在或不在授权范围');
     if (before.record_version !== parsed.data.expectedVersion) throw new AppError(409, 'VERSION_CONFLICT', '记录已被更新，请刷新后重新修改');
     if (before.status !== 'DRAFT') throw new AppError(409, 'INVALID_STATE', '只能修改草稿状态的工单');
+    const beforeDetails = (before.dispatch_details ?? null) as DispatchDetailsInput | null;
+    if (beforeDetails?.draftSource !== 'AI') throw new AppError(409, 'INVALID_STATE', '只能修改 AI 生成的工单草稿');
 
     const changes: Record<string, unknown> = {};
     if (parsed.data.description !== undefined) changes.description = parsed.data.description;
     if (parsed.data.priority !== undefined) changes.priority = parsed.data.priority;
-    if (parsed.data.orderType !== undefined) changes.order_type = parsed.data.orderType;
     if (parsed.data.dispatchDetails !== undefined) {
-      const merged = { ...parsed.data.dispatchDetails, draftSource: (before.dispatch_details as DispatchDetailsInput | null)?.draftSource ?? 'MANUAL' };
+      const merged = mergeDispatchDetails(beforeDetails, parsed.data.dispatchDetails);
+      merged.draftSource = 'AI';
       changes.dispatch_details = JSON.stringify(merged);
     }
     const columns = Object.keys(changes), values = Object.values(changes);
@@ -297,7 +337,7 @@ export async function patchWorkOrder(id: string, input: unknown, actor: WorkOrde
       [auditId, actor.subject, actor.roleCode, id,
         JSON.stringify({ description: before.description, priority: before.priority, orderType: before.order_type, dispatchDetails: before.dispatch_details }),
         JSON.stringify({ description: after.description, priority: after.priority, orderType: after.order_type, dispatchDetails: after.dispatch_details }),
-        '人工修改工单草稿', traceId, before.work_area,
+        '人工修改 AI 工单草稿', traceId, before.work_area,
         before.project_id ?? null, before.region_id ?? null, before.subsystem_code ?? null],
     );
     await db.query('COMMIT');
@@ -306,7 +346,8 @@ export async function patchWorkOrder(id: string, input: unknown, actor: WorkOrde
       description: String(after.description ?? ''), priority: String(after.priority ?? ''),
       orderType: String(after.order_type ?? ''), dispatchDetails: mergedDetails,
     });
-    return { item: after, missingFields };
+    const version = String(after.record_version ?? '');
+    return { item: { ...after, version }, version, missingFields };
   } catch (error) {
     try { await db.query('ROLLBACK'); } catch { /* 保留原始错误 */ }
     throw error;
@@ -317,7 +358,10 @@ export async function patchWorkOrder(id: string, input: unknown, actor: WorkOrde
 
 export async function confirmWorkOrder(id: string, input: unknown, actor: WorkOrderAiActor,
   connect: typeof connectClient = connectClient) {
-  const parsed = z.object({ expectedVersion: z.string().min(1).max(80) }).strict().safeParse(input);
+  const parsed = z.object({
+    expectedVersion: z.string().min(1).max(80),
+    reason: z.string().trim().max(1000).optional(),
+  }).strict().safeParse(input);
   if (!parsed.success) throw new AppError(400, 'INVALID_CONFIRM', '确认需要提供记录版本');
   assertLocalRole(actor);
   const scope = businessReadQuery('work-orders', actor.dataScope, {});
@@ -349,11 +393,12 @@ export async function confirmWorkOrder(id: string, input: unknown, actor: WorkOr
         before_state,after_state,reason,trace_id,occurred_at,work_area,project_id,region_id,subsystem_code)
        VALUES($1,$2,$3,'WEB-BACKEND','work-orders:confirm-draft','work-orders',$4,$5::jsonb,$6::jsonb,$7,$8,CURRENT_TIMESTAMP,$9,$10,$11,$12)`,
       [auditId, actor.subject, actor.roleCode, id, JSON.stringify({ status: before.status }),
-        JSON.stringify(after), '人工确认工单草稿 DRAFT→READY', traceId, before.work_area,
+        JSON.stringify(after), parsed.data.reason?.trim() || '人工确认工单草稿 DRAFT→READY', traceId, before.work_area,
         before.project_id ?? null, before.region_id ?? null, before.subsystem_code ?? null],
     );
     await db.query('COMMIT');
-    return { item: after, missingFields: [] };
+    const version = String((after as Record<string, unknown>).record_version ?? '');
+    return { item: { ...(after as Record<string, unknown>), version }, version, missingFields: [] };
   } catch (error) {
     try { await db.query('ROLLBACK'); } catch { /* 保留原始错误 */ }
     throw error;

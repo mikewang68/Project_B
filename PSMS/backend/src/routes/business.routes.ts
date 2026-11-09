@@ -60,6 +60,17 @@ businessRouter.post('/:collection/:id/actions',authenticate,async(req,res,next)=
   if(!env.PSMS_SSO_ENABLED||typeof res.locals.platformSubject!=='string'){
     res.status(403).json({ok:false,message:'此操作需要当前统一身份会话'});return;
   }
-  try{res.json({ok:true,data:await executeBusinessCommand(collection,String(req.params.id),req.body,
-    {...req.user!,subject:res.locals.platformSubject})});}catch(error){next(error);}
+  try{
+    // 李润泽补充表：确认复用 /actions，action=confirm；与 /confirm 别名共用同一套缺项校验。
+    if (collection === 'work-orders' && req.body?.action === 'confirm') {
+      const data = await confirmWorkOrder(String(req.params.id), {
+        expectedVersion: req.body?.expectedVersion,
+        reason: req.body?.reason,
+      }, { ...req.user!, subject: res.locals.platformSubject });
+      res.json({ ok: true, data });
+      return;
+    }
+    res.json({ok:true,data:await executeBusinessCommand(collection,String(req.params.id),req.body,
+      {...req.user!,subject:res.locals.platformSubject})});
+  }catch(error){next(error);}
 });
