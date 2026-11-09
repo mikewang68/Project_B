@@ -88,6 +88,9 @@ export function centralRoute(context: UserContext, method: string, path: string,
   else if (/^\/api\/plans(?:\/[^/]+)?\/?$/.test(path)) menu = 'PSMS:ui-002';
   else if (/^\/api\/plans\/[^/]+\/confirm$/.test(path)) menu = 'PSMS:ui-002';
   else if (/^\/api\/business\/work-orders\/[^/]+\/wms-inbound(?:\/actions)?$/.test(path)) menu = 'PSMS:ui-005';
+  else if (/^\/api\/business\/work-orders\/ai-draft\/?$/.test(path)) menu = 'PSMS:ui-005';
+  else if (/^\/api\/business\/work-orders\/[^/]+\/confirm\/?$/.test(path)) menu = 'PSMS:ui-005';
+  else if (/^\/api\/business\/work-orders\/[^/]+\/?$/.test(path)) menu = 'PSMS:ui-005';
   else {
     const collection = /^\/api\/business\/(work-orders|tasks|equipment|exceptions|appointments)(?:\/[^/]+\/actions)?$/.exec(path)?.[1];
     menu = collection && ({ 'work-orders': 'PSMS:ui-005', tasks: 'PSMS:ui-007',
@@ -105,7 +108,7 @@ export function centralRoute(context: UserContext, method: string, path: string,
     else if(kind==='interlocks'||kind==='interlock-requests')
       operation=['requestOverride','requestReset'].includes(String(action))?'ADD':action==='approve'?'CONFIRM':'EDIT';
   }
-  else if (path === '/api/plans/import') operation = 'UPLOAD';
+  else if (path === '/api/plans/import' || path === '/api/plans/import-file') operation = 'UPLOAD';
   else if (path.endsWith('/confirm') || ['approve', 'complete', 'close'].includes(String(action))) operation = 'CONFIRM';
   else if (path.endsWith('/actions')) operation = 'EDIT';
   try { requireAction(context, menu, operation); }

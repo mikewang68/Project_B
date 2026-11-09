@@ -165,7 +165,11 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
         && !/^\/api\/governance\/(interlocks|interlock-requests|offline|reports|settings|audit-logs)(\/|$)/.test(req.path)
         && !(req.method === 'GET' && /^\/api\/business\/(work-orders|tasks|equipment|exceptions)$/.test(req.path))
         && !(req.method==='POST' && (req.path==='/api/business/work-orders'
-          || /^\/api\/business\/(work-orders|exceptions)\/[^/]+\/actions$/.test(req.path)))) {
+          || req.path==='/api/business/work-orders/ai-draft'
+          || /^\/api\/business\/work-orders\/[^/]+\/confirm$/.test(req.path)
+          || /^\/api\/business\/(work-orders|exceptions)\/[^/]+\/actions$/.test(req.path)))
+        && !(req.method==='PATCH' && /^\/api\/business\/work-orders\/[^/]+$/.test(req.path))
+        && !/^\/api\/ai(?:\/|$)/.test(req.path)) {
       fail(res, 403, 'SSO_ROUTE_NOT_ADAPTED'); return;
     }
     req.user = { userId: user._id, actorId: user.actorId, roleCode: user.roleCode, dataScope: [...user.dataScope] };

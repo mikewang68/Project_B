@@ -3,6 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {loadCurrentDemoSession} from '../auth';
 import {liveApi,LiveApiError} from './client';
 import {centralActionAllowed} from '../auth/centralActions';
+import AiConfigPanel from './AiConfigPanel';
 const governanceApi=(path:string,init?:RequestInit)=>liveApi('/governance'+path,init);
 
 export const governancePages={'UI-009':{title:'安全联锁',resource:'interlocks'},
@@ -115,6 +116,7 @@ export default function GovernancePage({pageId}:{pageId:GovernancePageId}){
    description="设备停机、复位及覆盖结果须由设备确认；未取得回执时仍保持原联锁状态和执行限制。"/>}
   {spec.resource==='settings'&&<Alert type="info" title="配置版本独立审批，保留完整历史"
    description="保存、提交、审批和发布分别登记。页面不触发设备控制或算法执行；历史归属不明的配置仅平台管理员可见。"/>}
+  {spec.resource==='settings'&&<AiConfigPanel canWrite={allowedCommand('edit')===true}/>}
   <Space wrap><Select aria-label="作业区" allowClear value={workArea} placeholder="授权作业区" style={{minWidth:160}}
    options={(all?['AREA-A','AREA-B','AREA-C']:session.dataScope.filter(s=>s.startsWith('AREA-'))).map(value=>({value,label:value}))}
    onChange={value=>{setPage(1);setWorkArea(value);}}/>

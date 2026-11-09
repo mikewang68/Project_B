@@ -4,9 +4,16 @@ type CurrentAuthorization = { readOnly: boolean; superAdmin: boolean; applicatio
 export function mayWriteBusinessRoute(current:CurrentAuthorization,path:string,action?:unknown):boolean {
   if(path.startsWith('/api/governance/'))path='/api/'+path.slice('/api/governance/'.length);
   if(current.readOnly)return false;
+  // AI 助手只读取业务摘要并调用模型，不写业务数据；沿用计划/总览的读权限。
+  if(path==='/api/ai/assist')return mayReadBusinessRoute(current,'/api/ai');
   if(path==='/api/reports/export')return current.superAdmin
     || (current.permissions.includes('pps:export') && mayReadBusinessRoute(current,'/api/reports'));
   if(path.startsWith('/api/business/')) {
+    // 工单 AI 草稿/人工修改/确认：不属于通用 collection/actions 规则。
+    if(/^\/api\/business\/work-orders\/[^/]+\/confirm$/.test(path))
+      return current.superAdmin || current.applicationAdmin === true || current.permissions.includes('pps:api:work-orders:execute');
+    if(path==='/api/business/work-orders/ai-draft'||/^\/api\/business\/work-orders\/[^/]+$/.test(path))
+      return current.superAdmin || current.applicationAdmin === true || current.permissions.includes('pps:api:work-orders:write');
     if(path==='/api/business/work-orders')return current.superAdmin || current.applicationAdmin===true
       || current.permissions.includes('pps:api:work-orders:write');
     const match=/^\/api\/business\/([^/]+)\/[^/]+\/actions$/.exec(path);
@@ -53,6 +60,8 @@ export function mayReadBusinessRoute(current: CurrentAuthorization, path: string
     ? ['pps:api:plans:read', 'plan:view', 'pps:plan:view', 'pps:plan:list:view']
     : resource === 'overview'
       ? ['pps:api:overview:read', 'overview:view', 'pps:overview:view']
-      : [`pps:api:${resource==='interlock-requests'?'interlocks':resource}:read`];
+      : resource === 'ai'
+        ? ['pps:api:ai:read', 'pps:api:plans:read', 'pps:api:overview:read']
+        : [`pps:api:${resource==='interlock-requests'?'interlocks':resource}:read`];
   return alternatives.some(permission => current.permissions.includes(permission));
 }

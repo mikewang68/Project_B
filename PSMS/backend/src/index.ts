@@ -29,6 +29,8 @@ import { settingsRouter } from './routes/settings.routes.js';
 import { auditRouter } from './routes/audit.routes.js';
 import { demoRouter } from './routes/demo.routes.js';
 import { aiRouter } from './routes/ai.routes.js';
+import { aiConfigRouter } from './routes/ai-config.routes.js';
+import { applyAiConfigRuntime } from './middleware/ai-config-runtime.js';
 import { RailwayRuntime } from './services/railway-runtime.service.js';
 import { startRailwayWorker } from './services/railway-scheduler.service.js';
 import { railwayRouter } from './routes/railway.routes.js';
@@ -39,6 +41,8 @@ const railwayRuntime=process.env.PSMS_RAILWAY_ENABLED==='true'?new RailwayRuntim
 
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
+// 计划文件导入：multipart / CSV 原样读取为 Buffer，大小上限与业务校验一致（2 MB）。
+app.use(express.raw({ type: ['text/csv', 'application/octet-stream', 'multipart/form-data'], limit: '2mb' }));
 if (isDev) app.use(morgan('short'));
 
 /**
@@ -73,6 +77,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/plans', plansRouter);
 app.use('/api/overview', overviewRouter);
 app.use('/api/business', businessRouter);
+app.use('/api/governance/settings/ai', aiConfigRouter);
 app.use('/api/governance', governanceRouter);
 app.use('/api/work-orders', workOrdersRouter);
 app.use('/api/appointments', appointmentsRouter);
@@ -84,6 +89,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/audit-logs', auditRouter);
 app.use('/api/demo', demoRouter);
+app.use(applyAiConfigRuntime);
 app.use('/api/ai', aiRouter);
 if(railwayRuntime) app.use('/api/railway',authenticate,requirePermission('railway:manage'),railwayRouter(railwayRuntime));
 

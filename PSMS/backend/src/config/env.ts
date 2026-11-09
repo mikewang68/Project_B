@@ -39,6 +39,10 @@ const envSchema = z.object({
   AI_MODEL: z.string().default(''),
   AI_API_KEY: z.string().default(''),
   DASHSCOPE_API_KEY: z.string().trim().default(''),
+  /** AI 配置密钥的加密口令；未设置时由 JWT_SECRET 派生（轮换会使已存密钥失效，需要重新录入）。 */
+  AI_CONFIG_SECRET: z.string().trim().default(''),
+  /** 运行时 AI 配置缓存毫秒数；写操作会立即失效缓存。 */
+  AI_CONFIG_CACHE_TTL_MS: z.coerce.number().int().min(0).max(600000).default(30_000),
   AI_DEMO_AUTO_LOGIN: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   /**
    * 大模型调用超时与输出上限。

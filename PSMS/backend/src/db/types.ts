@@ -51,6 +51,29 @@ export interface ExecutionFeedback {
   reportedAt?: Date;
 }
 
+/** 调度执行明细：契约来自 3100 `dispatch_details`，不拆成车辆/司机等列。 */
+export interface DispatchLine {
+  lineId: string;
+  goodCode: string;
+  unit: string;
+  plannedQty: number;
+  goodName?: string;
+}
+
+export interface DispatchDetails {
+  plannedWorkAt?: string;
+  operationLocation?: string;
+  channel?: string;
+  transferMode?: string;
+  expectedArrivalAt?: string;
+  vehiclePlate?: string;
+  driverName?: string;
+  sourceWarehouseCode?: string;
+  lines?: DispatchLine[];
+  draftSource?: 'AI' | 'MANUAL';
+  [key: string]: unknown;
+}
+
 export interface WorkOrderDoc {
   _id: string;
   planId: string;
@@ -73,6 +96,9 @@ export interface WorkOrderDoc {
   acceptedAt?: Date | null;
   pauseReason?: string | null;
   cancelReason?: string | null;
+  dispatchDetails?: DispatchDetails | null;
+  confirmedBy?: string | null;
+  confirmedAt?: Date | null;
   executionFeedback?: ExecutionFeedback | null;
   createdAt?: Date;
   updatedAt?: Date;
