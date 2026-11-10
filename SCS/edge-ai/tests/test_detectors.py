@@ -13,6 +13,19 @@ from simulator.synthetic_stream import SyntheticStreamGenerator
 from detector.intrusion_detector import IntrusionDetector
 from detector.ppe_detector import PPEDetector
 from client.scs_client import ScsClient
+from config import YOLO_PERSON_WEIGHTS, YOLO_PPE_WEIGHTS
+
+# PPEDetector 构造即加载 YOLO 权重；权重缺失（如新开发机未下载 yolov8n-ppe.pt）时跳过而非报错
+_WEIGHTS_MISSING_MSG = (
+    f"缺少 YOLO 权重（{YOLO_PERSON_WEIGHTS} / {YOLO_PPE_WEIGHTS}），"
+    "无法构造 PPEDetector；把权重放到 MODELS_DIR 或设置 AI_STORAGE_BASE 后自动恢复"
+)
+
+
+def _requires_ppe_weights(test):
+    ready = os.path.exists(YOLO_PERSON_WEIGHTS) and os.path.exists(YOLO_PPE_WEIGHTS)
+    return unittest.skipUnless(ready, _WEIGHTS_MISSING_MSG)(test)
+
 
 class TestEdgeAIDetectors(unittest.TestCase):
 
@@ -59,6 +72,7 @@ class TestEdgeAIDetectors(unittest.TestCase):
         self.assertFalse(res["has_intrusions"])
         self.assertEqual(len(res["violations"]), 0)
 
+    @_requires_ppe_weights
     def test_ppe_detector_vest_hsv_logic(self):
         detector = PPEDetector()
         frame, meta = self.stream_gen.generate_frame("no_vest")
@@ -70,6 +84,7 @@ class TestEdgeAIDetectors(unittest.TestCase):
         has_vest, ratio = detector._check_reflective_vest(frame, wx1, wy1, pw, ph)
         self.assertFalse(has_vest, "Worker with plain shirt should be flagged as no vest")
 
+    @_requires_ppe_weights
     def test_ppe_detector_with_vest(self):
         detector = PPEDetector()
         frame, meta = self.stream_gen.generate_frame("compliant")

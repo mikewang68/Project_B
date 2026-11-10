@@ -16,7 +16,7 @@ import static org.mockito.Mockito.*;
 
 class ScsMachineRegistryTest {
   @TempDir Path temp;final ObjectMapper mapper=new ObjectMapper();Path file;String secret;ScsMachineRegistry registry;
-  @BeforeEach void setup()throws Exception{file=temp.resolve("sources.private.json");secret=UUID.randomUUID()+"-"+UUID.randomUUID();registry=new ScsMachineRegistry(mapper,file.toString());write(List.of(source("SIM-A",secret,"P-1")));}
+  @BeforeEach void setup()throws Exception{Assumptions.assumeTrue(java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),"POSIX 文件权限在 Windows 开发机不可用（Files.setPosixFilePermissions 抛 UnsupportedOperationException），设备注册表测试跳过；Linux/CI 正常执行");file=temp.resolve("sources.private.json");secret=UUID.randomUUID()+"-"+UUID.randomUUID();registry=new ScsMachineRegistry(mapper,file.toString());write(List.of(source("SIM-A",secret,"P-1")));}
   Map<String,Object> source(String id,String key,String object)throws Exception{return new HashMap<>(Map.of("id",id,"enabled",true,"keySha256",HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(key.getBytes(java.nio.charset.StandardCharsets.UTF_8))),"projectId","PROJECT_B","regionId","SHEN_TIE","subsystemCode","SCS","expiresAt",Instant.now().plusSeconds(3600).toString(),"routes",List.of("/api/v1/ingest/person-position"),"objects",Map.of("PERSONNEL",List.of(object))));}
   void write(List<Map<String,Object>> sources)throws Exception{Files.writeString(file,mapper.writeValueAsString(Map.of("version",1,"sources",sources)));Files.setPosixFilePermissions(file,PosixFilePermissions.fromString("rw-------"));}
   ScsMachineRegistry.Binding authenticate(){return registry.authenticate("SIM-A",secret,"POST","/api/v1/ingest/person-position");}
