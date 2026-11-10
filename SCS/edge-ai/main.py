@@ -389,6 +389,7 @@ def simulate_trigger(req: SimulationRequest):
         "scenario": req.scenario,
         "camera_code": req.camera_code,
         "violations": all_violations,
+        "boxes": all_boxes,
         "boxes_count": len(all_boxes),
         "snapshot_path": snap_path,
         "snapshot_url": snapshot_url,
@@ -415,6 +416,11 @@ async def _stream_loop(interval_sec: float = 8.0):
             logger.error(f"Stream loop error: {e}")
         await asyncio.sleep(interval_sec)
     logger.info("Background streaming loop stopped.")
+
+@app.get("/api/v1/stream/status")
+def stream_status():
+    global stream_running
+    return {"running": stream_running}
 
 @app.post("/api/v1/stream/start")
 async def start_stream(interval_sec: float = Query(10.0, description="Seconds between simulation frames")):

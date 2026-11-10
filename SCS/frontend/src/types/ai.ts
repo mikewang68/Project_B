@@ -1,6 +1,6 @@
 // AI 违规识别模块类型定义（本阶段全部为前端 Mock，不接后端）
 
-export type AiEventType = '未佩戴安全帽' | '翻越护栏' | '闯入危险区域' | '人员滞留' | '摄像头异常'
+export type AiEventType = '未佩戴安全帽' | '未穿反光衣' | '翻越护栏' | '闯入危险区域' | '人员滞留' | '摄像头异常'
 
 export type ReviewStatus = '待复核' | '已确认违规' | '误报' | '不确定' | '已派单' | '处理中' | '已关闭'
 
@@ -88,7 +88,7 @@ export interface EdgeStatus {
   message?: string
 }
 
-export const AI_EVENT_TYPES: AiEventType[] = ['未佩戴安全帽', '翻越护栏', '闯入危险区域', '人员滞留', '摄像头异常']
+export const AI_EVENT_TYPES: AiEventType[] = ['未佩戴安全帽', '未穿反光衣', '翻越护栏', '闯入危险区域', '人员滞留', '摄像头异常']
 
 export const REVIEW_STATUSES: ReviewStatus[] = ['待复核', '已确认违规', '误报', '不确定', '已派单', '处理中', '已关闭']
 

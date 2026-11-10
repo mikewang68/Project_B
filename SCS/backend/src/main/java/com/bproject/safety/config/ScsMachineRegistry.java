@@ -19,7 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Component
 public class ScsMachineRegistry {
   private static final String ATTRIBUTE=ScsMachineRegistry.class.getName();
-  public static final Set<String> ROUTES=Set.of("/api/v1/ingest/person-position","/api/v1/ingest/device-state","/api/v1/ingest/zone-state","/api/v1/ingest/uwb-station");
+  public static final Set<String> ROUTES=Set.of("/api/v1/ingest/person-position","/api/v1/ingest/device-state","/api/v1/ingest/zone-state","/api/v1/ingest/uwb-station","/api/v1/ai-events/ingest");
   private final ObjectMapper mapper;private final String file;
   public ScsMachineRegistry(ObjectMapper mapper,@Value("${app.security.machine-bindings-file:}")String file){this.mapper=mapper;this.file=file;}
   public record Binding(String id,ScopeTriple scope,Set<String> routes,Map<ScsCentralScope.Root,Set<String>> objects,String revision,ScsMachineRegistry registry){
@@ -73,7 +73,7 @@ public class ScsMachineRegistry {
     var objects=new EnumMap<ScsCentralScope.Root,Set<String>>(ScsCentralScope.Root.class);var fields=n.path("objects").fields();
     while(fields.hasNext()){
       var entry=fields.next();ScsCentralScope.Root root;try{root=ScsCentralScope.Root.valueOf(entry.getKey());}catch(Exception e){throw denied();}
-      if(!Set.of(ScsCentralScope.Root.PERSONNEL,ScsCentralScope.Root.COLLISION,ScsCentralScope.Root.AREA,ScsCentralScope.Root.RUNTIME).contains(root)||!entry.getValue().isArray()||entry.getValue().size()>1000)throw denied();
+      if(!Set.of(ScsCentralScope.Root.PERSONNEL,ScsCentralScope.Root.COLLISION,ScsCentralScope.Root.AREA,ScsCentralScope.Root.RUNTIME,ScsCentralScope.Root.CAMERA).contains(root)||!entry.getValue().isArray()||entry.getValue().size()>1000)throw denied();
       Set<String> keys=new HashSet<>();for(var value:entry.getValue()){String key=value.asText();if(!value.isTextual()||!key.matches("[A-Za-z0-9_:-]{1,128}")||!keys.add(key))throw denied();}objects.put(root,keys);
     }
     if(objects.isEmpty())throw denied();try{Instant.parse(n.path("expiresAt").asText());}catch(Exception e){throw denied();}

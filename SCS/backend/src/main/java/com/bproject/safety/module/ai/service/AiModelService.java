@@ -39,6 +39,18 @@ public class AiModelService {
     private final Clock clock;
     /** review-#5：热切换多模型 save 事务化后的广播门控。 */
     private final com.bproject.safety.common.realtime.LiveEventGate gate;
+    /** 边缘真机推理客户端；单元测试可直接覆盖（同包），缺失或失败时本地模拟降级。 */
+    EdgeAiInferenceClient edgeAiInferenceClient;
+
+    /** 后端案例场景 → edge-ai 真实推理场景；仅 PPE 与危险区域闯入在边缘有真模型。 */
+    private static final Map<String, String> EDGE_SCENARIOS = Map.of(
+            "ppe_violation", "no_helmet",
+            "danger_intrusion", "intrusion");
+
+    /** 边缘检测框英文 label → 违规类型（与 ingest eventType 同词表，用于回填中文与诊断文本）。 */
+    private static final Map<String, String> EDGE_LABEL_TO_TYPE = Map.of(
+            "NO HELMET", "未佩戴安全帽",
+            "NO VEST", "未穿反光衣");
 
     /** 兼容历史测试直连（无广播门控，行为与旧版一致）。 */
     public AiModelService(AiModelRepository modelRepository,
@@ -58,6 +70,11 @@ public class AiModelService {
         this.livePublisher = livePublisher;
         this.clock = clock;
         this.gate = gate;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setEdgeAiInferenceClient(@org.springframework.lang.Nullable EdgeAiInferenceClient edgeAiInferenceClient) {
+        this.edgeAiInferenceClient = edgeAiInferenceClient;
     }
 
     /** 广播统一收口：有事务时延迟至 afterCommit。 */
@@ -159,6 +176,16 @@ public class AiModelService {
                 : model.confidenceThreshold;
 
         String scenario = req.scenario() == null ? "ppe_violation" : req.scenario().toLowerCase();
+
+        // 边缘真机推理：仅对边缘具备真实模型的场景尝试；失败（服务离线/超时/非200）平滑降级本地模拟
+        String edgeScenario = EDGE_SCENARIOS.get(scenario);
+        if (edgeAiInferenceClient != null && edgeScenario != null) {
+            var edge = edgeAiInferenceClient.infer(edgeScenario, "CAM-01");
+            if (edge.isPresent()) {
+                return buildEdgeResult(model, req, scenario, threshold, edge.get());
+            }
+        }
+
         double simulatedLatency = Math.round((model.latencyMs + ThreadLocalRandom.current().nextDouble(-3.5, 4.5)) * 10.0) / 10.0;
         simulatedLatency = Math.max(18.0, simulatedLatency);
 
@@ -188,6 +215,54 @@ public class AiModelService {
                 scenario,
                 scenarioName,
                 req.imageSource() != null ? req.imageSource() : resolveDefaultImage(scenario),
+                detectedObjects,
+                (int) violations,
+                riskLevel,
+                summary,
+                suggestion,
+                timestamp
+        );
+    }
+
+    /** 边缘真机推理结果 → 统一 AiInferenceResult（框坐标/违规口径与本地模拟对齐）。 */
+    private AiInferenceResult buildEdgeResult(AiModelInfo model, AiInferenceRequest req, String scenario,
+                                              double threshold, EdgeAiInferenceClient.EdgeInference edge) {
+        Map<String, EdgeAiInferenceClient.EdgeViolation> violationByType = edge.violations().stream()
+                .collect(java.util.stream.Collectors.toMap(EdgeAiInferenceClient.EdgeViolation::type, v -> v, (a, b) -> a));
+        List<DetectedObjectBox> detectedObjects = new ArrayList<>();
+        for (EdgeAiInferenceClient.EdgeBox box : edge.boxes()) {
+            if (box.score() != null && box.score() < threshold) {
+                continue;
+            }
+            boolean violation = "violation".equals(box.tone());
+            String violationType = violation ? EDGE_LABEL_TO_TYPE.getOrDefault(box.label(), box.label()) : null;
+            EdgeAiInferenceClient.EdgeViolation matched = violationType == null ? null : violationByType.get(violationType);
+            detectedObjects.add(new DetectedObjectBox(
+                    box.label(),
+                    violationType != null ? violationType : box.label(),
+                    box.score() == null ? 0.0 : box.score(),
+                    violation,
+                    violation ? RiskLevels.WARNING : RiskLevels.NORMAL,
+                    box.x(), box.y(), box.w(), box.h(),
+                    matched != null ? matched.judge() : (violation ? "边缘真机检出违规" : "正常目标")));
+        }
+        long violations = edge.violations().stream().filter(v -> v.confidence() >= threshold).count();
+        String riskLevel = violations >= 2 ? RiskLevels.SEVERE : (violations == 1 ? RiskLevels.WARNING : RiskLevels.NORMAL);
+        String summary = "【边缘真机推理】" + generateSummary(scenario, violations, detectedObjects);
+        String suggestion = generateSuggestion(scenario, violations);
+        String timestamp = OffsetDateTime.now(clock).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        String inferenceId = "INF-" + OffsetDateTime.now(clock).format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        return new AiInferenceResult(
+                inferenceId,
+                model.id,
+                model.name,
+                model.version,
+                "EDGE-AI(" + edge.edgeScenario() + ")",
+                Math.max(1.0, edge.latencyMs()),
+                scenario,
+                resolveScenarioName(scenario),
+                req.imageSource() != null ? req.imageSource()
+                        : (edge.snapshotUrl() != null && !edge.snapshotUrl().isBlank() ? edge.snapshotUrl() : resolveDefaultImage(scenario)),
                 detectedObjects,
                 (int) violations,
                 riskLevel,

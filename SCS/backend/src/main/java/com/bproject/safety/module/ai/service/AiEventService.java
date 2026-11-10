@@ -609,6 +609,7 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
     private AlertService.NewAlertFromAi toAlertDraft(DemoAiEvent e) {
         Map<String, String[]> titleMap = Map.of(
                 "未佩戴安全帽", new String[]{"作业人员未佩戴安全帽（AI 复核确认）", "未佩戴安全帽"},
+                "未穿反光衣", new String[]{"作业人员未穿反光衣（AI 复核确认）", "未穿反光衣"},
                 "翻越护栏", new String[]{"人员翻越安全护栏（AI 复核确认）", "翻越护栏"},
                 "闯入危险区域", new String[]{"人员闯入危险区域（AI 复核确认）", "危险区域闯入"},
                 "人员滞留", new String[]{"人员长时间滞留作业区域（AI 复核确认）", "人员滞留"},

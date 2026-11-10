@@ -106,7 +106,15 @@ public final class ScsCentralScope {
   }
   public record Stamp(Root root,String key,ScopeTriple scope,boolean created){}
   public static Stamp beforeWrite(NamedParameterJdbcTemplate db,Root root,String key){
-    var machine=ScsMachineRegistry.current();if(machine!=null&&!machine.owns(root,key))throw ScsMachineRegistry.denied();
+    return beforeWrite(db,root,key,root,key);
+  }
+  /**
+   * Machine ingest of a new root row authorizes by a bound object (e.g. CAMERA for AI
+   * events) instead of the server-generated business key, which no registration can
+   * know in advance. Non-machine callers are unaffected.
+   */
+  public static Stamp beforeWrite(NamedParameterJdbcTemplate db,Root root,String key,Root machineAuthRoot,String machineAuthKey){
+    var machine=ScsMachineRegistry.current();if(machine!=null&&!machine.owns(machineAuthRoot,machineAuthKey))throw ScsMachineRegistry.denied();
     var context=current();
     if(context==null){
       if(legacyMachineIngress()){

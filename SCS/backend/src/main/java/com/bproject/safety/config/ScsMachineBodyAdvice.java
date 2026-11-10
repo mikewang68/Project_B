@@ -29,6 +29,17 @@ public class ScsMachineBodyAdvice extends RequestBodyAdviceAdapter {
   void validate(ScsMachineRegistry.Binding binding,String path,JsonNode body){
     if(jdbc==null||body==null||!body.isObject()||forgedTuple(body))throw ScsMachineRegistry.denied();
     if(body.has("source")&&!binding.id().equals(body.path("source").asText()))throw ScsMachineRegistry.denied();
+    // AI 视觉事件为扁平单对象（无批数组）：按绑定持有的 CAMERA 对象校验摄像头归属与存在性。
+    if("/api/v1/ai-events/ingest".equals(path)){
+      JsonNode camera=body.path("cameraCode");
+      if(!camera.isTextual()||camera.asText().isBlank())throw ScsMachineRegistry.denied();
+      String code=camera.asText().trim();
+      if(!binding.owns(ScsCentralScope.Root.CAMERA,code))throw ScsMachineRegistry.denied();
+      var scope=binding.scope();
+      Long count=jdbc.queryForObject("SELECT count(*) FROM safety."+ScsCentralScope.Root.CAMERA.table+" WHERE "+ScsCentralScope.Root.CAMERA.key+"=:c AND project_id=:p AND region_id=:r AND subsystem_code=:s",Map.of("c",code,"p",scope.projectId(),"r",scope.regionId(),"s",scope.subsystemCode()),Long.class);
+      if(count==null||count!=1)throw ScsMachineRegistry.denied();
+      return;
+    }
     String array,key,prefix="";ScsCentralScope.Root root;
     switch(path){
       case "/api/v1/ingest/person-position"->{array="positions";key="id";root=ScsCentralScope.Root.PERSONNEL;}

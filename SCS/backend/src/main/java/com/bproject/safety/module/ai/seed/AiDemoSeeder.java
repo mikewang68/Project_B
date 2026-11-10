@@ -289,6 +289,7 @@ public class AiDemoSeeder implements CommandLineRunner {
     public static String sceneOf(String type) {
         return switch (type) {
             case "未佩戴安全帽" -> "helmet";
+            case "未穿反光衣" -> "helmet";
             case "翻越护栏" -> "fence";
             case "闯入危险区域" -> "intrusion";
             case "人员滞留" -> "linger";

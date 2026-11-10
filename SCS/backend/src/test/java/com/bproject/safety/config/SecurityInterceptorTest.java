@@ -442,4 +442,63 @@ class SecurityInterceptorTest {
             throw new IllegalStateException(e);
         }
     }
+
+    @Test
+    @DisplayName("携带 X-SCS-Source-ID 但注册表缺失：抛 403 拒绝（不允许回落共享 key）")
+    void namedSourceWithoutRegistryIsDenied() {
+        SecurityInterceptor interceptor = enabledInterceptor();
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/ai-events/ingest");
+        request.addHeader("X-SCS-Source-ID", "EDGE-AI-01");
+        request.addHeader("X-API-Key", API_KEY);
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> interceptor.preHandle(request, new MockHttpServletResponse(), new Object()))
+                .isInstanceOfSatisfying(org.springframework.web.server.ResponseStatusException.class,
+                        e -> org.assertj.core.api.Assertions.assertThat(e.getStatusCode())
+                                .isEqualTo(org.springframework.http.HttpStatus.FORBIDDEN));
+    }
+
+    @Test
+    @DisplayName("命名设备来源走注册表：正确 key 通过并绑定机器身份，错误 key 抛 403（Linux/CI；Windows 跳过）")
+    void namedSourceWithRegisteredBindingAuthenticatesAiEventIngest() throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+                "POSIX 文件权限在 Windows 开发机不可用，注册表测试跳过；Linux/CI 正常执行");
+        String secret = "unit-test-edge-ai-key-0123456789abcdef";
+        java.util.List<java.util.Map<String, Object>> sources = java.util.List.of(java.util.Map.of(
+                "id", "EDGE-AI-01", "enabled", true,
+                "keySha256", java.util.HexFormat.of().formatHex(
+                        java.security.MessageDigest.getInstance("SHA-256").digest(secret.getBytes(StandardCharsets.UTF_8))),
+                "projectId", "PROJECT_B", "regionId", "SHEN_TIE", "subsystemCode", "SCS",
+                "expiresAt", java.time.Instant.now().plusSeconds(3600).toString(),
+                "routes", java.util.List.of("/api/v1/ai-events/ingest"),
+                "objects", java.util.Map.of("CAMERA", java.util.List.of("CAM-01"))));
+        java.nio.file.Path file = java.nio.file.Files.createTempFile("bindings", ".json");
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new ObjectMapper();
+        java.nio.file.Files.writeString(file, mapper.writeValueAsString(java.util.Map.of("version", 1, "sources", sources)));
+        java.nio.file.Files.setPosixFilePermissions(file, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+        try {
+            SecurityInterceptor interceptor = enabledInterceptor();
+            ScsMachineRegistry registry = new ScsMachineRegistry(mapper, file.toString());
+            org.springframework.test.util.ReflectionTestUtils.setField(interceptor, "machineRegistry", registry);
+
+            MockHttpServletRequest ok = new MockHttpServletRequest("POST", "/api/v1/ai-events/ingest");
+            ok.addHeader("X-SCS-Source-ID", "EDGE-AI-01");
+            ok.addHeader("X-API-Key", secret);
+            MockHttpServletResponse okResp = new MockHttpServletResponse();
+            assertThat(interceptor.preHandle(ok, okResp, new Object())).isTrue();
+            assertThat((String) ok.getAttribute(SecurityInterceptor.ATTR_USER_SUB)).isEqualTo("machine-EDGE-AI-01");
+
+            MockHttpServletRequest badKey = new MockHttpServletRequest("POST", "/api/v1/ai-events/ingest");
+            badKey.addHeader("X-SCS-Source-ID", "EDGE-AI-01");
+            badKey.addHeader("X-API-Key", "wrong-key-wrong-key-wrong-key-0123456789");
+            org.assertj.core.api.Assertions.assertThatThrownBy(
+                            () -> interceptor.preHandle(badKey, new MockHttpServletResponse(), new Object()))
+                    .isInstanceOfSatisfying(org.springframework.web.server.ResponseStatusException.class,
+                            e -> org.assertj.core.api.Assertions.assertThat(e.getStatusCode())
+                                    .isEqualTo(org.springframework.http.HttpStatus.FORBIDDEN));
+        } finally {
+            java.nio.file.Files.deleteIfExists(file);
+        }
+    }
 }

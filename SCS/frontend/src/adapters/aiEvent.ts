@@ -9,7 +9,7 @@ const REVIEW_STATUSES: ReviewStatus[] = ['待复核', '已确认违规', '误报
 const RISKS: RiskLevel[] = ['高', '中', '低']
 const HEALTHS: CameraHealth[] = ['正常', '画面质量下降', '离线']
 const SCENES: AiSceneKind[] = ['helmet', 'fence', 'intrusion', 'linger', 'camera']
-const EVENT_TYPES = ['未佩戴安全帽', '翻越护栏', '闯入危险区域', '人员滞留', '摄像头异常']
+const EVENT_TYPES = ['未佩戴安全帽', '未穿反光衣', '翻越护栏', '闯入危险区域', '人员滞留', '摄像头异常']
 
 export function mapReviewStatus(value: unknown): ReviewStatus {
   return typeof value === 'string' && (REVIEW_STATUSES as string[]).includes(value)
@@ -27,6 +27,7 @@ export function mapCameraHealth(value: unknown): CameraHealth {
 function mapScene(value: unknown, type?: unknown): AiSceneKind {
   if (typeof value === 'string' && (SCENES as string[]).includes(value)) return value as AiSceneKind
   if (type === '未佩戴安全帽') return 'helmet'
+  if (type === '未穿反光衣') return 'helmet'
   if (type === '翻越护栏') return 'fence'
   if (type === '闯入危险区域') return 'intrusion'
   if (type === '人员滞留') return 'linger'

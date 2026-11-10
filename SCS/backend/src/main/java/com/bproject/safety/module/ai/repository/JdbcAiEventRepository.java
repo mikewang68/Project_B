@@ -202,7 +202,9 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
         UUID rootUuid = resolveUuid(toPersist.id);
         String eventNo = toPersist.id;
 
-        var centralStamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.AI_EVENT,eventNo);
+        // 注册表机器来源按其绑定的 CAMERA 对象授权（事件编号是服务端生成、注册时未知）；
+        // 新事件行由 afterWrite 自动盖上绑定的范围三元组。非机器调用方行为不变。
+        var centralStamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.AI_EVENT,eventNo,com.bproject.safety.config.ScsCentralScope.Root.CAMERA,toPersist.camera);
         com.bproject.safety.config.ScsCentralScope.requireReference(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.ALERT,toPersist.linkedAlertId);
 
         // 1. 保存 / 更新主表 safety.ai_event

@@ -30,6 +30,22 @@ class ScsMachineRegistryTest {
   @Test void atomicSqlIncludesSourceObjectAllowlistInAdditionToTuple(){var b=authenticate();var req=new MockHttpServletRequest("POST","/api/v1/ingest/person-position");ScsMachineRegistry.bind(req,b);RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));String sql=ScsScopedSql.apply("UPDATE safety.safety_personnel SET name=:name WHERE personnel_code=:id OR status='OLD'",ScsCentralScope.current());assertTrue(sql.contains("region_id = 'SHEN_TIE'"));assertTrue(sql.contains("personnel_code IN ('P-1')"));assertTrue(sql.contains("( personnel_code=:id OR status='OLD'"));String hidden=ScsScopedSql.apply("SELECT * FROM safety.collision_device",ScsCentralScope.current());assertTrue(hidden.contains("AND 1=0"));}
   @Test void bodyRejectsSameTupleOtherObjectForgedSourceAndClientTuple()throws Exception{var db=mock(NamedParameterJdbcTemplate.class);when(db.queryForObject(anyString(),anyMap(),eq(Long.class))).thenReturn(1L);var advice=new ScsMachineBodyAdvice(mapper,db);var b=authenticate();String p="/api/v1/ingest/person-position";advice.validate(b,p,mapper.readTree("{\"source\":\"SIM-A\",\"positions\":[{\"id\":\"P-1\",\"x\":1}]}"));for(String body:List.of("{\"positions\":[{\"id\":\"P-2\"}]}","{\"source\":\"SIM-B\",\"positions\":[{\"id\":\"P-1\"}]}","{\"positions\":[{\"id\":\"P-1\",\"region_id\":\"HA_TIE\"}]}"))assertThrows(Exception.class,()->advice.validate(b,p,mapper.readTree(body)));}
   @Test void existingIdOwnershipMustMatchAndUnknownObjectsAreNotAdopted()throws Exception{var db=mock(NamedParameterJdbcTemplate.class);when(db.queryForObject(anyString(),anyMap(),eq(Long.class))).thenReturn(0L);var advice=new ScsMachineBodyAdvice(mapper,db);assertThrows(Exception.class,()->advice.validate(authenticate(),"/api/v1/ingest/person-position",mapper.readTree("{\"positions\":[{\"id\":\"P-1\"}]}")));}
+  @Test void namedAiEventSourceWithCameraObjectsAuthenticatesAndOwnsOnlyCameras()throws Exception{
+    var s=source("SIM-A",secret,"CAM-01");s.put("routes",List.of("/api/v1/ai-events/ingest"));s.put("objects",Map.of("CAMERA",List.of("CAM-01")));write(List.of(s));
+    var binding=registry.authenticate("SIM-A",secret,"POST","/api/v1/ai-events/ingest");
+    assertTrue(binding.owns(ScsCentralScope.Root.CAMERA,"CAM-01"));assertFalse(binding.owns(ScsCentralScope.Root.PERSONNEL,"CAM-01"));
+    assertThrows(Exception.class,()->registry.authenticate("SIM-A",secret,"POST","/api/v1/ai-events/ingest").owns(ScsCentralScope.Root.PERSONNEL,"P-1"));}
+  @Test void aiEventIngestBodyRequiresOwnedCameraAndExistingRow()throws Exception{
+    var s=source("SIM-A",secret,"CAM-01");s.put("routes",List.of("/api/v1/ai-events/ingest"));s.put("objects",Map.of("CAMERA",List.of("CAM-01")));write(List.of(s));
+    var binding=registry.authenticate("SIM-A",secret,"POST","/api/v1/ai-events/ingest");
+    var db=mock(NamedParameterJdbcTemplate.class);when(db.queryForObject(anyString(),anyMap(),eq(Long.class))).thenReturn(1L);
+    var advice=new ScsMachineBodyAdvice(mapper,db);String p="/api/v1/ai-events/ingest";
+    advice.validate(binding,p,mapper.readTree("{\"eventType\":\"未穿反光衣\",\"cameraCode\":\"CAM-01\",\"confidence\":94.5}"));
+    when(db.queryForObject(anyString(),anyMap(),eq(Long.class))).thenReturn(0L);
+    assertThrows(Exception.class,()->advice.validate(binding,p,mapper.readTree("{\"cameraCode\":\"CAM-01\"}")));
+    when(db.queryForObject(anyString(),anyMap(),eq(Long.class))).thenReturn(1L);
+    assertThrows(Exception.class,()->advice.validate(binding,p,mapper.readTree("{\"cameraCode\":\"CAM-99\"}")));
+    assertThrows(Exception.class,()->advice.validate(binding,p,mapper.readTree("{\"eventType\":\"x\"}")));}
   @Test void namedAreaRequiresExistingOwnedRootBeforeCreatingOnlyRuntimeCache()throws Exception{
     var s=source("SIM-A",secret,"P-1");s.put("routes",List.of("/api/v1/ingest/zone-state"));s.put("objects",Map.of("AREA",List.of("SIM-AREA")));write(List.of(s));
     var binding=registry.authenticate("SIM-A",secret,"POST","/api/v1/ingest/zone-state");

@@ -16,14 +16,17 @@ import os
 logger = logging.getLogger("edge_ai.client")
 
 class ScsClient:
-    def __init__(self, ingest_url: str = SCS_INGEST_ENDPOINT, timeout: float = 5.0, api_key: Optional[str] = None):
+    def __init__(self, ingest_url: str = SCS_INGEST_ENDPOINT, timeout: float = 5.0, api_key: Optional[str] = None, source_id: Optional[str] = None):
         self.ingest_url = ingest_url
         self.timeout = timeout
         resolved_key = api_key or os.getenv("SCS_API_KEY") or os.getenv("APP_SECURITY_API_KEY")
         if not resolved_key:
             raise ValueError("SCS API key must be provided via constructor or SCS_API_KEY / APP_SECURITY_API_KEY environment variable")
         self.api_key = resolved_key
-        logger.info(f"ScsClient configured with endpoint: {self.ingest_url}")
+        # 命名设备来源：设置 SCS_SOURCE_ID 后，后端按 ScsMachineRegistry 中该来源的
+        # 绑定（路由 + 摄像头对象授权）做 per-device 鉴权；不设置则走全局 API-Key 兼容路径。
+        self.source_id = source_id or os.getenv("SCS_SOURCE_ID") or None
+        logger.info(f"ScsClient configured with endpoint: {self.ingest_url}, source: {self.source_id or '(legacy global key)'}")
 
     def report_event(
         self,
@@ -80,6 +83,10 @@ class ScsClient:
         }
         if self.api_key:
             headers["X-API-Key"] = self.api_key
+        # 命名设备来源（可选）：设置后走后端 ScsMachineRegistry per-device 绑定鉴权，
+        # 未设置时维持全局 X-API-Key 兼容路径。
+        if self.source_id:
+            headers["X-SCS-Source-ID"] = self.source_id
 
         logger.info(f"Reporting AI event '{event_type}' to SCS [Key: {idempotency_key}]...")
 

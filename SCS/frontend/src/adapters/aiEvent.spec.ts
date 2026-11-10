@@ -35,6 +35,13 @@ describe('ai event adapter', () => {
     expect(event.timeline).toEqual([])
   })
 
+  it('keeps edge-ai vest violation type instead of degrading to camera fault', () => {
+    // edge-ai ppe_detector 上报的 eventType 原样透传（此前被白名单降级成「摄像头异常」）
+    const event = mapAiEvent({ id: 'X', type: '未穿反光衣', boxes: null, timeline: null })
+    expect(event.type).toBe('未穿反光衣')
+    expect(event.scene).toBe('helmet')
+  })
+
   it('tolerates boxes without score (fence line)', () => {
     const event = mapAiEvent({
       id: 'AI-2', type: '翻越护栏',
