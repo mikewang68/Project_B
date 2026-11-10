@@ -1,0 +1,63 @@
+{
+  "source_commit": "39550d8d5cd1c50125947655bb9d65c001e54409",
+  "scope": "source review plus offline UWB/backend/frontend regression; no production writes",
+  "markdown_lines": 956,
+  "valid_json_examples": 18,
+  "valid_local_references": 48,
+  "unfilled_sections": 0,
+  "files": {
+    "SCS模拟设备类型与数据格式说明.md": {
+      "bytes": 73097,
+      "sha256": "b455a5bcfb151c128fc0a35ab99a62d2b81370fad9a75fb83c3ff2cd4963e2f6"
+    },
+    "前端与边缘AI核查记录.md": {
+      "bytes": 11322,
+      "sha256": "b051d865f6345bf7c4f23da62dcd46a50ccbac722ac9a856606bbfe961920ec4"
+    },
+    "设备报文示例.json": {
+      "bytes": 10850,
+      "sha256": "b210f1dca73eb3f9afbc877fd68543c9dd33be8f49a85fc5c77c60ef2fad021b"
+    }
+  },
+  "local_changes": "2026-11-05 状态修复及四项设备模拟补齐；本地未提交、未部署",
+  "regressions": {
+    "uwb_offline_passed": 11,
+    "backend_focused_passed": 18,
+    "frontend_passed": 158,
+    "frontend_files_passed": 37,
+    "node": "24.18.0",
+    "pnpm": "10.34.5",
+    "frontend_typecheck_and_build": "passed",
+    "backend_full_suite": "not run",
+    "remote_ci": "not run",
+    "production_deployment": "not performed"
+  },
+  "device_expansion_verification": {
+    "unit_tests_passed": 55,
+    "uwb": 11,
+    "vehicle": 11,
+    "camera_edge": 16,
+    "plc": 17,
+    "cli_once": {
+      "vehicle/vehicle_sim.py": {
+        "exit_code": 0,
+        "valid_json_lines": 2
+      },
+      "camera/camera_sim.py": {
+        "exit_code": 0,
+        "valid_json_lines": 1
+      },
+      "edge_node/edge_node_sim.py": {
+        "exit_code": 0,
+        "valid_json_lines": 1
+      },
+      "plc/plc_sim.py": {
+        "exit_code": 0,
+        "valid_json_lines": 1
+      }
+    },
+    "production_writes": false,
+    "remote_ci": "not run",
+    "public_contract_json_examples": 7
+  }
+}

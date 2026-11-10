@@ -1,0 +1,7 @@
+{
+  "schema": "scs.sim.vehicle-profiles.v1",
+  "vehicles": [
+    {"code": "VEH-07", "speed_mps": 2.0, "battery_pct": 86, "path_m": [[30, 50], [70, 50], [70, 60], [30, 60]]},
+    {"code": "VEH-08", "speed_mps": 1.5, "battery_pct": 78, "path_m": [[40, 25], [65, 25], [65, 35], [40, 35]]}
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "schema": "scs.sim.device-catalog.v1",
+  "counting_basis": "12 runnable simulator roles; not a procurement list",
+  "device_types": [
+    {
+      "id": "uwb",
+      "name": "UWB 标签/基站/简化手环",
+      "entrypoint": "device-sim/uwb/uwb_sim.py",
+      "role": "raw-device",
+      "protocol": "UDP JSON",
+      "default_port": "send 9000 / listen 9001",
+      "scs_ingest_paths": [
+        "/api/v1/ingest/person-position",
+        "/api/v1/ingest/uwb-station"
+      ],
+      "update_method": "路线启动读取；rate/bridge周期各自配置；事件仅日志",
+      "sources": [
+        "device-sim/docs/01-UWB定位系统资料卡.md"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "radar",
+      "name": "测距雷达",
+      "entrypoint": "device-sim/radar/radar_sim.py",
+      "role": "raw-device",
+      "protocol": "Modbus TCP",
+      "default_port": 15020,
+      "scs_ingest_paths": [
+        "/api/v1/ingest/radar"
+      ],
+      "update_method": "20Hz生成，bridge默认2s；0x0100在线切场景",
+      "sources": [
+        "device-sim/docs/02-毫米波测距雷达资料卡.md"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "aibox",
+      "name": "AI 视频分析盒",
+      "entrypoint": "device-sim/aibox/aibox_sim.py",
+      "role": "raw-device",
+      "protocol": "HTTP/Webhook/JPEG",
+      "default_port": 15030,
+      "scs_ingest_paths": [],
+      "update_method": "有webhook才推送；CLI修改重启；原始事件缺SCS适配",
+      "sources": [
+        "device-sim/docs/03-AI视频分析边缘盒资料卡.md"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "alarmlight",
+      "name": "声光报警器",
+      "entrypoint": "device-sim/alarmlight/alarmlight_sim.py",
+      "role": "actuator",
+      "protocol": "Modbus TCP",
+      "default_port": 15040,
+      "scs_ingest_paths": [],
+      "update_method": "从0x0000写入触发；缺SCS控制/回执bridge",
+      "sources": [
+        "device-sim/docs/04-声光报警器资料卡.md"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "crane",
+      "name": "门机/龙门吊",
+      "entrypoint": "device-sim/crane/crane_sim.py",
+      "role": "raw-device",
+      "protocol": "Modbus TCP",
+      "default_port": 15050,
+      "scs_ingest_paths": [
+        "/api/v1/ingest/device-state"
+      ],
+      "update_method": "20Hz生成，bridge默认2s；仅部分字段贯通",
+      "sources": [
+        "device-sim/docs/05-门式起重机资料卡.md"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "tipper",
+      "name": "翻箱机",
+      "entrypoint": "device-sim/tipper/tipper_sim.py",
+      "role": "raw-device",
+      "protocol": "Modbus TCP",
+      "default_port": 15060,
+      "scs_ingest_paths": [
+        "/api/v1/ingest/device-state"
+      ],
+      "update_method": "20Hz生成，bridge默认2s；角度/压力等未贯通",
+      "sources": [
+        "device-sim/docs/06-翻箱机资料卡.md"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "limit-switch",
+      "name": "限位开关",
+      "entrypoint": "device-sim/limit_switch/limit_switch_sim.py",
+      "role": "component",
+      "protocol": "Modbus TCP",
+      "default_port": 15070,
+      "scs_ingest_paths": [
+        "/api/v1/ingest/zone-state"
+      ],
+      "update_method": "20Hz生成，bridge默认2s；故障显式null",
+      "sources": [
+        "device-sim/docs/07-限位开关资料卡.md"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "position-sensor",
+      "name": "位置传感器",
+      "entrypoint": "device-sim/position_sensor/position_sensor_sim.py",
+      "role": "component",
+      "protocol": "Modbus TCP",
+      "default_port": 15080,
+      "scs_ingest_paths": [
+        "/api/v1/ingest/zone-state"
+      ],
+      "update_method": "20Hz生成，bridge默认2s；故障占用/距离显式null",
+      "sources": [
+        "device-sim/docs/08-位置传感器资料卡.md"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "vehicle",
+      "name": "转运车辆",
+      "entrypoint": "device-sim/vehicle/vehicle_sim.py",
+      "role": "raw-device",
+      "protocol": "JSONL / opt-in UDP / opt-in HTTP",
+      "default_port": null,
+      "scs_ingest_paths": [
+        "/api/v1/ingest/device-state"
+      ],
+      "update_method": "profiles启动读取；默认1s输出；显式scs/dest才联网",
+      "sources": [
+        "backend/src/main/java/com/bproject/safety/support/masterdata/DemoDeviceMasterData.java",
+        "backend/src/main/java/com/bproject/safety/module/collision/web/DeviceStateIngestController.java"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "camera",
+      "name": "摄像头视频源",
+      "entrypoint": "device-sim/camera/camera_sim.py",
+      "role": "support-role",
+      "protocol": "HTTP health / JPEG / finite MJPEG",
+      "default_port": 15100,
+      "scs_ingest_paths": [],
+      "update_method": "启动读取JPEG/场景；按请求返回；默认30帧2fps；无RTSP/ONVIF",
+      "sources": [
+        "backend/src/main/java/com/bproject/safety/support/masterdata/DemoDeviceMasterData.java",
+        "backend/src/main/resources/db/design/openGauss-schema-final-draft.sql"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "edge-node",
+      "name": "边缘节点/采集网关遥测",
+      "entrypoint": "device-sim/edge_node/edge_node_sim.py",
+      "role": "support-role",
+      "protocol": "HTTP health JSON",
+      "default_port": 15110,
+      "scs_ingest_paths": [],
+      "update_method": "按请求和单调运行时间合成；修改CLI后重启；不执行采集/自治/补传",
+      "sources": [
+        "backend/src/main/java/com/bproject/safety/module/ops/model/DemoEdgeNode.java",
+        "backend/src/main/java/com/bproject/safety/module/ops/web/EdgeAutonomyController.java"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    },
+    {
+      "id": "plc",
+      "name": "PLC 命令与回执",
+      "entrypoint": "device-sim/plc/plc_sim.py",
+      "role": "actuator-component",
+      "protocol": "Modbus TCP",
+      "default_port": 15120,
+      "scs_ingest_paths": [],
+      "update_method": "提交寄存器触发；0x0100切场景；回执只读；没有SCS外部回执接入",
+      "sources": [
+        "backend/src/main/java/com/bproject/safety/module/ops/service/OpsInventory.java",
+        "docs/S3-安全卡控周四交付成果全集.md"
+      ],
+      "protocol_provenance": "project-defined simulation; see manual for vendor reference boundaries"
+    }
+  ]
+}

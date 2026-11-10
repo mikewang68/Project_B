@@ -4,7 +4,8 @@
 首页底图的百分比坐标，批量 POST /api/v1/ingest/person-position，让人物标记在地图上真的走动。
 
 同一条 UDP 流里的基站帧（type=station）另走 /api/v1/ingest/uwb-station，
-按 --station-interval（默认 5s）上报在线/时钟同步/信噪比，供基站健康度与覆盖盲区监测。
+独立按 --station-interval（默认 5s）转发新收到的健康帧；成功后不重发缓存，
+停报由后端的 10s 新鲜度检查转为离线，避免旧帧被反复刷新成在线。
 
 说明：正式的定位引擎→底座链路由网关负责；本脚本只是联调替身，让
 「UWB 标签 → SCS 人员位置」这条链路可以端到端跑通，不代表正式网关实现。
@@ -76,12 +77,15 @@ class Collector:
             sid = str(pkt.get("stationId") or "").strip()
             if sid:
                 self.stations[sid] = {
-                    "stationId": sid,
-                    "online": bool(pkt.get("online", True)),
-                    "clockSynced": bool(pkt.get("clockSynced", True)),
-                    "snrDb": pkt.get("snrDb"),
-                    "powerOk": bool(pkt.get("powerOk", True)),
-                    "tagCount": pkt.get("tagCount"),
+                    "at": now,
+                    "report": {
+                        "stationId": sid,
+                        "online": bool(pkt.get("online", True)),
+                        "clockSynced": bool(pkt.get("clockSynced", True)),
+                        "snrDb": pkt.get("snrDb"),
+                        "powerOk": bool(pkt.get("powerOk", True)),
+                        "tagCount": pkt.get("tagCount"),
+                    },
                 }
             return
         if kind != "tag":
@@ -115,6 +119,24 @@ class Collector:
             fresh.append({k: pos[k] for k in ("id", "x", "y", "battery", "accuracy")})
         return fresh
 
+    def station_snapshot(self, now: float) -> list[dict]:
+        """Only unsent, recent station frames; retry failures for at most stale_seconds."""
+        reports = []
+        for sid, entry in list(self.stations.items()):
+            if now - entry["at"] > self.stale_seconds:
+                del self.stations[sid]
+                continue
+            reports.append(entry["report"])
+        return reports
+
+    def acknowledge_stations(self, reports: list[dict]) -> None:
+        for report in reports:
+            sid = report["stationId"]
+            entry = self.stations.get(sid)
+            # Do not remove a newer frame if a caller has received one during a send.
+            if entry is not None and entry["report"] is report:
+                del self.stations[sid]
+
 
 def push(scs: str, api_key: str, path: str, key: str, items: list[dict]) -> tuple[int, str]:
     url = scs.rstrip("/") + path
@@ -143,7 +165,7 @@ def main():
     ap.add_argument("--site-width-m", type=float, default=100.0, help="站场宽度（米），用于米→百分比换算")
     ap.add_argument("--site-height-m", type=float, default=100.0, help="站场高度（米）")
     ap.add_argument("--interval", type=float, default=1.0, help="批量上报间隔（秒）；UWB 可到 5Hz，别跟着刷")
-    ap.add_argument("--stale-seconds", type=float, default=10.0, help="超过该时长没收到帧的标签停止上报")
+    ap.add_argument("--stale-seconds", type=float, default=10.0, help="标签及待转发基站帧的最长保留时间（秒）")
     ap.add_argument("--station-interval", type=float, default=5.0, help="基站状态上报间隔（秒）")
     ap.add_argument("--duration", type=float, default=0, help=">0 运行秒数；0 持续")
     ap.add_argument("--dry-run", action="store_true", help="只打印换算结果，不上报")
@@ -167,11 +189,11 @@ def main():
           f"site={a.site_width_m:g}x{a.site_height_m:g}m "
           f"map={'帧内 personId' if not tag_map else str(len(tag_map)) + ' 条对照'}")
 
-    started = time.time()
-    last_post = 0.0
-    last_station_post = 0.0
+    started = time.monotonic()
+    last_post = float("-inf")
+    last_station_post = float("-inf")
     while True:
-        now = time.time()
+        now = time.monotonic()
         if a.duration > 0 and now - started >= a.duration:
             break
         try:
@@ -181,12 +203,31 @@ def main():
         except OSError as e:
             print(f"[uwb] 接收失败: {e}", file=sys.stderr)
             break
+        now = time.monotonic()
         if data:
             try:
                 collector.feed(json.loads(data.decode("utf-8", "replace")), now)
             except (ValueError, UnicodeDecodeError):
                 print("[uwb] 非 JSON 帧已丢弃")
 
+        # Independent of person batches: station-only streams must also reach SCS.
+        if now - last_station_post >= max(1.0, a.station_interval):
+            stations = collector.station_snapshot(now)
+            if stations:
+                last_station_post = now
+                if a.dry_run:
+                    print(f"[uwb] dry-run {len(stations)} station(s): "
+                          + json.dumps(stations, ensure_ascii=False))
+                    collector.acknowledge_stations(stations)
+                else:
+                    s_status, s_text = push(a.scs, api_key, "/api/v1/ingest/uwb-station",
+                                            "stations", stations)
+                    if s_status == 200:
+                        collector.acknowledge_stations(stations)
+                    print(f"[uwb] push {len(stations)} station(s)  -> HTTP {s_status} {s_text[:140]}")
+
+        # A station HTTP request may have taken time; recheck person freshness now.
+        now = time.monotonic()
         if now - last_post < max(0.2, a.interval):
             continue
         positions = collector.snapshot(now)
@@ -199,13 +240,6 @@ def main():
             continue
         status, text = push(a.scs, api_key, "/api/v1/ingest/person-position", "positions", positions)
         print(f"[uwb] push {len(positions)} position(s) -> HTTP {status} {text[:140]}")
-
-        # 基站状态变化慢，单独按 --station-interval 上报（默认 5s），不跟着 1s 的位置批次刷
-        if collector.stations and now - last_station_post >= max(1.0, a.station_interval):
-            last_station_post = now
-            s_status, s_text = push(a.scs, api_key, "/api/v1/ingest/uwb-station",
-                                    "stations", list(collector.stations.values()))
-            print(f"[uwb] push {len(collector.stations)} station(s)  -> HTTP {s_status} {s_text[:140]}")
 
     sock.close()
     return 0

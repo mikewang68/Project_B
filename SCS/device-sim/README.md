@@ -1,6 +1,6 @@
 # SCS 设备原始协议模拟器（B01~B03 敬昌隆负责范围）
 
-六类设备的数据生成器 + 协议资料卡。对应[接口前置清单"设备范围"]及第十七次组会要求：
+共 12 类模拟对象及协议替身：原有 8 类设备，加转运车辆、摄像头视频源、边缘节点/采集网关遥测、PLC 命令回执。后三项补齐现有系统的支撑角色或执行部件，不代表新增采购三类整机。完整字段、来源证据和更新方式见 [模拟设备类型与数据格式](docs/模拟设备类型与数据格式.md)。
 
 | 设备 | 调研定位键 | 原始协议形态 | 参考设备（类似替代，未采购） | 端口 |
 |---|---|---|---|---|
@@ -10,6 +10,12 @@
 | 现场一体化声光报警器 | IF-OUT-ALARM-LIGHT | **Modbus TCP**（FC03/06/16 灯位/蜂鸣/回执） | PATLATE LA6-POE（寄存器风格） | 15040 |
 | **门式起重机（龙门吊）** | 组会指定 | **Modbus TCP**（FC03/06，状态/速度/方向/载重/起升/风速/联锁） | 通用门式起重机 PLC，**寄存器全部我方构造** | 15050 |
 | **液压翻箱机** | 组会指定 | **Modbus TCP**（FC03/06，作业阶段/举升角度/液压压力/联锁） | 液压翻转机 PLC，**寄存器全部我方构造** | 15060 |
+| 限位开关 | 装卸区 A | Modbus TCP（压合/计数/健康） | 项目构造 PLC 点表 | 15070 |
+| 位置传感器 | 装卸区 B | Modbus TCP（mm 测距/占用/健康） | 项目构造点表 | 15080 |
+| 转运车辆 | VEH-07 / VEH-08 | JSONL；可选 UDP JSON / SCS HTTP | 现有车辆台账及 device-state 契约，原始帧为项目构造 | 无默认网络；UDP 目标可配置 |
+| 摄像头视频源 | CAM-01 等 | HTTP JPEG / MJPEG / health | 补充取图/断流替身，非 RTSP/ONVIF | 15100 |
+| 边缘节点/采集网关遥测 | EDGE-01 等 | HTTP health JSON | 对照边缘节点模型合成，非完整边缘 Agent | 15110 |
+| PLC 命令与回执 | PLC-01 等、绑定目标设备 | Modbus TCP（命令/提交/回执） | 项目构造点表，非厂家安全 PLC 协议 | 15120 |
 
 全部**纯 Python 标准库零依赖**（AI 盒快照图有 PIL 时更精致，无则退化 1×1 JPEG）。
 
@@ -19,7 +25,7 @@
 ## 快速开始
 
 ```powershell
-# 一键验证六链路（约 40 秒，产出 verify/evidence-*.json）
+# 原有八类协议验证（会监听本地端口并写模拟寄存器；不覆盖新增四项或 SCS 端到端）
 cd device-sim
 python verify\verify_all.py
 
@@ -50,6 +56,22 @@ python bridge\device_state_bridge.py --scs http://127.0.0.1:20986 --api-key-env 
 
 SCS 侧只更新已登记设备（`CRANE-01` / `TIP-02` 等）的展示字段并广播 `collision.changed`，
 防碰撞页已订阅该事件，**无需刷新自动更新**。未知设备编码会被忽略，不会新建设备。
+
+## 状态上报与故障语义
+
+`uwb/uwb_to_scs.py` 将基站帧按 `--station-interval`（默认 5s）单独调度，不依赖人员位置是否存在或人员上报周期。每个基站只保留最新待发帧；HTTP 200 后移除，失败可在 `--stale-seconds`（默认 10s）内重试，超过期限丢弃。新收到的同值帧仍可正常上报，`--dry-run` 也打印基站帧。
+
+基站停报后，桥接不会反复发送已成功转发的旧帧。后端仍以最后一次接受报告的时间计算新鲜度，超过 10s 在查询时判离线；人员页按自己的 5s 周期读取，因此界面变化还受轮询时间影响。HTTP 请求仍串行执行，这不是源时间校验或严格的实时调度保证。
+
+区域上报 `/api/v1/ingest/zone-state` 的 `personnelWorking`、`vehiclePresent`、`distanceMm` 采用以下规则：字段缺省保留旧值，显式 `null` 清空为未知，`false` 和 `0` 是有效读数。`signal` 的 null/空白仍保留原说明。限位开关故障发送 `personnelWorking: null`；位置传感器故障发送 `vehiclePresent: null` 和 `distanceMm: null`。页面显示“状态未知”，不继续显示旧人员、车辆或距离；后续有效读数可恢复显示。
+
+区域 `online` 仍表示曾收到上报，不代表传感器无故障；本次没有增加区域停报自动过期机制。
+
+在仓库根目录运行离线回归（无需启动模拟器、SCS 或联网），CI 也运行此测试：
+
+```bash
+python -I SCS/device-sim/verify/test_uwb_bridge.py
+```
 
 ## 场景种子
 
@@ -90,5 +112,15 @@ device-sim/
   radar/radar_sim.py       # Modbus TCP 寄存器（距离/速度/健康/配对编码）
   aibox/aibox_sim.py       # Webhook 推送 + JPEG 快照服务
   alarmlight/alarmlight_sim.py  # 灯位/蜂鸣/时长/防抖 + 回执区
-  verify/verify_all.py     # 四链路本地验证 + 证据 JSON
+  limit_switch/limit_switch_sim.py  # 限位开关 → 区域人员作业状态
+  position_sensor/position_sensor_sim.py  # 测距与占用 → 区域车辆状态
+  vehicle/vehicle_sim.py   # 转运车辆 JSONL / 可选 UDP、SCS HTTP
+  vehicle/profiles.json    # 两台车辆米制路线与速度配置
+  camera/camera_sim.py     # JPEG/MJPEG/健康，非真实 RTSP
+  edge_node/edge_node_sim.py  # 节点/网关合成遥测，非完整边缘 Agent
+  plc/plc_sim.py           # Modbus 命令显式提交与回执
+  docs/模拟设备类型与数据格式.md  # 十二类总表、字段、来源与更新方式
+  docs/device-catalog.json # 机器可读类型及接入边界索引
+  verify/verify_all.py     # 原有八类协议验证，不覆盖 SCS 端到端
+  verify/test_*.py         # 可由 unittest discover 自动发现的回归测试
 ```

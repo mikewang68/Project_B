@@ -1,0 +1,389 @@
+{
+  "source_commit": "39550d8d5cd1c50125947655bb9d65c001e54409",
+  "note": "虚构联调示例，只包含数据，不执行请求。认证、归属及ID映射须另行准备。",
+  "examples": [
+    {
+      "section": "### 3.1 UWB 标签、基站与手环下行",
+      "data": {
+        "type": "tag",
+        "seq": 1,
+        "ts": "2026-11-05T12:00:00.000+08:00",
+        "tagId": "WB-1001",
+        "personId": "P-1001",
+        "x_m": 25.0,
+        "y_m": 40.0,
+        "z_m": 1.2,
+        "accuracy_m": 0.18,
+        "battery_pct": 90,
+        "sos": false,
+        "tamper": false,
+        "station_ids": [
+          "BS-01",
+          "BS-02",
+          "BS-03"
+        ],
+        "backfilled": false
+      }
+    },
+    {
+      "section": "### 3.1 UWB 标签、基站与手环下行",
+      "data": {
+        "type": "station",
+        "seq": 9,
+        "ts": "2026-11-05T12:00:00.000+08:00",
+        "stationId": "BS-01",
+        "online": true,
+        "clockSynced": true,
+        "snrDb": 32,
+        "powerOk": true,
+        "tagCount": 8
+      }
+    },
+    {
+      "section": "### 3.3 AI 视频分析盒协议模拟",
+      "data": {
+        "@schema": "nvidia/deepstream/eventmsg/v1",
+        "eventUuid": "00000000-0000-4000-8000-000000000001",
+        "eventType": "entry",
+        "objectType": "person",
+        "objectConfidence": 0.94,
+        "cameraCode": "CAM-01",
+        "violationType": "NO-HELMET",
+        "snapshotUrl": "http://127.0.0.1:15030/snapshots/00000000-0000-4000-8000-000000000001.jpg",
+        "zoneId": "FENCE-03",
+        "ts": "2026-11-05T12:00:00.000+08:00",
+        "simulated": true
+      }
+    },
+    {
+      "section": "### 3.9 转运车辆",
+      "data": {
+        "schema": "scs.sim.vehicle.v1",
+        "simulated": true,
+        "type": "vehicle",
+        "seq": 0,
+        "ts": "2026-11-05T12:00:00+08:00",
+        "deviceCode": "VEH-07",
+        "scenario": "travel",
+        "x_m": 30,
+        "y_m": 50,
+        "speed_mps": 2,
+        "heading_deg": 0,
+        "battery_pct": 86,
+        "health": "NORMAL",
+        "brakeApplied": false,
+        "interlockOk": true
+      }
+    },
+    {
+      "section": "### 3.9 转运车辆",
+      "data": {
+        "source": "device-sim/vehicle",
+        "devices": [
+          {
+            "code": "VEH-07",
+            "status": "行驶中",
+            "speed": 7.2,
+            "direction": "向东",
+            "x": 30,
+            "y": 50,
+            "controlStatus": "联锁可用（模拟输入）",
+            "communication": "模拟上报"
+          }
+        ]
+      }
+    },
+    {
+      "section": "### 3.10 摄像头视频源",
+      "data": {
+        "simulated": true,
+        "scsIngestConnected": false,
+        "cameraCode": "CAM-01",
+        "scenario": "online",
+        "status": "ONLINE",
+        "processAlive": true,
+        "online": true,
+        "mediaAvailable": true,
+        "uptimeSec": 0,
+        "lastHeartbeat": "2026-11-05T12:00:00+00:00",
+        "imageSource": "synthetic",
+        "lastError": null,
+        "capabilities": [
+          "http-health",
+          "jpeg-snapshot",
+          "finite-mjpeg"
+        ],
+        "limitations": "Synthetic/local media only; no RTSP, ONVIF, PPE inference or SCS writes."
+      }
+    },
+    {
+      "section": "### 3.11 边缘节点/采集网关遥测",
+      "data": {
+        "simulated": true,
+        "scsIngestConnected": false,
+        "id": "EDGE-01",
+        "role": "edge",
+        "scenario": "online",
+        "status": "ONLINE",
+        "processAlive": true,
+        "cloudConnected": true,
+        "autonomyActive": false,
+        "lastHeartbeat": "2026-11-05T12:00:00+00:00",
+        "heartbeatScope": "local-simulator-process",
+        "lastCloudHeartbeat": "2026-11-05T12:00:00+00:00",
+        "latencyMs": 12,
+        "cpuUsage": 30,
+        "memoryUsage": 45,
+        "diskUsage": 25,
+        "temperature": 44,
+        "queueDepth": 0,
+        "activeRuleVersion": "rule-v2",
+        "expectedRuleVersion": "rule-v2",
+        "activeFenceVersion": "fence-v2",
+        "expectedFenceVersion": "fence-v2",
+        "clockOffsetMs": 25,
+        "clockDrift": false,
+        "ruleMismatch": false,
+        "uptimeSec": 0,
+        "nodeTime": "2026-11-05T12:00:00.025000+00:00",
+        "lastSyncAt": "2026-11-05T12:00:00+00:00",
+        "recoveryPhase": null,
+        "agentVersion": "python-stdlib-sim-1",
+        "lastError": null,
+        "units": {
+          "cpuUsage": "%",
+          "memoryUsage": "%",
+          "diskUsage": "%",
+          "temperature": "degC",
+          "latencyMs": "ms",
+          "clockOffsetMs": "ms",
+          "uptimeSec": "s",
+          "queueDepth": "events"
+        },
+        "limitations": "Generated telemetry only; no actual caching/replay, local actuation, NTP or SCS writes."
+      }
+    },
+    {
+      "section": "### 3.12 PLC 命令与反馈",
+      "data": {
+        "protocol": "project-defined-modbus-plc-v1",
+        "simulated": true,
+        "scsConnected": false,
+        "backendReceiptRoute": false,
+        "deviceCode": "PLC-01",
+        "target": "VEH-07",
+        "host": "127.0.0.1",
+        "port": 15120,
+        "unit": 1,
+        "scenario": "normal",
+        "command": {
+          "commandId": 8,
+          "action": 3,
+          "parameter": 0,
+          "submit": 0
+        },
+        "ack": {
+          "valid": true,
+          "commandId": 8,
+          "action": 3,
+          "result": 1,
+          "resultName": "success"
+        },
+        "pendingCommandId": null,
+        "state": {
+          "running": false,
+          "slowed": false,
+          "stopped": true,
+          "alarm": false,
+          "interlock": 1,
+          "health": 0,
+          "speedLimitPct": 0,
+          "executions": 1
+        },
+        "limitations": "Local volatile simulation only; reset clears simulated alarm only; no physical safety or manual reset confirmation; no SCS integration."
+      }
+    },
+    {
+      "section": "### 4.1 接口总表与成功判据",
+      "data": {
+        "applied": 1,
+        "ignored": [],
+        "source": "device-sim/bridge"
+      }
+    },
+    {
+      "section": "### 4.2 人员位置",
+      "data": {
+        "source": "device-sim/uwb",
+        "positions": [
+          {
+            "id": "P-ZHAO",
+            "x": 25.0,
+            "y": 40.0,
+            "battery": 90,
+            "accuracy": 0.18
+          }
+        ]
+      }
+    },
+    {
+      "section": "### 4.3 UWB 基站健康",
+      "data": {
+        "source": "device-sim/uwb",
+        "stations": [
+          {
+            "stationId": "BS-01",
+            "online": true,
+            "clockSynced": true,
+            "snrDb": 32,
+            "powerOk": true,
+            "tagCount": 8
+          }
+        ]
+      }
+    },
+    {
+      "section": "### 4.3 UWB 基站健康",
+      "data": {
+        "summary": {
+          "total": 1,
+          "online": 1,
+          "minSnrDb": 32,
+          "allClockSynced": true
+        },
+        "stations": [
+          {
+            "stationId": "BS-01",
+            "online": true,
+            "clockSynced": true,
+            "snrDb": 32,
+            "powerOk": true,
+            "tagCount": 8,
+            "lastSeen": "2026-11-05T12:00:00+08:00"
+          }
+        ]
+      }
+    },
+    {
+      "section": "### 4.4 设备状态",
+      "data": {
+        "source": "device-sim/bridge",
+        "devices": [
+          {
+            "code": "CRANE-01",
+            "status": "作业中",
+            "speed": 1.8,
+            "direction": "东行",
+            "controlStatus": "联锁可用",
+            "communication": "在线·1ms",
+            "radarStatus": "正常",
+            "x": 49.5,
+            "y": 20.0
+          },
+          {
+            "code": "TIP-02",
+            "status": "举升",
+            "speed": 0.0,
+            "direction": "固定工位"
+          }
+        ]
+      }
+    },
+    {
+      "section": "### 4.5 雷达距离",
+      "data": {
+        "source": "device-sim/bridge",
+        "readings": [
+          {
+            "pairDevice": "VEH-07",
+            "distance": 7.0,
+            "relSpeed": 0.5,
+            "radarQuality": 60.0,
+            "health": "NORMAL"
+          }
+        ]
+      }
+    },
+    {
+      "section": "### 4.6 装卸区状态",
+      "data": {
+        "source": "device-sim/bridge",
+        "zones": [
+          {
+            "code": "LOADING-A",
+            "personnelWorking": true,
+            "signal": "压合"
+          },
+          {
+            "code": "LOADING-B",
+            "vehiclePresent": true,
+            "distanceMm": 2400,
+            "signal": "有车"
+          }
+        ]
+      }
+    },
+    {
+      "section": "### 4.6 装卸区状态",
+      "data": {
+        "source": "device-sim/bridge",
+        "zones": [
+          {
+            "code": "LOADING-A",
+            "personnelWorking": null,
+            "signal": "限位开关故障"
+          },
+          {
+            "code": "LOADING-B",
+            "vehiclePresent": null,
+            "distanceMm": null,
+            "signal": "位置传感器故障"
+          }
+        ]
+      }
+    },
+    {
+      "section": "### 6.1 触发与来源",
+      "data": {
+        "scenario": "no_helmet",
+        "camera_code": "CAM-01",
+        "report_to_scs": true,
+        "custom_person_name": "示例作业人员"
+      }
+    },
+    {
+      "section": "### 6.2 转为 SCS 事件",
+      "data": {
+        "eventType": "未佩戴安全帽",
+        "cameraCode": "CAM-01",
+        "cameraName": "示例摄像头",
+        "areaCode": "AREA-A",
+        "confidence": 96.8,
+        "threshold": 80.0,
+        "durationSec": 1.0,
+        "modelCode": "YOLOv8-Edge-v1.0",
+        "riskCode": "HIGH",
+        "sceneType": "示例作业面",
+        "ruleCode": "RULE-PPE-HELMET",
+        "judgeText": "模拟场景：人员未佩戴安全帽",
+        "snapshotUrl": "/api/v1/ai-events/snapshots/example.jpg",
+        "boxes": [
+          {
+            "id": "person-1",
+            "label": "PERSON",
+            "score": 98.0,
+            "x": 20.0,
+            "y": 30.0,
+            "w": 10.0,
+            "h": 40.0,
+            "tone": "person"
+          }
+        ],
+        "relatedPerson": "示例作业人员",
+        "relatedDevice": "示例监控点位",
+        "occurredAt": "2026-11-05T12:00:00+08:00"
+      }
+    }
+  ],
+  "local_changes": "2026-11-05 状态修复及四项设备模拟补齐；本地未提交、未部署"
+}

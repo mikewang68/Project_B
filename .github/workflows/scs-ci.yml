@@ -21,6 +21,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  device-bridge:
+    name: 设备模拟与桥接回归
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test device simulators and station forwarding
+        run: python -I -m unittest discover -s SCS/device-sim/verify -p 'test_*.py'
+
   backend:
     name: 后端 mvn verify
     runs-on: ubuntu-latest
