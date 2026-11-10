@@ -74,6 +74,9 @@ export async function executeBusinessCommand(collection:BusinessCollection,id:st
     if(before.record_version!==expectedVersion)throw new AppError(409,'VERSION_CONFLICT','记录已被更新，请刷新后重新确认');
     const next=businessTransition(collection,action,before.status),changes:Record<string,unknown>={status:next};
     if(collection==='work-orders'){
+      const draftSource=(before.dispatch_details as {draftSource?:string}|null)?.draftSource;
+      if(action==='assign'&&draftSource==='AI'&&before.status!=='READY')
+        throw new AppError(409,'DRAFT_NOT_CONFIRMED','AI 生成的工单草稿必须先人工确认（DRAFT→READY）才能派工');
       // Preserve the concurrently released WMS inbound completion boundary.
       if(process.env.PSMS_WMS_ENABLED==='true'&&['complete','cancel'].includes(action)){
         const inbound=(await db.query('SELECT status,transfer_status,verified_at FROM public.psms_wms_inbound_tasks WHERE work_order_id=$1 FOR UPDATE',[id])).rows[0];

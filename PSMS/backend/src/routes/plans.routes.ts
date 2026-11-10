@@ -3,6 +3,8 @@ import { authenticate } from '../middleware/auth.js';
 import { auditOperation } from '../middleware/audit.js';
 import * as planService from '../services/plan.service.js';
 import * as workOrderService from '../services/workOrder.service.js';
+import { importPlanFile } from '../services/plan-import.service.js';
+import { parseMultipartFile } from '../lib/multipart.js';
 import { Equipment } from '../db/tables.js';
 import { pathParam, q, qList, qNum } from '../lib/http.js';
 import { z } from 'zod';
@@ -37,7 +39,7 @@ plansRouter.use(authenticate, async (req, res, next) => {
       res.status(403).json({ ok: false, errorCode: 'SCOPE_DENIED' }); return;
     }
     const first = req.path.split('/')[1];
-    if (first && first !== 'import') {
+    if (first && !['import', 'import-file'].includes(first)) {
       const plan = await planService.getPlanById(decodeURIComponent(first));
       if (!all && !user.dataScope.includes(plan.workArea)) {
         res.status(403).json({ ok: false, errorCode: 'SCOPE_DENIED' }); return;
@@ -69,6 +71,44 @@ plansRouter.post('/import', authenticate, auditOperation('importPlans'), async (
     res.status(201).json({ ok: true, data: { items, imported: items.length } });
   } catch (error) {
     if ((error as { code?: string }).code === '23505') { res.status(409).json({ ok: false, message: '计划批次已存在，请刷新后重试' }); return; }
+    next(error);
+  }
+});
+
+// 服务端文件导入：multipart 字段 file，或直接 POST text/csv（2 MB / 1000 行）。
+// 浏览器 CSV 入口 /import 保留为兼容；两者共用 planBatchNo 去重。
+plansRouter.post('/import-file', authenticate, async (req, res, next) => {
+  try {
+    if (!['super_admin', 'admin', 'scheduler', 'dispatcher'].includes(req.user!.roleCode)) {
+      res.status(403).json({ ok: false, message: '当前角色无计划导入权限' }); return;
+    }
+    if (typeof res.locals.platformSubject !== 'string') {
+      res.status(403).json({ ok: false, message: '文件导入需要当前统一身份会话' }); return;
+    }
+    const contentType = req.header('content-type') ?? '';
+    let data: Buffer;
+    let filename: string;
+    if (contentType.includes('multipart/form-data')) {
+      if (!Buffer.isBuffer(req.body)) { res.status(400).json({ ok: false, message: '未读取到上传文件' }); return; }
+      const file = parseMultipartFile(req.body, contentType);
+      data = file.data;
+      filename = file.filename;
+    } else if (contentType.includes('text/csv') || contentType.includes('application/octet-stream')) {
+      if (!Buffer.isBuffer(req.body)) { res.status(400).json({ ok: false, message: '未读取到上传文件' }); return; }
+      data = req.body;
+      filename = decodeURIComponent(req.header('x-filename') ?? 'upload.csv');
+    } else {
+      res.status(415).json({ ok: false, message: '请使用 multipart/form-data 或 text/csv 上传文件' }); return;
+    }
+    const summary = await importPlanFile({
+      data, filename,
+      actor: { actorId: req.user!.actorId, roleCode: req.user!.roleCode, dataScope: req.user!.dataScope, subject: res.locals.platformSubject },
+    });
+    res.status(summary.idempotent ? 200 : 201).json({ ok: true, data: summary });
+  } catch (error) {
+    if (error instanceof Error && /multipart/i.test(error.message)) {
+      res.status(400).json({ ok: false, message: error.message }); return;
+    }
     next(error);
   }
 });

@@ -21,7 +21,7 @@ export function businessReadPermission(collection: BusinessCollection): string {
 export function businessCommandPermission(collection: BusinessCollection, action: unknown): string | undefined {
   if(typeof action !== 'string')return undefined;
   const operations:Record<string,Record<string,string>>={
-    'work-orders':{assign:'write',accept:'execute',start:'execute',pause:'execute',complete:'execute',cancel:'execute'},
+    'work-orders':{assign:'write',accept:'execute',start:'execute',pause:'execute',complete:'execute',cancel:'execute',confirm:'confirm'},
     appointments:{approve:'approve',checkin:'write',call:'execute',enter:'execute',complete:'execute'},
     exceptions:{acknowledge:'write',resolve:'write',close:'write'},
   };

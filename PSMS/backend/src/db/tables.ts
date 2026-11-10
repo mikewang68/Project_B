@@ -308,10 +308,14 @@ export const WorkOrder = createTable({
     feedbackComment: 'feedback_comment',
     feedbackBy: 'feedback_by',
     feedbackAt: 'feedback_at',
+    dispatchDetails: 'dispatch_details',
+    confirmedBy: 'confirmed_by',
+    confirmedAt: 'confirmed_at',
     createdAt: 'created_at',
     updatedAt: 'updated_at',
   },
   numericColumns: ['estimatedDuration'],
+  jsonColumns: ['dispatchDetails'],
   children: [workOrderCrew],
   beforeWrite: (doc) => {
     const flat = withId('WO', doc);

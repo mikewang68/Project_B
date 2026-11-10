@@ -29,6 +29,8 @@ export const CORE_TABLES = [
   'appointments',
   'offline_packets',
   'config_versions',
+  'ai_provider_config',
+  'plan_import_batch',
   'audit_logs',
 ] as const;
 
@@ -116,6 +118,28 @@ const DDL: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_plans_cargo_type ON plans (cargo_type)`,
 
   // ==========================================================================
+  // 3b. plan_import_batch —— 计划文件/邮件导入批次（RECEIVED→VALIDATING→IMPORTED/FAILED）
+  // ==========================================================================
+  `CREATE TABLE IF NOT EXISTS plan_import_batch (
+    id             TEXT PRIMARY KEY,
+    source         TEXT NOT NULL DEFAULT 'FILE_UPLOAD'
+                   CHECK (source IN ('FILE_UPLOAD','EMAIL','BROWSER_CSV')),
+    filename       TEXT,
+    file_sha256    TEXT,
+    status         TEXT NOT NULL DEFAULT 'RECEIVED'
+                   CHECK (status IN ('RECEIVED','VALIDATING','IMPORTED','FAILED')),
+    total_rows     INTEGER NOT NULL DEFAULT 0 CHECK (total_rows >= 0),
+    imported_rows  INTEGER NOT NULL DEFAULT 0 CHECK (imported_rows >= 0),
+    plan_batch_nos JSONB,
+    failed_reason  TEXT,
+    imported_by    TEXT,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_plan_import_batch_created ON plan_import_batch (created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_plan_import_batch_hash ON plan_import_batch (file_sha256)`,
+
+  // ==========================================================================
   // 4. plan_cargo_items —— 计划货物明细（原 cargoItems 内嵌）
   // ==========================================================================
   `CREATE TABLE IF NOT EXISTS plan_cargo_items (
@@ -161,6 +185,9 @@ const DDL: string[] = [
     feedback_comment   TEXT,
     feedback_by        TEXT,
     feedback_at        TIMESTAMPTZ,
+    dispatch_details   JSONB,
+    confirmed_by       TEXT,
+    confirmed_at       TIMESTAMPTZ,
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_wo_time_order CHECK (
@@ -492,6 +519,29 @@ const DDL: string[] = [
   )`,
 
   // ==========================================================================
+  // 20b. ai_provider_config —— AI 服务配置（URL/模型/密钥密文）
+  // ==========================================================================
+  `CREATE TABLE IF NOT EXISTS ai_provider_config (
+    id                 TEXT PRIMARY KEY,
+    system_code        TEXT NOT NULL UNIQUE,
+    base_url           TEXT NOT NULL DEFAULT '',
+    model              TEXT NOT NULL DEFAULT '',
+    api_key_ciphertext TEXT,
+    api_key_last4      TEXT,
+    enabled            BOOLEAN NOT NULL DEFAULT TRUE,
+    timeout_ms         INTEGER NOT NULL DEFAULT 30000
+                       CHECK (timeout_ms >= 1000 AND timeout_ms <= 120000),
+    max_tokens         INTEGER NOT NULL DEFAULT 1500
+                       CHECK (max_tokens >= 1 AND max_tokens <= 32000),
+    version            INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+    updated_by         TEXT,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    valid              SMALLINT NOT NULL DEFAULT 1 CHECK (valid IN (0, 1))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_ai_provider_config_system ON ai_provider_config (system_code)`,
+
+  // ==========================================================================
   // 21. audit_logs —— 审计留痕（业务审计 + HTTP 访问留痕，统一超集模型）
   // ==========================================================================
   `CREATE TABLE IF NOT EXISTS audit_logs (
@@ -555,6 +605,16 @@ const COMMENTS: Array<[string, string, string | null]> = [
   ['work_orders', 'status', 'DRAFT/READY/ASSIGNED/ACCEPTED/IN_PROGRESS/PAUSED/COMPLETED/CANCELLED'],
   ['work_orders', 'order_type', 'LOADING/UNLOADING/TRANSFER/MAINTENANCE/OTHER'],
   ['work_orders', 'feedback_quality', '执行反馈质量 GOOD/FAIR/POOR（原 executionFeedback 内嵌）'],
+  ['work_orders', 'dispatch_details', '调度执行明细（车辆/司机/仓库/通道/吨数/作业时间），JSONB 契约来自 3100'],
+  ['work_orders', 'confirmed_by', '草稿确认人；DRAFT→READY 必须由授权调度员或业务管理员确认'],
+  ['work_orders', 'confirmed_at', '草稿确认时间'],
+  ['plan_import_batch', '计划文件/邮件导入批次，状态机 RECEIVED/VALIDATING/IMPORTED/FAILED', null],
+  ['plan_import_batch', 'file_sha256', '文件内容摘要，用于同文件重试幂等；文件本身不落库'],
+  ['plan_import_batch', 'plan_batch_nos', '本批次导入的计划批次号数组，用于去重与审计'],
+  ['ai_provider_config', '各系统 AI 服务配置；密钥只存 AES-256-GCM 密文，接口只返回 last4', null],
+  ['ai_provider_config', 'system_code', '系统编码；当前为 PSMS，其他系统复制实现时使用各自 system_code'],
+  ['ai_provider_config', 'api_key_ciphertext', 'AES-256-GCM 密文（v1:iv:tag:data），禁止明文落库'],
+  ['ai_provider_config', 'api_key_last4', '密钥后 4 位，仅用于页面识别，不参与调用'],
   ['work_order_crew', '工单班组（原内嵌 assignedCrew）', null],
   ['work_order_crew', 'crew', '班组标识'],
 
@@ -667,6 +727,9 @@ export const SOFT_DELETE_STATEMENTS: string[] = [
   `ALTER TABLE audit_logs ADD COLUMN chain_state TEXT NOT NULL DEFAULT 'NOT_REQUIRED'`,
   `ALTER TABLE audit_logs ADD COLUMN chain_tx_id TEXT`,
   `ALTER TABLE audit_logs ADD COLUMN chain_error TEXT`,
+  `ALTER TABLE work_orders ADD COLUMN dispatch_details JSONB`,
+  `ALTER TABLE work_orders ADD COLUMN confirmed_by TEXT`,
+  `ALTER TABLE work_orders ADD COLUMN confirmed_at TIMESTAMPTZ`,
   ...ALL_TABLES.map((table) => `COMMENT ON COLUMN ${table}.valid IS '逻辑有效标识：1有效，0无效；业务操作禁止物理删除'`),
 ];
 export const SCHEMA_STATEMENTS: string[] = [...DDL, ...SOFT_DELETE_STATEMENTS, ...COMMENT_DDL];
@@ -692,6 +755,8 @@ export const TRUNCATE_ORDER: string[] = [
   'exceptions',
   'equipment',
   'config_versions',
+  'ai_provider_config',
+  'plan_import_batch',
   'plans',
   'users',
 ];

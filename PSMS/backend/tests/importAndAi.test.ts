@@ -4,9 +4,11 @@ import type { Server } from 'node:http';
 
 const fake = vi.hoisted(() => ({
   count: vi.fn(), insert: vi.fn(), scope: ['AREA-A'], localEnabled: true,
-  env: { AI_BASE_URL: 'https://model.example/v1', AI_MODEL: 'test-model', AI_API_KEY: 'test-credential' },
+  env: { AI_BASE_URL: 'https://model.example/v1', AI_MODEL: 'test-model', AI_API_KEY: 'test-credential', LOG_LEVEL: 'silent' },
 }));
-vi.mock('../src/config/env.js', () => ({ env: fake.env }));
+// plans.routes 现在还会加载 plan-import.service → openGaussClient → logger，
+// 因此 env mock 必须同时提供 logger 使用的 isDev。
+vi.mock('../src/config/env.js', () => ({ env: fake.env, isDev: false }));
 vi.mock('../src/db/tables.js', () => ({ Plan: { countDocuments: fake.count, insertMany: fake.insert }, Equipment: {},
   User: { findById: () => ({ lean: async () => fake.localEnabled
     ? { _id: 'local-dispatcher', username: 'dispatcher', actorId: 'TEST', roleCode: 'dispatcher', dataScope: fake.scope }
