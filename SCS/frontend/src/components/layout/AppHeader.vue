@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ArrowDown, Bell, Expand } from '@element-plus/icons-vue'
+import { ArrowDown, Expand } from '@element-plus/icons-vue'
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus'
 import type { LiveState } from '@/api/live'
 import { useOperationsStore } from '@/stores/operations'
 import { useAuthStore } from '@/stores/auth'
@@ -8,6 +9,9 @@ const auth=useAuthStore()
 async function logout(){
   const response=await fetch('/api/v1/auth/sso/logout',{method:'POST',credentials:'same-origin',headers:{'X-SCS-CSRF':auth.user?.csrfToken??''}})
   if(response.ok){window.dispatchEvent(new CustomEvent('scs:unauthenticated'));window.location.assign('/')}
+}
+function onUserCommand(command: string | number | object){
+  if(command==='logout') void logout()
 }
 
 const props = defineProps<{
@@ -60,16 +64,18 @@ function chipState(): string {
         <i></i><span>{{ connectionText() }}</span>
       </div>
 
-      <button class="notification-button" type="button" aria-label="通知">
-        <el-icon><Bell /></el-icon><i></i>
-      </button>
-
-      <button class="header-user" type="button" aria-label="当前用户菜单">
-        <span class="header-avatar">{{auth.displayName.slice(0,1)}}</span>
-        <span class="header-user__copy"><b>{{auth.displayName}}</b><small>{{auth.roleLabel}}</small></span>
-        <el-icon><ArrowDown /></el-icon>
-      </button>
-      <button type="button" @click="logout">退出登录</button>
+      <ElDropdown trigger="click" @command="onUserCommand">
+        <button class="header-user" type="button" aria-label="当前用户菜单">
+          <span class="header-avatar">{{auth.displayName.slice(0,1)}}</span>
+          <span class="header-user__copy"><b>{{auth.displayName}}</b><small>{{auth.roleLabel}}</small></span>
+          <el-icon><ArrowDown /></el-icon>
+        </button>
+        <template #dropdown>
+          <ElDropdownMenu>
+            <ElDropdownItem command="logout">退出登录</ElDropdownItem>
+          </ElDropdownMenu>
+        </template>
+      </ElDropdown>
     </div>
   </header>
 </template>

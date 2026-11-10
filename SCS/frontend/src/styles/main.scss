@@ -178,22 +178,6 @@
 .connection-chip[data-state="autonomy"] i { animation: chip-blink 1.2s infinite; }
 @keyframes chip-blink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 
-.notification-button {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  position: relative;
-  border: 1px solid var(--app-border-color);
-  border-radius: 8px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 17px;
-  transition: background-color var(--app-transition), border-color var(--app-transition);
-}
-.notification-button:hover { background: var(--app-hover-bg); border-color: var(--app-color-primary); }
-
-.notification-button > i { width: 7px; height: 7px; position: absolute; top: 8px; right: 8px; border: 2px solid #fff; border-radius: 50%; background: var(--app-color-danger); }
 .header-user { height: 48px; display: flex; align-items: center; gap: 9px; padding: 4px 7px 4px 5px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }
 .header-user:hover { background: var(--app-hover-bg); }
 .header-avatar { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 8px; color: #fff; background: var(--app-color-primary); font-size: 13px; font-weight: 700; }
@@ -362,7 +346,6 @@
   .header-heading h1 { font-size: 18px; }
   .header-heading p, .connection-chip span, .header-user__copy, .header-user > .el-icon { display: none; }
   .connection-chip { width: 38px; height: 38px; justify-content: center; padding: 0; }
-  .notification-button { width: 38px; height: 38px; }
   .header-user { height: 38px; padding: 0; }
   .header-avatar { width: 38px; height: 38px; }
   .page-content { padding: 16px 12px 24px; }
