@@ -51,14 +51,23 @@ public class ZoneStateService {
         return new ArrayList<>(states.values());
     }
 
+    /** 兼容已有调用：字段为 null 表示本次没有该信号，保留上一次的值。 */
+    @org.springframework.transaction.annotation.Transactional
+    public synchronized boolean apply(String code, Boolean personnelWorking, Boolean vehiclePresent,
+                                      Integer distanceMm, String signal) {
+        return apply(code, personnelWorking, vehiclePresent, distanceMm, signal,
+                personnelWorking != null, vehiclePresent != null, distanceMm != null);
+    }
+
     /**
-     * 应用一次区域上报。字段为 null 表示本次没有该信号，保留上一次的值。
+     * 应用一次区域上报。信号字段未提供时保留，已提供且为 null 时清空。
      *
      * @return 是否命中已知区域；未知编码返回 false，调用方据此回传 ignored
      */
     @org.springframework.transaction.annotation.Transactional
     public synchronized boolean apply(String code, Boolean personnelWorking, Boolean vehiclePresent,
-                                      Integer distanceMm, String signal) {
+                                      Integer distanceMm, String signal, boolean personnelWorkingProvided,
+                                      boolean vehiclePresentProvided, boolean distanceMmProvided) {
         if (code == null) {
             return false;
         }
@@ -77,9 +86,9 @@ public class ZoneStateService {
                 current.code(),
                 current.name(),
                 current.sensorType(),
-                personnelWorking == null ? current.personnelWorking() : personnelWorking,
-                vehiclePresent == null ? current.vehiclePresent() : vehiclePresent,
-                distanceMm == null ? current.distanceMm() : clampDistance(distanceMm),
+                personnelWorkingProvided ? personnelWorking : current.personnelWorking(),
+                vehiclePresentProvided ? vehiclePresent : current.vehiclePresent(),
+                distanceMmProvided ? clampDistance(distanceMm) : current.distanceMm(),
                 signal == null || signal.isBlank() ? current.signal() : clip(signal),
                 OffsetDateTime.now(clock.withZone(ZONE)).toString(),
                 true);

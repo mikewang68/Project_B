@@ -65,9 +65,9 @@ const rows = computed<Row[]>(() => zones.value.map((z) => {
   if (isA) {
     const working = z.personnelWorking === true
     return { key: z.code, title: z.name, sensor: z.sensorType, icon,
-      label: working ? '作业中' : '空闲',
+      label: z.personnelWorking === null ? '状态未知' : working ? '作业中' : '空闲',
       detail: z.signal,
-      tone: working ? 'on' as const : 'off' as const }
+      tone: z.personnelWorking === null ? 'unknown' as const : working ? 'on' as const : 'off' as const }
   }
   const present = z.vehiclePresent === true
   const distance = z.distanceMm === null ? '' : ` · ${(z.distanceMm / 1000).toFixed(1)}m`

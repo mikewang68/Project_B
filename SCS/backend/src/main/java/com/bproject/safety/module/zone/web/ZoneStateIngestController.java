@@ -1,6 +1,10 @@
 package com.bproject.safety.module.zone.web;
 
 import com.bproject.safety.module.zone.service.ZoneStateService;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.ArrayList;
@@ -29,9 +33,40 @@ public class ZoneStateIngestController {
         this.service = service;
     }
 
-    /** 单个区域上报体；未提供的字段保留上一次的值。 */
-    public record ZoneStateRequest(String code, Boolean personnelWorking, Boolean vehiclePresent,
-                                   Integer distanceMm, String signal) {}
+    /** 单个区域上报体；信号字段缺省保留，显式 null 清空。signal 仍沿用原有合并规则。 */
+    public static class ZoneStateRequest {
+        @JsonProperty
+        private String code;
+        private Boolean personnelWorking;
+        private Boolean vehiclePresent;
+        private Integer distanceMm;
+        @JsonProperty
+        private String signal;
+        @JsonIgnore
+        private boolean personnelWorkingProvided;
+        @JsonIgnore
+        private boolean vehiclePresentProvided;
+        @JsonIgnore
+        private boolean distanceMmProvided;
+
+        @JsonSetter(value = "personnelWorking", nulls = Nulls.SET)
+        public void setPersonnelWorking(Boolean value) {
+            personnelWorking = value;
+            personnelWorkingProvided = true;
+        }
+
+        @JsonSetter(value = "vehiclePresent", nulls = Nulls.SET)
+        public void setVehiclePresent(Boolean value) {
+            vehiclePresent = value;
+            vehiclePresentProvided = true;
+        }
+
+        @JsonSetter(value = "distanceMm", nulls = Nulls.SET)
+        public void setDistanceMm(Integer value) {
+            distanceMm = value;
+            distanceMmProvided = true;
+        }
+    }
 
     public record IngestRequest(String source, List<ZoneStateRequest> zones) {}
 
@@ -42,16 +77,17 @@ public class ZoneStateIngestController {
         int applied = 0;
         List<String> ignored = new ArrayList<>();
         for (ZoneStateRequest z : zones) {
-            if (z == null || z.code() == null || z.code().isBlank()) {
+            if (z == null || z.code == null || z.code.isBlank()) {
                 ignored.add("<empty>");
                 continue;
             }
-            boolean ok = service.apply(z.code(), z.personnelWorking(), z.vehiclePresent(),
-                    z.distanceMm(), z.signal());
+            boolean ok = service.apply(z.code, z.personnelWorking, z.vehiclePresent,
+                    z.distanceMm, z.signal, z.personnelWorkingProvided,
+                    z.vehiclePresentProvided, z.distanceMmProvided);
             if (ok) {
                 applied++;
             } else {
-                ignored.add(z.code());
+                ignored.add(z.code);
             }
         }
         Map<String, Object> result = new LinkedHashMap<>();
