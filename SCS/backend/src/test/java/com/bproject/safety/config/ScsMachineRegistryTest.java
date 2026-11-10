@@ -34,7 +34,8 @@ class ScsMachineRegistryTest {
     var s=source("SIM-A",secret,"CAM-01");s.put("routes",List.of("/api/v1/ai-events/ingest"));s.put("objects",Map.of("CAMERA",List.of("CAM-01")));write(List.of(s));
     var binding=registry.authenticate("SIM-A",secret,"POST","/api/v1/ai-events/ingest");
     assertTrue(binding.owns(ScsCentralScope.Root.CAMERA,"CAM-01"));assertFalse(binding.owns(ScsCentralScope.Root.PERSONNEL,"CAM-01"));
-    assertThrows(Exception.class,()->registry.authenticate("SIM-A",secret,"POST","/api/v1/ai-events/ingest").owns(ScsCentralScope.Root.PERSONNEL,"P-1"));}
+    // owns() 对未授权对象返回 false 而非抛异常；撤销/变更才会经 revalidate 抛出
+    assertFalse(binding.owns(ScsCentralScope.Root.PERSONNEL,"P-1"));}
   @Test void aiEventIngestBodyRequiresOwnedCameraAndExistingRow()throws Exception{
     var s=source("SIM-A",secret,"CAM-01");s.put("routes",List.of("/api/v1/ai-events/ingest"));s.put("objects",Map.of("CAMERA",List.of("CAM-01")));write(List.of(s));
     var binding=registry.authenticate("SIM-A",secret,"POST","/api/v1/ai-events/ingest");
