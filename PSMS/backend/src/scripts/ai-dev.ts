@@ -20,7 +20,7 @@ let loginAttempts = 0;
 let loginWindow = Date.now();
 app.get('/api/ai/status', (_req, res) => {
   const config = resolveAiConfig(env);
-  res.json({ configured: Boolean(config.apiKey), model: config.model, demoSession: true });
+  res.json({ configured: Boolean(config.apiKey), model: config.model, demoSession: true, workOrderConsultation: true });
 });
 app.post('/api/ai/session', (req, res) => {
   if (req.get('x-psms-local-demo') !== '1') { res.status(403).json({ message: '本地会话请求无效' }); return; }

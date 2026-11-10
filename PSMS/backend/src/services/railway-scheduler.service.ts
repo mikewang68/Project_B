@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { RailwayRuntime, generateRailwayTicket, shanghaiDate } from './railway-runtime.service.js';
+import { RailwayRuntime, shanghaiDate } from './railway-runtime.service.js';
 import { assertLegacyBackground } from './background-scope-policy.js';
 
 export function railwayScheduleSettings(source: NodeJS.ProcessEnv = process.env) {
@@ -14,7 +14,7 @@ export async function dailyRailwayJob(runtime: RailwayRuntime, now = new Date(),
   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now);
   const hour=Number(parts.find(p=>p.type==='hour')!.value),minute=Number(parts.find(p=>p.type==='minute')!.value);
   if(hour*60+minute<settings.PSMS_RAILWAY_HOUR*60+settings.PSMS_RAILWAY_MINUTE) return;
-  return runtime.importTicket(generateRailwayTicket(shanghaiDate(now)),'DAILY-RAILWAY-SCHEDULER');
+  return runtime.importTicket(await runtime.generateTicket(shanghaiDate(now)),'DAILY-RAILWAY-SCHEDULER');
 }
 export function startRailwayWorker(runtime: RailwayRuntime, report: (error:unknown)=>void) {
   assertLegacyBackground('RAILWAY'); // Fail before registering the timer or executing a tick.

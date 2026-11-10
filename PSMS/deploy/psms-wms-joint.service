@@ -1,0 +1,20 @@
+[Unit]
+Description=PSMS WMS isolated inbound joint test
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=psms
+Group=psms
+WorkingDirectory=/opt/project-b/PSMS/joint-inbound/current/backend
+EnvironmentFile=/etc/project-b/PSMS/joint-test.env
+ExecStart=/opt/node-24.18.0/bin/node dist/index.js
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -18,6 +18,7 @@ import { plansRouter } from './routes/plans.routes.js';
 import { overviewRouter } from './routes/overview.routes.js';
 import { businessRouter } from './routes/business.routes.js';
 import { governanceRouter } from './routes/governance.routes.js';
+import { wmsEventRouter, wmsInbound } from './routes/wms-inbound.routes.js';
 import { workOrdersRouter } from './routes/workOrders.routes.js';
 import { appointmentsRouter } from './routes/appointments.routes.js';
 import { monitorRouter } from './routes/monitor.routes.js';
@@ -68,6 +69,7 @@ app.get('/api/health', async (_req, res) => {
 
 app.use('/api/auth/sso', ssoRouter);
 app.use('/api/shared/dispatch', sharedDispatchRouter);
+app.use('/api/integrations/wms', wmsEventRouter);
 app.use(ssoGuard);
 app.use('/api/auth', authRouter);
 app.use('/api/plans', plansRouter);
@@ -135,6 +137,10 @@ async function waitForOpenGauss(attempts = 4, delayMs = 5000) {
 async function start(): Promise<void> {
   // 1. 业务库：连不通就直接失败，不做静默降级
   const gauss = await waitForOpenGauss();
+  if (wmsInbound) {
+    if (!env.PSMS_SSO_ENABLED) throw new Error('WMS 联调需要启用统一身份会话');
+    await wmsInbound.initialize();
+  }
   if(railwayRuntime) await railwayRuntime.initialize();
   logger.info(
     { version: gauss.version, database: gauss.database, latencyMs: gauss.latencyMs },
@@ -171,6 +177,15 @@ async function start(): Promise<void> {
   // 5. 空库自动播种
   await autoSeedIfEmpty();
 
+  let wmsStopped = false;
+  let wmsTimer: ReturnType<typeof setTimeout> | undefined;
+  const deliverWms = async () => {
+    try { await wmsInbound?.deliver(); await wmsInbound?.reconcile(); }
+    catch (err) { logger.error({ err }, 'WMS 待发送任务处理失败'); }
+    finally { if (!wmsStopped) wmsTimer = setTimeout(() => void deliverWms(), 5000); }
+  };
+  if (wmsInbound) void deliverWms();
+
   const stopRailway=railwayRuntime&&process.env.PSMS_RAILWAY_INLINE_WORKER!=='false'
     ?startRailwayWorker(railwayRuntime,error=>logger.error({err:error},'铁路模拟运行失败')):()=>{};
   const server = app.listen(env.PORT, env.HOST, () => {
@@ -182,6 +197,8 @@ async function start(): Promise<void> {
   });
 
   const shutdown = async (signal: string): Promise<void> => {
+    wmsStopped = true;
+    clearTimeout(wmsTimer);
     stopRailway();
     logger.info({ signal }, '收到退出信号，开始优雅关闭…');
     server.close();

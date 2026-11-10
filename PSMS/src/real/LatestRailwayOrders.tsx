@@ -6,9 +6,10 @@ import { withAppBasePath } from '../runtime/appBasePath';
 import { businessLabel } from '../presentation/businessCopy';
 import { z } from 'zod';
 import { loadCurrentDemoSession } from '../auth';
+import RailwayDataSource, { type RailwaySource } from './RailwayDataSource';
 
 type Order={id:string;business_date:string;train_no:string;cargo_type:string;estimated_weight:number;status:string;updated_at:string};
-type Snapshot={source:{kind:string;database:string};orders:Order[];runs:{id:string;step:number}[]};
+type Snapshot={source:RailwaySource;orders:Order[];runs:{id:string;step:number}[]};
 const snapshotSchema=z.object({source:z.object({kind:z.enum(['LOCAL_DEMO','SERVER_DATABASE']),database:z.string().min(1)}),
   orders:z.array(z.object({id:z.string(),business_date:z.string(),train_no:z.string(),cargo_type:z.string(),estimated_weight:z.coerce.number(),status:z.string(),updated_at:z.string()})),
   runs:z.array(z.object({id:z.string(),step:z.number().int().min(0).max(16)}))});
@@ -28,6 +29,7 @@ function RailwayOrdersContent(){
   },[connection.token]);
   return <Card title="最新铁路工单 · 数据库实时读取" style={{marginBottom:20}}
     extra={<Button href={withAppBasePath('/?railway=1')}>查看执行流水</Button>}>
+    <RailwayDataSource source={data?.source}/>
     {error&&<Alert type="warning" title="最新工单暂未能刷新" description={error} style={{marginBottom:12}}/>}
     {login&&<BackendConnectionFields connection={connection}/>}
     {data&&<Space style={{marginBottom:12}} wrap>

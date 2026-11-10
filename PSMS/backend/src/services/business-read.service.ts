@@ -13,6 +13,7 @@ const filters = z.object({
   workArea: z.string().regex(/^AREA-[A-Z0-9_-]+$/).optional(),
   status: z.string().regex(/^[A-Z_]{1,40}$/).optional(),
   planId: z.string().min(1).max(160).optional(),
+  id: z.string().trim().min(1).max(160).optional(),
 }).strict();
 
 export function businessReadQuery(collection: BusinessCollection, scopes: readonly string[], input: unknown) {
@@ -27,12 +28,15 @@ export function businessReadQuery(collection: BusinessCollection, scopes: readon
     throw new AppError(403, 'DATA_SCOPE_DENIED', '无权读取指定作业区');
   if (f.planId && !['work-orders', 'tasks'].includes(collection))
     throw new AppError(400, 'INVALID_BUSINESS_FILTER', '该列表不支持计划筛选');
+  if (f.id && collection !== 'work-orders')
+    throw new AppError(400, 'INVALID_BUSINESS_FILTER', '该列表不支持工单编号查询');
   const values: unknown[] = [], where = ['valid=1'];
   const add = (sql: string, value: unknown) => { values.push(value); where.push(sql.replace('?', '$' + values.length)); };
   if (f.workArea) add('work_area=?', f.workArea);
   else if (!global) add('work_area=ANY(?::text[])', areas);
   if (f.status) add('status=?', f.status);
   if (f.planId) add('plan_id=?', f.planId);
+  if (f.id) add('id=?', f.id);
   const central = centralPredicate(spec.table, values.length);
   return { table: spec.table, columns: spec.columns, where: '(' + where.join(' AND ') + ')' + central.text,
     values: [...values, ...central.values],

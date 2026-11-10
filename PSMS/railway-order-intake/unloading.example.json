@@ -1,0 +1,24 @@
+{
+  "version": "psms.railway-dispatch.v1",
+  "externalOrderNo": "EXAMPLE-IN-001",
+  "planId": "REPLACE-WITH-CONFIRMED-PLAN-ID",
+  "orderType": "UNLOADING",
+  "priority": "MEDIUM",
+  "description": "卸车入库示例",
+  "dispatchDetails": {
+    "plannedWorkAt": "2026-11-10T14:00:00+08:00",
+    "operationLocation": "T4装卸点",
+    "channel": "通道-4",
+    "transferMode": "DIRECT",
+    "expectedArrivalAt": "2026-11-10T13:00:00+08:00",
+    "lines": [
+      {
+        "lineId": "1",
+        "goodCode": "EXAMPLE-STEEL",
+        "plannedQty": 1.025,
+        "unit": "吨",
+        "batchCode": "EXAMPLE-BATCH"
+      }
+    ]
+  }
+}

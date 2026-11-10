@@ -7,7 +7,12 @@ export function mayWriteBusinessRoute(current:CurrentAuthorization,path:string,a
   if(path==='/api/reports/export')return current.superAdmin
     || (current.permissions.includes('pps:export') && mayReadBusinessRoute(current,'/api/reports'));
   if(path.startsWith('/api/business/')) {
-    if(path==='/api/business/work-orders')return current.superAdmin || current.applicationAdmin===true
+    if(/^\/api\/business\/work-orders\/[^/]+\/dispatch-details$/.test(path))return current.superAdmin
+      || current.applicationAdmin===true || current.permissions.includes('pps:api:work-orders:write');
+    const inbound=/^\/api\/business\/work-orders\/[^/]+\/inbound\/(dispatch|tasks|retry)$/.exec(path);
+    if(inbound)return current.superAdmin || current.applicationAdmin===true
+      || current.permissions.includes('pps:api:work-orders:'+(inbound[1]==='tasks'?'execute':'write'));
+    if(path==='/api/business/work-orders'||/^\/api\/business\/work-orders\/railway-intake(?:\/mail)?$/.test(path))return current.superAdmin || current.applicationAdmin===true
       || current.permissions.includes('pps:api:work-orders:write');
     const match=/^\/api\/business\/([^/]+)\/[^/]+\/actions$/.exec(path);
     if(!match||!isBusinessCollection(match[1]))return false;
@@ -40,6 +45,12 @@ export function mayReadBusinessRoute(current: CurrentAuthorization, path: string
   if(path.startsWith('/api/governance/'))path='/api/'+path.slice('/api/governance/'.length);
   if (path === '/api/auth/me') return true;
   if (path.startsWith('/api/business/')) {
+    if(path==='/api/business/work-orders/railway-intake')return !current.readOnly
+      && (current.superAdmin || current.applicationAdmin === true || current.permissions.includes('pps:api:work-orders:write'));
+    if(/^\/api\/business\/work-orders\/[^/]+\/dispatch-export$/.test(path))return (((current.superAdmin || current.applicationAdmin) && !current.readOnly)
+      || current.permissions.includes('pps:api:work-orders:read'));
+    if(/^\/api\/business\/work-orders\/[^/]+\/inbound$/.test(path))return (((current.superAdmin || current.applicationAdmin) && !current.readOnly)
+      || current.permissions.includes('pps:api:work-orders:read'));
     const collection = path.slice('/api/business/'.length);
     return isBusinessCollection(collection) && (((current.superAdmin || current.applicationAdmin) && !current.readOnly)
       || current.permissions.includes(businessReadPermission(collection)));

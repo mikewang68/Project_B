@@ -1,12 +1,15 @@
-import { Alert, Button, Card, Drawer, Input, Select, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Drawer, Input, Segmented, Select, Space, Tag, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useDemoSelector } from '../../runtime';
 import { businessLabel } from '../../presentation/businessCopy';
+import { withAppBasePath } from '../../runtime/appBasePath';
 import { BackendConnectionFields, useBackendConnection } from '../backend-connection/BackendConnection';
+import WorkOrderPicker from './WorkOrderPicker';
 
 export default function AiAssistant() {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<'plan' | 'order'>('plan');
   const [mode, setMode] = useState<'rules' | 'model'>('rules');
   const [configured, setConfigured] = useState(false);
   const [localDemo, setLocalDemo] = useState(false);
@@ -30,14 +33,15 @@ export default function AiAssistant() {
     if (!open) return;
     const controller = new AbortController();
     setChecking(true); setStatusError('');
-    void fetch('/api/ai/status', { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(5000)]) }).then((response) => {
+    void fetch(withAppBasePath('/api/ai/status'), { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(5000)]) }).then((response) => {
       if (!response.ok) throw new Error('AI 服务暂未启动或无法连接，请启动后重试。');
       return response.json();
     }).then(async (data) => {
       if (controller.signal.aborted) return;
+      if (typeof data.configured !== 'boolean') throw new Error('AI 服务状态接口返回异常，请检查站点代理。');
       setLocalDemo(data.demoSession === true);
       if (data.demoSession === true && data.configured === true) {
-        const response = await fetch('/api/ai/session', { method: 'POST', headers: { 'x-psms-local-demo': '1' }, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(5000)]) });
+        const response = await fetch(withAppBasePath('/api/ai/session'), { method: 'POST', headers: { 'x-psms-local-demo': '1' }, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(5000)]) });
         const result = await response.json();
         if (!response.ok || typeof result.data?.accessToken !== 'string') throw new Error('AI 服务自动登录失败，请重新检测。');
         if (!controller.signal.aborted) setDemoToken(result.data.accessToken);
@@ -69,7 +73,7 @@ export default function AiAssistant() {
     try {
       if (mode === 'model') {
         // 后端超时已放到 60 秒，这里留出传输余量；线上实测一次完整回答 12~24 秒。
-        const response = await fetch('/api/ai/assist', { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${localDemo ? demoToken : connection.token}` }, body: JSON.stringify({ question: question.trim(), context: summary }), signal: AbortSignal.timeout(75_000) });
+        const response = await fetch(withAppBasePath('/api/ai/assist'), { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${localDemo ? demoToken : connection.token}` }, body: JSON.stringify({ question: question.trim(), context: summary }), signal: AbortSignal.timeout(75_000) });
         const result = await response.json();
         if (!response.ok || typeof result.answer !== 'string') throw new Error(result.message ?? 'AI 服务暂不可用');
         setAnswer(result.answer); setAnswerSource('AI 分析结果');
@@ -93,6 +97,10 @@ export default function AiAssistant() {
     <Button type="primary" onClick={() => setOpen(true)}>AI 调度助手</Button>
     <Drawer title="AI 调度助手" open={open} onClose={() => setOpen(false)} size={560}>
       <Space orientation="vertical" style={{ width: '100%' }} size={16}>
+        <Segmented aria-label="调度助手功能" value={tab} onChange={setTab} options={[
+          { value: 'plan', label: '计划分析' }, { value: 'order', label: '工单咨询' },
+        ]} />
+        {tab === 'order' ? (open && <WorkOrderPicker />) : <>
         <Alert type="info" title="基于当前生产计划分析准备条件和调度风险" description="分析结果供调度员参考；确认、派工和联锁操作仍通过业务页面完成。" />
         <Space wrap><Tag>{plan?.trainNo ?? '无可见计划'}</Tag><Select aria-label="分析方式" value={mode} onChange={(value) => { modeChosen.current = true; setMode(value); }} options={[
           { value: 'rules', label: '本地规则分析' }, { value: 'model', label: '大模型分析', disabled: !configured },
@@ -103,6 +111,7 @@ export default function AiAssistant() {
         <Button type="primary" loading={loading} disabled={!plan || !question.trim() || (mode === 'model' && (checking || !configured || !(localDemo ? demoToken : connection.token)))} onClick={() => void analyze()}>分析当前计划</Button>
         {error ? <Alert type="error" title={error} /> : null}
         {answer ? <Card size="small" title={answerSource}><Typography.Paragraph style={{ whiteSpace: 'pre-wrap', marginBottom: 0 }}>{answer}</Typography.Paragraph></Card> : null}
+        </>}
       </Space>
     </Drawer>
   </>;

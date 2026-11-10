@@ -15,6 +15,7 @@ export class AiServiceError extends Error {
 }
 
 export interface AiCallOptions {
+  systemPrompt?: string;
   /** 单次调用超时（毫秒）。线上实测 400~500 tokens 需要 12~24 秒，默认 60 秒。 */
   timeoutMs?: number;
   /** 输出上限，用于兜住最坏耗时，默认 1000。 */
@@ -49,7 +50,7 @@ export async function requestAi(
           // Self-hosted Qwen/vLLM reads the switch from the chat template.
           chat_template_kwargs: { enable_thinking: false },
         } : {}), messages: [
-        { role: 'system', content: AI_SYSTEM_PROMPT }, { role: 'user', content: JSON.stringify(input) },
+        { role: 'system', content: options.systemPrompt ?? AI_SYSTEM_PROMPT }, { role: 'user', content: JSON.stringify(input) },
       ] }),
     });
   } catch (cause) {

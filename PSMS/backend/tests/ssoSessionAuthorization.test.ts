@@ -37,6 +37,9 @@ beforeAll(async () => {
   app.use(ssoGuard);
   app.get(['/api/plans', '/api/work-orders'], (_req, res) => { calls++; res.json({ ok: true }); });
   app.post('/api/plans/import', (_req, res) => { calls++; res.json({ ok: true }); });
+  app.get('/api/business/work-orders/WO1/inbound', (_req, res) => { calls++; res.json({ ok: true }); });
+  app.post('/api/business/work-orders/WO1/inbound/dispatch', (_req, res) => { calls++; res.json({ ok: true }); });
+  app.get('/api/business/work-orders/WO1/dispatch-export', (_req, res) => { calls++; res.json({ ok: true }); });
   server = app.listen(0, '127.0.0.1');
   await new Promise<void>(resolve => server.once('listening', resolve));
   const address = server.address();
@@ -87,6 +90,28 @@ describe('native SSO session uses current authorization on every request', () =>
     expect(calls).toBe(0);
   });
 
+  it('requires the current export grant for WMS dispatch details even with work-order read access', async () => {
+    fake.user.roleCode = 'dispatcher'; current.readOnly = false;
+    current.permissions = ['pps:api:work-orders:read'];
+    const { cookie } = await exchange();
+    const path = base + '/api/business/work-orders/WO1/dispatch-export';
+    const denied = await actualFetch(path, { headers: { cookie } });
+    expect(denied.status).toBe(403);
+    expect((await denied.json()).errorCode).toBe('EXPORT_PERMISSION_DENIED');
+    current.permissions.push('pps:export');
+    expect((await actualFetch(path, { headers: { cookie } })).status).toBe(200);
+  });
+  it('adapts scoped WMS dispatch while retaining current grants and CSRF', async () => {
+    fake.user.roleCode = 'dispatcher'; current.readOnly = false;
+    current.permissions = ['pps:api:work-orders:read', 'pps:api:work-orders:write'];
+    const { cookie, csrf } = await exchange();
+    const path = base + '/api/business/work-orders/WO1/inbound';
+    expect((await actualFetch(path, { headers: { cookie } })).status).toBe(200);
+    expect((await actualFetch(path + '/dispatch', { method: 'POST', headers: { cookie } })).status).toBe(403);
+    expect((await actualFetch(path + '/dispatch', { method: 'POST', headers: { cookie, 'X-PSMS-CSRF': csrf } })).status).toBe(200);
+    current.permissions = ['pps:api:work-orders:read'];
+    expect((await actualFetch(path + '/dispatch', { method: 'POST', headers: { cookie, 'X-PSMS-CSRF': csrf } })).status).toBe(403);
+  });
   it('removes and restores a plan grant without replacing the native cookie', async () => {
     const { cookie } = await exchange();
     expect((await actualFetch(`${base}/api/plans`, { headers: { cookie } })).status).toBe(200);

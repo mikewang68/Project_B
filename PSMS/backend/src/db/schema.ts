@@ -150,6 +150,7 @@ const DDL: string[] = [
                        CHECK (priority IN ('HIGH','MEDIUM','LOW')),
     description        TEXT NOT NULL DEFAULT '',
     instructions       TEXT,
+    dispatch_details   JSONB,
     estimated_duration INTEGER CHECK (estimated_duration IS NULL OR estimated_duration >= 0),
     actual_start_time  TIMESTAMPTZ,
     actual_end_time    TIMESTAMPTZ,
@@ -171,6 +172,7 @@ const DDL: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_work_orders_equipment_status ON work_orders (equipment_id, status)`,
   `CREATE INDEX IF NOT EXISTS idx_work_orders_plan_status ON work_orders (plan_id, status)`,
   `CREATE INDEX IF NOT EXISTS idx_work_orders_created ON work_orders (created_at DESC)`,
+  `ALTER TABLE work_orders ADD COLUMN dispatch_details JSONB`,
 
   // ==========================================================================
   // 6. work_order_crew —— 工单班组（原 assignedCrew: string[]）
@@ -527,6 +529,7 @@ const DDL: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_audit_logs_object ON audit_logs (object_type, object_id, occurred_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_audit_logs_action_occurred ON audit_logs (action, occurred_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_audit_logs_trace ON audit_logs (trace_id)`,
+  `ALTER TABLE audit_logs ADD COLUMN work_area TEXT`,
   `CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs (created_at)`,
   // 审计日志只允许 INSERT/SELECT，不允许 UPDATE（由 GRANT 层面保证，见 docs 说明）
 ];

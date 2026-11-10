@@ -84,4 +84,28 @@ describe('database import and AI API', () => {
     expect((await post('/api/ai/assist', { question: '风险', context: { rawDatabase: 'invalid' } })).status).toBe(400);
     expect(provider).not.toHaveBeenCalled();
   });
+  it('keeps work-order consultation scoped and sends only the permitted snapshot to the provider', async () => {
+    const provider = vi.fn(async (_url: string, _init: RequestInit) => new Response(JSON.stringify({
+      choices: [{ message: { content: '模拟工单已有 8 个阶段回执。' } }],
+    })));
+    vi.stubGlobal('fetch', provider);
+    const context = { kind: 'WORK_ORDER', source: 'SIMULATION', workArea: 'AREA-A', status: 'RUNNING',
+      stagesCompleted: 8, stagesTotal: 16, lastStage: '到达核验完成' };
+    const question = '目前进展如何？';
+    expect((await post('/api/ai/assist', { question, context: { ...context, driverName: '隐私' } })).status).toBe(400);
+    expect((await post('/api/ai/assist', { question, context: { ...context, workArea: 'AREA-B' } })).status).toBe(403);
+    expect((await post('/api/ai/assist', { question, context: { ...context, source: 'BUSINESS' } })).status).toBe(403);
+    expect(provider).not.toHaveBeenCalled();
+    const response = await post('/api/ai/assist', { question, context });
+    expect(await response.json()).toMatchObject({ ok: true, answer: '模拟工单已有 8 个阶段回执。' });
+    const sent = JSON.parse(provider.mock.calls[0][1].body as string);
+    expect(sent.messages[0].content).toContain('工单咨询助手');
+    expect(JSON.parse(sent.messages[1].content)).toEqual({ question, context });
+    const history = [{ question, answer: '模拟工单已有 8 个阶段回执。' }];
+    expect((await post('/api/ai/assist', { question: '那接下来呢？', context, history })).status).toBe(200);
+    const followup = JSON.parse(provider.mock.calls[1][1].body as string);
+    expect(JSON.parse(followup.messages[1].content).history).toEqual(history);
+    expect((await post('/api/ai/assist', { question, context, history: Array(7).fill(history[0]) })).status).toBe(400);
+    expect(provider).toHaveBeenCalledTimes(2);
+  });
 });

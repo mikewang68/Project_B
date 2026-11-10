@@ -1,0 +1,48 @@
+.work-order-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 160px;
+  max-height: min(45vh, 390px);
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid #dce5ee;
+  border-radius: 10px;
+  background: #f5f8fb;
+  color: #182334;
+}
+
+.work-order-chat-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.work-order-chat-bubble {
+  align-self: flex-start;
+  max-width: 94%;
+  padding: 9px 12px;
+  border: 1px solid #e1e8ef;
+  border-radius: 10px;
+  background: #fff;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.work-order-chat-user {
+  align-self: flex-end;
+  background: #e4f0ff;
+  border-color: #c4dcff;
+}
+
+.work-order-chat-note {
+  margin: 3px 0;
+  color: #754910;
+}
+
+.work-order-chat-composer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}

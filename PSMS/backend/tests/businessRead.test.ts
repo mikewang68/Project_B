@@ -27,6 +27,12 @@ describe('actual PSMS business data',()=>{
     expect(businessCollections.appointments.columns).not.toMatch(/driver_phone|driver_id_card/);
     expect(businessCollections.equipment.columns).not.toMatch(/ip_address|port|network_zone/);
   });
+  it('matches the complete work order ID within the current data scope', () => {
+    const q = businessReadQuery('work-orders', ['AREA-A'], { id: ' WO-1 ', pageSize: 1 });
+    expect(q.where).toBe('(valid=1 AND work_area=ANY($1::text[]) AND id=$2)');
+    expect(q.values).toEqual([['AREA-A'], 'WO-1']);
+    expect(() => businessReadQuery('equipment', ['GLOBAL'], { id: 'EQUIP-1' })).toThrow();
+  });
   it('reads count and page in one read-only snapshot and preserves native states',async()=>{
     const result=await readBusinessPage('work-orders',['GLOBAL'],{page:2,pageSize:2},connect);
     expect(result).toMatchObject({total:3,page:2,pageSize:2,items:[{status:'ASSIGNED'}]});

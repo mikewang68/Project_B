@@ -1,7 +1,7 @@
 // Explicit projections exclude driver identity documents and internal network addresses.
 export const businessCollections = {
   'work-orders': { table: 'work_orders', area: true,
-    columns: 'id,plan_id,plan_batch_no,work_area,equipment_id,equipment_name,assigned_operator,status,order_type,priority,description,actual_start_time,actual_end_time,created_at,updated_at' },
+    columns: 'id,plan_id,plan_batch_no,work_area,equipment_id,equipment_name,assigned_operator,status,order_type,priority,description,dispatch_details,actual_start_time,actual_end_time,created_at,updated_at' },
   tasks: { table: 'tasks', area: true,
     columns: 'id,plan_id,work_order_id,task_no,name,description,work_area,equipment_id,status,order_no,started_at,completed_at,created_at,updated_at' },
   equipment: { table: 'equipment', area: true,

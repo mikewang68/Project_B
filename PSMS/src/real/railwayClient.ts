@@ -4,10 +4,23 @@ import { withAppBasePath } from '../runtime/appBasePath';
 export class RailwayApiError extends Error {
   constructor(message:string,public status:number){super(message);}
 }
-export async function railwayApi(path='',body?:unknown) {
-  if(import.meta.env.VITE_PSMS_REAL_API==='true')return liveApi('/railway'+path,body===undefined?{}:{method:'POST',body:JSON.stringify(body)});
+let serverMode: Promise<boolean> | undefined;
+export function railwayUsesSso() {
+  if (import.meta.env.VITE_PSMS_REAL_API !== 'true') return Promise.resolve(false);
+  serverMode ??= fetch(withAppBasePath('/api/auth/sso/railway-mode'), { cache: 'no-store', signal: AbortSignal.timeout(8000) })
+    .then(async response => {
+      if (response.status === 404) return true;
+      const result = await response.json();
+      if (!response.ok || typeof result.data?.sso !== 'boolean') throw new Error('无法确认服务器登录方式');
+      return result.data.sso as boolean;
+    }).catch(error => { serverMode = undefined; throw error; });
+  return serverMode;
+}
+
+export async function railwayApi(path='',body?:unknown, prefix='/railway') {
+  if(await railwayUsesSso())return liveApi(prefix+path,body===undefined?{}:{method:'POST',body:JSON.stringify(body)});
   const token=sessionStorage.getItem('psms:backend-access-token');
-  const response=await fetch(withAppBasePath('/api/railway'+path),{method:body===undefined?'GET':'POST',cache:'no-store',credentials:'same-origin',
+  const response=await fetch(withAppBasePath('/api'+prefix+path),{method:body===undefined?'GET':'POST',cache:'no-store',credentials:'same-origin',
     headers:{'Content-Type':'application/json','X-PSMS-Local-Runtime':'1',...(token?{Authorization:`Bearer ${token}`}:{})},
     ...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(20000)});
   const type=response.headers.get('content-type')??'';

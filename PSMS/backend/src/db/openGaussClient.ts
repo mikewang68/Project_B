@@ -12,6 +12,7 @@ import { env } from '../config/env.js';
 import { logger } from '../lib/logger.js';
 
 let pool: Pool | null = null;
+const observedClients = new WeakSet<PoolClient>();
 
 /** 建连接池（幂等） */
 export function getPool(): Pool {
@@ -51,9 +52,12 @@ export function getPool(): Pool {
  */
 export async function connectClient(): Promise<PoolClient> {
   const client = await getPool().connect();
-  client.on('error', (err) => {
-    logger.error({ err }, 'openGauss 连接被远端断开（本次请求失败，进程不受影响）');
-  });
+  if (!observedClients.has(client)) {
+    observedClients.add(client);
+    client.on('error', (err) => {
+      logger.error({ err }, 'openGauss 连接被远端断开（本次请求失败，进程不受影响）');
+    });
+  }
   return client;
 }
 

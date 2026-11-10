@@ -297,6 +297,7 @@ export const WorkOrder = createTable({
     priority: 'priority',
     description: 'description',
     instructions: 'instructions',
+    dispatchDetails: 'dispatch_details',
     estimatedDuration: 'estimated_duration',
     actualStartTime: 'actual_start_time',
     actualEndTime: 'actual_end_time',
@@ -312,6 +313,7 @@ export const WorkOrder = createTable({
     updatedAt: 'updated_at',
   },
   numericColumns: ['estimatedDuration'],
+  jsonColumns: ['dispatchDetails'],
   children: [workOrderCrew],
   beforeWrite: (doc) => {
     const flat = withId('WO', doc);

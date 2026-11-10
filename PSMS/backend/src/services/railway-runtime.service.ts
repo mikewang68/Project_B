@@ -1,33 +1,13 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { connectClient } from '../db/openGaussClient.js';
 import { assertLegacyBackground } from './background-scope-policy.js';
 
-export const railwayTicketSchema = z.object({
-  version: z.literal('psms.railway-order.v1'), simulated: z.literal(true),
-  id: z.string().regex(/^SIM-RAIL-\d{8}$/), date: z.iso.date(),
-  trainNo: z.string().regex(/^SIM-\d{5}$/), cargoType: z.enum(['COAL','IRON_ORE','CONTAINER','CEMENT']),
-  weight: z.number().int().min(100).max(5000), workArea: z.literal('AREA-A'),
-  trackNo: z.enum(['T1','T2','T3','T4']), sourceStation: z.literal('模拟铁路编组站'),
-  arrivalTime: z.iso.datetime({ offset: true }), departureTime: z.iso.datetime({ offset: true }),
-}).strict().superRefine((v, ctx) => {
-  if (v.id !== `SIM-RAIL-${v.date.replaceAll('-','')}` || Date.parse(v.departureTime) <= Date.parse(v.arrivalTime))
-    ctx.addIssue({code:'custom',message:'工单日期、编号或到发时间不一致'});
-});
-export type RailwayTicket = z.infer<typeof railwayTicketSchema>;
-export function shanghaiDate(now = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year:'numeric', month:'2-digit', day:'2-digit' }).format(now);
-}
-export function generateRailwayTicket(date = shanghaiDate()): RailwayTicket {
-  z.iso.date().parse(date);
-  const seed = createHash('sha256').update(date).digest().readUInt32BE();
-  return railwayTicketSchema.parse({version:'psms.railway-order.v1',simulated:true,
-    id:`SIM-RAIL-${date.replaceAll('-','')}`,date,trainNo:`SIM-${10000+seed%90000}`,
-    cargoType:['COAL','IRON_ORE','CONTAINER','CEMENT'][seed%4],weight:800+seed%2400,
-    workArea:'AREA-A',trackNo:`T${1+seed%4}`,sourceStation:'模拟铁路编组站',
-    arrivalTime:`${date}T09:00:00+08:00`,departureTime:`${date}T17:00:00+08:00`});
-}
+import { generateRailwayTicket, generateRailwayDetails, railwayTicketSchema, shanghaiDate, type RailwayTicket } from './railway-ticket.js';
+import { contentHash } from './wms-contract.js';
+import { AppError } from '../middleware/errorHandler.js';
+export { generateRailwayTicket, railwayTicketSchema, shanghaiDate } from './railway-ticket.js';
+export type { RailwayTicket } from './railway-ticket.js';
 export const railwayStages = ['计划接收','模拟确认','任务拆解','资源匹配','模拟接单','开始作业',
   '到达核验开始','到达核验完成','卸车开始','卸车完成','转运开始','转运完成','入库复核开始','入库复核完成','工单完成','计划归档'] as const;
 
@@ -35,10 +15,10 @@ type Connect = () => Promise<Pick<PoolClient,'query'|'release'>>;
 export class RailwayRuntime {
   private databaseName='';
   constructor(private connect: Connect = connectClient, public intervalSeconds = 15, private embedded = false) {}
-  async transaction<T>(fn: (db: Pick<PoolClient,'query'>) => Promise<T>): Promise<T> {
-    assertLegacyBackground('RAILWAY'); // Before any connection or legacy SQL, including startup DDL.
+  async transaction<T>(fn: (db: Pick<PoolClient,'query'>) => Promise<T>, readOnly = false): Promise<T> {
+    assertLegacyBackground('RAILWAY'); // Fail closed before a connection or legacy SQL.
     const db = await this.connect();
-    try { await db.query('BEGIN'); const result = await fn(db); await db.query('COMMIT'); return result; }
+    try { await db.query(readOnly ? 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY' : 'BEGIN'); const result = await fn(db); await db.query('COMMIT'); return result; }
     catch(e) { await db.query('ROLLBACK'); throw e; } finally { db.release(); }
   }
   async initialize() {
@@ -60,6 +40,11 @@ export class RailwayRuntime {
         id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES psms_runtime.runs(id), step INTEGER NOT NULL,
         stage TEXT NOT NULL, detail JSONB NOT NULL, occurred_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(run_id,step))`);
+      await db.query('LOCK TABLE psms_runtime.tickets IN SHARE ROW EXCLUSIVE MODE');
+      await db.query(`CREATE TABLE IF NOT EXISTS psms_runtime.ticket_details (
+        ticket_id TEXT PRIMARY KEY REFERENCES psms_runtime.tickets(id), payload JSONB NOT NULL,
+        ticket_digest TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'SIMULATION_SUPPLEMENT',
+        actor_id TEXT NOT NULL, recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
     });
   }
   async ensureTicket(ticket: RailwayTicket) {
@@ -78,6 +63,7 @@ export class RailwayRuntime {
   async importTicket(input: unknown, actorId: string) {
     const ticket = railwayTicketSchema.parse(input);
     await this.ensureTicket(ticket);
+    await this.ensureBusinessDetails(ticket.id, actorId);
     return this.transaction(async db => {
       await db.query('SELECT id FROM psms_runtime.tickets WHERE id=$1 FOR UPDATE',[ticket.id]);
       const old = (await db.query('SELECT * FROM psms_runtime.runs WHERE id=$1',[ticket.id])).rows[0];
@@ -85,10 +71,88 @@ export class RailwayRuntime {
       return (await db.query('INSERT INTO psms_runtime.runs(id,actor_id) VALUES($1,$2) RETURNING *',[ticket.id,actorId])).rows[0];
     });
   }
+  async ensureBusinessDetails(id: string, actorId: string) {
+    return this.transaction(async db => {
+      const stored = (await db.query('SELECT * FROM psms_runtime.tickets WHERE id=$1 FOR UPDATE', [id])).rows[0];
+      if (!stored) throw new AppError(404, 'RAILWAY_ORDER_NOT_FOUND', '铁路工单不存在');
+      const ticket = railwayTicketSchema.parse(stored.payload);
+      if (ticket.details?.scenarioCode) return false;
+      const { details: originalDetails, ...core } = ticket;
+      const digest = contentHash(core);
+      const existing = (await db.query('SELECT ticket_digest FROM psms_runtime.ticket_details WHERE ticket_id=$1', [id])).rows[0];
+      if (existing) {
+        if (existing.ticket_digest !== digest) throw new AppError(409, 'RAILWAY_DETAILS_CONFLICT', '工单原始内容已变化，需核对补录资料');
+        return false;
+      }
+      const details = generateRailwayDetails(core);
+      const recorded = (await db.query(`INSERT INTO psms_runtime.ticket_details(ticket_id,payload,ticket_digest,actor_id)
+        VALUES($1,$2::jsonb,$3,$4) RETURNING recorded_at`, [id, JSON.stringify(details), digest, actorId])).rows[0];
+      await db.query(`INSERT INTO public.audit_logs(id,actor_id,actor_role,action,object_type,object_id,
+        before_state,after_state,reason,trace_id,occurred_at)
+        VALUES($1,$2,'SIMULATOR','railway:supplement-details','SIMULATED_RAILWAY_DETAILS',$3,$4::jsonb,$5::jsonb,
+        '按原工单补录独立模拟业务资料',$3,CURRENT_TIMESTAMP)`, [randomUUID(), actorId, id,
+        JSON.stringify({ originalDetails: originalDetails ?? null }),
+        JSON.stringify({ source: 'SIMULATION_SUPPLEMENT', recordedAt: recorded.recorded_at, ticketDigest: digest, details })]);
+      return true;
+    });
+  }
+  async supplementExistingTickets(actorId: string) {
+    const tickets = await this.transaction(async db => (await db.query('SELECT id FROM psms_runtime.tickets ORDER BY business_date')).rows);
+    let supplemented = 0;
+    for (const ticket of tickets) if (await this.ensureBusinessDetails(ticket.id, actorId)) supplemented++;
+    return { total: tickets.length, supplemented };
+  }
+  async generateTicket(date = shanghaiDate()): Promise<RailwayTicket> {
+    const existing = await this.transaction(async db =>
+      (await db.query('SELECT payload FROM psms_runtime.tickets WHERE business_date=$1', [date])).rows[0]);
+    if (existing) return railwayTicketSchema.parse(existing.payload);
+    return railwayTicketSchema.parse((await this.ensureTicket(generateRailwayTicket(date))).payload);
+  }
+  async detail(id: string) {
+    if (!/^SIM-RAIL-\d{8}$/.test(id)) throw new AppError(400, 'INVALID_RAILWAY_ID', '铁路工单编号格式无效');
+    return this.transaction(async db => {
+      const ticket = (await db.query('SELECT * FROM psms_runtime.tickets WHERE id=$1', [id])).rows[0];
+      if (!ticket) throw new AppError(404, 'RAILWAY_ORDER_NOT_FOUND', '铁路工单不存在');
+      const supplement = (await db.query('SELECT * FROM psms_runtime.ticket_details WHERE ticket_id=$1', [id])).rows[0];
+      const businessDetails = supplement?.payload ?? ticket.payload.details ?? null;
+      if (supplement) {
+        const { details, ...core } = railwayTicketSchema.parse(ticket.payload);
+        if (contentHash(core) !== supplement.ticket_digest) throw new AppError(409, 'RAILWAY_DETAILS_CONFLICT', '补录资料与原工单不一致');
+        railwayTicketSchema.parse({ ...core, details: businessDetails });
+      }
+      const run = (await db.query('SELECT * FROM psms_runtime.runs WHERE id=$1', [id])).rows[0] ?? null;
+      const plan = (await db.query(`SELECT id,plan_batch_no,train_no,cargo_type,estimated_weight,weight_unit,source_station,
+        destination_station,arrive_time,track_no,work_area,status,confirmed_by,confirmed_at,supplements,created_at,updated_at
+        FROM public.plans WHERE id=$1 AND valid=1`, [id + '-PLAN'])).rows[0] ?? null;
+      const workOrder = (await db.query(`SELECT id,plan_id,plan_batch_no,work_area,order_type,status,priority,description,instructions,
+        equipment_id,equipment_name,assigned_operator,accepted_by,accepted_at,actual_start_time,actual_end_time,
+        dispatch_details,feedback_comment,feedback_by,feedback_at,created_at,updated_at FROM public.work_orders
+        WHERE id=$1 AND plan_id=$2 AND valid=1`, [id + '-WO', id + '-PLAN'])).rows[0] ?? null;
+      const tasks = (await db.query(`SELECT id,task_no,name,description,order_no,status,work_area,equipment_id,
+        started_at,completed_at,created_at,updated_at FROM public.tasks WHERE work_order_id=$1 AND plan_id=$2
+        AND valid=1 ORDER BY order_no,id`, [id + '-WO', id + '-PLAN'])).rows;
+      const equipment = (await db.query(`SELECT equipment_id,name,type,model,work_area,status,specs,last_heartbeat,last_telemetry_at
+        FROM public.equipment WHERE equipment_id=$1 AND valid=1 AND specs->>'runId'=$2 AND specs->>'simulated'='true'`, [id + '-EQ', id])).rows[0] ?? null;
+      const events = (await db.query('SELECT * FROM psms_runtime.events WHERE run_id=$1 ORDER BY step', [id])).rows;
+      const auditLogs = (await db.query(`SELECT id,actor_id,actor_role,action,object_type,object_id,after_state,reason,trace_id,occurred_at
+        FROM public.audit_logs WHERE object_type IN ('SIMULATED_RAILWAY_ORDER','SIMULATED_RAILWAY_DETAILS')
+        AND object_id=$1 AND valid=1 ORDER BY occurred_at,id`, [id])).rows;
+      return { source: { kind: this.embedded ? 'LOCAL_DEMO' : 'SERVER_DATABASE', database: this.embedded ? '本机独立验证库' : this.databaseName },
+        ticket, businessDetails, detailsProvenance: { source: supplement ? 'SIMULATION_SUPPLEMENT' : 'ORIGINAL_TICKET',
+          recordedAt: supplement?.recorded_at ?? ticket.created_at, actorId: supplement?.actor_id ?? null },
+        run, plan, workOrder, tasks, equipment, events, auditLogs, stages: railwayStages };
+    }, true);
+  }
   async overview() {
     return this.transaction(async db => ({
       source:{kind:this.embedded?'LOCAL_DEMO':'SERVER_DATABASE',database:this.embedded?'本机独立验证库':this.databaseName},
-      tickets:(await db.query('SELECT * FROM psms_runtime.tickets ORDER BY business_date DESC LIMIT 30')).rows,
+      tickets:(await db.query(`SELECT t.*,d.payload AS supplementary_details FROM psms_runtime.tickets t
+        LEFT JOIN psms_runtime.ticket_details d ON d.ticket_id=t.id ORDER BY t.business_date DESC LIMIT 30`)).rows.map(row=>{
+          const details=row.supplementary_details??row.payload.details;
+          const {supplementary_details,...ticket}=row;
+          return {...ticket,scenario_name:details?.scenarioName??null,work_summary:details?.workSummary??null,
+            owner_name:details?.ownerName??null,operation_location:details?.dispatch?.operationLocation??null};
+        }),
       runs:(await db.query('SELECT * FROM psms_runtime.runs ORDER BY created_at DESC LIMIT 30')).rows,
       events:(await db.query('SELECT * FROM psms_runtime.events ORDER BY occurred_at DESC,step DESC LIMIT 200')).rows,
       orders:(await db.query(`SELECT w.id,w.plan_id,w.status,w.description,w.actual_start_time,w.actual_end_time,w.updated_at,
@@ -128,8 +192,10 @@ export class RailwayRuntime {
         }
         if(step===1) await db.query(`UPDATE public.plans SET status='CONFIRMED',confirmed_by='SIMULATED-AUTO-CONFIRM',confirmed_at=CURRENT_TIMESTAMP,updated_at=clock_timestamp() WHERE id=$1`,[plan]);
         if(step===2) {
-          await db.query(`INSERT INTO public.work_orders(id,plan_id,plan_batch_no,work_area,order_type,description,instructions,status)
-            VALUES($1,$2,$3,$4,'UNLOADING',$5,'仅限模拟执行；无现场控制指令','READY')`,[wo,plan,t.id,t.workArea,`[模拟铁路作业] ${t.trainNo} ${t.cargoType} ${t.weight}吨`]);
+          await db.query(`INSERT INTO public.work_orders(id,plan_id,plan_batch_no,work_area,order_type,description,instructions,status,priority,assigned_operator,dispatch_details)
+            VALUES($1,$2,$3,$4,'UNLOADING',$5,'仅限模拟执行；无现场控制指令','READY',$6,$7,$8::jsonb)`,
+          [wo,plan,t.id,t.workArea,`[模拟铁路作业] ${t.trainNo} ${t.cargoType} ${t.weight}吨`,t.details?.priority??'MEDIUM',
+            t.details?.resources.operatorCode??null,t.details?JSON.stringify(t.details.dispatch):null]);
           for(const [index,name] of ['到达核验','卸车','转运','入库复核'].entries())
             await db.query(`INSERT INTO public.tasks(id,plan_id,work_order_id,plan_batch_no,task_no,name,work_area,order_no,status)
               VALUES($1,$2,$3,$4,$5,$6,$7,$8,'READY')`,[`${t.id}-TASK-${index}`,plan,wo,t.id,`SIM-${index+1}`,name,t.workArea,index+1]);
@@ -139,7 +205,7 @@ export class RailwayRuntime {
             VALUES($1,$1,'模拟铁路卸车设备','SIMULATOR',$2,'ONLINE',$3::jsonb,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`,[eq,t.workArea,JSON.stringify({simulated:true,runId:t.id})]);
           await db.query(`UPDATE public.work_orders SET status='ASSIGNED',equipment_id=$2,equipment_name='模拟铁路卸车设备',updated_at=clock_timestamp() WHERE id=$1`,[wo,eq]);
         }
-        if(step===4) await db.query(`UPDATE public.work_orders SET status='ACCEPTED',accepted_by='SIMULATOR',accepted_at=CURRENT_TIMESTAMP,updated_at=clock_timestamp() WHERE id=$1`,[wo]);
+        if(step===4) await db.query(`UPDATE public.work_orders SET status='ACCEPTED',accepted_by=$2,accepted_at=CURRENT_TIMESTAMP,updated_at=clock_timestamp() WHERE id=$1`,[wo,t.details?.resources.operatorCode??'SIMULATOR']);
         if(step===5) {
           await db.query(`UPDATE public.work_orders SET status='IN_PROGRESS',actual_start_time=CURRENT_TIMESTAMP,updated_at=clock_timestamp() WHERE id=$1`,[wo]);
           await db.query(`UPDATE public.plans SET status='IN_PROGRESS',updated_at=clock_timestamp() WHERE id=$1`,[plan]);

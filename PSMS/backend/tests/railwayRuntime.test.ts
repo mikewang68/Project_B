@@ -40,6 +40,13 @@ describe('railway durable PostgreSQL workflow',()=>{
     expect(snapshot.events).toHaveLength(16);
     expect(snapshot.source.kind).toBe('LOCAL_DEMO');
     expect(snapshot.orders[0]).toMatchObject({id:ticket.id+'-WO',business_date:'2026-10-29',status:'COMPLETED'});
+    const detail=await runtime.detail(ticket.id);
+    expect(detail.ticket.payload.details).toEqual(ticket.details);
+    expect(detail.workOrder?.dispatch_details).toEqual(ticket.details!.dispatch);
+    expect(detail.workOrder?.assigned_operator).toBe(ticket.details!.resources.operatorCode);
+    expect(detail.equipment?.equipment_id).toBe(ticket.details!.resources.equipmentId);
+    expect(detail.tasks).toHaveLength(4);expect(detail.events).toHaveLength(16);expect(detail.auditLogs).toHaveLength(16);
+    expect(detail.events.map(event=>event.step)).toEqual(Array.from({length:16},(_,index)=>index));
     expect((await db.query('SELECT status FROM work_orders')).rows).toEqual([{status:'COMPLETED'}]);
     expect((await db.query('SELECT status FROM plans')).rows).toEqual([{status:'COMPLETED'}]);
     expect((await db.query('SELECT * FROM tasks WHERE status=$1',['COMPLETED'])).rows).toHaveLength(4);
@@ -73,5 +80,52 @@ describe('railway durable PostgreSQL workflow',()=>{
     const stop=startRailwayWorker(worker,vi.fn());stop();finish(null);
     await vi.advanceTimersByTimeAsync(120000);
     expect(tick).toHaveBeenCalledTimes(1);expect(importTicket).not.toHaveBeenCalled();
+  });
+  it('keeps material totals, wagon totals and explicit simulation resources consistent',()=>{
+    const ticket=generateRailwayTicket('2026-11-09'),details=ticket.details!;
+    expect(details.dispatch.lines.reduce((sum,line)=>sum+line.plannedQty,0)).toBe(ticket.weight);
+    expect(details.wagons.reduce((sum,wagon)=>sum+wagon.plannedWeight,0)).toBe(ticket.weight);
+    expect(details.resources.equipmentId).toBe(ticket.id+'-EQ');
+    expect(details.companyCode.startsWith('SIM-')).toBe(true);
+    expect(railwayTicketSchema.safeParse({...ticket,details:{...details,dispatch:{...details.dispatch,
+      lines:[{...details.dispatch.lines[0],plannedQty:ticket.weight+1}]}}}).success).toBe(false);
+    expect(railwayTicketSchema.safeParse({...ticket,details:{...details,wagons:[details.wagons[0],details.wagons[0]]}}).success).toBe(false);
+  });
+  it('preserves legacy daily payloads and shows recorded details without inventing missing fields',async()=>{
+    const {details,...legacy}=generateRailwayTicket('2026-10-28');
+    await runtime.importTicket(legacy,'LEGACY-SCHEDULER');
+    expect(await runtime.generateTicket(legacy.date)).toEqual(legacy);
+    await runtime.importTicket(await runtime.generateTicket(legacy.date),'DAILY-RAILWAY-SCHEDULER');
+    const detail=await runtime.detail(legacy.id);
+    expect(detail.ticket.payload.details).toBeUndefined();expect(detail.plan).toBeNull();expect(detail.tasks).toEqual([]);
+    expect(detail.businessDetails?.scenarioCode).toBe(legacy.id+'-SCENARIO');
+    expect(detail.detailsProvenance.source).toBe('SIMULATION_SUPPLEMENT');
+    expect(detail.run?.actor_id).toBe('LEGACY-SCHEDULER');
+    await expect(runtime.importTicket({...legacy,details},'ALTERED-IMPORT')).rejects.toThrow('内容不一致');
+    await expect(runtime.detail('OTHER-ORDER')).rejects.toMatchObject({statusCode:400});
+    await expect(runtime.detail('SIM-RAIL-20991231')).rejects.toMatchObject({statusCode:404});
+  });
+  it('stores different business content for historical tickets and supplements once without rewriting originals or events',async()=>{
+    const first={...generateRailwayTicket('2026-11-10'),cargoType:'COAL' as const,weight:1200,trainNo:'SIM-10001',details:undefined};
+    const second={...generateRailwayTicket('2026-11-11'),cargoType:'STEEL' as const,weight:1500,trainNo:'SIM-10002',trackNo:'T2' as const,details:undefined};
+    await runtime.ensureTicket(railwayTicketSchema.parse(first));await runtime.ensureTicket(railwayTicketSchema.parse(second));
+    const before=(await db.query('SELECT id,payload,created_at FROM psms_runtime.tickets ORDER BY id')).rows;
+    const eventCount=(await db.query('SELECT count(*) AS count FROM psms_runtime.events')).rows[0];
+    const firstPass=await runtime.supplementExistingTickets('DETAILS-UPGRADE');
+    expect(firstPass.supplemented).toBeGreaterThanOrEqual(2);
+    expect((await runtime.supplementExistingTickets('DETAILS-UPGRADE')).supplemented).toBe(0);
+    expect((await db.query('SELECT id,payload,created_at FROM psms_runtime.tickets ORDER BY id')).rows).toEqual(before);
+    expect((await db.query('SELECT count(*) AS count FROM psms_runtime.events')).rows[0]).toEqual(eventCount);
+    const a=await runtime.detail(first.id),b=await runtime.detail(second.id);
+    expect(a.businessDetails?.cargoName).toBe('煤炭');expect(b.businessDetails?.cargoName).toBe('钢材');
+    expect(a.businessDetails?.workSummary).not.toBe(b.businessDetails?.workSummary);
+    expect(a.businessDetails?.dispatch.lines[0].batchCode).not.toBe(b.businessDetails?.dispatch.lines[0].batchCode);
+    expect(a.businessDetails?.dispatch.lines.reduce((sum:number,line:{plannedQty:number})=>sum+line.plannedQty,0)).toBe(1200);
+    expect(b.businessDetails?.dispatch.lines.reduce((sum:number,line:{plannedQty:number})=>sum+line.plannedQty,0)).toBe(1500);
+    expect(a.auditLogs.filter(log=>log.action==='railway:supplement-details')).toHaveLength(1);
+    expect(b.auditLogs.filter(log=>log.action==='railway:supplement-details')).toHaveLength(1);
+    const listed=(await runtime.overview()).tickets;
+    expect(listed.find(ticket=>ticket.id===first.id)?.work_summary).toBe(a.businessDetails?.workSummary);
+    expect(listed.find(ticket=>ticket.id===second.id)?.work_summary).toBe(b.businessDetails?.workSummary);
   });
 });

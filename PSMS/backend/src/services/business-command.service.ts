@@ -6,6 +6,9 @@ import { businessReadQuery } from './business-read.service.js';
 import { type BusinessCollection } from '../lib/businessCatalog.js';
 import { centralPredicate, scopedInsert } from '../middleware/central-scope.js';
 import type { PoolClient } from 'pg';
+import { assertWmsGate } from './wms-inbound.service.js';
+import { contentHash, workOrderDispatchDetails, validateDispatchDirection } from './wms-contract.js';
+import { allLinesUseTons, requiresTonUnits, type RailwayImportSource } from './railway-intake-contract.js';
 
 async function insertRegional(db: PoolClient, table: 'work_orders' | 'audit_logs',
     cells: Record<string, unknown>, returning = '*') {
@@ -34,26 +37,57 @@ export function businessTransition(collection:string,action:string,status:string
   return transition.to;
 }
 export async function createBusinessWorkOrder(input:unknown,
-    actor:{actorId:string;roleCode:string;dataScope:string[];subject:string},connect=connectClient){
+    actor:{actorId:string;roleCode:string;dataScope:string[];subject:string},connect=connectClient, intake?:RailwayImportSource){
   const parsed=z.object({planId:z.string().min(1).max(160),orderType:z.enum(['LOADING','UNLOADING','TRANSFER','MAINTENANCE','OTHER']),
-    priority:z.enum(['HIGH','MEDIUM','LOW']),description:z.string().trim().min(1).max(1000)}).strict().safeParse(input);
+    priority:z.enum(['HIGH','MEDIUM','LOW']),description:z.string().trim().min(1).max(1000),
+    dispatchDetails:workOrderDispatchDetails.optional()}).strict().safeParse(input);
   if(!parsed.success)throw new AppError(400,'INVALID_COMMAND','工单字段格式无效');
+  if(parsed.data.dispatchDetails){
+    const issue=validateDispatchDirection(parsed.data.orderType,parsed.data.dispatchDetails);
+    if(issue)throw new AppError(400,'INVALID_DISPATCH_DETAILS',issue);
+  }
   if(!['admin','super_admin','scheduler','dispatcher'].includes(actor.roleCode))throw new AppError(403,'LOCAL_ROLE_DENIED','当前本地角色不能创建工单');
-  const q=businessReadQuery('work-orders',actor.dataScope,{}),db=await connect(),id='WO-'+randomUUID(),auditId=randomUUID(),traceId=randomUUID();
+  const id = intake ? 'WO-RAIL-' + contentHash(intake.externalOrderNo) : 'WO-' + randomUUID();
+  const q=businessReadQuery('work-orders',actor.dataScope,{}),db=await connect(),auditId=randomUUID(),traceId=randomUUID();
   try{
     await db.query('BEGIN');
-    const plan=(await db.query(`SELECT id,plan_batch_no,work_area,status FROM public.plans WHERE ${q.where}
-      AND id=$${q.values.length+1} FOR SHARE`,[...q.values,parsed.data.planId])).rows[0];
+    const plan=(await db.query(`SELECT ${intake ? 'id,plan_batch_no,work_area,status,cargo_type,supplements' : 'id,plan_batch_no,work_area,status'} FROM public.plans WHERE ${q.where}
+      AND id=$${q.values.length+1} FOR ${intake ? 'UPDATE' : 'SHARE'}`,[...q.values,parsed.data.planId])).rows[0];
+    const importDigest = intake && contentHash(parsed.data);
+    if (intake && plan) {
+      const previous = (await db.query(`SELECT id,status,plan_id,valid FROM public.work_orders WHERE ${q.where} AND id=$${q.values.length+1}`, [...q.values,id])).rows[0];
+      if (previous) {
+        const auditScope = centralPredicate('audit_logs', 1);
+        const audit = previous.plan_id === plan.id && previous.valid === 1 && (await db.query(`SELECT after_state FROM public.audit_logs
+          WHERE object_id=$1 AND object_type='work-orders' AND action='work-orders:railway-import' AND valid=1${auditScope.text}`, [id,...auditScope.values])).rows[0];
+        if (!audit || audit.after_state.importDigest !== importDigest)
+          throw new AppError(409, 'RAILWAY_IMPORT_CONFLICT', '该外部工单编号已经使用，请核对原工单');
+        await db.query('COMMIT');
+        return {item:{id:previous.id,status:previous.status},duplicate:true};
+      }
+      if (plan.id.startsWith('SIM-RAIL-') || plan.supplements?.simulated === true)
+        throw new AppError(409, 'SIMULATED_PLAN', '请关联真实业务中已确认的计划');
+      if (requiresTonUnits(plan.cargo_type) && !allLinesUseTons(parsed.data.dispatchDetails!))
+        throw new AppError(400, 'INVALID_CARGO_UNIT', '粉煤灰、钢材应填写与 WMS 主数据一致的吨库存单位');
+    }
     if(!plan||['CANCELLED','COMPLETED'].includes(plan.status))throw new AppError(409,'PLAN_UNAVAILABLE','计划不在授权范围或已结束');
+    if(parsed.data.dispatchDetails&&!['CONFIRMED','IN_PROGRESS'].includes(plan.status))
+      throw new AppError(409,'PLAN_NOT_CONFIRMED','派遣工单须先确认关联计划');
     const item=(await insertRegional(db, 'work_orders', { id, plan_id: plan.id, plan_batch_no: plan.plan_batch_no,
       work_area: plan.work_area, status: 'DRAFT', order_type: parsed.data.orderType, priority: parsed.data.priority,
-      description: parsed.data.description }, 'id,status,updated_at,updated_at::text AS record_version')).rows[0];
+      description: parsed.data.description, dispatch_details: parsed.data.dispatchDetails ? JSON.stringify(parsed.data.dispatchDetails) : null },
+      'id,status,dispatch_details,updated_at,updated_at::text AS record_version')).rows[0];
     await insertRegional(db, 'audit_logs', { id:auditId,actor_id:actor.subject,actor_role:actor.roleCode,
-      operator_terminal:'WEB-BACKEND',action:'work-orders:create',object_type:'work-orders',object_id:id,
-      before_state:'{}',after_state:JSON.stringify(item),reason:parsed.data.description,trace_id:traceId,
+      operator_terminal:'WEB-BACKEND',action:intake?'work-orders:railway-import':'work-orders:create',object_type:'work-orders',object_id:id,
+      before_state:'{}',after_state:JSON.stringify(intake ? {...item, intake, importDigest} : item),reason:parsed.data.description,trace_id:traceId,
       occurred_at:new Date(),work_area:plan.work_area });
     await db.query('COMMIT');return{item,auditLogId:auditId,traceId};
-  }catch(error){try{await db.query('ROLLBACK');}catch{/* preserve failure */}throw error;}finally{db.release();}
+  }catch(error){
+    try{await db.query('ROLLBACK');}catch{/* preserve failure */}
+    if (intake && (error as {code?: string}).code === '23505')
+      throw new AppError(409, 'RAILWAY_IMPORT_CONFLICT', '该外部工单编号已经使用，请核对原工单');
+    throw error;
+  }finally{db.release();}
 }
 export async function executeBusinessCommand(collection:BusinessCollection,id:string,input:unknown,
     actor:{actorId:string;roleCode:string;dataScope:string[];subject:string},connect=connectClient){
@@ -74,12 +108,20 @@ export async function executeBusinessCommand(collection:BusinessCollection,id:st
     if(before.record_version!==expectedVersion)throw new AppError(409,'VERSION_CONFLICT','记录已被更新，请刷新后重新确认');
     const next=businessTransition(collection,action,before.status),changes:Record<string,unknown>={status:next};
     if(collection==='work-orders'){
-      // Preserve the concurrently released WMS inbound completion boundary.
       if(process.env.PSMS_WMS_ENABLED==='true'&&['complete','cancel'].includes(action)){
-        const inbound=(await db.query('SELECT status,transfer_status,verified_at FROM public.psms_wms_inbound_tasks WHERE work_order_id=$1 FOR UPDATE',[id])).rows[0];
-        if(inbound&&action==='cancel')throw new AppError(409,'INBOUND_CHANGE_REQUIRES_REVIEW','工单已派发 WMS，取消须先人工协调，不能单边取消');
-        if(inbound&&(inbound.status!=='FULLY_RECEIVED'||inbound.transfer_status!=='COMPLETED'||!inbound.verified_at))
-          throw new AppError(409,'WMS_RECEIPT_VERIFICATION_REQUIRED','WMS 尚未实收齐全或入库复核未完成，不能完成工单');
+        const contracts=(await db.query("SELECT table_schema FROM information_schema.tables WHERE (table_schema='public' AND table_name='psms_wms_inbound_tasks') OR (table_schema='psms_wms' AND table_name='tasks')")).rows;
+        if(contracts.some(row=>row.table_schema==='public')){
+          const inbound=(await db.query('SELECT status,transfer_status,verified_at FROM public.psms_wms_inbound_tasks WHERE work_order_id=$1 FOR UPDATE',[id])).rows[0];
+          if(inbound&&action==='cancel')throw new AppError(409,'INBOUND_CHANGE_REQUIRES_REVIEW','工单已派发 WMS，取消须先人工协调，不能单边取消');
+          if(inbound&&(inbound.status!=='FULLY_RECEIVED'||inbound.transfer_status!=='COMPLETED'||!inbound.verified_at))
+            throw new AppError(409,'WMS_RECEIPT_VERIFICATION_REQUIRED','WMS 尚未实收齐全或入库复核未完成，不能完成工单');
+        }
+        if(contracts.some(row=>row.table_schema==='psms_wms')){
+          if(action==='complete')await assertWmsGate(db,id,'complete');
+          if(action==='cancel'
+              && (await db.query('SELECT task_id FROM psms_wms.tasks WHERE work_order_id=$1',[id])).rows.length)
+            throw new AppError(409,'WMS_CANCEL_MANUAL','已派发入库任务，取消须与 WMS 人工协调');
+        }
       }
       if(['assign','start'].includes(action)){
         const planScope=centralPredicate('plans',1);

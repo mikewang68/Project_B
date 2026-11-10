@@ -7,6 +7,7 @@ import { SCHEMA_STATEMENTS } from '../db/schema.js';
 import { RailwayRuntime } from '../services/railway-runtime.service.js';
 import { startRailwayWorker } from '../services/railway-scheduler.service.js';
 import { railwayRouter } from '../routes/railway.routes.js';
+import { AppError } from '../middleware/errorHandler.js';
 import type { PoolClient } from 'pg';
 import { mkdir } from 'node:fs/promises';
 
@@ -34,7 +35,14 @@ app.use((req,res,next)=>{
 });
 app.use('/api/railway',railwayRouter(runtime));
 app.use((_req,res)=>{res.status(404).json({ok:false,message:'接口不存在'});});
-app.use((error:unknown,_req:express.Request,res:express.Response,_next:express.NextFunction)=>{console.error(error);res.status(500).json({ok:false,message:'本地数据库请求失败，请查看运行日志'});});
+app.use((error:unknown,_req:express.Request,res:express.Response,_next:express.NextFunction)=>{
+  if(error instanceof AppError){
+    res.status(error.statusCode).json({ok:false,message:error.message});
+    return;
+  }
+  console.error(error);
+  res.status(500).json({ok:false,message:'本地数据库请求失败，请查看运行日志'});
+});
 const stop=startRailwayWorker(runtime,error=>console.error('铁路运行后台任务失败',error));
 const server=app.listen(3101,'127.0.0.1',()=>console.log('铁路模拟运行台 API http://127.0.0.1:3101/api/railway；数据持久化于 backend/.data/railway-demo'));
 async function shutdown(){stop();server.close();await queue;await db.close();process.exit(0);}

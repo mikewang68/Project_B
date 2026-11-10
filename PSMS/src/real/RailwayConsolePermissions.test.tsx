@@ -12,7 +12,7 @@ describe('legacy read-only railway console', () => {
     vi.stubGlobal('fetch', fetcher);
     render(<RailwayConsole readOnly />);
     expect(await screen.findByText('SIM-RAIL-20261103')).toBeVisible();
-    for (const name of ['生成并下载今日工单', '导入工单并启动流程', '导入并运行']) {
+    for (const name of ['生成并下载今日工单', '导入模拟工单并启动流程', '生成并运行今日模拟工单', '导入并运行']) {
       const button = screen.getByRole('button', { name });
       expect(button).toBeDisabled();fireEvent.click(button);
     }

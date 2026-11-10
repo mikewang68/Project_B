@@ -37,6 +37,7 @@ const envSchema = z.object({
   // OpenAI-compatible provider; credentials stay on the backend.
   AI_BASE_URL: z.string().default(''),
   AI_MODEL: z.string().default(''),
+  AI_WORK_ORDER_LIVE_ENABLED: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
   AI_API_KEY: z.string().default(''),
   DASHSCOPE_API_KEY: z.string().trim().default(''),
   AI_DEMO_AUTO_LOGIN: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),

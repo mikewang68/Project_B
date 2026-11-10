@@ -3,8 +3,13 @@ import { useEffect, useState,useRef } from 'react';
 import { loadCurrentDemoSession, type SessionContext } from '../auth';
 import PageIdentity from '../features/plan-entry/components/PageIdentity';
 import WmsInboundPanel from './WmsInboundPanel';
+import WmsJointInboundPanel from './WmsJointInboundPanel';
 import { LiveApiError,liveApi } from './client';
 import { useDemoSelector } from '../runtime';
+import DispatchDetailsFields from './DispatchDetailsFields';
+import DispatchDetailsEditor from './DispatchDetailsEditor';
+import WorkOrderConsultation from '../features/ai-assistant/WorkOrderConsultation';
+import { businessConsultation } from '../features/ai-assistant/workOrderSnapshot';
 import { canReadCollection, equipmentFreshness, liveBusinessPages, loadBusinessPage,
   businessActions,canRunBusinessAction,runBusinessAction,type BusinessAction,
   type BusinessPage, type BusinessRow, type LiveBusinessPageId, type LiveCollection } from './business';
@@ -41,10 +46,13 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
   const [page,setPage]=useState(1), [area,setArea]=useState<string>(), [status,setStatus]=useState<string>();
   const [reload,setReload]=useState(0), [data,setData]=useState<BusinessPage>(), [error,setError]=useState('');
   const [loading,setLoading]=useState(true), [selected,setSelected]=useState<BusinessRow>();
+  const [consulting,setConsulting]=useState(false);
   const [command,setCommand]=useState<{row:BusinessRow;action:BusinessAction}>(),[submitting,setSubmitting]=useState(false);
   const [commandError,setCommandError]=useState('');
   const [form]=Form.useForm<{reason:string;equipmentId?:string}>();
   const [creating,setCreating]=useState(false),[createForm]=Form.useForm();
+  const creatingOrderType=Form.useWatch('orderType',createForm)??'UNLOADING';
+  const creatingPlanId=Form.useWatch('planId',createForm);
   const inFlight=useRef(false);
   const plans=useDemoSelector(state=>state.plan.plans);
   const allowed=canReadCollection(session,collection), global=session.dataScope.some(s=>['*','GLOBAL'].includes(s));
@@ -67,7 +75,7 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
       const fresh=data?equipmentFreshness(row,data.generatedAt):'UNKNOWN';
       return <Tag color={fresh==='FRESH'?'green':'warning'}>{fresh==='FRESH'?'采集及时':fresh==='STALE'?'采集过期':'尚无采集时间'}</Tag>;
     }}]:[]),{title:'操作',key:'detail',render:(_:unknown,row:BusinessRow)=><Space wrap>
-      <Button onClick={()=>setSelected(row)}>查看</Button>
+      <Button onClick={()=>{setConsulting(false);setSelected(row);}}>查看</Button>
       {businessActions(collection,row.status).map(action=><Button key={action.code} disabled={!canRunBusinessAction(session,action)||submitting}
         onClick={()=>{setCommandError('');form.resetFields();setCommand({row,action});}}>{action.label}</Button>)}
     </Space>}];
@@ -89,8 +97,19 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
       locale={{emptyText:error?'查询未成功':loading?'查询中':'查询成功，当前条件下无记录'}}
       pagination={{current:page,pageSize:50,total:data?.total??0,showSizeChanger:false,onChange:setPage}}/>
     <Drawer title={spec.title+'详情'} open={!!selected} onClose={()=>setSelected(undefined)} size="large">
-      {selected&&<Descriptions column={1} items={Object.entries(selected).map(([key,value])=>({key,label:labels[key]??key,children:display(value)}))}/>}
-      {selected&&collection==='work-orders'&&<WmsInboundPanel key={selected.id} row={selected} session={session} onChanged={()=>setReload(value=>value+1)}/>}
+      {selected&&<Descriptions column={1} items={Object.entries(selected).filter(([key])=>key!=='dispatch_details').map(([key,value])=>({key,label:labels[key]??key,children:display(value)}))}/>}
+      {collection==='work-orders'&&selected&&<div style={{ margin: '16px 0' }}>
+        <Button onClick={()=>setConsulting(value=>!value)}>{consulting?'收起工单咨询':'咨询这张工单'}</Button>
+        {consulting&&<Card size="small" title="作业工单咨询" style={{ marginTop: 12 }}>
+          <WorkOrderConsultation key={selected.id} order={businessConsultation(data?.items.find(row=>row.id===selected.id)??selected)} />
+        </Card>}
+      </div>}
+      {collection==='work-orders'&&selected&&session.menuOperations==null&&['UNLOADING','LOADING'].includes(String(selected.order_type))&&
+        <DispatchDetailsEditor key={selected.id} row={selected} session={session} onSaved={item=>{
+          setSelected(current=>current?{...current,...item}:current);setReload(value=>value+1);
+        }}/>}
+      {collection==='work-orders'&&selected&&session.menuOperations!=null&&<WmsInboundPanel key={selected.id} row={selected} session={session} onChanged={()=>setReload(value=>value+1)}/>}
+      {collection==='work-orders'&&selected?.order_type==='UNLOADING'&&session.menuOperations==null&&<WmsJointInboundPanel key={selected.id} row={selected} session={session}/>}
     </Drawer>
     <Modal title={command?.action.label} open={!!command} confirmLoading={submitting} destroyOnHidden
       onCancel={()=>{if(!submitting)setCommand(undefined);}} onOk={async()=>{
@@ -113,22 +132,28 @@ function BusinessTable({ collection, session }: { collection:LiveCollection; ses
     </Modal>
     <Modal title="新建工单" open={creating} destroyOnHidden confirmLoading={submitting}
       onCancel={()=>{if(!submitting)setCreating(false);}} onOk={async()=>{
-        if(inFlight.current)return;inFlight.current=true;let values:Record<string,string>;
+        if(inFlight.current)return;inFlight.current=true;let values:Record<string,unknown>;
         try{values=await createForm.validateFields();}catch{inFlight.current=false;return;}
         setSubmitting(true);
         try{await liveApi('/business/work-orders',{method:'POST',body:JSON.stringify(values)});setCreating(false);setReload(v=>v+1);}
         catch(e){setCreating(false);setCommandError(e instanceof LiveApiError?e.message:'创建回执未取得，请按计划和说明查询，避免重复创建');}
         finally{inFlight.current=false;setSubmitting(false);}
       }}>
-      <Form form={createForm} layout="vertical" preserve={false} initialValues={{priority:'MEDIUM',orderType:'UNLOADING'}}>
-        <Form.Item name="planId" label="关联计划" rules={[{required:true}]}><Select options={plans.filter(p=>p.status!=='CANCELLED')
-          .map(p=>({value:p.id,label:p.planBatchNo+' · '+p.trainNo}))}/></Form.Item>
+      <Form form={createForm} layout="vertical" preserve={false} initialValues={{priority:'MEDIUM',orderType:'UNLOADING',
+        dispatchDetails:{transferMode:'DIRECT',lines:[{lineId:'1'}]}}}>
+        <Form.Item name="planId" label="已确认的关联计划" rules={[{required:true}]}><Select options={plans.filter(p=>
+          ['LOADING','UNLOADING'].includes(creatingOrderType)?['CONFIRMED','IN_PROGRESS'].includes(p.status):p.status!=='CANCELLED')
+          .map(p=>({value:p.id,label:p.planBatchNo+' · '+p.trainNo+' · '+p.workArea}))}/></Form.Item>
+        {plans.find(p=>p.id===creatingPlanId)&&<Alert type="info" title={
+          '计划车次 '+plans.find(p=>p.id===creatingPlanId)!.trainNo+' · 作业区 '+plans.find(p=>p.id===creatingPlanId)!.workArea
+          +' · 货物 '+plans.find(p=>p.id===creatingPlanId)!.cargoType} style={{marginBottom:12}}/>}
         <Form.Item name="orderType" label="作业类型" rules={[{required:true}]}><Select options={[
           {value:'LOADING',label:'装车'},{value:'UNLOADING',label:'卸车'},{value:'TRANSFER',label:'转运'},
           {value:'MAINTENANCE',label:'维护'},{value:'OTHER',label:'其他'}]}/></Form.Item>
         <Form.Item name="priority" label="优先级" rules={[{required:true}]}><Select options={[
           {value:'HIGH',label:'高'},{value:'MEDIUM',label:'中'},{value:'LOW',label:'低'}]}/></Form.Item>
         <Form.Item name="description" label="作业说明" rules={[{required:true,whitespace:true,max:1000}]}><Input.TextArea rows={3} maxLength={1000}/></Form.Item>
+        <DispatchDetailsFields orderType={creatingOrderType}/>
       </Form>
     </Modal>
   </Card>;

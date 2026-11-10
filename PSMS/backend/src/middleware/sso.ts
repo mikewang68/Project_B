@@ -50,6 +50,10 @@ function usable(user: UserDoc | null): user is UserDoc {
 }
 
 export const ssoRouter = Router();
+ssoRouter.get('/railway-mode', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ ok: true, data: { sso: enabled } });
+});
 function localSession(req:Request):Session|undefined{
   const value=req.headers.cookie?.split(';').map(v=>v.trim()).find(v=>v.startsWith('PSMS_SSO='))?.slice(9);
   return value&&/^[\w-]{43}$/.test(value)?sessions.get(digest(value)):undefined;
@@ -164,6 +168,11 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
         && req.path !== '/api/plans' && !req.path.startsWith('/api/plans/')
         && !/^\/api\/governance\/(interlocks|interlock-requests|offline|reports|settings|audit-logs)(\/|$)/.test(req.path)
         && !(req.method === 'GET' && /^\/api\/business\/(work-orders|tasks|equipment|exceptions)$/.test(req.path))
+        && !(req.method === 'GET' && /^\/api\/business\/work-orders\/[^/]+\/inbound$/.test(req.path))
+        && !(req.method === 'GET' && /^\/api\/business\/work-orders\/[^/]+\/dispatch-export$/.test(req.path))
+        && !(req.method === 'POST' && /^\/api\/business\/work-orders\/[^/]+\/dispatch-details$/.test(req.path))
+        && !(req.method === 'POST' && /^\/api\/business\/work-orders\/[^/]+\/inbound\/(dispatch|tasks|retry)$/.test(req.path))
+        && !(['GET','POST'].includes(req.method) && req.path==='/api/business/work-orders/railway-intake')
         && !(req.method==='POST' && (req.path==='/api/business/work-orders'
           || /^\/api\/business\/(work-orders|exceptions)\/[^/]+\/actions$/.test(req.path)))) {
       fail(res, 403, 'SSO_ROUTE_NOT_ADAPTED'); return;
@@ -185,7 +194,7 @@ export async function ssoGuard(req: Request, res: Response, next: NextFunction):
       }
       if (req.header('X-PSMS-CSRF') !== session.csrf) { fail(res, 403, 'CSRF_REJECTED'); return; }
     }
-    if(!central&&req.path.includes('/export')&&!(effective.superAdmin&&!effective.readOnly)&&!current.permissions.includes('pps:export')){fail(res,403,'EXPORT_PERMISSION_DENIED');return;}
+    if(!central&&(req.path.includes('/export')||req.path.endsWith('/dispatch-export'))&&!(effective.superAdmin&&!effective.readOnly)&&!current.permissions.includes('pps:export')){fail(res,403,'EXPORT_PERMISSION_DENIED');return;}
     if (central) runWithCentralScope(central, next);
     else next();
   } catch (error) { next(error); }

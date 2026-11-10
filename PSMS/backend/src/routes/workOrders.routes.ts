@@ -48,6 +48,9 @@ workOrdersRouter.get('/:id', optionalAuth, async (req, res, next) => {
 // API-008/API-009 工单命令：assign / accept / start / pause / complete / cancel
 workOrdersRouter.post('/:id', authenticate, auditOperation('workOrderAction'), async (req, res, next) => {
   try {
+    if(process.env.PSMS_WMS_ENABLED==='true' && !env.PSMS_SSO_ENABLED){
+      res.status(403).json({ok:false,message:'WMS 联调工单操作需要统一身份会话'});return;
+    }
     if(env.PSMS_SSO_ENABLED){
       if(typeof res.locals.platformSubject!=='string'){res.status(403).json({ok:false,message:'统一身份会话无效'});return;}
       const result=await executeBusinessCommand('work-orders',pathParam(req),req.body,{...req.user!,subject:res.locals.platformSubject});
