@@ -313,14 +313,19 @@ export async function patchWorkOrder(id: string, input: unknown, actor: WorkOrde
     if (before.record_version !== parsed.data.expectedVersion) throw new AppError(409, 'VERSION_CONFLICT', '记录已被更新，请刷新后重新修改');
     if (before.status !== 'DRAFT') throw new AppError(409, 'INVALID_STATE', '只能修改草稿状态的工单');
     const beforeDetails = (before.dispatch_details ?? null) as DispatchDetailsInput | null;
-    if (beforeDetails?.draftSource !== 'AI') throw new AppError(409, 'INVALID_STATE', '只能修改 AI 生成的工单草稿');
+    // 2026-11-10 李润泽回填：人工（MANUAL）与 AI 生成的 DRAFT 都允许编辑/确认；
+    // 保留原始来源，不把人工草稿强行标成 AI。历史草稿没有 draftSource 时按 MANUAL 处理。
+    const beforeSource = beforeDetails?.draftSource;
+    if (beforeSource && beforeSource !== 'AI' && beforeSource !== 'MANUAL') {
+      throw new AppError(409, 'INVALID_STATE', '只能修改 AI 或人工创建的工单草稿');
+    }
 
     const changes: Record<string, unknown> = {};
     if (parsed.data.description !== undefined) changes.description = parsed.data.description;
     if (parsed.data.priority !== undefined) changes.priority = parsed.data.priority;
     if (parsed.data.dispatchDetails !== undefined) {
       const merged = mergeDispatchDetails(beforeDetails, parsed.data.dispatchDetails);
-      merged.draftSource = 'AI';
+      merged.draftSource = beforeSource ?? 'MANUAL';
       changes.dispatch_details = JSON.stringify(merged);
     }
     const columns = Object.keys(changes), values = Object.values(changes);
@@ -337,7 +342,7 @@ export async function patchWorkOrder(id: string, input: unknown, actor: WorkOrde
       [auditId, actor.subject, actor.roleCode, id,
         JSON.stringify({ description: before.description, priority: before.priority, orderType: before.order_type, dispatchDetails: before.dispatch_details }),
         JSON.stringify({ description: after.description, priority: after.priority, orderType: after.order_type, dispatchDetails: after.dispatch_details }),
-        '人工修改 AI 工单草稿', traceId, before.work_area,
+        '人工修改工单草稿', traceId, before.work_area,
         before.project_id ?? null, before.region_id ?? null, before.subsystem_code ?? null],
     );
     await db.query('COMMIT');
