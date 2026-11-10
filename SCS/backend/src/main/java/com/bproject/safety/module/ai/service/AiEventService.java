@@ -117,6 +117,8 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
         this.gate = gate;
         this.objectMapper = (objectMapper != null) ? objectMapper : new ObjectMapper();
         this.httpClient = HttpClient.newBuilder()
+                // 强制 HTTP/1.1：Java 默认对 http:// 发 h2c 升级，uvicorn/h11 不支持会把请求体丢弃（422）。
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofMillis(1500))
                 .build();
         this.cameras = new ArrayList<>(AiDemoSeeder.buildCameras(deviceMasterData));

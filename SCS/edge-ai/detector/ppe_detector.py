@@ -18,6 +18,20 @@ from config import (
 
 logger = logging.getLogger("edge_ai.ppe")
 
+
+def _normalize_ppe_label(raw: str) -> str:
+    """第三方 PPE 模型类别名归一化到本检测器词汇表（helmet / no_helmet）。
+
+    兼容常见命名变体：Without Helmet / NO-Helmet / no_helmet / Hardhat / NO-Hardhat 等。
+    归一化后主检测逻辑的子串匹配（"helmet" in lbl 且 "no_" 不在 / "no_helmet" 在）保持不变。
+    """
+    lbl = (raw or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if "without_helmet" in lbl:
+        lbl = lbl.replace("without_helmet", "no_helmet")
+    lbl = lbl.replace("hardhat", "helmet")
+    return lbl
+
+
 class PPEDetector:
     def __init__(
         self,
@@ -116,7 +130,7 @@ class PPEDetector:
             helmet_conf = 0.0
             
             for item in ppe_items:
-                lbl = item["label"].lower()
+                lbl = _normalize_ppe_label(item["label"])
                 ix1, iy1, ix2, iy2 = item["box"]
                 cx = (ix1 + ix2) / 2.0
                 cy = (iy1 + iy2) / 2.0

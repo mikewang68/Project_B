@@ -30,7 +30,12 @@ public class EdgeAiInferenceClient {
     private static final Logger log = LoggerFactory.getLogger(EdgeAiInferenceClient.class);
 
     private final ObjectMapper objectMapper;
+    /**
+     * 强制 HTTP/1.1：Java HttpClient 默认对 http:// 目标发起 h2c 升级，
+     * uvicorn/h11 不支持升级且会把请求体丢弃（FastAPI 422）。
+     */
     private final HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofMillis(1500))
             .build();
 
