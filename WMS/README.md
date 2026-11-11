@@ -31,6 +31,12 @@ node6 公共源码对应 `/home/bpoc-data/projects/Project_B/WMS`。
 
 阶段 0 的人工结论见 `docs/phase-0/`，可重复生成的源码盘点见 `docs/phase-0/generated/`。
 
+## 库存盘点更新（2026-11-11）
+
+进入「库存中心 → 库存盘点」，按库存余额登记实盘数量、损耗、缺失和差异原因。提交后进入待复核，复核通过时按差额更新库存并写入流水，驳回时保留复核意见。
+
+部署新版前先执行 [V017 库存盘点迁移](database/migrations/V017__inventory_counts.sql)，建立独立盘点记录表。
+
 ## 本地运行
 
 确保 Docker Desktop 已启动，然后双击根目录的 `run-local.cmd`，或在 PowerShell 执行：
