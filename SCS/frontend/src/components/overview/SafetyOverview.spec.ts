@@ -11,7 +11,6 @@ vi.mock('@/api/overview', () => ({
     getTrend: vi.fn(),
     getDistribution: vi.fn(),
     getAlertDetail: vi.fn(),
-    simulateRisk: vi.fn(),
   },
 }))
 
@@ -24,9 +23,7 @@ const statStub = {
   template: '<div class="stat-stub" :data-label="label">{{ value }}</div>',
 }
 const mapStub = {
-  props: ['riskActive'],
-  emits: ['toggleRisk'],
-  template: '<button data-test="toggle-risk" @click="$emit(\'toggleRisk\')">{{ riskActive }}</button>',
+  template: '<div data-test="map-stub" />',
 }
 const feedStub = {
   props: ['alerts'],
@@ -45,7 +42,6 @@ function apiState(activeAlerts: number, urgent: number, severe: number): void {
   ])
   vi.mocked(overviewApi.getTrend).mockResolvedValue({ demo: true, points: [] })
   vi.mocked(overviewApi.getDistribution).mockResolvedValue({ items: [] })
-  vi.mocked(overviewApi.simulateRisk).mockResolvedValue({ active: true })
 }
 
 function mountOverview() {
@@ -77,18 +73,9 @@ describe('safety overview backed by overview api', () => {
     expect(wrapper.get('[data-test="top-alert"]').text()).toBe('人员进入龙门吊作业区域')
   })
 
-  it('toggle risk calls backend simulate-risk and refreshes aggregates', async () => {
+  it('keeps the map free of demo risk controls', async () => {
     const wrapper = mountOverview()
     await flushPromises()
-    vi.mocked(overviewApi.getSummary).mockResolvedValueOnce({
-      onDuty: 128, deviceOnline: 36, deviceTotal: 38, activeAlerts: 10, processingAlerts: 3,
-      urgentAlerts: 2, severeAlerts: 1, pendingAi: 5, riskyDevices: 2,
-      onDutyDemo: true, deviceDemo: true, riskyDevicesDemo: true,
-    })
-    await wrapper.get('[data-test="toggle-risk"]').trigger('click')
-    await flushPromises()
-    expect(overviewApi.simulateRisk).toHaveBeenCalledWith(true)
-    expect(wrapper.get('[data-label="活动告警"]').text()).toBe('10')
-    expect(wrapper.get('[data-label="高风险事件"]').text()).toBe('3')
+    expect(wrapper.find('[data-test="toggle-risk"]').exists()).toBe(false)
   })
 })

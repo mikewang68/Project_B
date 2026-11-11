@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElPagination } from 'element-plus'
 import AlertOverview from '@/components/alerts/AlertOverview.vue'
 import AlertFilters, { type AlertFilterState } from '@/components/alerts/AlertFilters.vue'
@@ -16,6 +16,7 @@ import { useLiveStore } from '@/stores/live'
 import type { AlertEvent, AlertMetrics } from '@/types/alert'
 
 const router = useRouter()
+const route = useRoute()
 const liveStore = useLiveStore()
 
 // 告警数据只从业务服务恢复；请求失败时保留错误状态，不生成替代告警。
@@ -339,6 +340,11 @@ function openRule(ruleId: string): void {
 }
 
 onMounted(() => {
+  // 支持按设备/人员跳转预填关键字（如碰撞页「查看历史风险」、人员抽屉「查看相关告警」）
+  const prefill = route.query.keyword
+  if (typeof prefill === 'string' && prefill.trim()) {
+    filters.keyword = prefill.trim()
+  }
   void loadMetrics()
   void loadList()
   void loadOptions()

@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { Close, LocationFilled } from '@element-plus/icons-vue'
-import MockRiskButton from './MockRiskButton.vue'
 import SafetyMapCanvas from '@/components/shared/SafetyMapCanvas.vue'
 import type { EquipmentPoint, PersonnelPoint } from '@/types/overview'
 import type { FenceRecord } from '@/types/fence'
@@ -9,19 +8,12 @@ import type { FenceRecord } from '@/types/fence'
 const props = defineProps<{
   people: PersonnelPoint[]
   equipment: EquipmentPoint[]
-  riskActive: boolean
   fences: FenceRecord[]
   liveOverlay?: boolean
 }>()
 
-defineEmits<{ toggleRisk: [] }>()
-
 const selectedId = ref<string>()
 const selectedPerson = computed(() => props.people.find((person) => person.id === selectedId.value))
-
-watch(() => props.riskActive, (active) => {
-  selectedId.value = active ? 'P-ZHAO' : undefined
-})
 </script>
 
 <template>
@@ -32,7 +24,6 @@ watch(() => props.riskActive, (active) => {
       </div>
       <div class="map-header-actions">
         <div class="map-legend"><span><i></i>正常</span><span><i></i>异常</span><span><i></i>高风险</span></div>
-        <MockRiskButton :active="riskActive" @toggle="$emit('toggleRisk')" />
       </div>
     </header>
 

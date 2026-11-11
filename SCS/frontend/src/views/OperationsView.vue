@@ -173,7 +173,13 @@ const kpis = computed<OpsKpi[]>(() => {
 async function simulateDisconnect(): Promise<void> {
   opsStore.setLink('link-error')
   ElMessage.warning('检测到中心链路抖动，正在评估连接状态…')
-  await fetchQuietly(() => operationsApi.simulateLink('disconnect'))
+  try {
+    await operationsApi.simulateLink('disconnect')
+  } catch (err) {
+    await loadAll()
+    ElMessage.error(err instanceof Error ? err.message : '模拟云边断网失败')
+    return
+  }
   await loadAll()
   ElMessage.warning('中心链路中断，边缘节点进入本地自治模式')
 }
@@ -187,12 +193,18 @@ async function simulateLocalRisk(): Promise<void> {
   const nodeId = nodeOrder[riskSeq % nodeOrder.length]!
   riskSeq += 1
   // 复查：本地风险事件由后端 createLocalEvent 驱动（本地判定 + 联动 + 入补传队列）
-  await fetchQuietly(() => operationsApi.createLocalEvent({
-    nodeId,
-    eventType: tpl.type,
-    risk: tpl.risk,
-    title: tpl.type,
-  }))
+  try {
+    await operationsApi.createLocalEvent({
+      nodeId,
+      eventType: tpl.type,
+      risk: tpl.risk,
+      title: tpl.type,
+    })
+  } catch (err) {
+    await loadAll()
+    ElMessage.error(err instanceof Error ? err.message : '本地风险事件注入失败')
+    return
+  }
   await loadAll()
   ElMessage({
     type: tpl.risk === '紧急' || tpl.risk === '严重' ? 'warning' : 'success',
@@ -207,21 +219,39 @@ async function simulateTimeDrift(): Promise<void> {
     ElMessage.info('请先模拟云边断网，再演示时间偏差')
     return
   }
-  await fetchQuietly(() => operationsApi.simulate('timeDrift', 'EDGE-02'))
+  try {
+    await operationsApi.simulate('timeDrift', 'EDGE-02')
+  } catch (err) {
+    await loadAll()
+    ElMessage.error(err instanceof Error ? err.message : '时间偏差模拟失败')
+    return
+  }
   await loadAll()
   ElMessage.warning('EDGE-02 出现时间同步偏差，恢复时需重新校时')
 }
 
 /* ---------- 缓存告警 ---------- */
 async function simulateCacheAlert(): Promise<void> {
-  await fetchQuietly(() => operationsApi.simulate('cacheAlert', 'EDGE-03'))
+  try {
+    await operationsApi.simulate('cacheAlert', 'EDGE-03')
+  } catch (err) {
+    await loadAll()
+    ElMessage.error(err instanceof Error ? err.message : '缓存告警模拟失败')
+    return
+  }
   await loadAll()
   ElMessage.warning('边缘缓存空间不足，将优先保留高等级事件与控制回执')
 }
 
 /* ---------- 设备异常 ---------- */
 async function simulateDeviceFault(): Promise<void> {
-  await fetchQuietly(() => operationsApi.simulate('deviceFault', 'CAM-12'))
+  try {
+    await operationsApi.simulate('deviceFault', 'CAM-12')
+  } catch (err) {
+    await loadAll()
+    ElMessage.error(err instanceof Error ? err.message : '设备异常模拟失败')
+    return
+  }
   await loadAll()
   const cam = categories.value.find((c) => c.kind === '摄像头')?.devices.find((d) => d.id === 'CAM-12')
   if (cam) {

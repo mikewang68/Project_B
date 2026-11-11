@@ -8,13 +8,13 @@ const props = defineProps<{ modelValue: boolean; conflicts: RuleConflict[] }>()
 const emit = defineEmits<{
   'update:modelValue': [v: boolean]
   view: [conflict: RuleConflict]
-  ignore: []
+  ignore: [conflicts: RuleConflict[]]
 }>()
 
 const confirmStage = ref(false)
 watch(() => props.modelValue, () => { confirmStage.value = false })
 function ignoreAndClose(): void {
-  emit('ignore')
+  emit('ignore', props.conflicts)
   confirmStage.value = false
   emit('update:modelValue', false)
 }
@@ -25,7 +25,7 @@ function ignoreAndClose(): void {
     @update:model-value="emit('update:modelValue', $event)">
     <template #header>
       <div class="rule-dialog-heading"><span>CONFLICT CHECK</span>
-        <h2>规则冲突检查</h2><p>同区域、同设备类型的规则阈值一致性校验（Mock）</p></div>
+        <h2>规则冲突检查</h2><p>同区域、同设备类型的规则阈值一致性校验</p></div>
     </template>
 
     <template v-if="conflicts.length">

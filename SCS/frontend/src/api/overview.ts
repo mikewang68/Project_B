@@ -1,4 +1,4 @@
-import { apiRequest, postJson } from './http'
+import { apiRequest } from './http'
 import {
   mapDistribution,
   mapFeed,
@@ -37,8 +37,4 @@ export const overviewApi = {
 
   getDistribution: async (): Promise<OverviewDistributionDto> =>
     mapDistribution(await apiRequest('/overview/risk-distribution')),
-
-  /** SIMULATED 风险演示开关：后端创建/关闭固定演示告警，五端经 WS 同步 */
-  simulateRisk: (active: boolean) =>
-    postJson<{ active: boolean }>('/overview/simulate-risk', { active }),
 }

@@ -79,7 +79,6 @@ const routes: RouteRecordRaw[] = [
       { path: 'alert/:id', name: 'mobile-alert-detail', component: MobileAlertDetailView },
     ],
   },
-  { path: '/demo', redirect: '/overview' },
   { path: '/:pathMatch(.*)*', redirect: '/overview' },
 ]
 

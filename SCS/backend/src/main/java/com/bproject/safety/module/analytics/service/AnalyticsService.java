@@ -7,7 +7,6 @@ import com.bproject.safety.module.alert.model.AlertTimelineEventTypes;
 import com.bproject.safety.module.alert.model.DemoAlert;
 import com.bproject.safety.module.alert.model.RiskLevels;
 import com.bproject.safety.module.alert.model.TimelineEvent;
-import com.bproject.safety.module.alert.demo.DemoAlertMaintenance;
 import com.bproject.safety.module.alert.model.AlertPageResult;
 import com.bproject.safety.module.alert.repository.AlertQuery;
 import com.bproject.safety.module.alert.repository.AlertScopeSummary;
@@ -67,14 +66,11 @@ public class AnalyticsService {
      * Phase B：风险突增演示的注入 / 回滚经 Demo 维护组件（deleteById 不属于正式仓储契约）；
      * 仅 simulateSurge 使用，Controller 层已由 DemoFeatureGuard 门控。
      */
-    private final DemoAlertMaintenance demoMaintenance;
 
-    public AnalyticsService(AlertRepository alerts, DomainLivePublisher publisher, Clock clock,
-                            DemoAlertMaintenance demoMaintenance) {
+    public AnalyticsService(AlertRepository alerts, DomainLivePublisher publisher, Clock clock) {
         this.alerts = alerts;
         this.publisher = publisher;
         this.clock = clock;
-        this.demoMaintenance = demoMaintenance;
     }
 
     // ---------- 聚合数据集 ----------
@@ -371,8 +367,16 @@ public class AnalyticsService {
                 injectSurge(targetArea);
             }
         } else {
-            // Phase B：演示数据物理删除走 Demo 维护组件，正式 AlertRepository 无 deleteById。
-            demoMaintenance.deleteByIdPrefix(SURGE_PREFIX);
+            // 回滚为状态转换（CANCELLED）：server profile 防删触发器禁止物理 DELETE，
+            // 且 CANCELLED 在所有查询/指标中与物理删除等效隐藏。
+            alerts.findAll().stream()
+                    .filter(a -> a.id != null && a.id.startsWith(SURGE_PREFIX)
+                            && !AlertStatuses.CANCELLED.equals(a.statusCode))
+                    .forEach(a -> {
+                        a.statusCode = AlertStatuses.CANCELLED;
+                        a.updatedAt = OffsetDateTime.now(clock);
+                        alerts.save(a);
+                    });
         }
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("active", turnOn);
@@ -416,7 +420,7 @@ public class AnalyticsService {
             a.timeline = List.of(new com.bproject.safety.module.alert.model.TimelineEvent(
                     a.time, a.occurredAt, "风险突增演示：人员进入危险区域", "done",
                     AlertTimelineEventTypes.CREATED, seqNo));
-            demoMaintenance.save(a);
+            alerts.save(a);
             seq++;
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("alertId", a.id);

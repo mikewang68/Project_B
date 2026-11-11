@@ -6,10 +6,6 @@ function lastUrl(): string {
   const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls as FetchCall[]
   return String(calls.at(-1)![0])
 }
-function lastCall(): FetchCall {
-  const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls as FetchCall[]
-  return calls.at(-1)!
-}
 
 function mockFetchOnce(payload: unknown): void {
   const response = {
@@ -44,13 +40,4 @@ describe('overview api client', () => {
     expect(lastUrl()).toBe('/api/v1/overview/alerts/ALM-1')
   })
 
-  it('posts simulate-risk with active flag and idempotency header', async () => {
-    mockFetchOnce({ active: true })
-    await overviewApi.simulateRisk(true)
-    const [url, init] = lastCall()
-    expect(String(url)).toBe('/api/v1/overview/simulate-risk')
-    expect(init?.method).toBe('POST')
-    expect((init?.headers as Headers).get('Idempotency-Key')).toBe('idem-key-1')
-    expect(JSON.parse(String(init?.body))).toEqual({ active: true })
-  })
 })

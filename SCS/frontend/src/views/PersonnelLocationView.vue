@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Position, Search, Timer, Warning } from '@element-plus/icons-vue'
+import { Search, Timer } from '@element-plus/icons-vue'
 import SafetyMapCanvas from '@/components/shared/SafetyMapCanvas.vue'
 import PersonnelList from '@/components/personnel/PersonnelList.vue'
 import PersonnelDetailDrawer from '@/components/personnel/PersonnelDetailDrawer.vue'
@@ -9,12 +10,14 @@ import TrackPlayback from '@/components/personnel/TrackPlayback.vue'
 import type { PersonnelRecord, TrackPoint, UwbStationHealth } from '@/types/personnel'
 import type { PersonnelPoint } from '@/types/overview'
 import type { FenceRecord } from '@/types/fence'
+
+const router = useRouter()
 import { personnelApi } from '@/api/personnel'
 import { fenceApi } from '@/api/fences'
 import { isDomainLiveEvent, sharedLiveSocket } from '@/api/live'
 
 const query = ref(''), team = ref(''), area = ref(''), state = ref(''), bracelet = ref(''), onlyAbnormal = ref(false)
-const lowBatteryDemo = ref(false), selectedId = ref('P-ZHAO'), drawerOpen = ref(false)
+const selectedId = ref('P-ZHAO'), drawerOpen = ref(false)
 const trackOpen = ref(false), playing = ref(false), trackIndex = ref(0), speed = ref(1)
 const people = ref<PersonnelRecord[]>([])
 const fences = ref<FenceRecord[]>([])
@@ -146,40 +149,6 @@ async function startPlayback(): Promise<void> {
 }
 function exitPlayback(): void { trackOpen.value = false; playing.value = false; trackIndex.value = 0 }
 
-async function toggleDemo(): Promise<void> {
-  const next = !lowBatteryDemo.value
-  try {
-    await personnelApi.simulateAbnormal('P-ZHAO', next ? 'lowBattery' : 'restore')
-    lowBatteryDemo.value = next
-    ElMessage[next ? 'warning' : 'success'](next ? '赵磊手环电量低于安全阈值' : '赵磊手环状态已恢复正常')
-    await loadList()
-  } catch (err) {
-    ElMessage.error(err instanceof Error ? err.message : '模拟失败')
-  }
-}
-
-/** 模拟进入外围逻辑缓冲区（隔离带预警）：黄色手环震动提醒折返，未触红线不停机 */
-async function simulateApproach(): Promise<void> {
-  try {
-    await personnelApi.simulateAbnormal('P-ZHAO', 'approach')
-    ElMessage.warning('赵磊靠近龙门吊外围逻辑隔离带，触发黄色手环震动预警（未触红线不停机）')
-    await loadList()
-  } catch (err) {
-    ElMessage.error(err instanceof Error ? err.message : '隔离带预警模拟失败')
-  }
-}
-
-/** 模拟赵磊进入已生效危险围栏：后端 PIP 命中后经 AlertService 建单并广播五端 */
-async function simulateIntrusion(): Promise<void> {
-  try {
-    await personnelApi.simulateAbnormal('P-ZHAO', 'intrusion')
-    ElMessage.error('赵磊跨越龙门吊核心红线，触发高危人员越界告警并联动紧急停机')
-    await loadList()
-  } catch (err) {
-    ElMessage.error(err instanceof Error ? err.message : '越界模拟失败')
-  }
-}
-
 async function remind(): Promise<void> {
   if (!selectedId.value) return
   try {
@@ -190,15 +159,9 @@ async function remind(): Promise<void> {
   }
 }
 
-async function showAlerts(): Promise<void> {
+function showAlerts(): void {
   if (!selectedId.value) return
-  try {
-    const list = await personnelApi.alerts(selectedId.value)
-    if (!list.length) ElMessage.info('该人员当前没有相关告警')
-    else ElMessage.info(`${selectedPerson.value?.name ?? ''} 相关告警 ${list.length} 条，可在告警中心查看处理`)
-  } catch {
-    ElMessage.warning('告警数据暂不可用')
-  }
+  void router.push({ path: '/alarms', query: { keyword: selectedId.value } })
 }
 
 function tick(): void { if (trackIndex.value >= track.value.length - 1) playing.value = false; else trackIndex.value += 1 }
@@ -242,15 +205,6 @@ onBeforeUnmount(() => {
             {{ refreshInterval >= 1000 ? (refreshInterval / 1000).toFixed(1) + 's' : refreshInterval + 'ms' }}
           </strong>
         </div>
-        <button type="button" class="demo-outline-button" :class="{ active: lowBatteryDemo }" @click="toggleDemo">
-          <el-icon><Warning /></el-icon>{{ lowBatteryDemo ? '恢复人员正常' : '模拟低电量' }}
-        </button>
-        <button type="button" class="demo-outline-button" style="border-color: #f3d19e; color: #b87a1e; background: #fdf6ec;" @click="simulateApproach">
-          <el-icon><Warning /></el-icon>靠近隔离带(预警)
-        </button>
-        <button type="button" class="demo-outline-button" style="border-color: #fde2e2; color: #f56c6c; background: #fef0f0;" @click="simulateIntrusion">
-          <el-icon><Position /></el-icon>越界红线(紧急停机)
-        </button>
       </div>
     </header>
 

@@ -39,7 +39,6 @@ const alerts = ref<OverviewAlert[]>([])
 const trend = ref<OverviewTrendDto>({ demo: true, points: [] })
 const distribution = ref<OverviewDistributionDto>({ items: [] })
 
-const riskActive = ref(false)
 const selectedAlert = ref<OverviewAlert>()
 const drawerOpen = ref(false)
 
@@ -99,20 +98,6 @@ async function refreshMapOnly(): Promise<void> {
 function scheduleMapRefresh(): void {
   if (mapTimer) clearTimeout(mapTimer)
   mapTimer = setTimeout(() => { void refreshMapOnly() }, 300)
-}
-
-/** 风险演示开关：由后端创建/关闭固定演示告警，五端经 WS 同步 */
-async function toggleRisk(): Promise<void> {
-  riskActive.value = !riskActive.value
-  try {
-    await overviewApi.simulateRisk(riskActive.value)
-    if (riskActive.value) ElMessage.warning('检测到人员进入危险区域')
-    else ElMessage.success('风险演示已恢复正常')
-    await Promise.all([loadSummary(), loadMap(), loadFeed(), loadDistribution()])
-  } catch (error) {
-    riskActive.value = !riskActive.value
-    ElMessage.error(error instanceof ApiError ? error.message : '操作失败')
-  }
 }
 
 async function openAlert(alert: OverviewAlert): Promise<void> {
@@ -177,8 +162,8 @@ onUnmounted(() => {
     </div>
 
     <div class="safety-core-grid">
-      <SafetyMap :people="people" :equipment="equipment" :fences="fences" :risk-active="riskActive"
-        :live-overlay="liveOverlay" @toggle-risk="toggleRisk" />
+      <SafetyMap :people="people" :equipment="equipment" :fences="fences"
+        :live-overlay="liveOverlay" />
       <RealtimeAlertFeed :alerts="alerts" :pending="summary.processingAlerts" @select="openAlert" />
     </div>
 

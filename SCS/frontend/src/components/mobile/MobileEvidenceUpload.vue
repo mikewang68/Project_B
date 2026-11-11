@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Camera, Delete, Picture } from '@element-plus/icons-vue'
+import { Delete, Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { IncidentPhoto } from '@/types/incident'
 
@@ -14,22 +14,6 @@ const fileInput = ref<HTMLInputElement>()
 
 function nowTime(): string {
   return new Date().toLocaleTimeString('zh-CN', { hour12: false })
-}
-
-/** 直接生成一张 Mock 现场照片（SVG 占位图） */
-function mockShot(): void {
-  const time = nowTime()
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160">
-    <rect width="240" height="160" fill="#f5f7fa"/>
-    <rect x="0" y="112" width="240" height="48" fill="#ebeef5"/>
-    <circle cx="60" cy="70" r="26" fill="#c0c4cc"/>
-    <rect x="110" y="46" width="96" height="64" rx="6" fill="#dcdfe6"/>
-    <text x="12" y="26" font-size="13" fill="#409eff" font-family="sans-serif">现场证据（Mock）</text>
-    <text x="12" y="146" font-size="12" fill="#606266" font-family="sans-serif">${time}</text>
-  </svg>`
-  const thumb = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-  emit('add', { id: `ph-${Date.now()}`, name: `现场照片-${props.photos.length + 1}.jpg`, thumb, time })
-  ElMessage.success('现场照片 1 · 上传成功（Mock）')
 }
 
 function pickLocal(): void {
@@ -53,9 +37,6 @@ function onFile(event: Event): void {
 <template>
   <div class="m-upload">
     <div class="m-upload__actions">
-      <button type="button" class="m-btn m-btn--ghost" @click="mockShot">
-        <el-icon><Camera /></el-icon>拍照（Mock）
-      </button>
       <button type="button" class="m-btn m-btn--ghost" @click="pickLocal">
         <el-icon><Picture /></el-icon>选择本地图片
       </button>

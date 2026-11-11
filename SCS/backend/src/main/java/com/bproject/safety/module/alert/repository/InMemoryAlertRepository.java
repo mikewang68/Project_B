@@ -67,6 +67,7 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
                         || q.assignee().equals(a.assigneeUserCode)
                         || (a.assignee != null && a.assignee.contains(q.assignee())))
                 .filter(a -> matchTimeRange(q, a))
+                .filter(a -> !AlertStatuses.CANCELLED.equals(a.statusCode))
                 .sorted(TIME_DESC)
                 .toList();
     }
@@ -140,7 +141,10 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
     /** 与 JDBC summarize 语义一致：同源数据单遍计算（test/dev profile 数据量小，直算即可）。 */
     @Override
     public AlertScopeSummary summarize(AlertQuery query) {
-        List<DemoAlert> scope = filter(query);
+        // CANCELLED = 逻辑删除：统计口径与物理删除等效隐藏（ surge 回滚即置 CANCELLED）
+        List<DemoAlert> scope = filter(query).stream()
+                .filter(a -> !AlertStatuses.CANCELLED.equals(a.statusCode))
+                .toList();
         Map<String, Long> byStatus = new java.util.LinkedHashMap<>();
         Map<String, Long> byRisk = new java.util.LinkedHashMap<>();
         Map<String, Long> byArea = new java.util.LinkedHashMap<>();

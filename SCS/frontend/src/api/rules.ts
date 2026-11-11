@@ -123,4 +123,8 @@ export const ruleApi = {
 
   conflictCheck: async (ruleId?: string): Promise<MappedRuleConflict[]> =>
     mapConflicts(await postJson('/rules/conflict-check', { ruleId })),
+  conflictIgnore: (ruleA: string, ruleB: string, param: string, operator?: string) =>
+    postJson<{ ignored: boolean }>('/rules/conflict-ignore', { ruleA, ruleB, param, operator }),
+  ignoredConflicts: () =>
+    apiRequest<Array<{ ruleA: string; ruleB: string; param: string; ignoredBy: string; ignoredAt: string }>>('/rules/conflict-ignored'),
 }

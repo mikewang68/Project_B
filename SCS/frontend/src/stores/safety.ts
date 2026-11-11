@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { apiRequest, postJson } from '@/api/http'
+import { apiRequest } from '@/api/http'
 import { SafetyLiveClient, type LiveState } from '@/api/live'
 import type { SafetySnapshot } from '@/types/safety'
 
@@ -55,33 +55,6 @@ export const useSafetyStore = defineStore('safety', () => {
     liveClient.connect()
   }
 
-  async function mutate(path: string, body: unknown): Promise<void> {
-    const currentGeneration=generation
-    error.value = undefined
-    try {
-      const next=await postJson<SafetySnapshot>(path, body)
-      // 登出/授权版本变更（dispose）后到达的写响应不得覆盖已清空的状态
-      if(currentGeneration!==generation)return
-      snapshot.value=next
-      usingFallback.value = false
-    } catch (cause) {
-      if(currentGeneration===generation){
-        error.value = cause instanceof Error ? cause.message : '操作失败'
-      }
-      throw cause
-    }
-  }
-
-  const triggerScenario = (id: string) => mutate(`/demo/scenarios/${id}`, {})
-  const setFenceEnabled = (id: string, enabled: boolean) => mutate(`/fences/${id}/state`, { enabled })
-  const setRuleEnabled = (id: string, enabled: boolean) => mutate(`/rules/${id}/state`, { enabled })
-  // 操作人不写死：后端以会话主体作为审计兜底（本 store 仅服务于未挂路由的演示页）
-  const reviewAi = (id: string, result: string) => mutate(`/ai-events/${id}/review`, { result })
-  const actOnAlarm = (id: string, action: string) => mutate(`/alarms/${id}/actions`, { action, remark: '界面操作' })
-  const setNetwork = (connected: boolean) => mutate('/simulation/network', { connected })
-  const setPaused = (paused: boolean) => mutate('/simulation/pause', { paused })
-  const setSpeed = (multiplier: number) => mutate('/simulation/speed', { multiplier })
-
   function dispose(): void {
     generation++;loading.value=false
     liveClient?.stop()
@@ -89,5 +62,5 @@ export const useSafetyStore = defineStore('safety', () => {
     snapshot.value=emptySnapshot();usingFallback.value=true;error.value=undefined
   }
 
-  return { snapshot, connection, usingFallback, loading, error, activeAlarms, urgentAlarms, riskyDevices, pendingAi, initialize, triggerScenario, setFenceEnabled, setRuleEnabled, reviewAi, actOnAlarm, setNetwork, setPaused, setSpeed, dispose }
+  return { snapshot, connection, usingFallback, loading, error, activeAlarms, urgentAlarms, riskyDevices, pendingAi, initialize, dispose }
 })

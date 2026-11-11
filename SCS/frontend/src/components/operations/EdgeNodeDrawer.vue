@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { ElDrawer } from 'element-plus'
 import { Close } from '@element-plus/icons-vue'
 import type { EdgeNode } from '@/types/operations'
+import { operationsApi } from '@/api/operations'
 import OpsHealthBadge from './OpsHealthBadge.vue'
 
 const props = defineProps<{ modelValue: boolean; node: EdgeNode | null }>()
@@ -16,28 +17,71 @@ const emit = defineEmits<{
 const showLogs = ref(false)
 const diagnosing = ref(false)
 const diagnoseDone = ref(false)
+const diagnoseError = ref('')
+interface DiagnoseLine { t: string; level: 'INFO' | 'WARN' | 'ERROR'; text: string }
+const diagnoseLines = ref<DiagnoseLine[]>([])
 
 watch(() => props.modelValue, (v) => {
-  if (v) { showLogs.value = false; diagnoseDone.value = false }
+  if (v) { showLogs.value = false; diagnoseDone.value = false; diagnoseLines.value = []; diagnoseError.value = '' }
 })
 
 const versionMismatch = computed(() => !!props.node && props.node.ruleVersion !== props.node.platformVersion)
 
-const mockLogs = computed(() => {
-  if (!props.node) return []
-  return [
-    { t: '11:42:18', level: 'INFO', text: `${props.node.id} 本地规则引擎心跳正常` },
-    { t: '11:41:55', level: 'INFO', text: `规则版本 ${props.node.ruleVersion} 校验通过` },
-    { t: '11:40:12', level: 'WARN', text: `缓存占用 ${props.node.storage}%，高等级事件优先保留` },
-    { t: '11:38:40', level: 'INFO', text: '感知设备轮询完成，全部设备可达' },
-    { t: '11:35:09', level: 'INFO', text: '本地联动策略自检通过' },
-  ]
-})
+function nowTime(): string {
+  return new Date().toLocaleTimeString('zh-CN', { hour12: false })
+}
 
-function runDiagnose(): void {
+/** 真实诊断：读取链路状态、规则版本一致性、时间偏差三项（来自边缘自治接口与节点台账）。 */
+async function runDiagnose(): Promise<void> {
+  if (!props.node) return
+  const nodeId = props.node.id
   diagnosing.value = true
   diagnoseDone.value = false
-  window.setTimeout(() => { diagnosing.value = false; diagnoseDone.value = true }, 1100)
+  diagnoseError.value = ''
+  diagnoseLines.value = []
+  const lines: DiagnoseLine[] = []
+  try {
+    const link = await operationsApi.link()
+    const nodeLink = link.nodes.find((n) => n.nodeId === nodeId)
+    lines.push({
+      t: nowTime(), level: 'INFO',
+      text: `云边链路 ${link.label}（${link.state}）`,
+    })
+    lines.push({
+      t: nowTime(), level: nodeLink?.cloudConnected ? 'INFO' : 'WARN',
+      text: `云端连接 ${nodeLink?.cloudConnected ? '正常' : '中断'}；本地自治 ${nodeLink?.autonomyActive ? '激活' : '未激活'}`,
+    })
+    try {
+      const reconcile = await operationsApi.ruleReconcileView()
+      const match = reconcile.expectedRuleVersion === props.node.ruleVersion
+      lines.push({
+        t: nowTime(), level: match ? 'INFO' : 'WARN',
+        text: match
+          ? `规则版本 ${props.node.ruleVersion} 与平台预期一致`
+          : `规则版本不一致：节点 ${props.node.ruleVersion}，平台预期 ${reconcile.expectedRuleVersion}`,
+      })
+    } catch {
+      lines.push({ t: nowTime(), level: 'WARN', text: '规则版本对账暂不可达' })
+    }
+    const offset = props.node.timeOffsetMs
+    lines.push({
+      t: nowTime(), level: offset === null || Math.abs(offset) <= 2000 ? 'INFO' : 'WARN',
+      text: offset === null
+        ? '时间偏差未知（尚未校时）'
+        : Math.abs(offset) <= 2000
+          ? '时间同步正常'
+          : `时间偏差 ${offset} ms，建议重新同步时间`,
+    })
+    lines.push({ t: nowTime(), level: 'INFO', text: '诊断完成' })
+    diagnoseLines.value = lines
+    diagnoseDone.value = true
+  } catch (err) {
+    diagnoseError.value = err instanceof Error ? err.message : '诊断请求失败'
+    lines.push({ t: nowTime(), level: 'ERROR', text: diagnoseError.value })
+    diagnoseLines.value = lines
+  } finally {
+    diagnosing.value = false
+  }
 }
 </script>
 
@@ -106,14 +150,15 @@ function runDiagnose(): void {
               {{ showLogs ? '收起日志' : '查看日志' }}
             </button>
           </div>
-          <div v-if="diagnoseDone" class="ops-inline-result success">
-            诊断完成：规则引擎、感知总线、本地联动、缓存读写均正常。
+          <div v-if="diagnoseDone && !diagnoseError" class="ops-inline-result success">
+            诊断完成：结果见下方日志（含链路 / 规则版本 / 时间同步三项真实状态）。
           </div>
-          <ul v-if="showLogs" class="edge-log-list">
-            <li v-for="(l, i) in mockLogs" :key="i" :data-level="l.level">
+          <ul v-if="showLogs && diagnoseLines.length" class="edge-log-list">
+            <li v-for="(l, i) in diagnoseLines" :key="i" :data-level="l.level">
               <span class="mono">{{ l.t }}</span><em>{{ l.level }}</em><p>{{ l.text }}</p>
             </li>
           </ul>
+          <p v-else-if="showLogs" class="ops-inline-result">尚未运行诊断；点击「诊断」获取链路、规则版本与时间的真实状态。</p>
         </div>
       </div>
     </template>

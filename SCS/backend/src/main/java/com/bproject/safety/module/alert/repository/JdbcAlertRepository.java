@@ -128,7 +128,7 @@ public class JdbcAlertRepository implements AlertRepository {
     @Override
     public List<DemoAlert> filter(AlertQuery query) {
         MapSqlParameterSource params = new MapSqlParameterSource();
-        StringBuilder sql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE 1=1 ");
+        StringBuilder sql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE status_code <> 'CANCELLED' ");
         buildQueryConditions(query, sql, params);
         sql.append(" ORDER BY occurred_at DESC, id DESC");
 
@@ -146,7 +146,7 @@ public class JdbcAlertRepository implements AlertRepository {
     @Override
     public AlertPageResult page(AlertQuery query) {
         MapSqlParameterSource params = new MapSqlParameterSource();
-        StringBuilder countSql = new StringBuilder("SELECT COUNT(*) FROM safety.safety_alert WHERE 1=1 ");
+        StringBuilder countSql = new StringBuilder("SELECT COUNT(*) FROM safety.safety_alert WHERE status_code <> 'CANCELLED' ");
         buildQueryConditions(query, countSql, params);
 
         Long totalObj = jdbcTemplate.queryForObject(countSql.toString(), params, Long.class);
@@ -156,7 +156,7 @@ public class JdbcAlertRepository implements AlertRepository {
             return new AlertPageResult(query.page(), query.pageSize(), 0, Collections.emptyList());
         }
 
-        StringBuilder pageSql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE 1=1 ");
+        StringBuilder pageSql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE status_code <> 'CANCELLED' ");
         buildQueryConditions(query, pageSql, params);
         pageSql.append(" ORDER BY occurred_at DESC, id DESC LIMIT :limit OFFSET :offset");
 
@@ -336,7 +336,7 @@ public class JdbcAlertRepository implements AlertRepository {
     @Override
     public AlertScopeSummary summarize(AlertQuery query) {
         MapSqlParameterSource params = new MapSqlParameterSource();
-        StringBuilder where = new StringBuilder(" WHERE 1=1 ");
+        StringBuilder where = new StringBuilder(" WHERE status_code <> 'CANCELLED' ");
         buildQueryConditions(query, where, params);
 
         // Q1 标量：总量 + 未关闭严重/紧急（供顶部 metrics 组合）
@@ -428,7 +428,7 @@ public class JdbcAlertRepository implements AlertRepository {
     @Override
     public List<DemoAlert> filterRecent(AlertQuery query, int limit) {
         MapSqlParameterSource params = new MapSqlParameterSource();
-        StringBuilder sql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE 1=1 ");
+        StringBuilder sql = new StringBuilder(BASE_SELECT_ROOT).append(" WHERE status_code <> 'CANCELLED' ");
         buildQueryConditions(query, sql, params);
         sql.append(" ORDER BY occurred_at DESC, id DESC LIMIT :recentLimit");
         params.addValue("recentLimit", Math.max(1, limit));

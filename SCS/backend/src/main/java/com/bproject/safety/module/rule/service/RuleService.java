@@ -3,6 +3,7 @@ package com.bproject.safety.module.rule.service;
 import com.bproject.safety.common.error.ApiException;
 import com.bproject.safety.common.realtime.DomainLivePublisher;
 import com.bproject.safety.common.realtime.LiveEventTypes;
+import com.bproject.safety.module.rule.dto.RuleRequests.ConflictIgnoreRequest;
 import com.bproject.safety.module.rule.dto.RuleRequests.CreateRuleRequest;
 import com.bproject.safety.module.rule.dto.RuleRequests.OperatorRequest;
 import com.bproject.safety.module.rule.dto.RuleRequests.RedeliverRequest;
@@ -47,22 +48,28 @@ public class RuleService {
     private final RuleNumberGenerator numberGenerator;
     /** review-#4/#10：事务化路径的广播经 gate 延迟到 afterCommit。 */
     private final com.bproject.safety.common.realtime.LiveEventGate gate;
+    /** 冲突忽略决策存储（可为空：历史测试直连构造），空时不落库仅内存态。 */
+    private final com.bproject.safety.module.rule.repository.RuleConflictIgnoreStore conflictIgnoreStore;
 
     /** 兼容历史测试直连（无广播门控，行为与旧版一致）。 */
     public RuleService(RuleRepository repository, DomainLivePublisher publisher, Clock clock,
                        RuleNumberGenerator numberGenerator) {
-        this(repository, publisher, clock, numberGenerator, null);
+        this(repository, publisher, clock, numberGenerator, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
     public RuleService(RuleRepository repository, DomainLivePublisher publisher, Clock clock,
                        RuleNumberGenerator numberGenerator,
-                       @org.springframework.lang.Nullable com.bproject.safety.common.realtime.LiveEventGate gate) {
+                       @org.springframework.lang.Nullable com.bproject.safety.common.realtime.LiveEventGate gate,
+                       @org.springframework.lang.Nullable com.bproject.safety.module.rule.repository.RuleConflictIgnoreStore conflictIgnoreStore) {
         this.repository = repository;
         this.publisher = publisher;
         this.clock = clock;
         this.numberGenerator = numberGenerator;
         this.gate = gate;
+        this.conflictIgnoreStore = conflictIgnoreStore != null
+                ? conflictIgnoreStore
+                : new com.bproject.safety.module.rule.repository.InMemoryRuleConflictIgnoreStore();
     }
 
     /** 广播统一收口：有事务时延迟至 afterCommit，避免"广播已发、事务回滚"。 */
@@ -457,10 +464,45 @@ public class RuleService {
                 c.put("severity", high ? "high" : "normal");
                 c.put("desc", a.id + " 与 " + b.id + " 在「" + overlap + "」的「" + pair[0]
                         + "」阈值不一致（" + pair[1] + " vs " + pair[2] + "）");
+                if (conflictIgnoreStore.isIgnored(String.valueOf(a.id), String.valueOf(b.id), pair[0])) {
+                    continue;
+                }
                 conflicts.add(c);
             }
         }
         return conflicts;
+    }
+
+    /** 记录冲突忽略决策（幂等）：conflict-check 从此排除该配对。 */
+    public Map<String, Object> ignoreConflict(com.bproject.safety.module.rule.dto.RuleRequests.ConflictIgnoreRequest request) {
+        if (request == null || request.ruleA() == null || request.ruleB() == null || request.param() == null
+                || request.ruleA().isBlank() || request.ruleB().isBlank() || request.param().isBlank()) {
+            throw ApiException.badRequest("忽略冲突必须指定规则对与冲突参数");
+        }
+        get(request.ruleA());
+        get(request.ruleB());
+        boolean inserted = conflictIgnoreStore.ignore(request.ruleA(), request.ruleB(), request.param(),
+                request.operator() == null || request.operator().isBlank() ? "系统" : request.operator());
+        return Map.of(
+                "ignored", inserted,
+                "ruleA", request.ruleA(),
+                "ruleB", request.ruleB(),
+                "param", request.param());
+    }
+
+    /** 当前已忽略的冲突配对（审计与前端展示）。 */
+    public List<Map<String, Object>> ignoredConflicts() {
+        return conflictIgnoreStore.list().stream()
+                .map(ic -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("ruleA", ic.ruleA());
+                    m.put("ruleB", ic.ruleB());
+                    m.put("param", ic.param());
+                    m.put("ignoredBy", ic.ignoredBy());
+                    m.put("ignoredAt", ic.ignoredAt());
+                    return m;
+                })
+                .toList();
     }
 
     // ---------- 内部辅助 ----------

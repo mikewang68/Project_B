@@ -41,4 +41,8 @@ public final class RuleRequests {
     /** 冲突检查入参（可空：默认全量扫描；传入 ruleId 时附带该草稿与现有规则的预检）。 */
     public record ConflictCheckRequest(String ruleId) {
     }
+
+    /** 冲突忽略决策：持久化后 conflict-check 排除该配对。 */
+    public record ConflictIgnoreRequest(String ruleA, String ruleB, String param, String operator) {
+    }
 }

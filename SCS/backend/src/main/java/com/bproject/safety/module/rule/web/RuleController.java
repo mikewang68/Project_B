@@ -1,6 +1,7 @@
 package com.bproject.safety.module.rule.web;
 
 import com.bproject.safety.module.rule.dto.RuleRequests.ConflictCheckRequest;
+import com.bproject.safety.module.rule.dto.RuleRequests.ConflictIgnoreRequest;
 import com.bproject.safety.module.rule.dto.RuleRequests.CreateRuleRequest;
 import com.bproject.safety.module.rule.dto.RuleRequests.OperatorRequest;
 import com.bproject.safety.module.rule.dto.RuleRequests.PublishRequest;
@@ -136,9 +137,21 @@ public class RuleController {
     }
 
     @PostMapping("/conflict-check")
-    @Operation(summary = "规则冲突检查（同区域同类型阈值冲突）")
+    @Operation(summary = "规则冲突检查（同区域同类型阈值冲突；已忽略配对排除）")
     public Map<String, List<Map<String, Object>>> conflictCheck(
             @RequestBody(required = false) ConflictCheckRequest request) {
         return Map.of("conflicts", service.conflictCheck());
+    }
+
+    @PostMapping("/conflict-ignore")
+    @Operation(summary = "忽略冲突（持久化决策，conflict-check 排除该配对）")
+    public Map<String, Object> conflictIgnore(@RequestBody ConflictIgnoreRequest request) {
+        return service.ignoreConflict(request);
+    }
+
+    @GetMapping("/conflict-ignored")
+    @Operation(summary = "已忽略的冲突配对列表")
+    public List<Map<String, Object>> ignoredConflicts() {
+        return service.ignoredConflicts();
     }
 }

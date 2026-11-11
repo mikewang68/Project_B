@@ -40,9 +40,8 @@ describe('router 路由表', () => {
     return record?.redirect
   }
 
-  it('根路径与 /demo 重定向到 /overview', () => {
+  it('根路径重定向到 /overview', () => {
     expect(redirectOf('/')).toBe('/overview')
-    expect(redirectOf('/demo')).toBe('/overview')
   })
 
   it('未知路径兜底重定向到 /overview，不产生空白页', () => {

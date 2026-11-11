@@ -15,6 +15,7 @@ import RulePublishDialog from '@/components/rules/RulePublishDialog.vue'
 import RuleRollbackDialog from '@/components/rules/RuleRollbackDialog.vue'
 import { ruleApi, type RuleRollbackResult } from '@/api/rules'
 import type { MappedRuleConflict } from '@/adapters/rule'
+import type { RuleConflict } from '@/types/rule'
 import { isDomainLiveEvent, sharedLiveSocket } from '@/api/live'
 import type { SafetyRule } from '@/types/rule'
 
@@ -245,7 +246,19 @@ function viewConflict(c: { ruleA: string }): void {
   const target = rules.value.find((r) => r.id === c.ruleA)
   if (target) openDetail(target)
 }
-function ignoreConflict(): void { ElMessage.warning('已忽略冲突并保存，建议发布前再次复核') }
+async function ignoreConflict(targets: RuleConflict[]): Promise<void> {
+  const operator = '界面操作'
+  try {
+    for (const c of targets) {
+      await ruleApi.conflictIgnore(c.ruleA, c.ruleB, c.paramLabel, operator)
+    }
+    ElMessage.success(`已忽略并保存 ${targets.length} 条冲突，该配对不再出现在冲突检查中`)
+    conflicts.value = []
+    conflictOpen.value = false
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '忽略冲突失败')
+  }
+}
 
 // ---------- 版本异常 ----------
 async function simulateMismatch(): Promise<void> {

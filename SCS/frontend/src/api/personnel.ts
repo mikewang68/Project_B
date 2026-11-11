@@ -48,9 +48,6 @@ export const personnelApi = {
   remind: async (id: string, message?: string): Promise<{ sent: boolean; time: string; message: string }> =>
     postJson(`/personnel/${encodeURIComponent(id)}/remind`, { message }),
 
-  simulateAbnormal: async (id: string, kind: string): Promise<PersonnelRecord> =>
-    mapPerson(await postJson(`/personnel/simulate-abnormal`, { id, kind })),
-
   getConfig: async (): Promise<PersonnelConfig> =>
     (await apiRequest(`/personnel/config`)) as PersonnelConfig,
 

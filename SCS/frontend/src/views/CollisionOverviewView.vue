@@ -14,7 +14,11 @@ import StatusBadge from '@/components/shared/StatusBadge.vue'
 import type { CollisionEquipment, CollisionRisk, CollisionSimulateResult, DistancePoint, LinkageStep } from '@/types/collision'
 import { collisionApi } from '@/api/collision'
 import { isDomainLiveEvent, sharedLiveSocket } from '@/api/live'
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
+const auth = useAuthStore()
+const router = useRouter()
 const devices = ref<CollisionEquipment[]>([])
 const selectedType = ref<'转运车辆' | '翻箱机' | '龙门吊'>('转运车辆')
 const selectedCurrentId = ref('VEH-07'), selectedRelatedId = ref('TIP-02')
@@ -186,7 +190,7 @@ function simulateFailure(): void {
 async function confirmTakeover(): Promise<void> {
   takeoverOpen.value = false
   try {
-    const res = await collisionApi.takeover(selectedCurrentId.value, '', '现场人工急停确认')
+    const res = await collisionApi.takeover(selectedCurrentId.value, auth.displayName || '现场操作员', '现场人工急停确认')
     controlFailure.value = false
     takeoverDone.value = true
     deviceStopped.value = true
@@ -222,7 +226,7 @@ function releaseRisk(): void {
   ElMessageBox.confirm('确认提交设备运行限制解除申请？此操作仅用于 Demo 展示。', '申请解除限制', { confirmButtonText: '确认申请', cancelButtonText: '取消', type: 'warning' })
     .then(async () => {
       try {
-        const res = await collisionApi.releaseRequest(selectedCurrentId.value, '', releaseChecks.value.filter((c) => c.passed).map((c) => c.label))
+        const res = await collisionApi.releaseRequest(selectedCurrentId.value, auth.displayName || '现场操作员', releaseChecks.value.filter((c) => c.passed).map((c) => c.label))
         applyResult(await collisionApi.simulate(selectedCurrentId.value, 'reset'))
         deviceStopped.value = false; takeoverDone.value = false
         await loadTrend()
@@ -286,7 +290,7 @@ onBeforeUnmount(() => { clearTimers(); disposeLive?.() })
 
     <div class="collision-bottom-grid"><DistanceTrendChart :points="trendPoints" :risk="risk" /><SafetyLinkagePanel :steps="linkageSteps" /></div>
 
-    <EquipmentDetailDrawer v-model="drawerOpen" :equipment="selectedEquipment" @history="ElMessage.info('历史风险可在告警中心按设备筛选查看')" @request-release="requestRestrictionRelease" />
+    <EquipmentDetailDrawer v-model="drawerOpen" :equipment="selectedEquipment" @history="router.push({ path: '/alarms', query: { keyword: selectedEquipment?.id } })" @request-release="requestRestrictionRelease" />
     <ManualTakeoverDialog v-model="takeoverOpen" @confirm="confirmTakeover" />
     <RiskReleaseDialog v-model="releaseOpen" :checks="releaseChecks" @confirm="releaseRisk" />
   </section>
