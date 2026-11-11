@@ -138,6 +138,19 @@ app:
     name-server: ${ROCKETMQ_NAMESRV_ADDR:127.0.0.1:9876}
     producer-group: ${ROCKETMQ_PRODUCER_GROUP:safety-control-demo-producer}
     timeout-ms: ${ROCKETMQ_TIMEOUT_MS:3000}
+  public-data:
+    # 公共底座设备数据接收（董博涵交接包 2026-11-11）；默认关闭。
+    # Broker 通告 127.0.0.1:39921 → 消费器所在主机需持有一条 bn5 回环隧道（38121/39887/39921）。
+    enabled: ${PUBLIC_DATA_ENABLED:false}
+    nameserver: ${PUBLIC_DATA_MQ_NAMESERVER:127.0.0.1:39887}
+    access-key: ${PUBLIC_DATA_MQ_ACCESS_KEY:}
+    secret-key: ${PUBLIC_DATA_MQ_SECRET_KEY:}
+    group: ${PUBLIC_DATA_MQ_GROUP:b-device-committed-scs-v1}
+    topic: ${PUBLIC_DATA_MQ_TOPIC:b-device-committed-v1}
+    http-base-url: ${PUBLIC_DATA_HTTP_BASE_URL:http://127.0.0.1:38121}
+    http-token: ${PUBLIC_DATA_HTTP_TOKEN:}
+    backfill-enabled: ${PUBLIC_DATA_BACKFILL_ENABLED:false}
+    backfill-page-size: ${PUBLIC_DATA_BACKFILL_PAGE_SIZE:100}
   opengemini:
     enabled: ${OPENGEMINI_ENABLED:false}
     base-url: ${OPENGEMINI_URL:http://127.0.0.1:8086}

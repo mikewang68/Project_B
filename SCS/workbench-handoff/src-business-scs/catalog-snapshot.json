@@ -1,0 +1,14 @@
+{
+  "snapshot_note": "catalog.json 交付快照摘录（2026-11-11）：设备→模板/点码 + SCS 消费绑定（db/v21/003 种子）。联调以 GET /api/device-data/v1/catalog 实时目录为准。",
+  "devices": [
+    {"device_id": "SIM-0ece1fee47f641be93d4ac53", "name": "测距雷达1", "template_id": "scs-radar", "points": ["SCS-SIM-OBSERVATION", "SCS-SIM-RAW"], "scs_domain": "RADAR", "scs_object_code": "VEH-07", "scenarios": ["approach 接近场景", "静态测距", "故障注入"]},
+    {"device_id": "SIM-142e73df50a24723a70c4eae", "name": "AI视频分析盒1", "template_id": "scs-aibox", "points": ["SCS-SIM-OBSERVATION", "SCS-SIM-RAW", "SCS-SIM-SNAPSHOT"], "scs_domain": "AI", "scs_object_code": "CAM-01", "scenarios": ["mixed 混合违规", "no_helmet 未戴帽", "no_vest 未穿反光衣", "intrusion 闯入"]},
+    {"device_id": "SIM-14dcba2c643b48f084b55b7e", "name": "UWB定位终端1", "template_id": "scs-uwb", "points": ["SCS-SIM-OBSERVATION", "SCS-SIM-RAW"], "scs_domain": "UWB", "scs_object_code": "P-1001", "scenarios": ["patrol 巡逻", "滞留", "越界"]},
+    {"device_id": "SIM-471ece2b2ec742939729173d", "name": "液压翻箱机1", "template_id": "scs-tipper", "points": ["SCS-SIM-OBSERVATION", "SCS-SIM-RAW"], "scs_domain": "DEVICE", "scs_object_code": "TIP-02", "scenarios": ["idle 空闲", "dump 翻转", "blocked 堵料", "fault 故障"]},
+    {"device_id": "SIM-4bf65976b5754fd89d903232", "name": "限位开关1", "template_id": "scs-limit-switch", "points": ["SCS-SIM-OBSERVATION", "SCS-SIM-RAW"], "scs_domain": "ZONE", "scs_object_code": "LOADING-A", "scenarios": ["working 压合", "idle 释放", "fault 故障"]},
+    {"device_id": "SIM-aed34d3f7bb84082a061bf7a", "name": "龙门吊（SCS模型）1", "template_id": "scs-crane", "points": ["SCS-SIM-OBSERVATION", "SCS-SIM-RAW"], "scs_domain": "DEVICE", "scs_object_code": "CRANE-01", "scenarios": ["idle 空闲", "hoist 起升", "travel 行走", "wind 大风", "fault 故障"]},
+    {"device_id": "SIM-af1935235c6b4adbbfa7a2cc", "name": "声光报警器1", "template_id": "scs-alarm-light", "points": ["SCS-SIM-OBSERVATION", "SCS-SIM-RAW"], "scs_domain": "OBSERVE", "scs_object_code": "ALARM-LIGHT-01", "scenarios": ["示警触发", "回执观察"]},
+    {"device_id": "SIM-f0f11ffa302b424f80ab9d30", "name": "位置传感器1", "template_id": "scs-position-sensor", "points": ["SCS-SIM-OBSERVATION", "SCS-SIM-RAW"], "scs_domain": "ZONE", "scs_object_code": "LOADING-B", "scenarios": ["arrive 车辆驶入", "empty 驶离", "fault 故障"]}
+  ],
+  "s3_fields": ["event_id", "source_id", "ts_event", "ts_ingest", "seq", "quality_code", "x_m", "y_m", "z_m", "accuracy_m", "distance_m", "relative_speed_mps", "confidence", "alarm_level", "rule_id", "rule_version", "status", "ack_code", "snapshot_url", "sha256", "trace_id", "cached", "retry_count", "operator_id"]
+}

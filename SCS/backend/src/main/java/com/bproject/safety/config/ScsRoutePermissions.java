@@ -15,6 +15,7 @@ public final class ScsRoutePermissions {
     else if(p.startsWith("alerts"))module="safety:module:alert";
     else if(p.startsWith("rules"))module="safety:module:rule";
     else if(p.startsWith("ops")||p.startsWith("edge"))module="safety:module:ops";
+    else if(p.startsWith("public-data"))module="safety:module:ops";
     else if(p.startsWith("collision"))module="safety:module:collision";
     else if(p.startsWith("analytics"))module="safety:module:stat";
     else if(p.startsWith("fences"))module="safety:fence";

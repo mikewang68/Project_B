@@ -89,6 +89,7 @@ public final class ScsCentralScope {
     if(post&&p.matches("ai/models/[^/]+/select"))return c.adminLevel().equals("L1_SUPER")&&action(c,"CONFIRM","SCS:ai-models");
     if(method.equals("PUT")&&p.matches("ai/models/[^/]+/config"))return c.adminLevel().equals("L1_SUPER")&&action(c,"EDIT","SCS:ai-models");
     if(read&&p.matches("ops/(overview|topology|edge-nodes(?:/[^/]+)?|devices|interfaces|events)"))return action(c,"VIEW","SCS:operations");
+    if(read&&p.startsWith("public-data"))return action(c,"VIEW","SCS:operations");
     if(read&&p.matches("edge/(link|local-events|reconcile/rules)"))return action(c,"VIEW","SCS:operations");
     if(post&&(p.matches("ops/edge-nodes/[^/]+/maintain")||p.matches("ops/devices/[^/]+/reconnect")||p.matches("edge/(recover|reconcile/rules|reconcile/time)")))return action(c,"CONFIRM","SCS:operations");
     if(read&&p.matches("analytics/(dataset|events|devices/[^/]+|persons/[^/]+)"))return action(c,"VIEW","SCS:analytics");
