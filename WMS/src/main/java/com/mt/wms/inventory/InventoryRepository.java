@@ -17,7 +17,7 @@ class InventoryRepository {
         SELECT b.id,g.code AS good_code,g.name AS good_name,g.barcode,l.code AS location_code,
                b.batch_code,b.quality_type,b.supplier_code,b.product_date,b.expire_date,b.lpn,
                b.available_qty,b.allocated_qty,b.frozen_qty,
-               (b.available_qty+b.allocated_qty+b.frozen_qty) AS total_qty,b.version
+               (b.available_qty+b.allocated_qty+b.frozen_qty) AS total_qty,b.version,g.unit
           FROM inv_balance b JOIN wms_good g ON g.id=b.good_id JOIN wms_location l ON l.id=b.location_id
          WHERE b.company_id=:c AND b.warehouse_id=:w AND b.owner_id=:o
            AND (b.available_qty+b.allocated_qty+b.frozen_qty)>0
@@ -28,7 +28,7 @@ class InventoryRepository {
         SELECT b.id,g.code AS good_code,g.name AS good_name,g.barcode,l.code AS location_code,
                b.batch_code,b.quality_type,b.supplier_code,b.product_date,b.expire_date,b.lpn,
                b.available_qty,b.allocated_qty,b.frozen_qty,
-               (b.available_qty+b.allocated_qty+b.frozen_qty) AS total_qty,b.version
+               (b.available_qty+b.allocated_qty+b.frozen_qty) AS total_qty,b.version,g.unit
           FROM inv_balance b JOIN wms_good g ON g.id=b.good_id JOIN wms_location l ON l.id=b.location_id
          WHERE b.id=:id AND b.company_id=:c AND b.warehouse_id=:w AND b.owner_id=:o
         """).param("id",balanceId).param("c",companyId).param("w",warehouseId).param("o",ownerId).query(InventoryModels.BalanceView.class).optional().orElseThrow(()->new IllegalArgumentException("库存不存在"));}
