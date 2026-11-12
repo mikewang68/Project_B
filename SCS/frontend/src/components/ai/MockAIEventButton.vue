@@ -86,7 +86,8 @@ function handleEdgeCommand(command: string | number | object) {
 
     <!-- 模拟场景控制组（保留完整兼容与边界测试） -->
     <div class="ai-control-toolbar__group ai-control-toolbar__sim">
-      <button v-permission="{permission:'safety:module:ai:edit',menu:'SCS:ai',action:'EDIT',adapted:false}" type="button" class="ai-toolbar-btn ghost" @click="emit('simulate')">
+      <!-- 后端 extendedPermits 已为 scoped 会话注册 /ai-events/simulate（EDIT），随标准 adapted 口径走菜单动作判定 -->
+      <button v-permission="{permission:'safety:module:ai:edit',menu:'SCS:ai',action:'EDIT'}" type="button" class="ai-toolbar-btn ghost" @click="emit('simulate')">
         <ElIcon><MagicStick /></ElIcon>
         <span>模拟标准事件</span>
       </button>
