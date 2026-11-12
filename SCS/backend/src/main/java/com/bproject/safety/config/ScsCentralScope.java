@@ -133,9 +133,10 @@ public final class ScsCentralScope {
       return null;
     }
     if(root==Root.AI_MODEL){requireGlobalConfigurationWriter();return null;}
-    // L1_SUPER 平台总管理员（GLOBAL 模式）：全局权威，写路径免唯一 scope 选择。
-    // 只读账号仍拒绝；非 GLOBAL（SCOPED/DENY）维持"写入须选择唯一授权范围"。
-    if(context.adminLevel().equals("L1_SUPER")&&!context.readOnly()&&context.scopeMode()==ScopeSql.Mode.GLOBAL)return null;
+    // L1_SUPER 平台总管理员：全局权威（GLOBAL/SCOPED 任意元组数），写路径免唯一 scope 选择。
+    // 只读账号仍拒绝；DENY 维持拒绝。SCOPED 非唯一元组的 L1 账号（如 leiwen_platform_admin）
+    // 读全库、写全局，行不盖元组，与 admin 种子账号（context==null）行为对齐。
+    if(context.adminLevel().equals("L1_SUPER")&&!context.readOnly()&&context.scopeMode()!=ScopeSql.Mode.DENY)return null;
     if(context.readOnly()||context.scopeMode()!=ScopeSql.Mode.SCOPED||context.activeScope().size()!=1)
       throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"写入须选择唯一授权范围");
     // Held until the repository transaction commits; prevents two domains from
@@ -165,8 +166,8 @@ public final class ScsCentralScope {
   }
   public static ScopeTriple writeScope(){
     var context=current();if(context==null)return null;
-    // L1_SUPER GLOBAL 豁免：返回 null，写入行不盖元组（全局权威写，与 admin 种子账号行为一致）。
-    if(context.adminLevel().equals("L1_SUPER")&&!context.readOnly()&&context.scopeMode()==ScopeSql.Mode.GLOBAL)return null;
+    // L1_SUPER 豁免：返回 null，写入行不盖元组（全局权威写，与 admin 种子账号行为一致）。
+    if(context.adminLevel().equals("L1_SUPER")&&!context.readOnly()&&context.scopeMode()!=ScopeSql.Mode.DENY)return null;
     if(context.readOnly()||context.scopeMode()!=ScopeSql.Mode.SCOPED||context.activeScope().size()!=1)
       throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"写入须选择唯一授权范围");
     return context.activeScope().get(0);

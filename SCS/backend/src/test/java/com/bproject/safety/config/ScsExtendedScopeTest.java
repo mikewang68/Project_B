@@ -46,6 +46,20 @@ class ScsExtendedScopeTest {
     // 写路径仍有 beforeWrite scope 校验兜底），不再视为"仅 demo 通道"
     assertTrue(allows("SCS:ai","EDIT","POST","ai-events/trigger-edge"));
   }
+  @Test void l1SuperScopedMultiTupleWritesAreGloballyAuthoritative(){
+    // leiwen_platform_admin 实测画像：L1_SUPER + SCOPED + 2 元组（多区域授权）。
+    // 2026-11-12 v12 修复：写路径对 L1_SUPER 非 DENY 全豁免（免唯一范围选择），行不盖元组；
+    // 只读 L1 账号与普通 L3 账号不受影响（scoped 唯一元组规则不变）。
+    var t1=new ScopeTriple("PROJECT_B","SHEN_TIE","SCS");var t2=new ScopeTriple("PROJECT_B","XIZANG_TIE","SCS");
+    var f=ScopeSql.build(ScopeSql.Mode.SCOPED,List.of(t1,t2));
+    var c=new UserContext(2,"leiwen_platform_admin","雷文","leiwen_platform_admin","雷文","L1_SUPER",false,"SCS","PROJECT_B","SHEN_TIE","SCS",ScopeSql.Mode.SCOPED,List.of(t1,t2),List.of(t1,t2),Set.of("job"),Set.of("SCS:ai"),Map.of("SCS:ai",Set.of("EDIT")),Set.of(),"1",f.my_info(),f.my_project_zone_info(),f.my_info_template(),f.my_project_zone_info_template(),f.scope_params());
+    bind(c);
+    assertTrue(ScsCentralScope.permits(c,"POST","/api/v1/ai-events/trigger-edge"));
+    assertNull(ScsCentralScope.writeScope());
+    var ro=new UserContext(3,"leiwen_platform_reader","雷文只读","leiwen_platform_reader","雷文只读","L1_SUPER",true,"SCS","PROJECT_B","SHEN_TIE","SCS",ScopeSql.Mode.SCOPED,List.of(t1,t2),List.of(t1,t2),Set.of("job"),Set.of("SCS:ai"),Map.of("SCS:ai",Set.of("VIEW")),Set.of(),"1",f.my_info(),f.my_project_zone_info(),f.my_info_template(),f.my_project_zone_info_template(),f.scope_params());
+    bind(ro);
+    assertThrows(org.springframework.web.server.ResponseStatusException.class,()->ScsCentralScope.writeScope());
+  }
   @Test void scopedNodeReadsNeverPersistInventedHeartbeat(){
     var repo=mock(com.bproject.safety.module.ops.repository.EdgeNodeRepository.class);
     var node=new com.bproject.safety.module.ops.model.DemoEdgeNode();node.id="n";node.status="ONLINE";node.uptimeSec=22;
