@@ -49,7 +49,8 @@ public final class ScsCentralScope {
     if(menu==null)return extendedPermits(context,method,path);
     String action;
     if(Set.of("GET","HEAD").contains(method)&&path.matches("/api/v1/(rules|fences)(?:/[^/]+(?:/versions)?)?"))action="VIEW";
-    else if(method.equals("POST")&&path.matches("/api/v1/(rules|fences)/[^/]+/(approve|reject|publish|redeliver|rollback)$"))action="CONFIRM";
+    else if(method.equals("POST")&&path.matches("/api/v1/(rules|fences)/[^/]+/(approve|reject|publish|redeliver|rollback|simulate-mismatch)$"))action="CONFIRM";
+    else if(method.equals("POST")&&(path.equals("/api/v1/rules/simulate")||path.equals("/api/v1/rules/conflict-check")||path.equals("/api/v1/rules/conflict-ignore")))action="EXECUTE";
     else if(method.equals("POST")&&(path.equals("/api/v1/rules")||path.equals("/api/v1/fences")))action="ADD";
     else if(method.equals("PUT")&&path.matches("/api/v1/(rules|fences)/[^/]+")
         ||method.equals("POST")&&path.matches("/api/v1/(rules|fences)/[^/]+/(submit|submit-review|disable)"))action="EDIT";
@@ -69,6 +70,7 @@ public final class ScsCentralScope {
     if(!path.startsWith("/api/v1/"))return false;
     String p=path.substring(8);
     if(read&&p.matches("overview/(summary|map|alerts/feed|risk-trend|risk-distribution|alerts/[^/]+)"))return action(c,"VIEW","SCS:overview");
+    if(post&&p.equals("overview/simulate-risk"))return action(c,"CONFIRM","SCS:overview");
     if(read&&p.matches("screen/(overview|alerts/feed|critical)"))return action(c,"VIEW","SCS:safety-screen");
     if(read&&p.equals("mobile/home"))return action(c,"VIEW","SCS:mobile-home");
     if(post&&p.matches("mobile/incidents/[^/]+/(accept|arrive)"))return action(c,"CONFIRM","SCS:mobile-alerts");
@@ -78,12 +80,15 @@ public final class ScsCentralScope {
     if(post&&p.matches("alerts/[^/]+/escalate"))return action(c,"FAULT_ALARM","SCS:alarms","SCS:mobile-alerts");
     if(read&&p.matches("personnel(?:/[^/]+(?:/(track|alerts))?)?"))return action(c,"VIEW","SCS:people");
     if(post&&p.matches("personnel/[^/]+/remind"))return action(c,"CONFIRM","SCS:people");
+    if(post&&p.equals("personnel/simulate-abnormal"))return action(c,"CONFIRM","SCS:people");
     if(method.equals("PUT")&&p.equals("personnel/config"))return c.adminLevel().equals("L1_SUPER")&&action(c,"EDIT","SCS:people");
     if(read&&p.matches("collision/(devices(?:/[^/]+(?:/distance-trend)?)?|pair)"))return action(c,"VIEW","SCS:devices");
-    if(post&&p.matches("collision/(linkage|takeover|release-request)"))return action(c,"CONFIRM","SCS:devices");
+    if(post&&p.matches("collision/(linkage|takeover|release-request|simulate)"))return action(c,"CONFIRM","SCS:devices");
     if(read&&(p.matches("ai-events(?:/[^/]+)?")||p.matches("ai-events/snapshots/[^/]+")||p.equals("cameras")))return action(c,"VIEW","SCS:ai");
     if(post&&p.matches("ai-events/[^/]+/(confirm|close)"))return action(c,"CONFIRM","SCS:ai");
     if(post&&p.matches("ai-events/[^/]+/(false-positive|uncertain|assign|process)"))return action(c,"EDIT","SCS:ai");
+    if(post&&(p.equals("ai-events/simulate")||p.equals("ai-events/trigger-edge")||p.matches("ai-events/edge-stream/[a-z]+")))
+      return action(c,"EDIT","SCS:ai");
     if(read&&p.matches("ai/models(?:/[^/]+)?")||readOnlyQuery(method,path))return action(c,"VIEW","SCS:ai-models");
     if(post&&p.equals("ai/models/escalate"))return action(c,"FAULT_ALARM","SCS:ai-models");
     if(post&&p.matches("ai/models/[^/]+/select"))return c.adminLevel().equals("L1_SUPER")&&action(c,"CONFIRM","SCS:ai-models");
@@ -92,7 +97,9 @@ public final class ScsCentralScope {
     if(read&&p.startsWith("public-data"))return action(c,"VIEW","SCS:operations");
     if(read&&p.matches("edge/(link|local-events|reconcile/rules)"))return action(c,"VIEW","SCS:operations");
     if(post&&(p.matches("ops/edge-nodes/[^/]+/maintain")||p.matches("ops/devices/[^/]+/reconnect")||p.matches("edge/(recover|reconcile/rules|reconcile/time)")))return action(c,"CONFIRM","SCS:operations");
+    if(post&&(p.equals("ops/simulate")||p.equals("edge/simulate-link")||p.equals("edge/local-events")))return action(c,"CONFIRM","SCS:operations");
     if(read&&p.matches("analytics/(dataset|events|devices/[^/]+|persons/[^/]+)"))return action(c,"VIEW","SCS:analytics");
+    if(post&&p.equals("analytics/simulate-surge"))return action(c,"EDIT","SCS:analytics");
     if(read&&p.equals("zones"))return action(c,"VIEW","SCS:overview","SCS:people","SCS:safety-screen");
     if(read&&(p.equals("state")||p.equals("meta/dictionaries")))return action(c,"VIEW","SCS:overview","SCS:alarms","SCS:people","SCS:devices","SCS:ai","SCS:ai-models","SCS:rules","SCS:operations","SCS:analytics","SCS:fences","SCS:mobile-home","SCS:mobile-alerts","SCS:safety-screen");
     // Ingest, background generators and broadcasts have no trusted request tuple.
@@ -126,6 +133,9 @@ public final class ScsCentralScope {
       return null;
     }
     if(root==Root.AI_MODEL){requireGlobalConfigurationWriter();return null;}
+    // L1_SUPER 平台总管理员（GLOBAL 模式）：全局权威，写路径免唯一 scope 选择。
+    // 只读账号仍拒绝；非 GLOBAL（SCOPED/DENY）维持"写入须选择唯一授权范围"。
+    if(context.adminLevel().equals("L1_SUPER")&&!context.readOnly()&&context.scopeMode()==ScopeSql.Mode.GLOBAL)return null;
     if(context.readOnly()||context.scopeMode()!=ScopeSql.Mode.SCOPED||context.activeScope().size()!=1)
       throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"写入须选择唯一授权范围");
     // Held until the repository transaction commits; prevents two domains from
@@ -155,6 +165,8 @@ public final class ScsCentralScope {
   }
   public static ScopeTriple writeScope(){
     var context=current();if(context==null)return null;
+    // L1_SUPER GLOBAL 豁免：返回 null，写入行不盖元组（全局权威写，与 admin 种子账号行为一致）。
+    if(context.adminLevel().equals("L1_SUPER")&&!context.readOnly()&&context.scopeMode()==ScopeSql.Mode.GLOBAL)return null;
     if(context.readOnly()||context.scopeMode()!=ScopeSql.Mode.SCOPED||context.activeScope().size()!=1)
       throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"写入须选择唯一授权范围");
     return context.activeScope().get(0);

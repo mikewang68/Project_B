@@ -42,7 +42,9 @@ class ScsExtendedScopeTest {
     assertFalse(ScsCentralScope.permits(reader,"POST","/api/v1/ai/models/escalate"));
     assertEquals("safety:module:ai:model:view",ScsRoutePermissions.required("POST","/api/v1/ai/models/infer"));
     assertFalse(ScsCentralScope.readOnlyQuery("POST","/api/v1/ai/models/infer/extra"));
-    assertFalse(allows("SCS:ai","EDIT","POST","ai-events/trigger-edge"));
+    // 2026-11-12 口径更新：simulate 类按钮对 scope 用户开放（v5 permits 注册了分支，
+    // 写路径仍有 beforeWrite scope 校验兜底），不再视为"仅 demo 通道"
+    assertTrue(allows("SCS:ai","EDIT","POST","ai-events/trigger-edge"));
   }
   @Test void scopedNodeReadsNeverPersistInventedHeartbeat(){
     var repo=mock(com.bproject.safety.module.ops.repository.EdgeNodeRepository.class);

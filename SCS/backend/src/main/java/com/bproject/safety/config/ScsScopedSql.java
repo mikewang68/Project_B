@@ -63,6 +63,7 @@ public final class ScsScopedSql {
         throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"全局模型配置仅允许平台管理员修改");
       return sql;
     }
+    if(context!=null&&!context.readOnly()&&context.adminLevel().equals("L1_SUPER")&&context.scopeMode()==ScopeSql.Mode.GLOBAL)return sql;
     if(context!=null&&(context.readOnly()||context.scopeMode()!=ScopeSql.Mode.SCOPED||context.activeScope().size()!=1))
       throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"写入须选择唯一授权范围");
     // Existing UPDATE predicates are grouped, then constrained in the same SQL

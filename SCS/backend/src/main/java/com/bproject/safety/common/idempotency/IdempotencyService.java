@@ -126,6 +126,9 @@ public class IdempotencyService {
     private String storageKey(String key) {
         var context=com.bproject.safety.config.ScsCentralScope.current();
         if(context==null)return KEY_PREFIX+key;
+        // L1_SUPER GLOBAL 平台总管理员：无唯一 scope 可选，键按用户+URI 维度隔离（与 admin 种子账号行为一致）
+        if(context.adminLevel().equals("L1_SUPER")&&context.scopeMode()==com.bproject.iam.context.ScopeSql.Mode.GLOBAL)
+          return KEY_PREFIX+"v2:global:"+context.userId()+":"+key;
         var tuple=com.bproject.safety.config.ScsCentralScope.writeScope();
         var attrs=(org.springframework.web.context.request.ServletRequestAttributes)org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
         var request=attrs.getRequest();
