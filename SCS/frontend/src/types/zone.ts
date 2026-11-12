@@ -14,3 +14,18 @@ export interface ZoneState {
   updatedAt: string | null
   online: boolean
 }
+
+/** 区域实时在场人数（固定作业区按矩形归属；fence=已生效临时围栏按多边形判定）。 */
+export interface ZonePresence {
+  code: string
+  name: string
+  /** fixed=固定作业区；fence=已生效临时围栏 */
+  kind: 'fixed' | 'fence'
+  personCount: number
+  /** 仅围栏：处于隔离带（缓冲区）但未入核心区的人数 */
+  bufferCount: number
+  /** 仅围栏：生命周期中文标签 */
+  fenceStatus: string | null
+  /** 仅围栏：围栏业务编号 */
+  fenceId: string | null
+}

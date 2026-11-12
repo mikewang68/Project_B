@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { Van, UserFilled } from '@element-plus/icons-vue'
+import { Flag, Van, UserFilled } from '@element-plus/icons-vue'
 import { zonesApi } from '@/api/zones'
 import { useLiveStore } from '@/stores/live'
-import type { ZoneState } from '@/types/zone'
+import type { ZonePresence, ZoneState } from '@/types/zone'
 
 /**
- * 装卸区状态卡片：A 区限位开关判人员作业，B 区位置传感器判车辆进出。
+ * 装卸区状态卡片：
+ * ① 实时在场——固定作业区按人员实时坐标归区计数（UWB 1Hz），已生效临时围栏按多边形判定（含隔离带）；
+ * ② 设备上报——A 区限位开关判人员作业，B 区位置传感器判车辆进出。
  *
- * 未收到上报时后端返回 online=false、字段为 null，这里显示「未接入」——
+ * 未收到设备上报时后端返回 online=false、字段为 null，这里显示「未接入」——
  * 不能当成「无人 / 无车」，两者语义完全不同。
  */
 const zones = ref<ZoneState[]>([])
+const presence = ref<ZonePresence[]>([])
 const liveStore = useLiveStore()
 let disposeLive: (() => void) | undefined
 let disposeReconnect: (() => void) | undefined
@@ -19,10 +22,17 @@ let timer: number | undefined
 
 async function load(): Promise<void> {
   try {
-    zones.value = await zonesApi.list()
+    const data = await apiRequestBoth()
+    zones.value = data.zones
+    presence.value = data.presence
   } catch {
     // 首页其它卡片各自处理错误，这里静默保留上次数据，避免整页被一张卡片拖红
   }
+}
+
+async function apiRequestBoth(): Promise<{ zones: ZoneState[]; presence: ZonePresence[] }> {
+  const [zones, presence] = await Promise.all([zonesApi.list(), zonesApi.presence()])
+  return { zones, presence }
 }
 
 /** 事件可能密集到达，做 300ms 合并，避免每次上报都打一次接口 */
@@ -33,8 +43,11 @@ function scheduleReload(): void {
 
 onMounted(() => {
   void load()
+  // person.moved（1Hz 人员位置）/ zone.changed（设备上报）/ fence.changed（围栏生命周期）都触发合并刷新
   disposeLive = liveStore.onAlertEvent((event) => {
-    if (event.type.startsWith('zone.')) scheduleReload()
+    if (event.type.startsWith('zone.') || event.type.startsWith('person.') || event.type.startsWith('fence.')) {
+      scheduleReload()
+    }
   })
   disposeReconnect = liveStore.onReconnected(() => void load())
 })
@@ -44,6 +57,10 @@ onUnmounted(() => {
   disposeReconnect?.()
   if (timer !== undefined) window.clearTimeout(timer)
 })
+
+const fixedAreas = computed<ZonePresence[]>(() => presence.value.filter((p) => p.kind === 'fixed'))
+const tempFences = computed<ZonePresence[]>(() => presence.value.filter((p) => p.kind === 'fence'))
+const empty = computed(() => !fixedAreas.value.length && !tempFences.value.length && !rows.value.length)
 
 interface Row {
   key: string
@@ -84,26 +101,56 @@ const rows = computed<Row[]>(() => zones.value.map((z) => {
       <div>
         <span>LOADING AREA</span>
         <h2>装卸区状态</h2>
-        <p>A 区限位开关判人员作业 · B 区位置传感器判车辆进出</p>
+        <p>实时在场：固定区域按人员坐标归区 · 已生效临时围栏按多边形判定</p>
       </div>
     </header>
     <ul class="loading-area-list">
-      <li v-for="row in rows" :key="row.key" :data-tone="row.tone">
-        <span class="loading-area-icon"><el-icon><component :is="row.icon" /></el-icon></span>
+      <li v-for="area in fixedAreas" :key="area.code" :data-tone="area.personCount > 0 ? 'on' : 'off'">
+        <span class="loading-area-icon"><el-icon><UserFilled /></el-icon></span>
         <div class="loading-area-main">
-          <b>{{ row.title }}</b>
-          <small>{{ row.sensor }} · {{ row.detail }}</small>
+          <b>{{ area.name }}</b>
+          <small>{{ area.personCount > 0 ? '人员在场' : '当前无人' }}</small>
         </div>
-        <em>{{ row.label }}</em>
+        <em>{{ area.personCount > 0 ? `${area.personCount} 人` : '无人' }}</em>
       </li>
-      <li v-if="!rows.length" class="loading-area-empty">暂无区域数据</li>
+      <li v-if="empty" class="loading-area-empty">暂无区域数据</li>
     </ul>
+    <div v-if="tempFences.length" class="loading-area-fence-section">
+      <div class="loading-area-fence-title">
+        <el-icon><Flag /></el-icon>
+        <span>临时围栏 · 已生效</span>
+      </div>
+      <ul class="loading-area-list loading-area-list--fence">
+        <li v-for="fence in tempFences" :key="fence.code" data-tone="on">
+          <span class="loading-area-icon"><el-icon><Flag /></el-icon></span>
+          <div class="loading-area-main">
+            <b>{{ fence.name }}</b>
+            <small>
+              {{ fence.bufferCount > 0 ? `隔离带 ${fence.bufferCount} 人` : '核心区内' }}
+            </small>
+          </div>
+          <em>{{ fence.personCount > 0 ? `${fence.personCount} 人` : '无人' }}</em>
+        </li>
+      </ul>
+    </div>
+    <div v-if="rows.length" class="loading-area-device-section">
+      <div class="loading-area-device-title">设备上报</div>
+      <ul class="loading-area-list loading-area-list--device">
+        <li v-for="row in rows" :key="row.key" :data-tone="row.tone">
+          <div class="loading-area-main">
+            <b>{{ row.title }}</b>
+            <small>{{ row.sensor }} · {{ row.detail }}</small>
+          </div>
+          <em>{{ row.label }}</em>
+        </li>
+      </ul>
+    </div>
   </article>
 </template>
 
 <style scoped>
-.loading-area-list { list-style: none; margin: 0; padding: 0 16px 16px; display: grid; gap: 10px; }
-.loading-area-list li { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px;
+.loading-area-list { list-style: none; margin: 0; padding: 0 16px 10px; display: grid; gap: 8px; }
+.loading-area-list li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px;
   background: rgba(148, 163, 184, 0.08); }
 .loading-area-icon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
   border-radius: 9px; background: rgba(148, 163, 184, 0.16); font-size: 18px; }
@@ -115,4 +162,9 @@ const rows = computed<Row[]>(() => zones.value.map((z) => {
 .loading-area-list li[data-tone='off'] em { color: #64748b; background: rgba(100, 116, 139, 0.12); }
 .loading-area-list li[data-tone='unknown'] em { color: #b45309; background: rgba(180, 83, 9, 0.12); }
 .loading-area-empty { justify-content: center; opacity: 0.6; font-size: 13px; }
+.loading-area-fence-section { padding: 4px 16px 0; }
+.loading-area-fence-title,
+.loading-area-device-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+  color: rgba(148, 163, 184, 0.9); padding: 6px 0 2px; letter-spacing: 0.04em; }
+.loading-area-device-section { padding: 2px 0 6px; }
 </style>

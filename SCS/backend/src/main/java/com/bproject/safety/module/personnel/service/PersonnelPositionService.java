@@ -158,6 +158,26 @@ public class PersonnelPositionService {
         return AREA_FALLBACK;
     }
 
+    /** 固定作业区名称列表（含兜底"车辆通道"），供区域在场人数统计等只读消费方使用。 */
+    public static List<String> areaNames() {
+        var names = new java.util.ArrayList<String>();
+        for (AreaRect rect : AREA_RECTS) {
+            names.add(rect.area());
+        }
+        names.add(AREA_FALLBACK);
+        return List.copyOf(names);
+    }
+
+    /** 按百分比坐标解析所属固定作业区（与人员上报的归属口径一致）。 */
+    public static String areaOf(double x, double y) {
+        return resolveArea(clampPercent(x), clampPercent(y));
+    }
+
+    /** 当前全部实时位置快照（personnel_code → 位置），只读副本。 */
+    public Map<String, LivePosition> liveSnapshot() {
+        return Map.copyOf(positions);
+    }
+
     private static String qualityOf(Double accuracy) {
         if (accuracy == null || accuracy.isNaN() || accuracy <= 0) {
             return null;
