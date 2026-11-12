@@ -45,13 +45,20 @@ public class ScsMachineRegistry {
     if(!MessageDigest.isEqual(actual.getBytes(StandardCharsets.US_ASCII),expected.getBytes(StandardCharsets.US_ASCII)))throw denied();
     var binding=parse(selected,doc.revision());if(!binding.routes().contains(path))throw denied();return binding;
   }
-  private record Document(JsonNode root,String revision){}
+  private record Document(JsonNode root,String revision,long mtime,long size){}
+  /** 解析结果缓存：authenticate/owns/revalidate 每请求多次触发 read()——以 mtime+size 判变化，
+   *  未变化时只做 stat（微秒级）跳过读盘+JSON 解析+SHA。属主/权限检查（防放宽）仍每次执行。 */
+  private volatile Document parsed;
   private Document read(){
     try{
       if(file.isBlank())throw denied();var path=Path.of(file);
       if(!path.isAbsolute()||Files.isSymbolicLink(path)||!Files.isRegularFile(path,LinkOption.NOFOLLOW_LINKS)||Files.size(path)>262144)throw denied();
       var permissions=Files.getPosixFilePermissions(path,LinkOption.NOFOLLOW_LINKS);
       if(permissions.stream().anyMatch(p->Set.of(PosixFilePermission.OTHERS_READ,PosixFilePermission.OTHERS_WRITE,PosixFilePermission.OTHERS_EXECUTE,PosixFilePermission.GROUP_WRITE,PosixFilePermission.GROUP_EXECUTE).contains(p)))throw denied();
+      long mtime=Files.getLastModifiedTime(path,LinkOption.NOFOLLOW_LINKS).toMillis();
+      long size=Files.size(path);
+      Document cached=parsed;
+      if(cached!=null&&cached.mtime==mtime&&cached.size==size)return cached;
       byte[] bytes=Files.readAllBytes(path);var root=mapper.readTree(bytes);
       if(root.path("version").asInt()!=1||!root.path("sources").isArray()||root.path("sources").size()>1000)throw denied();
       Set<String> ids=new HashSet<>(),owned=new HashSet<>(),hashes=new HashSet<>();String revision=sha(bytes);
@@ -63,7 +70,9 @@ public class ScsMachineRegistry {
         // One server-registered source owns each device identity, even within the same tuple.
         for(var e:b.objects().entrySet())for(var key:e.getValue())if(!owned.add(e.getKey().name()+":"+key))throw denied();
       }
-      return new Document(root,revision);
+      var doc=new Document(root,revision,mtime,size);
+      parsed=doc;
+      return doc;
     }catch(ResponseStatusException e){throw e;}catch(Exception e){throw denied();}
   }
   private Binding parse(JsonNode n,String revision){

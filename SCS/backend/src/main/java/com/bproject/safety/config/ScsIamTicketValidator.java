@@ -49,15 +49,47 @@ public final class ScsIamTicketValidator {
   private final Duration timeout;
   private final ObjectMapper mapper;
   private final HttpClient http;
+  /** 会话内省结果 TTL（毫秒）；0=禁用缓存保持逐请求外呼的旧语义。 */
+  private final long cacheTtlMillis;
+
+  /**
+   * 会话内省短 TTL 缓存（待办 #7：把每请求/每广播一次的同步 IAM 外呼收敛为 ≤1 次/TTL）。
+   *
+   * <p><b>撤销语义不受影响</b>：业务会话撤销（logout/撤销登记）走 ScsSessionRegistry 的
+   * 内存判定，先于任何缓存命中；本缓存只收敛对 IAM 的重复网络外呼，IAM 侧静默撤销的
+   * 感知延迟上界 = TTL（默认 3s，远小于既有 5s 撤销扫描周期）。静态共享：REST 会话分支与
+   * 实时广播路径无论各自持有哪个校验器实例，都命中同一份缓存。</p>
+   */
+  private static final java.util.concurrent.ConcurrentHashMap<String, CachedSession> SESSION_CACHE =
+          new java.util.concurrent.ConcurrentHashMap<>();
+
+  private record CachedSession(Map<String, Object> result, long expiresAt) {
+  }
 
   public ScsIamTicketValidator(
       String baseUrl, String serviceToken, String audience, long timeoutMs, ObjectMapper mapper) {
+    this(baseUrl, serviceToken, audience, timeoutMs, mapper, 3000);
+  }
+
+  public ScsIamTicketValidator(
+      String baseUrl, String serviceToken, String audience, long timeoutMs, ObjectMapper mapper,
+      long cacheTtlMillis) {
     this.baseUrl = baseUrl == null ? "" : baseUrl.trim().replaceAll("/+$", "");
     this.serviceToken = serviceToken == null ? "" : serviceToken.trim();
     this.audience = audience == null ? "" : audience.trim();
     this.timeout = Duration.ofMillis(Math.max(500, Math.min(timeoutMs, 10000)));
     this.mapper = mapper;
+    this.cacheTtlMillis = Math.max(0, cacheTtlMillis);
     this.http = HttpClient.newBuilder().connectTimeout(this.timeout).build();
+  }
+
+  private static String sessionCacheKey(String baseUrl, String audience, String subject, String sid) {
+    return baseUrl + "|" + audience + "|" + subject + "|" + sid;
+  }
+
+  /** 显式失效（logout / 撤销登记后调用，避免缓存继续放行已注销会话）。 */
+  public void evictSession(String subject, String sid) {
+    SESSION_CACHE.remove(sessionCacheKey(baseUrl, audience, subject, sid));
   }
 
   /** 供 revoke 端点做常量时间比对；不在日志或响应中出现。 */
@@ -155,6 +187,12 @@ public final class ScsIamTicketValidator {
    * </ul>
    */
   public Map<String,Object> current(String subject,String sid){
+    String cacheKey = sessionCacheKey(baseUrl, audience, subject, sid);
+    long now = System.currentTimeMillis();
+    CachedSession cached = SESSION_CACHE.get(cacheKey);
+    if (cached != null && now < cached.expiresAt()) {
+      return cached.result();
+    }
     HttpResponse<String> response;
     JsonNode root;
     try{
@@ -179,10 +217,18 @@ public final class ScsIamTicketValidator {
         ||!subject.equals(data.path("subject").asText())||!sid.equals(data.path("sessionId").asText())
         ||!audience.equals(data.path("audience").asText()))throw new InvalidTicketException("IAM会话已失效");
     Map<String,Object> result=mapper.convertValue(data,new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});
-    result.put("sub",subject);result.put("scope",audience);return result;
+    result.put("sub",subject);result.put("scope",audience);
+    if (cacheTtlMillis > 0) {
+      if (SESSION_CACHE.size() > 512) {
+        SESSION_CACHE.entrySet().removeIf(e -> now >= e.getValue().expiresAt());
+      }
+      SESSION_CACHE.put(cacheKey, new CachedSession(result, now + cacheTtlMillis));
+    }
+    return result;
   }
 
   public void logout(String subject, String sid) {
+    evictSession(subject, sid);
     try {
       var req = HttpRequest.newBuilder(URI.create(baseUrl + "/auth/sso/session/logout")).timeout(timeout)
           .header("Content-Type", "application/json").header("X-SSO-Service-Token", serviceToken)

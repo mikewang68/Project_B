@@ -74,7 +74,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
             String iamBaseUrl, String iamServiceToken, String iamAudience, long iamTimeoutMs,
             ObjectMapper objectMapper) {
         this(enabled, expectedApiKey, expectedBearerToken, jwtSecret, jwtIssuer, clockSkewSeconds,
-                iamBaseUrl, iamServiceToken, iamAudience, iamTimeoutMs, objectMapper,
+                iamBaseUrl, iamServiceToken, iamAudience, iamTimeoutMs, 3000, objectMapper,
                 "", "", "HS256,HS384,HS512");
     }
 
@@ -90,6 +90,7 @@ public class SecurityInterceptor implements HandlerInterceptor {
             @Value("${app.security.iam-service-token:}") String iamServiceToken,
             @Value("${app.security.iam-audience:scs}") String iamAudience,
             @Value("${app.security.iam-timeout-ms:3000}") long iamTimeoutMs,
+            @Value("${app.security.iam-cache-ttl-millis:3000}") long iamCacheTtlMillis,
             ObjectMapper objectMapper,
             @Value("${app.security.jwt-public-key-pem:}") String jwtPublicKeyPem,
             @Value("${app.security.jwt-jwks-url:}") String jwtJwksUrl,
@@ -100,7 +101,8 @@ public class SecurityInterceptor implements HandlerInterceptor {
         this.expectedBearerToken = expectedBearerToken != null ? expectedBearerToken.trim() : "";
         this.objectMapper = objectMapper;
         this.ticketValidator =
-                new ScsIamTicketValidator(iamBaseUrl, iamServiceToken, iamAudience, iamTimeoutMs, objectMapper);
+                new ScsIamTicketValidator(iamBaseUrl, iamServiceToken, iamAudience, iamTimeoutMs, objectMapper,
+                        iamCacheTtlMillis);
         // 受众（aud）不在此处硬校验：跨系统受众由 finish() 统一返回 403 FORBIDDEN_SCOPE_MISMATCH，
         // 避免把"身份合法但受众不符"误报成签名失败。
         // issuer 不允许选配：只要启用了 JWT 通道（对称或非对称），就必须能校验签发方。
