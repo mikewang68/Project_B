@@ -138,14 +138,19 @@ class Collector:
                 del self.stations[sid]
 
 
-def push(scs: str, api_key: str, path: str, key: str, items: list[dict]) -> tuple[int, str]:
+def push(scs: str, api_key: str, path: str, key: str, items: list[dict],
+         source_id: str = "") -> tuple[int, str]:
     url = scs.rstrip("/") + path
-    body = json.dumps({"source": "device-sim/uwb", key: items},
+    # 命名来源接入时 body.source 必须与绑定 id 一致（后端 ScsMachineBodyAdvice 防伪造校验）
+    body = json.dumps({"source": source_id or "device-sim/uwb", key: items},
                       ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json; charset=utf-8")
     if api_key:
         req.add_header("X-API-Key", api_key)
+    if source_id:
+        # per-device 接入（v2）：带 X-SCS-Source-ID 走命名来源绑定，不再依赖全局 key 的 legacy 通道
+        req.add_header("X-SCS-Source-ID", source_id)
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             return resp.status, resp.read().decode("utf-8", "replace")[:200]
@@ -160,6 +165,8 @@ def main():
     ap.add_argument("--scs", required=True, help="SCS 基址，如 http://127.0.0.1:20986")
     ap.add_argument("--api-key", default="", help="SCS 机器凭据（不要写进脚本）")
     ap.add_argument("--api-key-env", default="SCS_API_KEY", help="改用环境变量读取凭据")
+    ap.add_argument("--source-id-env", default="SCS_SOURCE_ID",
+                    help="per-device 来源标识的环境变量名（X-SCS-Source-ID 头）；未设置则维持全局 key 通道")
     ap.add_argument("--listen", default="127.0.0.1:9000", help="UDP 监听地址（uwb_sim 的 --dest）")
     ap.add_argument("--map", default="", help="标签号=SCS 人员编号，逗号分隔；留空则直接用帧里的 personId")
     ap.add_argument("--site-width-m", type=float, default=100.0, help="站场宽度（米），用于米→百分比换算")
@@ -175,6 +182,7 @@ def main():
     if not api_key and not a.dry_run:
         print(f"[uwb] 缺少凭据：用 --api-key 或设置环境变量 {a.api_key_env}", file=sys.stderr)
         return 2
+    source_id = os.environ.get(a.source_id_env, "").strip()
 
     tag_map = parse_map(a.map)
     host, port = a.listen.rsplit(":", 1)
@@ -221,7 +229,7 @@ def main():
                     collector.acknowledge_stations(stations)
                 else:
                     s_status, s_text = push(a.scs, api_key, "/api/v1/ingest/uwb-station",
-                                            "stations", stations)
+                                            "stations", stations, source_id)
                     if s_status == 200:
                         collector.acknowledge_stations(stations)
                     print(f"[uwb] push {len(stations)} station(s)  -> HTTP {s_status} {s_text[:140]}")
@@ -238,7 +246,7 @@ def main():
             print(f"[uwb] dry-run {len(positions)} position(s): "
                   + json.dumps(positions, ensure_ascii=False))
             continue
-        status, text = push(a.scs, api_key, "/api/v1/ingest/person-position", "positions", positions)
+        status, text = push(a.scs, api_key, "/api/v1/ingest/person-position", "positions", positions, source_id)
         print(f"[uwb] push {len(positions)} position(s) -> HTTP {status} {text[:140]}")
 
     sock.close()
