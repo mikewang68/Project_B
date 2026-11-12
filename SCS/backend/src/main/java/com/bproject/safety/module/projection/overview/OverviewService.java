@@ -140,11 +140,6 @@ public class OverviewService {
         return new OverviewDistribution(items);
     }
 
-    /** 首页风险演示开关（SIMULATED，委托 AlertService，走真实存储与广播）。 */
-    public void simulateRisk(boolean active) {
-        alertService.demoRisk(active);
-    }
-
     // ---------- 风险覆盖 ----------
 
     private MapPerson overlayPerson(MapPerson base, List<DemoAlert> highRisks) {
@@ -162,11 +157,6 @@ public class OverviewService {
                 state = "danger";
                 area = a.area;
                 overlay = true;
-                // 复刻旧演示：赵磊触发龙门吊风险时移动到禁区边缘
-                if (AlertService.DEMO_RISK_ALERT_ID.equals(a.id) && "P-ZHAO".equals(base.id())) {
-                    x = 57;
-                    y = 26;
-                }
             } else if (areaHit && !"danger".equals(state)
                     && (com.bproject.safety.module.alert.model.RiskLevels.SEVERE.equals(a.riskCode)
                             || com.bproject.safety.module.alert.model.RiskLevels.URGENT.equals(a.riskCode))) {

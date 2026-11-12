@@ -115,26 +115,6 @@ class OverviewIntegrationTest {
                 .andExpect(jsonPath("$.people[?(@.id=='P-ZHAO')].state").value(org.hamcrest.Matchers.contains("normal")))
                 .andExpect(jsonPath("$.people[?(@.id=='P-ZHAO')].liveOverlay").value(org.hamcrest.Matchers.contains(false)));
 
-        // 开启风险演示：赵磊再次 danger 且坐标移动到禁区边缘
-        mvc.perform(post("/api/v1/overview/simulate-risk")
-                .contentType(MediaType.APPLICATION_JSON).content("{\"active\":true}"))
-                .andExpect(status().isOk());
-        mvc.perform(get("/api/v1/overview/map"))
-                .andExpect(jsonPath("$.people[?(@.id=='P-ZHAO')].state").value(org.hamcrest.Matchers.contains("danger")))
-                .andExpect(jsonPath("$.people[?(@.id=='P-ZHAO')].x").value(org.hamcrest.Matchers.contains(57.0)))
-                .andExpect(jsonPath("$.people[?(@.id=='P-ZHAO')].y").value(org.hamcrest.Matchers.contains(26.0)));
-        mvc.perform(get("/api/v1/overview/summary"))
-                .andExpect(jsonPath("$.activeAlerts", is(9)))
-                .andExpect(jsonPath("$.urgentAlerts", is(1)));
-
-        // 解除演示：恢复正常、紧急数回落（001 已关闭，无紧急事件）
-        mvc.perform(post("/api/v1/overview/simulate-risk")
-                .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"))
-                .andExpect(status().isOk());
-        mvc.perform(get("/api/v1/overview/map"))
-                .andExpect(jsonPath("$.people[?(@.id=='P-ZHAO')].state").value(org.hamcrest.Matchers.contains("normal")));
-        mvc.perform(get("/api/v1/overview/summary"))
-                .andExpect(jsonPath("$.urgentAlerts", is(0)));
     }
 
     @Test

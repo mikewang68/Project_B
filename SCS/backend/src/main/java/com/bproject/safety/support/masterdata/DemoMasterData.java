@@ -129,13 +129,9 @@ public class DemoMasterData {
         return code != null && teamByCode.containsKey(code);
     }
 
-    public boolean isValidAreaName(String name) {
-        return name != null && areaByName.containsKey(name);
-    }
 
-    public boolean isValidAreaCode(String code) {
-        return code != null && areaByCode.containsKey(code);
-    }
+
+
 
     public DemoUser user(String id) {
         return userById.get(id);

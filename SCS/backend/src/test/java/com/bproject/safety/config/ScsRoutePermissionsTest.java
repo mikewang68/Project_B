@@ -65,10 +65,8 @@ class ScsRoutePermissionsTest {
   }
 
   @Test
-  @DisplayName("首页演示开关不再回落绑定文件（此前为 null → 非 ADMIN 恒 403）")
+  @DisplayName("首页写路径显式权限（overview 写操作映射 home:map:edit，模拟端点已移除）")
   void overviewSimulateRiskHasExplicitPermission() {
-    assertEquals("safety:home:map:edit",
-        ScsRoutePermissions.required("POST", "/api/v1/overview/simulate-risk"));
     assertEquals("safety:home:map:view", ScsRoutePermissions.required("GET", "/api/v1/overview/summary"));
   }
 

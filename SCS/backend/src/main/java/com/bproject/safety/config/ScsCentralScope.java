@@ -70,7 +70,6 @@ public final class ScsCentralScope {
     if(!path.startsWith("/api/v1/"))return false;
     String p=path.substring(8);
     if(read&&p.matches("overview/(summary|map|alerts/feed|risk-trend|risk-distribution|alerts/[^/]+)"))return action(c,"VIEW","SCS:overview");
-    if(post&&p.equals("overview/simulate-risk"))return action(c,"CONFIRM","SCS:overview");
     if(read&&p.matches("screen/(overview|alerts/feed|critical)"))return action(c,"VIEW","SCS:safety-screen");
     if(read&&p.equals("mobile/home"))return action(c,"VIEW","SCS:mobile-home");
     if(post&&p.matches("mobile/incidents/[^/]+/(accept|arrive)"))return action(c,"CONFIRM","SCS:mobile-alerts");
@@ -80,7 +79,6 @@ public final class ScsCentralScope {
     if(post&&p.matches("alerts/[^/]+/escalate"))return action(c,"FAULT_ALARM","SCS:alarms","SCS:mobile-alerts");
     if(read&&p.matches("personnel(?:/[^/]+(?:/(track|alerts))?)?"))return action(c,"VIEW","SCS:people");
     if(post&&p.matches("personnel/[^/]+/remind"))return action(c,"CONFIRM","SCS:people");
-    if(post&&p.equals("personnel/simulate-abnormal"))return action(c,"CONFIRM","SCS:people");
     if(method.equals("PUT")&&p.equals("personnel/config"))return c.adminLevel().equals("L1_SUPER")&&action(c,"EDIT","SCS:people");
     if(read&&p.matches("collision/(devices(?:/[^/]+(?:/distance-trend)?)?|pair)"))return action(c,"VIEW","SCS:devices");
     if(post&&p.matches("collision/(linkage|takeover|release-request|simulate)"))return action(c,"CONFIRM","SCS:devices");

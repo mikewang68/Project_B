@@ -77,14 +77,7 @@ public final class RiskLevels {
         return ORDERED.indexOf(code);
     }
 
-    public static Optional<String> higher(String a, String b) {
-        int ra = rank(a);
-        int rb = rank(b);
-        if (ra < 0 || rb < 0) {
-            return Optional.empty();
-        }
-        return Optional.of(rb > ra ? b : a);
-    }
+
 
     /** 供 label mapper 枚举遍历。 */
     public static List<Map.Entry<String, String>> entries() {

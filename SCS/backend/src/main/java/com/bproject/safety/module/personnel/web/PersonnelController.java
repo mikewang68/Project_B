@@ -91,12 +91,4 @@ public class PersonnelController {
         return service.remind(id, message);
     }
 
-    @PostMapping("/simulate-abnormal")
-    @Operation(summary = "模拟人员异常（SIMULATED：lowBattery/offline/intrusion/restore）")
-    public DemoPersonnel simulate(@RequestBody(required = false) Map<String, String> body) {
-        demoGuard.requireSimulator();
-        String id = body == null ? null : body.getOrDefault("id", "P-ZHAO");
-        String kind = body == null ? "lowBattery" : body.getOrDefault("kind", "lowBattery");
-        return service.simulateAbnormal(id, kind);
-    }
 }

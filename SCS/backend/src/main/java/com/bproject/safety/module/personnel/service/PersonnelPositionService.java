@@ -144,10 +144,6 @@ public class PersonnelPositionService {
         return copy;
     }
 
-    /** 当前已接入上报的人员数，供运维/测试观察链路是否真的在跑。 */
-    public int trackedCount() {
-        return positions.size();
-    }
 
     private static String resolveArea(double x, double y) {
         for (AreaRect rect : AREA_RECTS) {

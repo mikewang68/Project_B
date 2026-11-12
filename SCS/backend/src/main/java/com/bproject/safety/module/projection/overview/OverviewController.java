@@ -74,13 +74,4 @@ public class OverviewController {
         return service.alertDetail(id);
     }
 
-    @PostMapping("/simulate-risk")
-    @Operation(summary = "SIMULATED 风险演示开关：body {\"active\":true/false}")
-    public Map<String, Object> simulateRisk(@RequestBody(required = false) Map<String, Object> body,
-                                            @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
-        demoGuard.requireSimulator();
-        boolean active = body != null && Boolean.TRUE.equals(body.get("active"));
-        service.simulateRisk(active);
-        return Map.of("active", active);
-    }
 }

@@ -50,6 +50,8 @@ class PersonnelModuleIntegrationTest {
     private CollisionService collisionService;
     @Autowired
     private Clock clock;
+    @Autowired
+    private com.bproject.safety.module.personnel.service.PersonnelService personnelService;
 
     @BeforeEach
     void reset() {
@@ -102,36 +104,27 @@ class PersonnelModuleIntegrationTest {
     }
 
     @Test
-    @DisplayName("低电量模拟：赵磊电量降到 8、手环低电量")
-    void lowBattery() throws Exception {
-        mvc.perform(post("/api/v1/personnel/simulate-abnormal")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"id\":\"P-ZHAO\",\"kind\":\"lowBattery\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.battery", is(8)))
-                .andExpect(jsonPath("$.braceletStatus", is("低电量")));
+    @DisplayName("低电量模拟：赵磊电量降到 8、手环低电量（服务层，端点已随首页按钮移除）")
+    void lowBattery() {
+        var p = personnelService.simulateAbnormal("P-ZHAO", "lowBattery");
+        org.assertj.core.api.Assertions.assertThat(p.battery).isEqualTo(8);
+        org.assertj.core.api.Assertions.assertThat(p.getBraceletStatus()).isEqualTo("低电量");
     }
 
     @Test
     @DisplayName("越界：进入危险围栏生成人员越界 Alert，且重复触发不重复建单")
     void intrusionCreatesAlertOnce() throws Exception {
         long before = alertRepository.count();
-        // 第一次越界：新增 1 条人员安全告警
-        mvc.perform(post("/api/v1/personnel/simulate-abnormal")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"id\":\"P-ZHAO\",\"kind\":\"intrusion\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.risk", is("高风险")))
-                .andExpect(jsonPath("$.activeAlertIds", hasSize(1)));
+        // 第一次越界：新增 1 条人员安全告警（服务层，端点已随人员定位模拟按钮移除）
+        var intruded = personnelService.simulateAbnormal("P-ZHAO", "intrusion");
+        org.assertj.core.api.Assertions.assertThat(intruded.getRisk()).isEqualTo("高风险");
+        org.assertj.core.api.Assertions.assertThat(intruded.activeAlertIds).hasSize(1);
         org.assertj.core.api.Assertions.assertThat(alertRepository.count()).isEqualTo(before + 1);
         String alertId = alertRepository.findAll().stream()
                 .filter(a -> "人员越界".equals(a.eventType)).findFirst().orElseThrow().id;
 
         // 第二次越界：命中去重键，复用同一 Alert，不新增
-        mvc.perform(post("/api/v1/personnel/simulate-abnormal")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"id\":\"P-ZHAO\",\"kind\":\"intrusion\"}"))
-                .andExpect(status().isOk());
+        personnelService.simulateAbnormal("P-ZHAO", "intrusion");
         org.assertj.core.api.Assertions.assertThat(alertRepository.count()).isEqualTo(before + 1);
         // 人员相关告警接口可查到该告警
         mvc.perform(get("/api/v1/personnel/P-ZHAO/alerts"))
