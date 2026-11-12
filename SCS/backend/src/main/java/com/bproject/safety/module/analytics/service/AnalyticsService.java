@@ -363,7 +363,12 @@ public class AnalyticsService {
         String targetArea = area == null || area.isBlank() ? "装卸区 A" : area;
         boolean turnOn = active == null || active;
         if (turnOn) {
-            if (alerts.findAll().stream().noneMatch(a -> a.id != null && a.id.startsWith(SURGE_PREFIX))) {
+            // 幂等守卫按"存在非 CANCELLED 的突增告警"判定：CANCELLED 行保留在库（防删触发器），
+            // 重开时必须重注入（injectSurge 复用同 ID 经 save 更新回 PENDING_CONFIRM），
+            // 否则守卫会被残留 CANCELLED 行误判为"已注入"导致二次开启无数据。
+            boolean hasLiveSurge = alerts.findAll().stream().anyMatch(a -> a.id != null
+                    && a.id.startsWith(SURGE_PREFIX) && !AlertStatuses.CANCELLED.equals(a.statusCode));
+            if (!hasLiveSurge) {
                 injectSurge(targetArea);
             }
         } else {

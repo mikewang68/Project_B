@@ -130,4 +130,23 @@ class AnalyticsModuleIntegrationTest {
         mvc.perform(get("/api/v1/analytics/dataset").param("from", FROM).param("to", TO))
                 .andExpect(jsonPath("$.kpi[0].value", is("18")));
     }
+
+    @Test
+    @DisplayName("开→关→再开：CANCELLED 行保留在库但重开必须重新注入（守卫按活跃行判定）")
+    void surgeReopenAfterRestore() throws Exception {
+        mvc.perform(post("/api/v1/analytics/simulate-surge").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"area\":\"装卸区 A\",\"active\":true}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/analytics/simulate-surge").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"active\":false}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/analytics/dataset").param("from", FROM).param("to", TO))
+                .andExpect(jsonPath("$.kpi[0].value", is("12")));
+        // 再开：守卫不得被残留 CANCELLED 行误判为已注入
+        mvc.perform(post("/api/v1/analytics/simulate-surge").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"area\":\"装卸区 A\",\"active\":true}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/analytics/dataset").param("from", FROM).param("to", TO))
+                .andExpect(jsonPath("$.kpi[0].value", is("18")));
+    }
 }

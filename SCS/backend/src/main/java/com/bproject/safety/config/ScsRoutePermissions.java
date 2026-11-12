@@ -31,7 +31,7 @@ public final class ScsRoutePermissions {
     if(module.equals("safety:module:alert"))return module+(p.matches(".*/(review|review-reject)")?":approve":":handle");
     if(module.equals("safety:module:ai:model"))return module+(p.matches(".*/(infer|escalate)")?":execute":":edit");
     if(module.equals("safety:module:ai"))return module+(p.endsWith("/assign")?":assign":":edit");
-    if(module.equals("safety:module:rule"))return module+(p.matches(".*/(approve|reject)")?":approve":p.matches(".*/(publish|redeliver|rollback|simulate|simulate-mismatch|conflict-check)")?":execute":":edit");
+    if(module.equals("safety:module:rule"))return module+(p.matches(".*/(approve|reject)")?":approve":p.matches(".*/(publish|redeliver|rollback|simulate|simulate-mismatch|conflict-check|conflict-ignore)")?":execute":":edit");
     if(module.equals("safety:person"))return "safety:person:config:edit";
     if(module.equals("safety:fence"))return module+(p.matches(".*/(publish|redeliver)")?":publish":":edit");
     return module+":execute";

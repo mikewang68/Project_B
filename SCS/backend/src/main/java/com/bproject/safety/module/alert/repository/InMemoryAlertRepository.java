@@ -117,7 +117,9 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
     @Override
     public java.util.Map<String, Long> countByStatus() {
         java.util.Map<String, Long> out = new java.util.LinkedHashMap<>();
-        store.values().forEach(a -> out.merge(a.statusCode, 1L, Long::sum));
+        store.values().stream()
+                .filter(a -> !com.bproject.safety.module.alert.model.AlertStatuses.CANCELLED.equals(a.statusCode))
+                .forEach(a -> out.merge(a.statusCode, 1L, Long::sum));
         return out;
     }
 
@@ -126,6 +128,7 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
         java.util.Map<String, Long> out = new java.util.LinkedHashMap<>();
         store.values().stream()
                 .filter(a -> !AlertStatuses.CLOSED.equals(a.statusCode))
+                .filter(a -> !AlertStatuses.CANCELLED.equals(a.statusCode))
                 .forEach(a -> out.merge(a.riskCode, 1L, Long::sum));
         return out;
     }
@@ -133,8 +136,10 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
     @Override
     public java.util.Map<String, Long> countByEventType() {
         java.util.Map<String, Long> out = new java.util.LinkedHashMap<>();
-        store.values().forEach(a ->
-                out.merge(a.eventType == null ? a.title : a.eventType, 1L, Long::sum));
+        store.values().stream()
+                .filter(a -> !com.bproject.safety.module.alert.model.AlertStatuses.CANCELLED.equals(a.statusCode))
+                .forEach(a ->
+                        out.merge(a.eventType == null ? a.title : a.eventType, 1L, Long::sum));
         return out;
     }
 
@@ -191,6 +196,7 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
         java.util.Map<String, long[]> buckets = new java.util.LinkedHashMap<>();
         store.values().stream()
                 .filter(a -> a.occurredAt != null && a.occurredAt.isAfter(since))
+                .filter(a -> !com.bproject.safety.module.alert.model.AlertStatuses.CANCELLED.equals(a.statusCode))
                 .forEach(a -> {
                     String label = a.occurredAt.atZoneSameInstant(TREND_ZONE).format(fmt) + ":00";
                     long[] arr = buckets.computeIfAbsent(label, k -> new long[2]);
@@ -211,6 +217,7 @@ public class InMemoryAlertRepository implements AlertRepository, DemoClearableSt
         java.util.Map<String, long[]> buckets = new java.util.LinkedHashMap<>();
         store.values().stream()
                 .filter(a -> a.occurredAt != null && a.occurredAt.isAfter(since))
+                .filter(a -> !com.bproject.safety.module.alert.model.AlertStatuses.CANCELLED.equals(a.statusCode))
                 .forEach(a -> {
                     String label = a.occurredAt.atZoneSameInstant(TREND_ZONE).format(fmt);
                     long[] arr = buckets.computeIfAbsent(label, k -> new long[2]);

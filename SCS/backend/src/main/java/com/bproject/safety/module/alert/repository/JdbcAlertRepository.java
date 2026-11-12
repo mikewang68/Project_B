@@ -267,13 +267,15 @@ public class JdbcAlertRepository implements AlertRepository {
     /** Step 8 / P0-4：态势计数口径下推为存储侧 GROUP BY，替代大屏/统计每次刷新的全量聚合加载。 */
     @Override
     public Map<String, Long> countByStatus() {
-        return countGrouping("SELECT status_code, count(*) FROM safety.safety_alert GROUP BY status_code");
+        return countGrouping("SELECT status_code, count(*) FROM safety.safety_alert"
+                + " WHERE status_code <> 'CANCELLED' GROUP BY status_code");
     }
 
     @Override
     public Map<String, Long> countOpenByRisk() {
         return countGrouping(
-                "SELECT risk_level_code, count(*) FROM safety.safety_alert WHERE status_code <> 'CLOSED'"
+                "SELECT risk_level_code, count(*) FROM safety.safety_alert"
+                        + " WHERE status_code <> 'CLOSED' AND status_code <> 'CANCELLED'"
                         + " GROUP BY risk_level_code");
     }
 
@@ -282,6 +284,7 @@ public class JdbcAlertRepository implements AlertRepository {
         // eventType 为空回退标题，与 riskDistribution 内存口径一致
         return countGrouping(
                 "SELECT COALESCE(event_type, title) AS bucket, count(*) FROM safety.safety_alert"
+                        + " WHERE status_code <> 'CANCELLED'"
                         + " GROUP BY COALESCE(event_type, title)");
     }
 
@@ -294,7 +297,7 @@ public class JdbcAlertRepository implements AlertRepository {
                        count(*) AS total,
                        COALESCE(SUM(CASE WHEN risk_level_code IN ('SEVERE', 'URGENT') THEN 1 ELSE 0 END), 0) AS high
                 FROM safety.safety_alert
-                WHERE occurred_at >= :since
+                WHERE occurred_at >= :since AND status_code <> 'CANCELLED'
                 GROUP BY 1
                 ORDER BY 1
                 """;
@@ -312,7 +315,7 @@ public class JdbcAlertRepository implements AlertRepository {
                        count(*) AS total,
                        COALESCE(SUM(CASE WHEN risk_level_code IN ('SEVERE', 'URGENT') THEN 1 ELSE 0 END), 0) AS high
                 FROM safety.safety_alert
-                WHERE occurred_at >= :since
+                WHERE occurred_at >= :since AND status_code <> 'CANCELLED'
                 GROUP BY 1
                 ORDER BY min(occurred_at)
                 """;

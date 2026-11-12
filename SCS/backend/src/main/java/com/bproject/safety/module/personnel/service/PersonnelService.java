@@ -169,6 +169,7 @@ public class PersonnelService {
         DemoPersonnel p = require(id);
         int size = limit == null || limit <= 0 ? 10 : Math.min(limit, 50);
         return alertRepository.findAll().stream()
+                .filter(a -> !AlertStatuses.CANCELLED.equals(a.statusCode))
                 .filter(a -> a.target != null && (a.target.contains(p.name) || a.target.contains(p.id)))
                 .limit(size).toList();
     }
