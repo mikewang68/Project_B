@@ -45,9 +45,51 @@ function aiDraft(result,type){
     toast('草稿已写入系统，可在'+(task?'我的待办':'班组交接')+'中查看。');return true;
   });
 }
-function renderAssistantWorkspace(){return `<div class="page">${pageHead('AI设备助手','查询系统记录、连续追问原因、整理检查清单与交接草稿。','<button class="button primary" id="openAiWorkspace">打开对话</button>')}<div class="ai-workspace-grid"><section class="panel ai-feature-card"><h2>用一句话问设备、告警和工单</h2><p>助手通过后端读取业务记录，将脱敏后的筛选结果提供给当前配置的大模型。实验室千问与其他兼容模型均可接入，回答下面会标明来源，你可以回到原始页面核对。</p><div class="ai-examples">${['全场哪些设备优先检修？请按风险排序','分析GT-01告警并给出现场检查清单','汇总未完工单，写夜班交接摘要','查询校准记录，哪些需要补充或续校？','查看配置变更履历，哪些尚未确认生效？'].map(q=>`<button type="button" data-ai-example="${esc(q)}">${esc(q)}</button>`).join('')}</div></section><section class="panel ai-feature-card"><h2>与现有业务结合</h2><ul class="ai-info-list"><li>9类数据检索：设备、告警、工单、待办、交接、校准、变更、模板、知识案例</li><li>连续追问：保留最近10轮、空闲20分钟后过期</li><li>对话建议 → 人工核对 → 待办或交接草稿</li><li>模型异常时显示本地检索与具体原因</li></ul><p>系统默认先检索业务数据，再交给实验室模型分析。模型确认支持工具调用后，可开启追加只读查询，不影响现有业务流程。</p><p>当前使用语言模型辅助分析。健康分来自系统快照；寿命预测仍需专门的历史数据与模型验证。</p><p class="muted">API密钥保存在后端专用文件。只向模型发送已获批准的脱敏数据。当前实验室版本沿用已有访问范围，统一IAM权限需后续联调。</p></section></div></div>`;}
+function renderAssistantWorkspace(){return `<div class="page">${pageHead('AI设备助手','查询系统记录、连续追问原因、整理检查清单与交接草稿。','<button class="button primary" id="openAiWorkspace">打开对话</button>')}<div class="ai-workspace-grid"><section class="panel ai-feature-card"><h2>用一句话问设备、告警和工单</h2><p>助手通过后端读取业务记录，将脱敏后的筛选结果提供给当前配置的大模型。实验室千问与其他兼容模型均可接入，回答下面会标明来源，你可以回到原始页面核对。</p><div class="ai-examples">${['全场哪些设备优先检修？请按风险排序','分析GT-01告警并给出现场检查清单','汇总未完工单，写夜班交接摘要','查询校准记录，哪些需要补充或续校？','查看配置变更履历，哪些尚未确认生效？'].map(q=>`<button type="button" data-ai-example="${esc(q)}">${esc(q)}</button>`).join('')}</div></section><section class="panel ai-feature-card"><h2>与现有业务结合</h2><ul class="ai-info-list"><li>9类数据检索：设备、告警、工单、待办、交接、校准、变更、模板、知识案例</li><li>连续追问：保留最近10轮、空闲20分钟后过期</li><li>对话建议 → 人工核对 → 待办或交接草稿</li><li>模型异常时显示本地检索与具体原因</li></ul><p>系统默认先检索业务数据，再交给实验室模型分析。模型确认支持工具调用后，可开启追加只读查询，不影响现有业务流程。</p><p>当前使用语言模型辅助分析。健康分来自系统快照；寿命预测仍需专门的历史数据与模型验证。</p><p class="muted">API密钥保存在后端数据库（AES-GCM 加密），由下方“AI 服务配置”维护；页面只显示后 4 位。只向模型发送已获批准的脱敏数据。</p></section></div><div id="aiConfigCard"></div></div>`;}
+let EHM_AI_CONFIG=null;
+async function loadAiConfig(){
+  const host=document.getElementById('aiConfigCard');
+  if(!host)return;
+  const auth=window.EhmAuth;
+  if(!auth||!auth.canWrite()){host.innerHTML='';return;}
+  try{
+    const cfg=await apiRequest('/assistant/config');EHM_AI_CONFIG=cfg;
+    const hint=cfg.apiKeyConfigured?('已配置'+(cfg.apiKeyLast4?'，尾号 '+cfg.apiKeyLast4:'')):'未配置';
+    host.innerHTML=`<section class="panel ai-config-panel">
+      <div class="panel-head"><div><h2>AI 服务配置</h2><p>URL、模型和密钥存入业务库；保存后下一次对话生效，页面只显示密钥后 4 位。</p></div><span class="mini-badge">${cfg.source==='DB'?'数据库配置':'环境变量兜底'}</span></div>
+      <div class="panel-body">
+        <div class="ai-config-grid">
+          <label>接口地址<input id="aiCfgBaseUrl" value="${esc(cfg.baseUrl||'')}" placeholder="https://.../v1"></label>
+          <label>模型<input id="aiCfgModel" value="${esc(cfg.model||'')}" placeholder="qwen3.8-27b"></label>
+          <label>API 密钥<input id="aiCfgKey" type="password" autocomplete="new-password" placeholder="${hint}；留空表示不修改"></label>
+          <label>启用<select id="aiCfgEnabled"><option value="true" ${cfg.enabled?'selected':''}>启用</option><option value="false" ${!cfg.enabled?'selected':''}>停用</option></select></label>
+          <label>超时（毫秒）<input id="aiCfgTimeout" type="number" min="1000" max="120000" value="${cfg.timeoutMs||45000}"></label>
+          <label>最大 tokens<input id="aiCfgMaxTokens" type="number" min="1" max="32000" value="${cfg.maxTokens||1800}"></label>
+          <label>数据外发<select id="aiCfgPolicy"><option value="anonymized" ${cfg.dataPolicy==='anonymized'?'selected':''}>允许脱敏外发</option><option value="disabled" ${cfg.dataPolicy==='disabled'?'selected':''}>仅本地检索</option></select></label>
+          <label>提供方<input id="aiCfgProvider" value="${esc(cfg.provider||'')}" placeholder="可选，如 DeepSeek"></label>
+        </div>
+        <div class="ai-config-actions"><button class="button primary" id="aiCfgSave">保存 AI 配置</button><span class="muted">${cfg.updatedAt?'更新：'+esc(cfg.updatedAt):'尚未保存数据库配置'}${cfg.updatedBy?' / '+esc(cfg.updatedBy):''}</span></div>
+      </div>
+    </section>`;
+    const save=document.getElementById('aiCfgSave');if(save)save.onclick=saveAiConfig;
+  }catch(e){
+    host.innerHTML=`<section class="panel ai-config-panel"><div class="panel-body"><p class="muted">AI 服务配置读取失败：${esc(e.message)}</p></div></section>`;
+  }
+}
+async function saveAiConfig(){
+  if(!EHM_AI_CONFIG)return;
+  const value=id=>document.getElementById(id)?.value??'';
+  const payload={baseUrl:value('aiCfgBaseUrl').trim(),model:value('aiCfgModel').trim(),
+    enabled:value('aiCfgEnabled')==='true',timeoutMs:Number(value('aiCfgTimeout')||45000),
+    maxTokens:Number(value('aiCfgMaxTokens')||1800),dataPolicy:value('aiCfgPolicy'),
+    provider:value('aiCfgProvider').trim(),expectedVersion:EHM_AI_CONFIG.version||0,
+    reason:'AI设备助手-服务配置'};
+  const key=value('aiCfgKey').trim();if(key)payload.apiKey=key;
+  try{const cfg=await apiRequest('/assistant/config',{method:'PUT',body:JSON.stringify(payload)});EHM_AI_CONFIG=cfg;toast('AI 服务配置已保存');await loadAiConfig();await refreshAssistantStatus();}
+  catch(e){toast('保存失败：'+e.message);}
+}
 const aiPreviousRender=renderPage;
-renderPage=function(){if(state.page!=='ai-assistant'){aiPreviousRender();return;}document.getElementById('pageView').innerHTML=renderAssistantWorkspace();syncNav();window.EhmPreferences?.refreshTopMenu();document.getElementById('openAiWorkspace').onclick=aiOpen;document.querySelectorAll('[data-ai-example]').forEach(b=>b.onclick=()=>{aiOpen();aiSend(b.dataset.aiExample);});};
+renderPage=function(){if(state.page!=='ai-assistant'){aiPreviousRender();return;}document.getElementById('pageView').innerHTML=renderAssistantWorkspace();syncNav();window.EhmPreferences?.refreshTopMenu();document.getElementById('openAiWorkspace').onclick=aiOpen;document.querySelectorAll('[data-ai-example]').forEach(b=>b.onclick=()=>{aiOpen();aiSend(b.dataset.aiExample);});void loadAiConfig();};
 document.getElementById('assistantEntry').onclick=aiOpen;document.getElementById('assistantClose').onclick=aiClose;
 document.getElementById('assistantDevice').onchange=()=>{EHM_AI.scopeChanged=true;};
 document.getElementById('assistantExpand').onclick=()=>{const expanded=aiPanel.classList.toggle('expanded');document.getElementById('assistantExpand').textContent=expanded?'收起':'展开';};
