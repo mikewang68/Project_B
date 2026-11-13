@@ -13,12 +13,39 @@ export interface Utilization {
   total_locations: number; occupied_locations: number; occupancy_percent: number | null; known_weight_kg: number;
   missing_weight_rows: number; full_warehouse: boolean; note: string; locations: AgentRow[]; history: AgentRow[];
 }
+export interface AgentProviderConfig {
+  enabled: boolean
+  baseUrl: string
+  model: string
+  apiKeyConfigured: boolean
+  apiKeyLast4?: string | null
+  timeoutSeconds: number
+  provider: string
+  version: number
+  updatedBy?: string | null
+  updatedAt?: string | null
+  source: 'DB' | 'ENV'
+}
+export interface UpdateAgentProviderConfigRequest {
+  baseUrl: string
+  model: string
+  apiKey?: string | undefined
+  clearApiKey?: boolean | undefined
+  enabled: boolean
+  timeoutSeconds: number
+  provider?: string | undefined
+  expectedVersion?: number | undefined
+  reason: string
+}
 async function mutate<T>(path: string, data: unknown, method = 'POST'): Promise<T> {
   const csrf = await apiFetch<{ headerName: string; token: string }>('/api/v1/auth/csrf')
   return apiFetch(path, { method, data, headers: { [csrf.headerName]: csrf.token }, timeout: 180_000 })
 }
 const root = '/api/v1/agent'
 export const agentStatus = (): Promise<AgentStatus> => apiFetch(root + '/status')
+export const agentProviderConfig = (): Promise<AgentProviderConfig> => apiFetch(root + '/config')
+export const saveAgentProviderConfig = (data: UpdateAgentProviderConfigRequest): Promise<AgentProviderConfig> =>
+  mutate(root + '/config', data, 'PUT')
 export const agentChat = (question: string, previousQuestions: string[]): Promise<ChatResult> => mutate(root + '/chat', { question, previousQuestions })
 export const agentHistory = (): Promise<AgentRow[]> => apiFetch(root + '/history')
 export const agentUtilization = (): Promise<Utilization> => apiFetch(root + '/utilization')

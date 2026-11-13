@@ -5,7 +5,9 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { agentStatus, agentChat, agentHistory, agentUtilization, agentAlerts, readAgentAlert, agentSchedules,
   saveAgentSchedule, runAgentSchedule, agentMails, retryAgentMail, agentWeights, saveAgentWeight,
-  type AgentRow, type AgentStatus, type ChatResult, type Schedule, type Utilization, type AgentEvent } from '@/api/agent'
+  agentProviderConfig, saveAgentProviderConfig,
+  type AgentRow, type AgentStatus, type ChatResult, type Schedule, type Utilization, type AgentEvent,
+  type AgentProviderConfig, type UpdateAgentProviderConfigRequest } from '@/api/agent'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -18,6 +20,78 @@ const schedules = ref<Schedule[]>([])
 const dialog = ref(false), saving = ref(false), weightDialog = ref(false)
 const manage = computed(() => auth.canWrite('agent:manage'))
 const editWeights = computed(() => auth.canWrite('master:write'))
+
+// 仓储智能体模型服务配置：URL / 模型 / 可选密钥入库，保存后动态生效
+const providerConfig = ref<AgentProviderConfig | null>(null)
+const providerForm = ref<UpdateAgentProviderConfigRequest>({
+  baseUrl: '',
+  model: '',
+  apiKey: '',
+  enabled: true,
+  timeoutSeconds: 30,
+  provider: 'qwen',
+  expectedVersion: 0,
+  reason: '仓储智能体-模型服务配置',
+})
+const providerLoading = ref(false)
+const providerSaving = ref(false)
+const providerError = ref('')
+const canConfig = computed(() => auth.canWrite('agent:manage'))
+const apiKeyPlaceholder = computed(() =>
+  providerConfig.value?.apiKeyConfigured
+    ? `已配置${providerConfig.value.apiKeyLast4 ? `，尾号 ${providerConfig.value.apiKeyLast4}` : '（环境变量）'}；留空不修改`
+    : '首次配置必须填写 API Key',
+)
+const providerMeta = computed(() => {
+  const cfg = providerConfig.value
+  if (!cfg?.updatedAt) return '尚未保存数据库配置'
+  const updated = new Date(cfg.updatedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+  return `更新：${updated}${cfg.updatedBy ? ` / ${cfg.updatedBy}` : ''}`
+})
+async function loadProvider(): Promise<void> {
+  providerLoading.value = true
+  providerError.value = ''
+  try {
+    const cfg = await agentProviderConfig()
+    providerConfig.value = cfg
+    providerForm.value = {
+      baseUrl: cfg.baseUrl,
+      model: cfg.model,
+      apiKey: '',
+      enabled: cfg.enabled,
+      timeoutSeconds: cfg.timeoutSeconds,
+      provider: cfg.provider,
+      expectedVersion: cfg.version,
+      reason: '仓储智能体-模型服务配置',
+    }
+  } catch (e) {
+    providerError.value = e instanceof Error ? e.message : '读取模型服务配置失败'
+  } finally {
+    providerLoading.value = false
+  }
+}
+async function saveProvider(): Promise<void> {
+  if (!canConfig.value || providerSaving.value) return
+  providerSaving.value = true
+  providerError.value = ''
+  try {
+    const payload: UpdateAgentProviderConfigRequest = {
+      ...providerForm.value,
+      reason: '仓储智能体-模型服务配置',
+    }
+    const key = payload.apiKey?.trim()
+    if (key) payload.apiKey = key
+    else delete payload.apiKey
+    providerConfig.value = await saveAgentProviderConfig(payload)
+    ElMessage.success('模型服务配置已保存')
+    await refresh()
+    await loadProvider()
+  } catch (e) {
+    providerError.value = e instanceof Error ? e.message : '保存模型服务配置失败'
+  } finally {
+    providerSaving.value = false
+  }
+}
 const defaults = (): Schedule => ({ name: '每日库存巡检', enabled: true, frequency: 'DAILY', intervalMinutes: 60,
   dailyTime: '08:00', emails: '', lowStock: true, replenishment: true, frozenStock: true, capacity: true,
   capacityPercent: 85, cooldownHours: 24 })
@@ -74,7 +148,7 @@ async function showWeights() { try { weights.value = await agentWeights(); weigh
 async function saveWeight(row: AgentRow) {
   try { await saveAgentWeight(Number(row.id), Number(row.weight_kg)); ElMessage.success('每单位重量已保存'); await refresh() } catch(e) { failure(e) }
 }
-onMounted(refresh)
+onMounted(() => { void refresh(); void loadProvider() })
 </script>
 
 <template>
@@ -82,6 +156,19 @@ onMounted(refresh)
     <header class="page-heading"><div><p class="eyebrow">WAREHOUSE AGENT</p><h1>仓储智能体</h1><p>用日常语言找货，自动巡检库存，了解库位使用情况。</p></div><el-button :loading="loading" @click="refresh">刷新</el-button></header>
     <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
     <div class="agent-status"><el-tag :type="status?.modelConfigured ? 'success' : 'warning'">{{ status?.modelConfigured ? status.model : '模型待配置' }}</el-tag><el-tag :type="status?.mailConfigured ? 'success' : 'warning'">{{ status?.mailConfigured ? '邮件通道已配置' : '邮件待配置 · 站内预警可用' }}</el-tag><span>当前范围：{{ auth.user?.tenant.currentWarehouse.name }} / {{ auth.user?.tenant.currentOwner.name }}</span></div>
+    <section v-loading="providerLoading" class="panel agent-config">
+      <div class="section-actions"><div><h2>模型服务配置</h2><p>URL、模型和密钥存入业务库；保存后下一次对话生效，页面只显示密钥后 4 位。</p></div><el-tag :type="providerConfig?.source === 'DB' ? 'success' : 'info'">{{ providerConfig?.source === 'DB' ? '数据库配置' : '环境变量兜底' }}</el-tag></div>
+      <el-alert v-if="providerError" :title="providerError" type="error" :closable="false" show-icon />
+      <div class="provider-grid">
+        <label>接口地址<el-input v-model="providerForm.baseUrl" :disabled="!canConfig" placeholder="http://100.65.200.125:18047/v1" /></label>
+        <label>模型<el-input v-model="providerForm.model" :disabled="!canConfig" placeholder="Qwen3.8-27B" /></label>
+        <label>API 密钥（留空不修改）<el-input v-model="providerForm.apiKey" type="password" show-password :disabled="!canConfig" :placeholder="apiKeyPlaceholder" /></label>
+        <label>启用<el-switch v-model="providerForm.enabled" :disabled="!canConfig" /></label>
+        <label>超时（秒）<el-input-number v-model="providerForm.timeoutSeconds" :min="5" :max="60" :disabled="!canConfig" /></label>
+        <label>提供方<el-input v-model="providerForm.provider" :disabled="!canConfig" placeholder="qwen" /></label>
+      </div>
+      <div class="provider-actions"><el-button type="primary" :loading="providerSaving" :disabled="!canConfig" @click="saveProvider">保存模型配置</el-button><span class="provider-meta">{{ providerMeta }}</span></div>
+    </section>
     <el-tabs v-model="tab">
       <el-tab-pane label="智能查货与分析" name="chat">
         <section class="panel chat-input"><h2>想查什么？直接说出来</h2><div class="prompt-chips"><el-button v-for="sample in samples" :key="sample" size="small" @click="question = sample">{{ sample }}</el-button></div>
@@ -142,4 +229,14 @@ onMounted(refresh)
 .tool-arguments{white-space:pre-wrap;font-size:12px;opacity:.75}.section-actions{justify-content:space-between;margin-bottom:16px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 .agent-page .panel{padding:22px;margin-bottom:18px}.agent-page h2{font-size:18px}.agent-page .el-table{margin-top:16px}.agent-page small{display:block}
 @media(max-width:700px){.form-grid{grid-template-columns:1fr}.prompt-chips .el-button{height:auto;white-space:normal;padding:10px}.chat-actions{justify-content:stretch}.chat-actions .el-button{flex:1}}
+/* 仓储智能体模型服务配置 */
+.agent-config{padding:22px;margin-bottom:18px}
+.agent-config .section-actions h2{font-size:18px;margin:0}
+.agent-config .section-actions p{margin:6px 0 0;color:#909399;font-size:12px}
+.provider-grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px 18px;margin-top:14px}
+.provider-grid label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#606266}
+.provider-actions{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+.provider-meta{font-size:12px;color:#909399}
+@media(max-width:1100px){.provider-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.provider-grid{grid-template-columns:1fr}}
 </style>
