@@ -76,6 +76,16 @@ public class SysSsoSessions {
     }
     return user;
   }
+  public LoginUser loadBearer(String subject){
+    if(subject==null||subject.isBlank()||file==null||file.isBlank())return null;
+    try{
+      var mapping=json.readTree(java.nio.file.Files.readString(java.nio.file.Path.of(file))).path(subject);
+      if(!mapping.path("enabled").asBoolean(false))return null;
+      String localUserId=mapping.path("localUserId").asText("");
+      if(localUserId.isBlank())return null;
+      return users.load(localUserId);
+    }catch(Exception e){return null;}
+  }
   public void logout(Binding b){call("session/logout",Map.of("subject",b.subject(),"sessionId",b.sid(),"audience","sys"));}
   public int revoke(String sid){
     if(sid==null||sid.isBlank())throw new ResponseStatusException(HttpStatus.BAD_REQUEST);int count=0;

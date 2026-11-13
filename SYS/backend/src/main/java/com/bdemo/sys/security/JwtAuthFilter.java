@@ -70,6 +70,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     userId = claims.getSubject();
                 }
                 LoginUser loginUser = loader.load(userId);
+                if (loginUser == null && nativeSessions != null) {
+                    loginUser = nativeSessions.loadBearer(userId);
+                }
                 if (loginUser != null) {
                     var authentication = new UsernamePasswordAuthenticationToken(
                             loginUser, null, AuthorityUtils.NO_AUTHORITIES);
