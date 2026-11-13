@@ -13,10 +13,12 @@ import com.bproject.safety.module.ai.model.CameraInfo;
 import com.bproject.safety.module.ai.model.DemoAiEvent;
 import com.bproject.safety.module.ai.repository.AiEventQuery;
 import com.bproject.safety.module.ai.service.AiEventService;
+import com.bproject.safety.module.ai.service.ScsAiConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -40,14 +42,39 @@ public class AiEventController {
 
     private final AiEventService service;
     private final com.bproject.safety.support.demo.DemoFeatureGuard demoGuard;
+    private final ScsAiConfigService aiConfig;
 
     @Value("${scs.edge-ai.url:http://127.0.0.1:18090}")
     private String edgeAiUrl;
 
+    /** 兼容既有测试直连；运行时由 Spring 使用下方三参构造器。 */
     public AiEventController(AiEventService service,
                              com.bproject.safety.support.demo.DemoFeatureGuard demoGuard) {
+        this(service, demoGuard, null);
+    }
+
+    @Autowired
+    public AiEventController(AiEventService service,
+                             com.bproject.safety.support.demo.DemoFeatureGuard demoGuard,
+                             ScsAiConfigService aiConfig) {
         this.service = service;
         this.demoGuard = demoGuard;
+        this.aiConfig = aiConfig;
+    }
+
+    /** 数据库配置优先，缺失或异常时回退启动参数 scs.edge-ai.url。 */
+    private String edgeUrl() {
+        if (aiConfig != null) {
+            try {
+                String url = aiConfig.runtime().baseUrl();
+                if (url != null && !url.isBlank()) {
+                    return url;
+                }
+            } catch (RuntimeException ignored) {
+                // 配置库暂不可用时保持边端代理可用。
+            }
+        }
+        return edgeAiUrl;
     }
 
     @GetMapping("/ai-events")
@@ -131,7 +158,7 @@ public class AiEventController {
     @GetMapping("/ai-events/edge-status")
     @Operation(summary = "查询边缘 AI 视觉服务运行状态")
     public Map<String, Object> edgeStatus() {
-        return service.getEdgeStatus(edgeAiUrl);
+        return service.getEdgeStatus(edgeUrl());
     }
 
     @PostMapping("/ai-events/trigger-edge")
@@ -139,20 +166,20 @@ public class AiEventController {
     public Map<String, Object> triggerEdge(@RequestBody(required = false) TriggerEdgeRequest body,
                                            @RequestHeader(value = "Idempotency-Key", required = false) String idemKey) {
         demoGuard.requireSimulator();
-        return service.triggerEdge(edgeAiUrl, body, idemKey);
+        return service.triggerEdge(edgeUrl(), body, idemKey);
     }
 
     @PostMapping("/ai-events/edge-stream/{action}")
     @Operation(summary = "控制边缘 AI 连续视频巡检推流 (start/stop)")
     public Map<String, Object> edgeStream(@PathVariable String action,
                                           @RequestParam(required = false, defaultValue = "5") Integer intervalSec) {
-        return service.controlEdgeStream(edgeAiUrl, action, intervalSec);
+        return service.controlEdgeStream(edgeUrl(), action, intervalSec);
     }
 
     @GetMapping(value = "/ai-events/snapshots/{filename}", produces = MediaType.IMAGE_JPEG_VALUE)
     @Operation(summary = "获取边缘抓拍原图（代理转发）")
     public ResponseEntity<byte[]> getSnapshot(@PathVariable String filename) {
-        return service.getSnapshot(edgeAiUrl, filename);
+        return service.getSnapshot(edgeUrl(), filename);
     }
 
     @PostMapping("/ai-events/simulate")

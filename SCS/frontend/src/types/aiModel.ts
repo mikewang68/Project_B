@@ -85,3 +85,30 @@ export interface EscalateCaseResult {
   status: string
   message: string
 }
+
+/** 边缘 AI 服务配置（edge-ai URL / 模型 / 可选密钥） */
+export interface AiProviderConfig {
+  enabled: boolean
+  baseUrl: string
+  model: string
+  apiKeyConfigured: boolean
+  apiKeyLast4?: string | null
+  timeoutMs: number
+  provider: string
+  version: number
+  updatedBy?: string | null
+  updatedAt?: string | null
+  source: 'DB' | 'ENV'
+}
+
+export interface UpdateAiProviderConfigRequest {
+  baseUrl: string
+  model: string
+  apiKey?: string | undefined
+  clearApiKey?: boolean | undefined
+  enabled: boolean
+  timeoutMs: number
+  provider?: string | undefined
+  expectedVersion?: number | undefined
+  reason: string
+}

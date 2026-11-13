@@ -13,8 +13,14 @@ import {
 } from '@element-plus/icons-vue'
 import AiSubNav from '@/components/ai/AiSubNav.vue'
 import AiCaseRecognitionPanel from '@/components/ai/AiCaseRecognitionPanel.vue'
-import type { AiModelInfo, UpdateModelConfigRequest } from '@/types/aiModel'
+import type {
+  AiModelInfo,
+  AiProviderConfig,
+  UpdateAiProviderConfigRequest,
+  UpdateModelConfigRequest,
+} from '@/types/aiModel'
 import { aiModelApi } from '@/api/aiModels'
+import { useAuthStore } from '@/stores/auth'
 
 const models = ref<AiModelInfo[]>([])
 const loading = ref(false)
@@ -29,6 +35,83 @@ const configForm = ref<UpdateModelConfigRequest>({
   engine: 'TensorRT FP16',
 })
 const isSavingConfig = ref(false)
+
+// 边缘 AI 服务配置（edge-ai URL / 模型 / 可选 Key）
+const auth = useAuthStore()
+const providerConfig = ref<AiProviderConfig | null>(null)
+const providerForm = ref<UpdateAiProviderConfigRequest>({
+  baseUrl: '',
+  model: '',
+  apiKey: '',
+  enabled: true,
+  timeoutMs: 3000,
+  provider: 'edge-ai',
+  expectedVersion: 0,
+  reason: 'AI模型管理-边缘AI服务配置',
+})
+const providerLoading = ref(false)
+const providerSaving = ref(false)
+const providerError = ref('')
+const canEditProvider = computed(() =>
+  auth.can('safety:module:ai:model:edit') && !auth.user?.readOnly,
+)
+const apiKeyPlaceholder = computed(() =>
+  providerConfig.value?.apiKeyConfigured
+    ? `已配置${providerConfig.value.apiKeyLast4 ? `，尾号 ${providerConfig.value.apiKeyLast4}` : ''}；留空不修改`
+    : 'edge-ai 无鉴权时可留空',
+)
+const providerMeta = computed(() => {
+  const cfg = providerConfig.value
+  if (!cfg?.updatedAt) return '尚未保存数据库配置'
+  const updated = new Date(cfg.updatedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+  return `更新：${updated}${cfg.updatedBy ? ` / ${cfg.updatedBy}` : ''}`
+})
+
+async function loadProviderConfig(): Promise<void> {
+  providerLoading.value = true
+  providerError.value = ''
+  try {
+    const cfg = await aiModelApi.getProviderConfig()
+    providerConfig.value = cfg
+    providerForm.value = {
+      baseUrl: cfg.baseUrl,
+      model: cfg.model || selectedModel.value?.id || '',
+      apiKey: '',
+      enabled: cfg.enabled,
+      timeoutMs: cfg.timeoutMs,
+      provider: cfg.provider,
+      expectedVersion: cfg.version,
+      reason: 'AI模型管理-边缘AI服务配置',
+    }
+  } catch (err) {
+    providerError.value = err instanceof Error ? err.message : '读取边缘 AI 配置失败'
+  } finally {
+    providerLoading.value = false
+  }
+}
+
+async function saveProviderConfig(): Promise<void> {
+  if (providerSaving.value) return
+  providerSaving.value = true
+  providerError.value = ''
+  try {
+    const payload: UpdateAiProviderConfigRequest = {
+      ...providerForm.value,
+      reason: 'AI模型管理-边缘AI服务配置',
+    }
+    const key = payload.apiKey?.trim()
+    if (key) payload.apiKey = key
+    else delete payload.apiKey
+    providerConfig.value = await aiModelApi.saveProviderConfig(payload)
+    ElMessage.success('边缘 AI 服务配置已保存')
+    await loadModels()
+    await loadProviderConfig()
+  } catch (err) {
+    providerError.value = err instanceof Error ? err.message : '保存边缘 AI 配置失败'
+  } finally {
+    providerSaving.value = false
+  }
+}
 
 const selectedModel = computed(() =>
   models.value.find((m) => m.id === selectedModelId.value) ||
@@ -107,8 +190,9 @@ async function saveConfig(): Promise<void> {
   }
 }
 
-onMounted(() => {
-  void loadModels()
+onMounted(async () => {
+  await loadModels()
+  await loadProviderConfig()
 })
 </script>
 
@@ -161,6 +245,31 @@ onMounted(() => {
           <strong>{{ stats.avgMap }}<span class="stat-unit">%</span></strong>
           <span class="stat-sub">严格评测集 mAP@0.5 指标</span>
         </div>
+      </div>
+    </div>
+
+    <!-- 边缘 AI 服务配置 -->
+    <div v-loading="providerLoading" class="models-section dashboard-card ai-provider-section">
+      <div class="section-header">
+        <div class="section-title">
+          <el-icon><Setting /></el-icon>
+          <h2>边缘 AI 服务配置</h2>
+          <span class="badge-count">{{ providerConfig?.source === 'DB' ? '数据库配置' : '环境变量兜底' }}</span>
+        </div>
+        <span class="provider-hint">保存后下一次边缘状态 / 抓拍 / 触发即生效；密钥只写不回显</span>
+      </div>
+      <div v-if="providerError" class="provider-error">{{ providerError }}</div>
+      <div class="provider-grid">
+        <label>edge-ai 接口地址<input v-model="providerForm.baseUrl" :disabled="!canEditProvider" placeholder="http://192.168.101.57:18090" /></label>
+        <label>模型<select v-model="providerForm.model" :disabled="!canEditProvider"><option v-for="m in models" :key="m.id" :value="m.id">{{ m.name }}（{{ m.id }}）</option></select></label>
+        <label>API 密钥（可选）<input v-model="providerForm.apiKey" type="password" autocomplete="new-password" :disabled="!canEditProvider" :placeholder="apiKeyPlaceholder" /></label>
+        <label>启用<el-switch v-model="providerForm.enabled" :disabled="!canEditProvider" /></label>
+        <label>超时（毫秒）<el-input-number v-model="providerForm.timeoutMs" :min="500" :max="30000" :step="500" :disabled="!canEditProvider" /></label>
+        <label>提供方<input v-model="providerForm.provider" :disabled="!canEditProvider" placeholder="edge-ai" /></label>
+      </div>
+      <div class="provider-actions">
+        <el-button v-permission="'safety:module:ai:model:edit'" type="primary" :loading="providerSaving" :disabled="!canEditProvider" @click="saveProviderConfig">保存 AI 服务配置</el-button>
+        <span class="provider-meta">{{ providerMeta }}</span>
       </div>
     </div>
 
@@ -732,4 +841,16 @@ onMounted(() => {
   font-size: 11px;
   color: #909399;
 }
+/* 边缘 AI 服务配置 */
+.ai-provider-section { padding: 16px 20px; }
+.provider-hint { font-size: 12px; color: #909399; }
+.provider-error { margin: 8px 0; padding: 8px 10px; background: #fef0f0; color: #f56c6c; border-radius: 4px; font-size: 12px; }
+.provider-grid { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 12px 18px; margin-top: 12px; }
+.provider-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #606266; }
+.provider-grid input, .provider-grid select { height: 32px; padding: 0 8px; border: 1px solid #dcdfe6; border-radius: 4px; background: #fff; color: #303133; font-size: 13px; }
+.provider-grid input:disabled, .provider-grid select:disabled { background: #f5f7fa; color: #a8abb2; }
+.provider-actions { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.provider-meta { font-size: 12px; color: #909399; }
+@media (max-width: 1100px) { .provider-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px) { .provider-grid { grid-template-columns: 1fr; } }
 </style>

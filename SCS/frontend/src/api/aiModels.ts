@@ -3,8 +3,10 @@ import type {
   AiInferenceRequest,
   AiInferenceResult,
   AiModelInfo,
+  AiProviderConfig,
   EscalateCaseRequest,
   EscalateCaseResult,
+  UpdateAiProviderConfigRequest,
   UpdateModelConfigRequest,
 } from '@/types/aiModel'
 
@@ -33,4 +35,12 @@ export const aiModelApi = {
   /** 实际识别案例一键上报为安全告警 */
   escalate: async (req: EscalateCaseRequest): Promise<EscalateCaseResult> =>
     postJson<EscalateCaseResult>('/ai/models/escalate', req),
+
+  /** 读取边缘 AI 服务配置（密钥只返回 last4） */
+  getProviderConfig: async (): Promise<AiProviderConfig> =>
+    apiRequest<AiProviderConfig>('/ai/models/config'),
+
+  /** 保存边缘 AI 服务配置；密钥留空表示保持原密钥 */
+  saveProviderConfig: async (config: UpdateAiProviderConfigRequest): Promise<AiProviderConfig> =>
+    putJson<AiProviderConfig>('/ai/models/config', config),
 }
