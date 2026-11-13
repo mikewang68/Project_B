@@ -17,21 +17,60 @@ const prefs = usePreferenceStore()
 const collapsed = ref(false)
 const isSideCollapsed = computed(() => prefs.layout === 'compact' || (prefs.layout === 'side' && collapsed.value))
 
+interface NavMeta {
+  nav?: boolean
+  title?: string
+  icon?: string
+  order?: number
+  menuPerm?: string
+  perm?: string
+  platformAdminOnly?: boolean
+}
+
 interface NavItem {
   id: string
   label: string
   icon: string
   path: string
-  perm: string
+  perm?: string
+  platformOnly?: boolean
+  order: number
 }
 
-const navMenu: NavItem[] = [
-  { id: 'sys-dict', label: '数据字典', icon: 'Collection', path: '/maintain/dict', perm: 'sys:dict:type:view' },
-  { id: 'sys-logs', label: '操作日志', icon: 'Document', path: '/maintain/logs', perm: 'sys:log:list:view' },
-  { id: 'sys-config', label: '系统配置', icon: 'Setting', path: '/maintain/config', perm: 'sys:config:list:view' },
-]
+// 侧栏由路由表统一生成：新增页面只需注册路由并标记 meta.nav，
+// 不再维护第二份硬编码菜单；可见性按服务端 /auth/me 返回的权限过滤。
+// 父路由的 alias 会让 getRoutes() 返回重复子记录，按路由名/路径去重。
+const seenNavKeys = new Set<string>()
+const navMenu: NavItem[] = router
+  .getRoutes()
+  .filter((record) => (record.meta as NavMeta).nav === true)
+  .filter((record) => {
+    const key = String(record.name ?? record.path)
+    if (seenNavKeys.has(key)) return false
+    seenNavKeys.add(key)
+    return true
+  })
+  .map((record) => {
+    const meta = record.meta as NavMeta
+    return {
+      id: String(record.name ?? record.path),
+      label: meta.title ?? String(record.name ?? record.path),
+      icon: meta.icon ?? 'Menu',
+      path: record.path,
+      perm: meta.menuPerm ?? meta.perm,
+      platformOnly: meta.platformAdminOnly === true,
+      order: meta.order ?? Number.MAX_SAFE_INTEGER,
+    }
+  })
+  .sort((a, b) => a.order - b.order)
 
-const filteredMenu = computed(() => navMenu.filter((item) => auth.permCodes.has(item.perm)))
+const filteredMenu = computed(() =>
+  navMenu.filter(
+    (item) =>
+      (!item.perm || auth.permCodes.has(item.perm)) &&
+      (!item.platformOnly || auth.isSuperAdmin),
+  ),
+)
 const activeMenu = computed(() => route.path)
 
 function handleSelect(path: string) {

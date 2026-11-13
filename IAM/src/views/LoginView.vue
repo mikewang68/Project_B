@@ -19,28 +19,6 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
-type DemoAccount = { label: string; username: string; password: string; desc: string }
-function configuredAccounts(): DemoAccount[] {
-  try {
-    const value: unknown = JSON.parse(import.meta.env.VITE_LOGIN_ACCOUNTS || '[]')
-    if (!Array.isArray(value)) return []
-    return value.filter((item) => item && typeof item.label === 'string' && typeof item.username === 'string')
-      .map((item) => ({
-        label: item.label, username: item.username,
-        password: typeof item.password === 'string' ? item.password : '',
-        desc: typeof item.description === 'string' ? item.description : '',
-      }))
-  } catch {
-    return []
-  }
-}
-const demoAccounts = configuredAccounts()
-
-function fillAccount(acc: { username: string; password: string }) {
-  form.username = acc.username
-  form.password = acc.password
-}
-
 async function handleLogin() {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
@@ -124,22 +102,6 @@ async function handleLogin() {
             </el-button>
           </el-form-item>
         </el-form>
-
-        <div class="demo-section">
-          <div class="demo-title">演示账号（点击快速填充）</div>
-          <div class="demo-grid">
-            <div
-              v-for="acc in demoAccounts"
-              :key="acc.username"
-              class="demo-account"
-              @click="fillAccount(acc)"
-            >
-              <div class="demo-acc-name">{{ acc.label }}</div>
-              <div class="demo-acc-user">{{ acc.username }}</div>
-              <div class="demo-acc-desc">{{ acc.desc }}</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -288,55 +250,4 @@ async function handleLogin() {
   letter-spacing: 4px;
 }
 
-.demo-section {
-  margin-top: 28px;
-  padding-top: 20px;
-  border-top: 1px solid var(--app-divider-color);
-}
-
-.demo-title {
-  font-size: 12px;
-  color: var(--app-text-secondary);
-  margin-bottom: 12px;
-}
-
-.demo-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.demo-account {
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  background: var(--app-surface-secondary);
-  border: 1px solid var(--app-border-light);
-  cursor: pointer;
-  transition:
-    background-color 0.2s,
-    border-color 0.2s;
-
-  &:hover {
-    background: var(--app-color-primary-light);
-    border-color: var(--app-color-primary);
-  }
-}
-
-.demo-acc-name {
-  font-size: 13px;
-  color: var(--app-text-primary);
-  font-weight: 500;
-}
-
-.demo-acc-user {
-  font-size: 11px;
-  color: var(--app-color-primary);
-  margin: 2px 0;
-  font-family: monospace;
-}
-
-.demo-acc-desc {
-  font-size: 11px;
-  color: var(--app-text-secondary);
-}
 </style>

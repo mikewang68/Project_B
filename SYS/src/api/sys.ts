@@ -69,7 +69,7 @@ export const sysApi = {
 
   // ---------------- 认证（IAM 签发，SYS 恢复） ----------------
   login: (username: string, password: string) =>
-    client.request<LoginResult>('/iam/auth/login', { method: 'POST', body: { username, password } }),
+    client.request<LoginResult>('/iam/auth/login', { method: 'POST', body: { username, password }, skipCsrf: true }),
   logout: () => client.request<void>(client.getToken() ? '/iam/auth/logout' : '/sys/auth/sso/logout', { method: 'POST' }),
   me: () => client.request<MeResult>('/sys/auth/me'),
 

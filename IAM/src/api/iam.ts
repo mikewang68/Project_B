@@ -60,7 +60,7 @@ export const iamApi = {
 
   // ---------------- 认证 ----------------
   login: (username: string, password: string) =>
-    client.request<LoginResult>('/auth/login', { method: 'POST', body: { username, password } }),
+    client.request<LoginResult>('/auth/login', { method: 'POST', body: { username, password }, skipCsrf: true }),
   logout: () => client.request<void>('/auth/logout', { method: 'POST' }),
   me: () => client.request<MeResult>('/auth/me'),
 

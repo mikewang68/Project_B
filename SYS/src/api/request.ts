@@ -24,6 +24,8 @@ interface RequestOptions {
   query?: Record<string, string | number | undefined | null>
   /** 直接返回原始 Response（如下载文件），不走统一信封解析 */
   raw?: boolean
+  /** 跳过写请求前的 CSRF 预检（仅用于公开登录等尚无会话的请求） */
+  skipCsrf?: boolean
 }
 
 export interface ApiClientOptions {
@@ -62,7 +64,7 @@ export function createClient(options: ApiClientOptions): ApiClient {
     const headers: Record<string, string> = { Accept: 'application/json' }
     const token = getToken()
     if (token) headers.Authorization = `Bearer ${token}`
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    if (!opts.skipCsrf && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       const csrfResponse = await fetch(baseUrl() + '/sys/auth/sso/csrf', { credentials: 'same-origin', cache: 'no-store',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined })
       if (!csrfResponse.ok) throw new ApiError(csrfResponse.status, csrfResponse.status, '无法核验登录会话')

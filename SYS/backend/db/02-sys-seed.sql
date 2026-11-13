@@ -46,6 +46,16 @@ VALUES
 ('cfg-single','session.single','单点登录','true','boolean','会话设置',NULL,NULL,'同一账号仅允许一处在线',9,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('cfg-remember','session.remember','允许记住登录','true','boolean','会话设置',NULL,NULL,NULL,10,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 
+-- 运行监测参数：心跳与动态刷新周期统一纳入系统设置（第十五次组会要求）。
+INSERT INTO sys_config
+  (id, config_key, config_name, config_value, config_type, config_group,
+   options_json, unit, remark, sort_order, editable, owner_app_code, scope_kind)
+VALUES
+  ('cfg-monitor-heartbeat','monitor.heartbeat.intervalMs','心跳检测周期','5000','number','运行监测',NULL,'ms','设备/组件心跳检测周期；100/500/1000/5000 为讨论示例',11,1,'SYS','GLOBAL'),
+  ('cfg-monitor-refresh','monitor.refresh.intervalMs','页面动态刷新周期','15000','number','运行监测',NULL,'ms','前端页面/看板动态刷新周期',12,1,'SYS','GLOBAL'),
+  ('cfg-monitor-offline','monitor.device.offlineTimeoutMs','设备离线判定阈值','30000','number','运行监测',NULL,'ms','超过该时长未收到心跳判定离线',13,1,'SYS','GLOBAL'),
+  ('cfg-monitor-slow','monitor.request.slowThresholdMs','慢请求告警阈值','3000','number','运行监测',NULL,'ms','接口响应超过该时长记为慢请求',14,1,'SYS','GLOBAL');
+
 INSERT INTO sys_operation_log
   (id, kind, username, user_id, module, action, target, detail, request_method, request_uri, ip, result, duration_ms, created_at)
 VALUES

@@ -25,7 +25,7 @@ onMounted(async () => {
   }
 })
 
-const GROUP_ORDER = ['基础设置', '安全策略', '会话设置']
+const GROUP_ORDER = ['基础设置', '安全策略', '会话设置', '运行监测']
 const groups = computed(() =>
   GROUP_ORDER.map((g) => ({ name: g, items: sys.configs.filter((c) => c.group === g) })).filter((g) => g.items.length > 0),
 )

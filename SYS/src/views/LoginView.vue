@@ -19,14 +19,10 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
-const demoAccounts = [
-  { label: '系统管理员', username: 'admin', password: 'Admin@123', desc: '全部维护权限' },
-  { label: '运维观摩', username: 'viewer', password: 'Viewer@123', desc: '只读 / 可导出日志' },
-]
-
-function fillAccount(acc: { username: string; password: string }) {
-  form.username = acc.username
-  form.password = acc.password
+function goPortal() {
+  const configured = import.meta.env.VITE_PORTAL_URL as string | undefined
+  const url = configured || 'https://bproject.de5.net/portal?projectId=PROJECT_B'
+  window.location.href = url
 }
 
 async function handleLogin() {
@@ -113,20 +109,8 @@ async function handleLogin() {
           </el-form-item>
         </el-form>
 
-        <div class="demo-section">
-          <div class="demo-title">演示账号（点击快速填充）</div>
-          <div class="demo-grid">
-            <div
-              v-for="acc in demoAccounts"
-              :key="acc.username"
-              class="demo-account"
-              @click="fillAccount(acc)"
-            >
-              <div class="demo-acc-name">{{ acc.label }}</div>
-              <div class="demo-acc-user">{{ acc.username }}</div>
-              <div class="demo-acc-desc">{{ acc.desc }}</div>
-            </div>
-          </div>
+        <div class="portal-login">
+          <el-button link type="primary" @click="goPortal">统一门户登录（推荐）</el-button>
         </div>
       </div>
     </div>
@@ -267,6 +251,11 @@ async function handleLogin() {
   font-size: 13px;
   color: var(--app-text-secondary);
   margin: 0 0 28px;
+}
+
+.portal-login {
+  margin-top: 14px;
+  text-align: center;
 }
 
 .login-btn {
