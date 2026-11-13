@@ -21,7 +21,7 @@ const auth = useAuthStore()
 const router = useRouter()
 const devices = ref<CollisionEquipment[]>([])
 const selectedType = ref<'转运车辆' | '翻箱机' | '龙门吊'>('转运车辆')
-const selectedCurrentId = ref('VEH-07'), selectedRelatedId = ref('TIP-02')
+const selectedCurrentId = ref(''), selectedRelatedId = ref('')
 const distance = ref(12.6), risk = ref<CollisionRisk>('安全'), radarDown = ref(false), simulationRunning = ref(false)
 const deviceStopped = ref(false), controlFailure = ref(false), takeoverDone = ref(false)
 const plcStatus = ref('待命'), selectedEquipmentId = ref<string>(), drawerOpen = ref(false)
@@ -56,12 +56,16 @@ const relatedEquipment = computed(() => decorate(devices.value.find((item) => it
 const selectedEquipment = computed(() => selectedEquipmentId.value ? decorate(devices.value.find((item) => item.id === selectedEquipmentId.value)) : undefined)
 const currentChoices = computed(() => devices.value.filter((item) => item.type === selectedType.value))
 const relatedChoices = computed(() => devices.value.filter((item) => item.id !== selectedCurrentId.value))
-const summaryStats = computed(() => [
-  { label: '在线设备', value: '36 / 38', icon: Connection, tone: 'primary' },
-  { label: '雷达正常', value: radarDown.value ? '7 / 8' : '8 / 8', icon: DataLine, tone: radarDown.value ? 'warning' : 'success' },
+const summaryStats = computed(() => {
+  const online = devices.value.filter((d) => d.communication && !d.communication.includes('离线')).length
+  const radarOk = devices.value.filter((d) => d.radarStatus === '正常').length
+  return [
+  { label: '在线设备', value: `${online} / ${devices.value.length}`, icon: Connection, tone: 'primary' },
+  { label: '雷达正常', value: radarDown.value ? `${radarOk - 1 >= 0 ? radarOk - 1 : radarOk} / ${devices.value.length}` : `${radarOk} / ${devices.value.length}`, icon: DataLine, tone: radarDown.value ? 'warning' : 'success' },
   { label: '当前风险', value: risk.value === '安全' ? 0 : 1, icon: WarningFilled, tone: risk.value === '紧急' ? 'danger' : risk.value === '安全' ? 'success' : 'warning' },
   { label: '控制链路', value: controlFailure.value ? '待确认' : '正常', icon: Cpu, tone: controlFailure.value ? 'danger' : 'success' },
-])
+  ]
+})
 const releaseChecks = computed(() => [
   { label: '设备已经停止', passed: deviceStopped.value },
   { label: '安全回撤路径已确认', passed: deviceStopped.value },
@@ -98,6 +102,11 @@ async function loadDevices(): Promise<void> {
     const data = await collisionApi.devices()
     if (!devicesGuard.isLatest(token)) return
     devices.value = data
+  // 默认选中列表第一台（及其第一台关联设备），避免写死设备号
+  if (!selectedCurrentId.value || !devices.value.some((d) => d.id === selectedCurrentId.value)) {
+    selectedCurrentId.value = devices.value[0]?.id ?? ''
+    selectedRelatedId.value = devices.value.find((d) => d.id !== selectedCurrentId.value)?.id ?? ''
+  }
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '设备数据加载失败')
   }
@@ -240,9 +249,12 @@ function releaseRisk(): void {
 function openEquipment(equipment: CollisionEquipment): void { selectedEquipmentId.value = equipment.id; drawerOpen.value = true }
 function updateType(type: typeof selectedType.value): void {
   selectedType.value = type
-  if (type === '转运车辆') { selectedCurrentId.value = 'VEH-07'; selectedRelatedId.value = 'TIP-02' }
-  if (type === '翻箱机') { selectedCurrentId.value = 'TIP-02'; selectedRelatedId.value = 'VEH-07' }
-  if (type === '龙门吊') { selectedCurrentId.value = 'CRANE-01'; selectedRelatedId.value = 'VEH-08' }
+  // 按类型从台账列表选第一台（+ 第一台关联设备），不写死设备号
+  const pool = devices.value.filter((d) => d.type === type)
+  if (pool.length) {
+    selectedCurrentId.value = pool[0]!.id
+    selectedRelatedId.value = devices.value.find((d) => d.id !== pool[0]!.id)?.id ?? ''
+  }
   void loadPair(); void loadTrend()
 }
 function updateCurrent(id: string): void {

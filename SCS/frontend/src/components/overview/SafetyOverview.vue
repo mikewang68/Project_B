@@ -12,6 +12,7 @@ import RiskTrendChart from './RiskTrendChart.vue'
 import SafetyMap from './SafetyMap.vue'
 import SafetyStatCard from './SafetyStatCard.vue'
 import { overviewApi } from '@/api/overview'
+import { screenApi } from '@/api/screen'
 import { mapFences } from '@/adapters/overview'
 import { ApiError } from '@/api/http'
 import { useLiveStore } from '@/stores/live'
@@ -32,6 +33,8 @@ const summary = ref<OverviewSummaryDto>({
   onDutyDemo: true, deviceDemo: true, riskyDevicesDemo: true,
 })
 const people = ref<PersonnelPoint[]>([])
+const deviceHealthItems = ref<{ label: string; online: number; total: number }[]>([])
+const deviceHealthDemo = ref(true)
 const equipment = ref<EquipmentPoint[]>([])
 const fences = ref<FenceRecord[]>([])
 const liveOverlay = ref(false)
@@ -44,6 +47,13 @@ const drawerOpen = ref(false)
 
 async function loadSummary(): Promise<void> {
   summary.value = await overviewApi.getSummary()
+  try {
+    const screen = await screenApi.getOverview()
+    deviceHealthItems.value = (screen.deviceHealth ?? []).map((h) => ({ label: h.name, online: h.online, total: h.total }))
+    deviceHealthDemo.value = screen.deviceHealth?.some((h) => h.demo) ?? true
+  } catch {
+    // 设备健康卡片保留上次数据；summary 的聚合值不受影响
+  }
 }
 async function loadMap(): Promise<void> {
   const map = await overviewApi.getMap()
@@ -170,7 +180,7 @@ onUnmounted(() => {
     <div class="safety-data-grid">
       <RiskTrendChart :points="trend.points" :demo="trend.demo" />
       <RiskDistributionChart :items="distribution.items" />
-      <DeviceHealth />
+      <DeviceHealth :items="deviceHealthItems" :demo="deviceHealthDemo" />
       <LoadingAreaPanel />
     </div>
 

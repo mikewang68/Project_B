@@ -136,8 +136,8 @@ const kpis = computed<OpsKpi[]>(() => {
     },
     {
       key: 'edge', label: '边缘节点',
-      value: `${nodes.value.filter((n) => n.online).length} / 4 ${disconnected ? '自治' : '在线'}`,
-      hint: disconnected ? '本地自治运行中' : 'EDGE-01 ~ EDGE-04',
+      value: `${nodes.value.filter((n) => n.online).length} / ${nodes.value.length} ${disconnected ? '自治' : '在线'}`,
+      hint: '节点数按运维台账实时计算',
       tone: disconnected ? 'warning' : 'success', icon: 'edge',
     },
     {
