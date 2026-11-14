@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { createLatestGuard } from '@/composables/useLatestGuard'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus/es'
 import RuleOverview, { type RuleKpi } from '@/components/rules/RuleOverview.vue'
 import RuleCategoryNav from '@/components/rules/RuleCategoryNav.vue'
 import RuleToolbar from '@/components/rules/RuleToolbar.vue'

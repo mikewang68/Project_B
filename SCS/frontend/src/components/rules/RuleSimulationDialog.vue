@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onUnmounted, reactive, ref, watch } from 'vue'
-import { ElDialog } from 'element-plus'
+import { ElDialog } from 'element-plus/es'
 import { VideoPlay, Loading } from '@element-plus/icons-vue'
 import { ruleApi } from '@/api/rules'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import type { SafetyRule, SimulationInput, SimulationResult } from '@/types/rule'
 
 const props = defineProps<{ modelValue: boolean; rules: SafetyRule[]; initialId?: string | undefined }>()

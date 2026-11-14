@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
-import { ElDrawer } from 'element-plus'
+import { ElDrawer } from 'element-plus/es'
 import { Plus, Delete } from '@element-plus/icons-vue'
 import { RULE_ACTIONS, RULE_AREAS, RULE_CATEGORIES, RULE_LEVELS, RULE_OWNERS, type RuleCategory, type RuleRisk, type SafetyRule } from '@/types/rule'
 

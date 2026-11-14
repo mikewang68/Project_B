@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import OpsOverview, { type OpsKpi } from '@/components/operations/OpsOverview.vue'
 import OpsToolbar from '@/components/operations/OpsToolbar.vue'
 import OfflineBanner from '@/components/operations/OfflineBanner.vue'

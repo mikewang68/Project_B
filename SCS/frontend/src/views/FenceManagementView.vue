@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import { Delete, RefreshRight } from '@element-plus/icons-vue'
 import SafetyMapCanvas from '@/components/shared/SafetyMapCanvas.vue'
 import FenceList from '@/components/fence/FenceList.vue'

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ElDrawer } from 'element-plus'
+import { ElDrawer } from 'element-plus/es'
 import { Close } from '@element-plus/icons-vue'
 import type { RepeatPerson } from '@/types/analytics'
 

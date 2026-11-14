@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { ElDialog } from 'element-plus'
+import { ElDialog } from 'element-plus/es'
 import { Check, Loading } from '@element-plus/icons-vue'
 import type { FenceRecord } from '@/types/fence'
 

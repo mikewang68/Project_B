@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ElDrawer } from 'element-plus'
+import { ElDrawer } from 'element-plus/es'
 import { Clock, Location, User } from '@element-plus/icons-vue'
 import type { OverviewAlert } from '@/types/overview'
 

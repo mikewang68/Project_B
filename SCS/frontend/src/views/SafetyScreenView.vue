@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import BigScreenHeader from '@/components/screen/BigScreenHeader.vue'
 import BigScreenMetrics from '@/components/screen/BigScreenMetrics.vue'
 import BigScreenMap from '@/components/screen/BigScreenMap.vue'

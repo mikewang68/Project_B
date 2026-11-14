@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import { Search, Timer } from '@element-plus/icons-vue'
 import SafetyMapCanvas from '@/components/shared/SafetyMapCanvas.vue'
 import PersonnelList from '@/components/personnel/PersonnelList.vue'

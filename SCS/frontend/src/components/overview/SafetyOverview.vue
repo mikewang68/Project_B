@@ -2,7 +2,7 @@
 import { computed, markRaw, onMounted, onUnmounted, ref } from 'vue'
 import { createLatestGuard } from '@/composables/useLatestGuard'
 import { Bell, Clock, Connection, User, WarningFilled } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import AlertDrawer from './AlertDrawer.vue'
 import DeviceHealth from './DeviceHealth.vue'
 import LoadingAreaPanel from './LoadingAreaPanel.vue'

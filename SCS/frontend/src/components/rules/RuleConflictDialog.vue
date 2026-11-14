@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { ElDialog } from 'element-plus'
+import { ElDialog } from 'element-plus/es'
 import { WarningFilled } from '@element-plus/icons-vue'
 import type { RuleConflict } from '@/types/rule'
 

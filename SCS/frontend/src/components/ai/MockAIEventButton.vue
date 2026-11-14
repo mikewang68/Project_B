@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowDown, Cpu, MagicStick, VideoCamera, VideoPause, VideoPlay, View } from '@element-plus/icons-vue'
-import { ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon } from 'element-plus'
+import { ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon } from 'element-plus/es'
 import type { EdgeScenario } from '@/types/ai'
 
 withDefaults(

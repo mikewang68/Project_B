@@ -27,9 +27,12 @@ public final class ScreenDtos {
             int deviceOnline,
             int deviceTotal,
             int todayAlerts,
+            boolean todayAlertsDemo,
             int processingAlerts,
             int urgentAlerts,
             int severeAlerts,
+            /** 闭环率（%）：CLOSED / 非取消告警总数；无数据为 null。 */
+            Double closedRate,
             boolean onDutyDemo,
             boolean deviceDemo,
             List<DeviceHealthItem> deviceHealth,

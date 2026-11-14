@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Close, WarningFilled } from '@element-plus/icons-vue'
-import { ElDrawer } from 'element-plus'
+import { ElDrawer } from 'element-plus/es'
 import RiskBadge from '@/components/shared/RiskBadge.vue'
 import AlertStatusBadge from './AlertStatusBadge.vue'
 import AlertEvidence from './AlertEvidence.vue'

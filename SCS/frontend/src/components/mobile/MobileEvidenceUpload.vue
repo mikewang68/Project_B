@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Delete, Picture } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import type { IncidentPhoto } from '@/types/incident'
 
 const props = defineProps<{ photos: IncidentPhoto[] }>()
@@ -44,7 +44,7 @@ function onFile(event: Event): void {
     </div>
     <div v-if="props.photos.length" class="m-upload__list">
       <div v-for="p in props.photos" :key="p.id" class="m-upload__item">
-        <img :src="p.thumb === 'mock' ? undefined : p.thumb" alt="现场证据" />
+        <img :src="p.thumb === 'mock' ? undefined : p.thumb" alt="现场证据" width="96" height="72" loading="lazy" />
         <span v-if="p.thumb === 'mock'" class="m-upload__placeholder">已上传</span>
         <div>
           <b>{{ p.name }}</b>

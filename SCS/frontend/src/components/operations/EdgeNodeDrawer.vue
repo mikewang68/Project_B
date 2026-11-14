@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ElDrawer } from 'element-plus'
+import { ElDrawer } from 'element-plus/es'
 import { Close } from '@element-plus/icons-vue'
 import type { EdgeNode } from '@/types/operations'
 import { operationsApi } from '@/api/operations'

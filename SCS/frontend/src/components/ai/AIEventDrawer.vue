@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Close, Picture } from '@element-plus/icons-vue'
-import { ElDrawer, ElImage } from 'element-plus'
+import { ElDrawer, ElImage } from 'element-plus/es'
 import AIDetectionImage from './AIDetectionImage.vue'
 import AIEventStatusBadge from './AIEventStatusBadge.vue'
 import ConfidenceBadge from './ConfidenceBadge.vue'

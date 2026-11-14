@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { createLatestGuard } from '@/composables/useLatestGuard'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus/es'
 import { Connection, Cpu, DataLine, RefreshRight, VideoPause, WarningFilled } from '@element-plus/icons-vue'
 import EquipmentRelationMap from '@/components/collision/EquipmentRelationMap.vue'
 import RiskStatusPanel from '@/components/collision/RiskStatusPanel.vue'

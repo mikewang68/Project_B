@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ElDialog } from 'element-plus'
+import { ElDialog } from 'element-plus/es'
 import { useDictionaryStore } from '@/stores/dictionary'
 import type { AiEvent } from '@/types/ai'
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import { useIncidentStore } from '@/stores/incident'
 import type { MobileIncident } from '@/types/incident'
 

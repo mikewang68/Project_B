@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox, ElPagination } from 'element-plus'
+import { ElMessage, ElMessageBox, ElPagination } from 'element-plus/es'
 import AlertOverview from '@/components/alerts/AlertOverview.vue'
 import AlertFilters, { type AlertFilterState } from '@/components/alerts/AlertFilters.vue'
 import AlertTable from '@/components/alerts/AlertTable.vue'

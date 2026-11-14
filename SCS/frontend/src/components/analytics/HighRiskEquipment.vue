@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ElDrawer } from 'element-plus'
+import { ElDrawer } from 'element-plus/es'
 import { Close, Top, Bottom, Minus } from '@element-plus/icons-vue'
 import RiskBadge from '@/components/shared/RiskBadge.vue'
 import type { HotDevice } from '@/types/analytics'

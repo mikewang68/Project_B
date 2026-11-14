@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { createLatestGuard } from '@/composables/useLatestGuard'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus/es'
 import { Search } from '@element-plus/icons-vue'
 import AIOverview from '@/components/ai/AIOverview.vue'
 import AIEventGrid from '@/components/ai/AIEventGrid.vue'

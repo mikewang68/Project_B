@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ElDialog } from 'element-plus'
+import { ElDialog } from 'element-plus/es'
 import { PhoneFilled, WarningFilled } from '@element-plus/icons-vue'
 
 defineProps<{ modelValue: boolean }>()

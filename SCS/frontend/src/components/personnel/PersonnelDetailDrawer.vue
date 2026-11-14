@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Close, Location, Message, VideoPlay } from '@element-plus/icons-vue'
-import { ElDrawer } from 'element-plus'
+import { ElDrawer } from 'element-plus/es'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
 import type { PersonnelRecord } from '@/types/personnel'
 

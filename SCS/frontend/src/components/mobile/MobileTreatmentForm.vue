@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import { CircleCheckFilled } from '@element-plus/icons-vue'
 import MobileEvidenceUpload from './MobileEvidenceUpload.vue'
 import { MOBILE_MEASURES, type IncidentPhoto } from '@/types/incident'

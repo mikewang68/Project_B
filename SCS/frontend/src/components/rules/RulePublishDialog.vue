@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onUnmounted, ref, watch } from 'vue'
-import { ElDialog } from 'element-plus'
+import { ElDialog } from 'element-plus/es'
 import { Check, Loading, WarningFilled, CircleCheckFilled } from '@element-plus/icons-vue'
 import type { EdgeNodeState, SafetyRule } from '@/types/rule'
 

@@ -48,11 +48,26 @@ public class ScreenService {
         // 复查②：在岗/设备台账库内聚合（demo 标志如实）
         long onDuty = projection.onDutyCount();
         boolean onDutyDemo = projection.onDutyIsDemo();
+
+        // 今日口径：occurredAt 落在今天（服务时区）的事件；数据集不足一天时如实标注
+        var todayStart = java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault()).toOffsetDateTime();
+        List<DemoAlert> today = all.stream()
+                .filter(a -> a.occurredAt != null && !a.occurredAt.isBefore(todayStart))
+                .toList();
+        boolean todayDemo = today.size() < 5; // 演示数据集稀疏时按 Demo 口径展示
+
+        // 闭环率：CLOSED / 非取消告警；无告警数据为 null（前端回退 Demo 文案）
+        long closed = all.stream().filter(a -> AlertStatuses.CLOSED.equals(a.statusCode)).count();
+        long total = all.stream().filter(a -> !AlertStatuses.CANCELLED.equals(a.statusCode)).count();
+        Double closedRate = total == 0 ? null : Math.round(closed * 1000.0 / total) / 10.0;
+
         return new ScreenOverview(
                 (int) onDuty,
                 health.stream().mapToInt(DeviceHealthItem::online).sum(),
                 health.stream().mapToInt(DeviceHealthItem::total).sum(),
-                all.size(), processing, urgent, severe,
+                today.size(), todayDemo,
+                processing, urgent, severe,
+                closedRate,
                 onDutyDemo,
                 health.stream().anyMatch(DeviceHealthItem::demo),
                 health, distribution, trend);

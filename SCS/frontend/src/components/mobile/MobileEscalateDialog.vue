@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ElDialog, ElMessage } from 'element-plus'
+import { ElDialog, ElMessage } from 'element-plus/es'
 import { ESCALATE_REASONS } from '@/types/incident'
 import type { AlertRisk } from '@/types/alert'
 

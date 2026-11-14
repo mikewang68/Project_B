@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ElDialog } from 'element-plus'
+import { ElDialog } from 'element-plus/es'
 import { Check, CircleCheckFilled } from '@element-plus/icons-vue'
 
 defineProps<{ modelValue: boolean; checks: Array<{ label: string; passed: boolean }> }>()

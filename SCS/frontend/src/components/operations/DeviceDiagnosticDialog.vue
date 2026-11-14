@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onUnmounted, ref, watch } from 'vue'
-import { ElDialog } from 'element-plus'
+import { ElDialog } from 'element-plus/es'
 import { CircleCheckFilled, Loading } from '@element-plus/icons-vue'
 import type { OpsDevice } from '@/types/operations'
 import OpsHealthBadge from './OpsHealthBadge.vue'

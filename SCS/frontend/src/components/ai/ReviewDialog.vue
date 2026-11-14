@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { ElDialog } from 'element-plus'
+import { ElDialog } from 'element-plus/es'
 import { FALSE_REASONS } from '@/types/ai'
 
 const props = defineProps<{ modelValue: boolean }>()

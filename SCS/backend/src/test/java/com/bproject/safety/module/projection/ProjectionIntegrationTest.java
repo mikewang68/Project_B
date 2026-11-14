@@ -45,11 +45,16 @@ class ProjectionIntegrationTest {
     }
 
     @Test
-    @DisplayName("大屏总览：告警为真实统计，设备/在岗标记为 Demo 聚合")
+    @DisplayName("大屏总览：告警为真实统计（今日口径/闭环率），设备/在岗标记为 Demo 聚合")
     void screenOverview() throws Exception {
+        var todayStart = java.time.LocalDate.now(clock).atStartOfDay(clock.getZone()).toOffsetDateTime();
+        long expectedToday = repository.findAll().stream()
+                .filter(a -> a.occurredAt != null && !a.occurredAt.isBefore(todayStart)).count();
         mvc.perform(get("/api/v1/screen/overview"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.todayAlerts", is(12)))
+                .andExpect(jsonPath("$.todayAlerts", is((int) expectedToday)))
+                .andExpect(jsonPath("$.todayAlertsDemo", is(expectedToday < 5)))
+                .andExpect(jsonPath("$.closedRate", org.hamcrest.Matchers.notNullValue()))
                 .andExpect(jsonPath("$.urgentAlerts", is(1)))
                 .andExpect(jsonPath("$.onDuty", is(6)))
                 .andExpect(jsonPath("$.onDutyDemo", is(false)))

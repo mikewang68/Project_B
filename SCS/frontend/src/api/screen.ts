@@ -22,6 +22,9 @@ export interface ScreenOverview {
   deviceOnline: number
   deviceTotal: number
   todayAlerts: number
+  todayAlertsDemo: boolean
+  /** 闭环率（%）：已关闭 / 非取消告警；无数据为 null */
+  closedRate: number | null
   processingAlerts: number
   urgentAlerts: number
   severeAlerts: number

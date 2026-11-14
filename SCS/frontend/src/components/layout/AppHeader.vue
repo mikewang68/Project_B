@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ArrowDown, Expand } from '@element-plus/icons-vue'
-import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus'
+import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus/es'
 import type { LiveState } from '@/api/live'
 import { useOperationsStore } from '@/stores/operations'
 import { useAuthStore } from '@/stores/auth'

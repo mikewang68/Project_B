@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import { ArrowLeft, Location, Promotion } from '@element-plus/icons-vue'
 import SafetyMapCanvas from '@/components/shared/SafetyMapCanvas.vue'
 import AlertEvidence from '@/components/alerts/AlertEvidence.vue'

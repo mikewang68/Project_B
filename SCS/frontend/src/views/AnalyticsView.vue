@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { createLatestGuard } from '@/composables/useLatestGuard'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es'
 import AnalyticsOverview from '@/components/analytics/AnalyticsOverview.vue'
 import AnalyticsFilters, { type AnalyticsFilterState } from '@/components/analytics/AnalyticsFilters.vue'
 import AlertTrendChart from '@/components/analytics/AlertTrendChart.vue'

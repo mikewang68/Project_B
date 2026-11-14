@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Close, Clock, Connection, Lock, WarningFilled } from '@element-plus/icons-vue'
-import { ElDrawer } from 'element-plus'
+import { ElDrawer } from 'element-plus/es'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
 import RiskBadge from '@/components/shared/RiskBadge.vue'
 import type { CollisionEquipment } from '@/types/collision'
