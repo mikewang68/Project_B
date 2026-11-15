@@ -21,15 +21,11 @@ async function loadMap(): Promise<void> {
   }
 }
 
-// 大屏语义=异常聚焦：正常在岗人员不逐个渲染（聚合到图例计数），只保留
-// 关注/离线/高风险与被告警定位目标；SIM-* 测试人员/设备不上大屏。
+// 大屏排除 SIM-* 测试人员/设备（回归 fixture），业务台账人员全量显示（用户要求正常人员可见）
 const NON_TEST = (id: string) => !id.startsWith('SIM-')
-const people = computed<PersonnelPoint[]>(() => {
-  const all = mapData.value.people ?? []
-  return all.filter(
-    (p) => NON_TEST(p.id) && (p.state !== 'normal' || p.id === props.locateId),
-  )
-})
+const people = computed<PersonnelPoint[]>(
+  () => (mapData.value.people ?? []).filter((p) => NON_TEST(p.id)),
+)
 const onDutyTotal = computed(
   () => (mapData.value.people ?? []).filter((p) => NON_TEST(p.id)).length,
 )
