@@ -174,6 +174,8 @@ public final class ScsCentralScope {
   public static void requireReference(NamedParameterJdbcTemplate db,Root root,String key){
     if(current()==null||key==null||key.isBlank())return;
     var tuple=writeScope();
+    // L1_SUPER 全局权威写（writeScope 豁免返回 null）：可见范围即全库，无需唯一范围校验
+    if(tuple==null)return;
     Integer count=db.getJdbcTemplate().queryForObject("SELECT count(*) FROM safety."+root.table+" WHERE "+root.key+"=? AND project_id=? AND region_id=? AND subsystem_code=?",Integer.class,key,tuple.projectId(),tuple.regionId(),tuple.subsystemCode());
     if(count==null||count!=1)throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"关联对象不存在或不在当前范围");
   }

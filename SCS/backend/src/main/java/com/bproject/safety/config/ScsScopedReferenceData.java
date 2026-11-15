@@ -44,7 +44,7 @@ public class ScsScopedReferenceData {
   public boolean snapshotVisible(String filename){
     if(ScsCentralScope.current()==null)return true;
     if(jdbc==null||filename==null||!filename.matches("[A-Za-z0-9_-]+\\.(jpg|jpeg|png)"))return false;
-    Long count=jdbc.queryForObject("SELECT count(*) FROM safety.ai_event WHERE (detection_boxes->>'snapshotUrl'=:filename OR right(detection_boxes->>'snapshotUrl',length(:filename)+1)='/'||:filename)",Map.of("filename",filename),Long.class);
+    Long count=jdbc.queryForObject("SELECT count(*) FROM safety.ai_event WHERE jsonb_typeof(detection_boxes)='object' AND (detection_boxes->>'snapshotUrl'=:filename OR right(detection_boxes->>'snapshotUrl',length(:filename)+1)='/'||:filename)",Map.of("filename",filename),Long.class);
     return count!=null&&count>0;
   }
 }
