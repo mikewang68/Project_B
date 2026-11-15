@@ -21,8 +21,21 @@ async function loadMap(): Promise<void> {
   }
 }
 
-const people = computed<PersonnelPoint[]>(() => mapData.value.people ?? [])
-const equipment = computed<EquipmentPoint[]>(() => mapData.value.equipment ?? [])
+// 大屏语义=异常聚焦：正常在岗人员不逐个渲染（聚合到图例计数），只保留
+// 关注/离线/高风险与被告警定位目标；SIM-* 测试人员/设备不上大屏。
+const NON_TEST = (id: string) => !id.startsWith('SIM-')
+const people = computed<PersonnelPoint[]>(() => {
+  const all = mapData.value.people ?? []
+  return all.filter(
+    (p) => NON_TEST(p.id) && (p.state !== 'normal' || p.id === props.locateId),
+  )
+})
+const onDutyTotal = computed(
+  () => (mapData.value.people ?? []).filter((p) => NON_TEST(p.id)).length,
+)
+const equipment = computed<EquipmentPoint[]>(
+  () => (mapData.value.equipment ?? []).filter((e) => NON_TEST(e.id)),
+)
 const fences = computed<FenceRecord[]>(() => mapFences(mapData.value))
 const activeRisk = computed(() => props.incidents.filter((i) => i.status !== '已关闭' && (i.risk === '严重' || i.risk === '紧急')).length)
 
@@ -47,7 +60,7 @@ watch(() => props.breachActive, loadMap)
     <div class="bs-panel__head">
       <div><span>SITE SITUATION</span><h2>站场安全态势</h2></div>
       <div class="bs-map__legend">
-        <span><i data-tone="normal"></i>正常人员</span>
+        <span><i data-tone="normal"></i>在岗 {{ onDutyTotal }} 人 · 异常已聚焦</span>
         <span><i data-tone="warning"></i>关注</span>
         <span><i data-tone="danger"></i>高风险（脉冲提示）</span>
         <b>活动风险点 {{ activeRisk }}</b>
