@@ -97,7 +97,7 @@ public final class ScsCentralScope {
     if(post&&(p.matches("ops/edge-nodes/[^/]+/maintain")||p.matches("ops/devices/[^/]+/reconnect")||p.matches("edge/(recover|reconcile/rules|reconcile/time)")))return action(c,"CONFIRM","SCS:operations");
     if(post&&(p.equals("ops/simulate")||p.equals("edge/simulate-link")||p.equals("edge/local-events")))return action(c,"CONFIRM","SCS:operations");
     if(read&&p.matches("analytics/(dataset|events|devices/[^/]+|persons/[^/]+)"))return action(c,"VIEW","SCS:analytics");
-    if(post&&p.equals("analytics/simulate-surge"))return action(c,"EDIT","SCS:analytics");
+    if(post&&p.equals("analytics/simulate-surge"))return action(c,"EXECUTE","SCS:analytics");
     if(read&&p.equals("zones"))return action(c,"VIEW","SCS:overview","SCS:people","SCS:safety-screen");
     if(read&&(p.equals("state")||p.equals("meta/dictionaries")))return action(c,"VIEW","SCS:overview","SCS:alarms","SCS:people","SCS:devices","SCS:ai","SCS:ai-models","SCS:rules","SCS:operations","SCS:analytics","SCS:fences","SCS:mobile-home","SCS:mobile-alerts","SCS:safety-screen");
     // Ingest, background generators and broadcasts have no trusted request tuple.
