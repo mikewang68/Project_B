@@ -240,19 +240,21 @@ public class JdbcAlertRepository implements AlertRepository {
 
         // 1. 保存 / 更新聚合根 safety_alert
         var centralStamp=com.bproject.safety.config.ScsCentralScope.beforeWrite(jdbcTemplate,com.bproject.safety.config.ScsCentralScope.Root.ALERT,alertNo);
-        saveRootAlert(rootUuid, alertNo, toPersist);
+        UUID persistedId = saveRootAlert(rootUuid, alertNo, toPersist);
 
         // 2. 追加审计时间线 safety_alert_timeline（严格 append-only）
-        appendTimelineEvents(rootUuid, toPersist);
+        // 子表统一使用真实持久化 PK：外部工具（雷文侧演示数据等）可能以随机 uuid 直接插入，
+        // 此时 alert_no 的确定性 uuid 与行 PK 不一致，继续用 rootUuid 会触发 timeline 外键违反
+        appendTimelineEvents(persistedId, toPersist);
 
         // 3. 保存结构化证据 safety_alert_evidence
-        saveEvidence(rootUuid, toPersist);
+        saveEvidence(persistedId, toPersist);
 
         // 4. 保存现场处置记录 safety_alert_treatment
-        saveTreatment(rootUuid, toPersist);
+        saveTreatment(persistedId, toPersist);
 
         // 5. 保存现场联动 safety_alert_linkage 及步骤 safety_alert_linkage_step
-        saveLinkage(rootUuid, toPersist);
+        saveLinkage(persistedId, toPersist);
 
         com.bproject.safety.config.ScsCentralScope.afterWrite(jdbcTemplate,centralStamp);
         return toPersist.copy();
@@ -446,7 +448,8 @@ public class JdbcAlertRepository implements AlertRepository {
 
     // ---------- 内部持久化辅助 ----------
 
-    private void saveRootAlert(UUID rootUuid, String alertNo, DemoAlert a) {
+    /** 保存聚合根并返回实际持久化主键：新行=rootUuid；更新已有行=该行真实 PK（外部工具可能以随机 uuid 插入）。 */
+    private UUID saveRootAlert(UUID rootUuid, String alertNo, DemoAlert a) {
         List<UUID> existingIds = jdbcTemplate.query(
                 "SELECT id FROM safety.safety_alert WHERE alert_no = :alertNo OR id = :rootUuid LIMIT 1",
                 Map.of("alertNo", alertNo, "rootUuid", rootUuid),
@@ -565,6 +568,7 @@ public class JdbcAlertRepository implements AlertRepository {
                     )
                     """;
             jdbcTemplate.update(insertSql, params);
+            return rootUuid;
         } else {
             UUID existingId = existingIds.get(0);
             params.addValue("existingId", existingId);
@@ -621,6 +625,7 @@ public class JdbcAlertRepository implements AlertRepository {
                     WHERE id = :existingId
                     """;
             jdbcTemplate.update(updateSql, params);
+            return existingId;
         }
     }
 
