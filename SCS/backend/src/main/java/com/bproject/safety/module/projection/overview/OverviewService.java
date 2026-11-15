@@ -204,8 +204,13 @@ public class OverviewService {
      * 底图人员：台账为权威源，坐标优先取 UWB 上报的实时位置。
      * 没有上报过的人员沿用台账坐标（人员名单是全员口径，不存在"未接入"语义）。
      */
+    /** 站场地图标点排除测试/演示 fixture：SIM- 前缀为各轮联调与边界测试数据，不上态势地图。 */
+    private static final java.util.function.Predicate<String> NON_TEST_ID =
+            id -> id == null || !id.startsWith("SIM-");
+
     private List<MapPerson> basePeople() {
         return personnelRepository.findAll().stream()
+                .filter(p -> NON_TEST_ID.test(p.id))
                 .map(personnelPositions::overlay)
                 .map(p -> new MapPerson(p.id, p.name, p.team, p.getStatus(), p.battery, p.area,
                         p.getRisk(), p.state, p.x, p.y, false))
@@ -214,6 +219,7 @@ public class OverviewService {
 
     private List<MapEquipment> baseEquipment() {
         return collisionRepository.findAll().stream()
+                .filter(d -> NON_TEST_ID.test(d.id))
                 .map(d -> new MapEquipment(d.id, d.name, equipmentTypeKey(d.type),
                         "正常".equals(d.radarStatus) ? "normal" : "warning", d.x, d.y, false))
                 .toList();
