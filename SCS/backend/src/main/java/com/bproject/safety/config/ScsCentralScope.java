@@ -97,7 +97,9 @@ public final class ScsCentralScope {
     if(post&&(p.matches("ops/edge-nodes/[^/]+/maintain")||p.matches("ops/devices/[^/]+/reconnect")||p.matches("edge/(recover|reconcile/rules|reconcile/time)")))return action(c,"CONFIRM","SCS:operations");
     if(post&&(p.equals("ops/simulate")||p.equals("edge/simulate-link")||p.equals("edge/local-events")))return action(c,"CONFIRM","SCS:operations");
     if(read&&p.matches("analytics/(dataset|events|devices/[^/]+|persons/[^/]+)"))return action(c,"VIEW","SCS:analytics");
-    if(post&&p.equals("analytics/simulate-surge"))return action(c,"EXECUTE","SCS:analytics");
+    // 突增模拟：范围层按 analytics 可见性放行；执行权（stat:execute）由 ScsLocalPolicy
+    // 的 required 码判定（中央目录对 SCS:analytics 仅发 VIEW，菜单动作适配不适用）。
+    if(post&&p.equals("analytics/simulate-surge"))return action(c,"VIEW","SCS:analytics");
     if(read&&p.equals("zones"))return action(c,"VIEW","SCS:overview","SCS:people","SCS:safety-screen");
     if(read&&(p.equals("state")||p.equals("meta/dictionaries")))return action(c,"VIEW","SCS:overview","SCS:alarms","SCS:people","SCS:devices","SCS:ai","SCS:ai-models","SCS:rules","SCS:operations","SCS:analytics","SCS:fences","SCS:mobile-home","SCS:mobile-alerts","SCS:safety-screen");
     // Ingest, background generators and broadcasts have no trusted request tuple.
