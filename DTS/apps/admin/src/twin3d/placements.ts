@@ -1,39 +1,46 @@
-import { SITE_LAYOUT_V3, assertSiteLayoutV3 } from './siteLayoutV3'
+import { SITE_LAYOUT_V4 } from './siteLayoutV4'
 
 /**
- * Production placement source of truth.
- *
- * Coordinates are CAD-local metres. The production baseline was explicitly
- * authorized from the reviewed layout; unsurveyed dimensions remain marked as
- * inferred-proportional instead of being presented as measured facts.
+ * Single authoritative V4 placement manifest backed by 给大连大.dwg (siteLayoutV4).
+ * CGCS2000 coordinates are normalized via PIVOT_OFFSET = [512000, 3254935].
  */
 export type PlacementType =
   | 'gantry_crane'
+  | 'bridge_crane'
+  | 'mobile_tipper'
+  | 'silo_loader'
+  | 'elevator'
   | 'wagon'
+  | 'bulk_container'
+  | 'tank_truck'
+  | 'road_truck'
   | 'rebar_bay'
+  | 'rebar_warehouse'
+  | 'ash_line_silo'
+  | 'ash_round_silo'
+  | 'ash_conveyor'
+  | 'unloading_room'
   | 'core_environment'
   | 'ash_environment'
-  | 'ash_line_silo_group'
-  | 'ash_round_silo_group'
-  | 'ash_conveyor'
-  | 'material_processing'
-  | 'support_facilities'
-  | 'planned_transfer'
   | 'site_shell'
-  | 'bulk_truck'
-  | 'forklift'
+  | 'weighbridge'
+  | 'support_facility'
+  | 'processing_zone'
+  | 'planned_warehouse'
 
 export type SiteZoneId =
-  | 'core-loading'
-  | 'rebar-storage'
-  | 'ash-rail-silo'
-  | 'material-processing'
-  | 'support-services'
-  | 'planned-transfer'
-  | 'site-shell'
+  | 'site_boundary'
+  | 'rebar_corridor'
+  | 'rebar_bays'
+  | 'ash_corridor'
+  | 'reserved_rebar'
+  | 'reserved_wh'
+  | 'mech_warehouse'
+  | 'processing_zone'
+  | 'weighbridge_gate'
 
 export type SiteState = 'existing' | 'planned'
-export type PlacementSource = 'site-plan-vector' | 'cad-track-axis-inference' | 'simulation-route'
+export type PlacementSource = 'surveyed-cad-dxf' | 'site-plan-vector' | 'cad-track-axis-inference' | 'simulation-route'
 export type Confidence = 'confirmed' | 'inferred'
 
 export interface CadPolygon {
@@ -43,232 +50,485 @@ export interface CadPolygon {
 export interface SiteZone {
   id: SiteZoneId
   name: string
-  function: string
   state: SiteState
-  source: 'site-plan-vector' | 'cad-track-axis-inference'
-  confidence: Confidence
-  dimensionSource: 'site-plan-vector' | 'cad-track-axis-inference'
   polygon: CadPolygon
+  source: PlacementSource
+  confidence: Confidence
+  notes: string
 }
 
 export interface AssetPlacement {
   id: string
   name: string
   type: PlacementType
+  zone: SiteZoneId
+  state: SiteState
   cadX: number
   cadY: number
   headingDeg: number
-  scale: number
-  zone: SiteZoneId
-  state: SiteState
+  height?: number
+  scale?: number
+  modelKey?: string
+  spanM?: number
+  capacityT?: number
   source: PlacementSource
   confidence: Confidence
-  height?: number
-  dimensions?: { length: number; width: number; height: number }
-  /** A confirmed location/boundary can still use non-surveyed 3D proportions. */
-  geometryStatus?: 'confirmed' | 'inferred-proportional'
+  notes: string
 }
+
+const WH = SITE_LAYOUT_V4.rebar.warehouse
+const REBAR_MIN_X = SITE_LAYOUT_V4.rebar.trackRangeX[0]
+const REBAR_MAX_X = SITE_LAYOUT_V4.rebar.trackRangeX[1]
+const ASH_MIN_X = SITE_LAYOUT_V4.ash.trackRangeX[0]
+const ASH_MAX_X = SITE_LAYOUT_V4.ash.trackRangeX[1]
 
 export const SITE_ZONES: SiteZone[] = [
   {
-    id: 'site-shell',
-    name: '全站场地外壳',
-    function: '总平面边界、道路、围栏、绿化与低细节功能区概形',
+    id: 'site_boundary',
+    name: '中沙坝转运站红线范围',
     state: 'existing',
-    source: 'site-plan-vector',
+    polygon: { points: SITE_LAYOUT_V4.siteShell.bounds },
+    source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    dimensionSource: 'site-plan-vector',
-    polygon: { points: SITE_LAYOUT_V3.siteShell.bounds },
+    notes: '给大连大.dwg 实测围墙与站坪范围',
   },
   {
-    id: 'core-loading',
-    name: '钢材铁路装卸作业线',
-    function: '两条钢材铁路股道与三台龙门吊作业',
+    id: 'rebar_corridor',
+    name: '钢材装卸双轨区（货3 / 货4 + 3×40t门吊）',
     state: 'existing',
-    source: 'cad-track-axis-inference',
+    polygon: {
+      points: [
+        [REBAR_MIN_X, SITE_LAYOUT_V4.rebar.craneRunway.southRailY],
+        [REBAR_MAX_X, SITE_LAYOUT_V4.rebar.craneRunway.southRailY],
+        [REBAR_MAX_X, SITE_LAYOUT_V4.rebar.craneRunway.northRailY],
+        [REBAR_MIN_X, SITE_LAYOUT_V4.rebar.craneRunway.northRailY],
+      ],
+    },
+    source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    dimensionSource: 'cad-track-axis-inference',
-    polygon: { points: [[SITE_LAYOUT_V3.rebar.trackRangeX[0], 1660], [SITE_LAYOUT_V3.rebar.trackRangeX[1], 1660], [SITE_LAYOUT_V3.rebar.trackRangeX[1], 1688], [SITE_LAYOUT_V3.rebar.trackRangeX[0], 1688]] },
+    notes: '货3（560m）与货4（564m）及 30m 跨度门式起重机轨道廊道',
   },
   {
-    id: 'rebar-storage',
-    name: '钢筋露天仓位区',
-    function: '13 个独立钢筋露天料位',
+    id: 'rebar_bays',
+    name: '钢筋仓库（23,882 m² · 1~13 跨）',
     state: 'existing',
-    source: 'cad-track-axis-inference',
+    polygon: {
+      points: [
+        [WH.minX, WH.minY],
+        [WH.maxX, WH.minY],
+        [WH.maxX, WH.maxY],
+        [WH.minX, WH.maxY],
+      ],
+    },
+    source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    dimensionSource: 'cad-track-axis-inference',
-    polygon: { points: [[SITE_LAYOUT_V3.rebar.bayBoundsX[0][0], SITE_LAYOUT_V3.rebar.bayBoundsY[0]], [SITE_LAYOUT_V3.rebar.bayBoundsX.at(-1)![1], SITE_LAYOUT_V3.rebar.bayBoundsY[0]], [SITE_LAYOUT_V3.rebar.bayBoundsX.at(-1)![1], SITE_LAYOUT_V3.rebar.bayBoundsY[1]], [SITE_LAYOUT_V3.rebar.bayBoundsX[0][0], SITE_LAYOUT_V3.rebar.bayBoundsY[1]]] },
+    notes: '13 跨室内库房，轨顶 13.0m，配 9×20t 磁吸 + 4×32t C 型吊具桥吊',
   },
   {
-    id: 'ash-rail-silo',
-    name: '煤灰铁路与筒仓作业区',
-    function: '两条煤灰铁路股道、绿色线性筒仓组、紫色圆形筒仓组及输送带',
+    id: 'ash_corridor',
+    name: '散装水泥/粉煤灰双轨及筒仓群',
     state: 'existing',
-    source: 'site-plan-vector',
+    polygon: {
+      points: [
+        [ASH_MIN_X, SITE_LAYOUT_V4.ash.craneRunway.southRailY],
+        [ASH_MAX_X, SITE_LAYOUT_V4.ash.craneRunway.southRailY],
+        [ASH_MAX_X, 1575.0],
+        [ASH_MIN_X, 1575.0],
+      ],
+    },
+    source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    dimensionSource: 'site-plan-vector',
-    polygon: { points: [[3470, 1500], [4068, 1500], [4068, 1562], [3470, 1562]] },
+    notes: '货1/货2 + 3台集装箱门吊 + 4套翻箱卸料室 + 40座3000T筒仓',
   },
   {
-    id: 'material-processing',
-    name: '物料加工区',
-    function: '物料加工与装运准备',
-    state: 'existing',
-    source: 'site-plan-vector',
-    confidence: 'confirmed',
-    dimensionSource: 'site-plan-vector',
-    polygon: { points: [[3588, 1807], [3788.7, 1807], [3788.7, 1834.5], [3588, 1834.5]] },
-  },
-  {
-    id: 'support-services',
-    name: '配套服务区',
-    function: '门卫、休息室、公卫、变电所与出入口服务',
-    state: 'existing',
-    source: 'site-plan-vector',
-    confidence: 'confirmed',
-    dimensionSource: 'site-plan-vector',
-    polygon: { points: [[4428, 1494], [4556, 1494], [4556, 1555], [4428, 1555]] },
-  },
-  {
-    id: 'planned-transfer',
-    name: '转运站初步方案区',
-    function: '规划转运站',
+    id: 'reserved_rebar',
+    name: '备用钢筋仓库（缓建 120×35 m）',
     state: 'planned',
-    source: 'site-plan-vector',
+    polygon: {
+      points: [
+        [3589.28, 1763.05],
+        [3709.29, 1763.05],
+        [3709.29, 1798.05],
+        [3589.28, 1798.05],
+      ],
+    },
+    source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    dimensionSource: 'site-plan-vector',
-    polygon: { points: [[4334.9, 1557.3], [4482.3, 1557.3], [4482.3, 1603.6], [4334.9, 1603.6]] },
+    notes: '施工图规划缓建仓库',
+  },
+  {
+    id: 'reserved_wh',
+    name: '备用仓库（缓建 100×35 m）',
+    state: 'planned',
+    polygon: {
+      points: [
+        [3719.28, 1763.04],
+        [3819.29, 1763.04],
+        [3819.29, 1798.05],
+        [3719.28, 1798.05],
+      ],
+    },
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '施工图规划缓建仓库',
+  },
+  {
+    id: 'mech_warehouse',
+    name: '机电仓库（5,036 m² · 2×50t桥吊）',
+    state: 'existing',
+    polygon: {
+      points: [
+        [4347.54, 1512.79],
+        [4475.49, 1512.79],
+        [4475.49, 1551.89],
+        [4347.54, 1551.89],
+      ],
+    },
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '机电仓库，配 2 台 Q=50t, S=16.5m 桥式起重机',
+  },
+  {
+    id: 'processing_zone',
+    name: '钢筋加工区',
+    state: 'existing',
+    polygon: {
+      points: [
+        [3598.78, 1812.54],
+        [3799.48, 1812.54],
+        [3799.48, 1840.02],
+        [3598.78, 1840.02],
+      ],
+    },
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '钢筋仓库北侧加工区',
+  },
+  {
+    id: 'weighbridge_gate',
+    name: '东入口计量与综合办公区',
+    state: 'existing',
+    polygon: {
+      points: [
+        [4395.86, 1560.0],
+        [4570.0, 1560.0],
+        [4570.0, 1675.0],
+        [4395.86, 1675.0],
+      ],
+    },
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '含 2 台 100t 汽车衡、门卫室、综合楼及宿舍',
   },
 ]
 
-const REBAR_BAY_X_BOUNDS = SITE_LAYOUT_V3.rebar.bayBoundsX
-const REBAR_BAY_Y_BOUNDS = SITE_LAYOUT_V3.rebar.bayBoundsY
-const REBAR_LINE_CENTER_Y = SITE_LAYOUT_V3.rebar.origin.cadY
-const REBAR_TRACK_CENTER_YS = SITE_LAYOUT_V3.rebar.trackCentersY
-const ASH_TRACK_CENTER_YS = SITE_LAYOUT_V3.ash.trackCentersY
-const ASH_SILO_CENTER_Y = SITE_LAYOUT_V3.ash.siloCenterY
-const ASH_GREEN_LEFT_X_BOUNDS = SITE_LAYOUT_V3.ash.greenLeftBounds
-const ASH_PURPLE_MIDDLE_X_BOUNDS = SITE_LAYOUT_V3.ash.purpleMiddleBounds
-const ASH_GREEN_RIGHT_X_BOUNDS = SITE_LAYOUT_V3.ash.greenRightBounds
-const GANTRY_PLACEMENTS = SITE_LAYOUT_V3.rebar.gantries.map(({ id, cadX }) => [id, `龙门吊 ${id.slice(-1)}`, cadX] as const)
+const REBAR_GANTRIES: AssetPlacement[] = SITE_LAYOUT_V4.rebar.gantries.map((g) => ({
+  id: g.id,
+  name: g.name,
+  type: 'gantry_crane',
+  zone: 'rebar_corridor',
+  state: 'existing',
+  cadX: g.cadX,
+  cadY: g.cadY,
+  headingDeg: 0,
+  height: SITE_LAYOUT_V4.rebar.craneRunway.girderHeightM,
+  spanM: g.spanM,
+  capacityT: g.capacityT,
+  source: 'surveyed-cad-dxf',
+  confidence: 'confirmed',
+  notes: `钢材线 40t/30m 门吊（${g.powerKw}kW），跨越货3/货4与交接区`,
+}))
+
+const BULK_GANTRIES: AssetPlacement[] = SITE_LAYOUT_V4.ash.bulkGantries.map((g) => ({
+  id: g.id,
+  name: g.name,
+  type: 'gantry_crane',
+  zone: 'ash_corridor',
+  state: 'existing',
+  cadX: g.cadX,
+  cadY: g.cadY,
+  headingDeg: 0,
+  height: SITE_LAYOUT_V4.ash.craneRunway.girderHeightM,
+  spanM: g.spanM,
+  capacityT: g.capacityT,
+  source: 'surveyed-cad-dxf',
+  confidence: 'confirmed',
+  notes: `散料线 40t/30m 集装箱门吊（${g.powerKw}kW），跨越货1/货2与翻箱工位`,
+}))
+
+const BRIDGE_CRANES: AssetPlacement[] = SITE_LAYOUT_V4.rebar.bays.map((b) => ({
+  id: b.bridgeCraneId,
+  name: `${b.bayIndex}# 跨室内桥吊（${b.craneCapacityT}t ${b.bridgeType === 'chook_32t' ? 'C型吊具' : '磁吸式'}）`,
+  type: 'bridge_crane',
+  zone: 'rebar_bays',
+  state: 'existing',
+  cadX: b.cadX,
+  cadY: b.bridgeParkY,
+  headingDeg: 0,
+  height: b.railHeightM,
+  spanM: b.craneSpanM,
+  capacityT: b.craneCapacityT,
+  modelKey: b.bridgeType === 'chook_32t' ? 'bridge-crane-chook' : 'bridge-crane-magnet',
+  source: 'surveyed-cad-dxf',
+  confidence: 'confirmed',
+  notes: `钢筋库第 ${b.bayIndex} 跨室内桥吊（编号 ${b.cadEquipmentCode}），轨顶 ${b.railHeightM}m`,
+}))
+
+const MOBILE_TIPPERS: AssetPlacement[] = SITE_LAYOUT_V4.ash.unloadingComplexes.map((u, idx) => ({
+  id: u.tipperId,
+  name: `${idx + 1}# 移动式翻箱机`,
+  type: 'mobile_tipper',
+  zone: 'ash_corridor',
+  state: 'existing',
+  cadX: u.tipperParkX,
+  cadY: u.tipperRailY,
+  headingDeg: 0,
+  height: 0,
+  source: 'surveyed-cad-dxf',
+  confidence: 'confirmed',
+  notes: `对接 ${u.id} 半封闭卸料室（42m³料斗），支持 0~135° 翻转与振动卸料`,
+}))
+
+const MECH_BRIDGE_CRANES: AssetPlacement[] = [
+  {
+    id: 'BC-MECH-01',
+    name: '机电仓库 1# 50t 桥式起重机',
+    type: 'bridge_crane',
+    zone: 'mech_warehouse',
+    state: 'existing',
+    cadX: 4390.0,
+    cadY: 1532.3,
+    headingDeg: 0,
+    height: 10.5,
+    spanM: 16.5,
+    capacityT: 50,
+    modelKey: 'bridge-crane-chook',
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '机电仓库（5,036 m²）1# Q=50t, S=16.5m 桥式起重机（110kW）',
+  },
+  {
+    id: 'BC-MECH-02',
+    name: '机电仓库 2# 50t 桥式起重机',
+    type: 'bridge_crane',
+    zone: 'mech_warehouse',
+    state: 'existing',
+    cadX: 4435.0,
+    cadY: 1532.3,
+    headingDeg: 0,
+    height: 10.5,
+    spanM: 16.5,
+    capacityT: 50,
+    modelKey: 'bridge-crane-chook',
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '机电仓库（5,036 m²）2# Q=50t, S=16.5m 桥式起重机（110kW）',
+  },
+]
+
+const BUCKET_ELEVATORS: AssetPlacement[] = SITE_LAYOUT_V4.ash.unloadingComplexes.map((u, idx) => ({
+  id: u.elevatorId,
+  name: `${idx + 1}# 高原斗式提升机`,
+  type: 'elevator',
+  zone: 'ash_corridor',
+  state: 'existing',
+  cadX: u.elevatorCadX,
+  cadY: u.elevatorCadY,
+  headingDeg: 0,
+  height: u.elevatorHeightM,
+  source: 'surveyed-cad-dxf',
+  confidence: 'confirmed',
+  notes: `40m 垂直斗式提升机（185~264kW），衔接 ${u.id} 料斗与仓顶空气斜槽`,
+}))
+
+// One active animated under-silo quantitative telescopic loader per silo module (represents 40 under-silo chutes)
+const SILO_LOADERS: AssetPlacement[] = [
+  { id: 'LOADER-01', siloIdx: 0, name: '水泥仓库底定量散装机 #01', note: '1# 水泥筒仓底部伸缩散装机' },
+  { id: 'LOADER-02', siloIdx: 8, name: '粉煤灰一区库底散装机 #09', note: '9# 粉煤灰筒仓底部伸缩散装机' },
+  { id: 'LOADER-03', siloIdx: 16, name: '粉煤灰二区库底散装机 #17', note: '17# 粉煤灰筒仓底部伸缩散装机' },
+  { id: 'LOADER-04', siloIdx: 24, name: '粉煤灰三区库底散装机 #25', note: '25# 粉煤灰筒仓底部伸缩散装机' },
+].map((item) => ({
+  id: item.id,
+  name: item.name,
+  type: 'silo_loader',
+  zone: 'ash_corridor',
+  state: 'existing',
+  cadX: SITE_LAYOUT_V4.ash.silos[item.siloIdx].cadX,
+  cadY: SITE_LAYOUT_V4.ash.silos[item.siloIdx].cadY,
+  headingDeg: 0,
+  height: 5.5,
+  source: 'surveyed-cad-dxf',
+  confidence: 'confirmed',
+  notes: `${item.note}（散料智能入库/库底定量装车控制系统）`,
+}))
 
 export const CORE_PLACEMENTS: AssetPlacement[] = [
   {
-    id: 'ENV-REBAR-LINE-01', name: '钢材两轨作业环境', type: 'core_environment', cadX: SITE_LAYOUT_V3.rebar.origin.cadX, cadY: REBAR_LINE_CENTER_Y,
-    headingDeg: 0, scale: 1, zone: 'core-loading', state: 'existing',
-    source: 'cad-track-axis-inference', confidence: 'confirmed', dimensions: { length: 393.179, width: 96, height: 24 },
+    id: 'ENV-SITE-SHELL-01',
+    name: '中沙坝全站场地外壳与配套建筑',
+    type: 'site_shell',
+    zone: 'site_boundary',
+    state: 'existing',
+    cadX: SITE_LAYOUT_V4.siteShellCenter.cadX,
+    cadY: SITE_LAYOUT_V4.siteShellCenter.cadY,
+    headingDeg: 0,
+    height: -0.04,
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '含围墙、站场道路、机电仓库(2×50t)、综合楼、宿舍、变电所、地磅基础、预留缓建区',
   },
   {
-    id: 'ENV-ASH-LINE-01', name: '煤灰两轨作业环境', type: 'ash_environment', cadX: SITE_LAYOUT_V3.ash.origin.cadX, cadY: SITE_LAYOUT_V3.ash.origin.cadY,
-    headingDeg: 0, scale: 1, zone: 'ash-rail-silo', state: 'existing',
-    source: 'cad-track-axis-inference', confidence: 'confirmed',
-    dimensions: { length: 343.154, width: 120, height: 0.28 }, geometryStatus: 'confirmed',
+    id: 'ENV-REBAR-LINE-01',
+    name: '钢材双轨及钢筋仓库（13跨）环境',
+    type: 'core_environment',
+    zone: 'rebar_corridor',
+    state: 'existing',
+    cadX: SITE_LAYOUT_V4.rebar.originPoint.cadX,
+    cadY: SITE_LAYOUT_V4.rebar.originPoint.cadY,
+    headingDeg: 0,
+    height: 0.0,
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '货3/货4 双轨、门吊轨道、钢筋仓库厂房钢架及 1~13 跨地面库位',
   },
   {
-    id: 'ASH-SILO-GREEN-LEFT-01', name: '左侧绿色线性煤灰筒仓组', type: 'ash_line_silo_group',
-    cadX: (ASH_GREEN_LEFT_X_BOUNDS[0] + ASH_GREEN_LEFT_X_BOUNDS[1]) / 2, cadY: ASH_SILO_CENTER_Y,
-    headingDeg: 0, scale: 1, zone: 'ash-rail-silo', state: 'existing',
-    source: 'site-plan-vector', confidence: 'inferred',
-    dimensions: { length: ASH_GREEN_LEFT_X_BOUNDS[1] - ASH_GREEN_LEFT_X_BOUNDS[0], width: 28, height: 16 }, geometryStatus: 'inferred-proportional',
+    id: 'ENV-ASH-LINE-01',
+    name: '散料双轨·卸料室·提升机·40座3000T筒仓环境',
+    type: 'ash_environment',
+    zone: 'ash_corridor',
+    state: 'existing',
+    cadX: SITE_LAYOUT_V4.ash.originPoint.cadX,
+    cadY: SITE_LAYOUT_V4.ash.originPoint.cadY,
+    headingDeg: 0,
+    height: -0.02,
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '货1/货2 双轨、4座卸料室(42m³料斗)、4座40m提升机塔、空气斜槽及 40 座 Φ12m×33.38m 筒仓',
   },
-  {
-    id: 'ASH-SILO-PURPLE-MIDDLE-01', name: '中央紫色圆形煤灰筒仓组', type: 'ash_round_silo_group',
-    cadX: (ASH_PURPLE_MIDDLE_X_BOUNDS[0] + ASH_PURPLE_MIDDLE_X_BOUNDS[1]) / 2, cadY: ASH_SILO_CENTER_Y,
-    headingDeg: 0, scale: 1, zone: 'ash-rail-silo', state: 'existing',
-    source: 'site-plan-vector', confidence: 'inferred',
-    dimensions: { length: ASH_PURPLE_MIDDLE_X_BOUNDS[1] - ASH_PURPLE_MIDDLE_X_BOUNDS[0], width: 28, height: 20 }, geometryStatus: 'inferred-proportional',
-  },
-  {
-    id: 'ASH-SILO-GREEN-RIGHT-01', name: '右侧绿色线性煤灰筒仓组', type: 'ash_line_silo_group',
-    cadX: (ASH_GREEN_RIGHT_X_BOUNDS[0] + ASH_GREEN_RIGHT_X_BOUNDS[1]) / 2, cadY: ASH_SILO_CENTER_Y,
-    headingDeg: 0, scale: 1, zone: 'ash-rail-silo', state: 'existing',
-    source: 'site-plan-vector', confidence: 'inferred',
-    dimensions: { length: ASH_GREEN_RIGHT_X_BOUNDS[1] - ASH_GREEN_RIGHT_X_BOUNDS[0], width: 28, height: 16 }, geometryStatus: 'inferred-proportional',
-  },
-  {
-    id: 'ASH-CONVEYOR-01', name: '煤灰筒仓进料输送带', type: 'ash_conveyor', cadX: 3765, cadY: 1547,
-    headingDeg: 0, scale: 1, zone: 'ash-rail-silo', state: 'existing',
-    source: 'site-plan-vector', confidence: 'inferred',
-    dimensions: { length: 190, width: 1.5, height: 8 }, geometryStatus: 'inferred-proportional',
-  },
-  ...GANTRY_PLACEMENTS.map(([id, name, cadX]): AssetPlacement => ({
-    id, name, type: 'gantry_crane', cadX, cadY: REBAR_LINE_CENTER_Y,
-    headingDeg: 0, scale: 1, zone: 'core-loading', state: 'existing',
-    source: 'cad-track-axis-inference', confidence: 'inferred', height: 24,
-    dimensions: { length: 12, width: 80.104, height: 24 }, geometryStatus: 'inferred-proportional',
+  ...REBAR_GANTRIES,
+  ...BULK_GANTRIES,
+  ...BRIDGE_CRANES,
+  ...MECH_BRIDGE_CRANES,
+  ...MOBILE_TIPPERS,
+  ...BUCKET_ELEVATORS,
+  ...SILO_LOADERS,
+  // Rail flatcars on Steel track 货4
+  ...SITE_LAYOUT_V4.rebar.wagonXs.map((cadX, index): AssetPlacement => ({
+    id: `WAGON-FLAT-0${index + 1}`,
+    name: `钢材铁路敞车 ${index + 1}`,
+    type: 'wagon',
+    zone: 'rebar_corridor',
+    state: 'existing',
+    cadX,
+    cadY: SITE_LAYOUT_V4.rebar.tracks[0].cadY,
+    headingDeg: 0,
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '停靠货4股道的钢材铁路平车',
   })),
-  ...SITE_LAYOUT_V3.rebar.wagonXs.map((cadX, index): AssetPlacement => ({
-    id: `WAGON-FLAT-${String(index + 1).padStart(2, '0')}`, name: `钢材铁路平车 ${index + 1}`, type: 'wagon', cadX, cadY: REBAR_TRACK_CENTER_YS[0],
-    headingDeg: 0, scale: 1, zone: 'core-loading', state: 'existing',
-    source: 'cad-track-axis-inference', confidence: 'inferred', dimensions: { length: 13.2, width: 3.35, height: 3.1 },
+  // Rail container flatcars on Bulk track 货2
+  ...[3755.0, 3772.0, 3789.0].map((cadX, index): AssetPlacement => ({
+    id: `WAGON-BULK-0${index + 1}`,
+    name: `散料集装箱平车 ${index + 1}`,
+    type: 'wagon',
+    zone: 'ash_corridor',
+    state: 'existing',
+    cadX,
+    cadY: SITE_LAYOUT_V4.ash.tracks[1].cadY,
+    headingDeg: 0,
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '停靠货2股道的 35t 散装物料集装箱平车',
   })),
-  ...REBAR_BAY_X_BOUNDS.map(([minX, maxX], index): AssetPlacement => ({
-    id: `REBAR-BAY-${String(index + 1).padStart(2, '0')}`, name: `钢筋仓位 ${String(index + 1).padStart(2, '0')}`, type: 'rebar_bay',
-    cadX: (minX + maxX) / 2, cadY: (REBAR_BAY_Y_BOUNDS[0] + REBAR_BAY_Y_BOUNDS[1]) / 2,
-    headingDeg: 0, scale: 1, zone: 'rebar-storage', state: 'existing',
-    source: 'cad-track-axis-inference', confidence: 'confirmed',
-    dimensions: { length: maxX - minX, width: REBAR_BAY_Y_BOUNDS[1] - REBAR_BAY_Y_BOUNDS[0], height: 3.2 },
-  })),
+  // Active dynamic actors for dual-process simulation
+  {
+    id: 'CONT-BULK-01',
+    name: '35t 散装粉料集装箱 #01',
+    type: 'bulk_container',
+    zone: 'ash_corridor',
+    state: 'existing',
+    cadX: 3772.0,
+    cadY: SITE_LAYOUT_V4.ash.tracks[1].cadY,
+    headingDeg: 0,
+    height: 1.65,
+    source: 'simulation-route',
+    confidence: 'confirmed',
+    notes: '随门吊起吊与移动翻箱机翻转的 35t 散料箱体',
+  },
+  {
+    id: 'TRUCK-TANK-01',
+    name: '散装粉料罐车（青B·88219）',
+    type: 'tank_truck',
+    zone: 'weighbridge_gate',
+    state: 'existing',
+    cadX: SITE_LAYOUT_V4.weighbridges[1].cadX,
+    cadY: SITE_LAYOUT_V4.weighbridges[1].cadY,
+    headingDeg: 180,
+    source: 'simulation-route',
+    confidence: 'confirmed',
+    notes: '过 100t 地磅后进入筒仓库底接受定量散装的公路罐车',
+  },
+  {
+    id: 'TRUCK-FLAT-01',
+    name: '钢材运输平板挂车（藏A·63052）',
+    type: 'road_truck',
+    zone: 'rebar_corridor',
+    state: 'existing',
+    cadX: 3737.0,
+    cadY: SITE_LAYOUT_V4.rebar.truckLoadingY,
+    headingDeg: 180,
+    source: 'simulation-route',
+    confidence: 'confirmed',
+    notes: '钢筋库南侧装车工位等待桥吊拣货装车的公路货车',
+  },
 ]
 
 export const STATION_PLACEMENTS: AssetPlacement[] = [
+  ...SITE_LAYOUT_V4.weighbridges.map((w): AssetPlacement => ({
+    id: w.id,
+    name: w.name,
+    type: 'weighbridge',
+    zone: 'weighbridge_gate',
+    state: 'existing',
+    cadX: w.cadX,
+    cadY: w.cadY,
+    headingDeg: 0,
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: `${w.capacityT}t 计量秤（自动采集毛重/皮重/净重）`,
+  })),
   {
-    id: 'ENV-SITE-SHELL-01', name: '全站场地外壳', type: 'site_shell',
-    cadX: (SITE_LAYOUT_V3.siteShell.bounds[0][0] + SITE_LAYOUT_V3.siteShell.bounds[1][0]) / 2,
-    cadY: (SITE_LAYOUT_V3.siteShell.bounds[0][1] + SITE_LAYOUT_V3.siteShell.bounds[2][1]) / 2,
-    headingDeg: 0, scale: 1, zone: 'site-shell', state: 'existing',
-    source: 'site-plan-vector', confidence: 'confirmed',
-    dimensions: { length: 1400, width: 480, height: 8 }, geometryStatus: 'inferred-proportional',
+    id: 'ZONE-RSV-REBAR-PLANNED',
+    name: '备用钢筋仓库（缓建 120×35 m）',
+    type: 'planned_warehouse',
+    zone: 'reserved_rebar',
+    state: 'planned',
+    cadX: 3649.285,
+    cadY: 1780.55,
+    headingDeg: 0,
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '预留规划仓库（蓝色线框示意）',
   },
   {
-    id: 'PROC-01', name: '物料加工区', type: 'material_processing', cadX: 3688, cadY: 1820.8,
-    headingDeg: 0, scale: 1, zone: 'material-processing', state: 'existing',
-    source: 'site-plan-vector', confidence: 'confirmed', dimensions: { length: 72, width: 30, height: 17 },
-  },
-  {
-    id: 'SUPPORT-01', name: '配套服务区', type: 'support_facilities', cadX: 4492, cadY: 1524,
-    headingDeg: 0, scale: 1, zone: 'support-services', state: 'existing',
-    source: 'site-plan-vector', confidence: 'confirmed', dimensions: { length: 90, width: 62, height: 12 },
-  },
-  {
-    id: 'PLAN-TRANSFER-01', name: '转运站（规划中）', type: 'planned_transfer', cadX: 4408.6, cadY: 1580.5,
-    headingDeg: 0, scale: 1, zone: 'planned-transfer', state: 'planned',
-    source: 'site-plan-vector', confidence: 'confirmed', dimensions: { length: 128, width: 46, height: 16 },
+    id: 'ZONE-RSV-WH-PLANNED',
+    name: '备用仓库（缓建 100×35 m）',
+    type: 'planned_warehouse',
+    zone: 'reserved_wh',
+    state: 'planned',
+    cadX: 3769.285,
+    cadY: 1780.545,
+    headingDeg: 0,
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: '预留规划仓库（蓝色线框示意）',
   },
 ]
 
 export const ALL_PLACEMENTS = [...CORE_PLACEMENTS, ...STATION_PLACEMENTS]
 
-function assertCoreLayoutConstraints(): void {
-  assertSiteLayoutV3()
-  const maxSteelTrackY = Math.max(...REBAR_TRACK_CENTER_YS)
-  const maxAshTrackY = Math.max(...ASH_TRACK_CENTER_YS)
-  const minSiloX = ASH_GREEN_LEFT_X_BOUNDS[0]
-  const maxSiloX = ASH_GREEN_RIGHT_X_BOUNDS[1]
-
-  if (REBAR_BAY_Y_BOUNDS[0] <= maxSteelTrackY) {
-    throw new Error('Invalid core layout: rebar bays must remain above both steel tracks.')
-  }
-  if (ASH_SILO_CENTER_Y <= maxAshTrackY) {
-    throw new Error('Invalid core layout: ash silos must remain above both ash tracks.')
-  }
-  if (!(ASH_GREEN_LEFT_X_BOUNDS[1] < ASH_PURPLE_MIDDLE_X_BOUNDS[0]
-    && ASH_PURPLE_MIDDLE_X_BOUNDS[1] < ASH_GREEN_RIGHT_X_BOUNDS[0])) {
-    throw new Error('Invalid core layout: ash silo topology must remain green-left, purple-middle, green-right.')
-  }
-  for (const placement of CORE_PLACEMENTS.filter((item) => item.type === 'rebar_bay' || item.type.startsWith('ash_'))) {
-    if (placement.headingDeg !== 0) {
-      throw new Error(`Invalid core layout: ${placement.id} must remain parallel to the rail direction.`)
-    }
-  }
-  if (minSiloX >= maxSiloX) throw new Error('Invalid core layout: ash silo envelope is empty.')
-}
-
-assertCoreLayoutConstraints()
-
 export function getPlacement(id: string): AssetPlacement | undefined {
-  return ALL_PLACEMENTS.find((placement) => placement.id === id)
+  return ALL_PLACEMENTS.find((entry) => entry.id === id)
 }
 
 export function getZone(id: SiteZoneId): SiteZone {

@@ -1,40 +1,45 @@
 <script setup lang="ts">
-/**
- * 指挥中心大屏（模块 F）
- *
- * 该页面直接复用与首页相同的 Twin3dController、GLB 清单、CAD 底图、
- * 钢材卸车演示控制器和 Pinia 数据源；它不是静态截图或占位页。
- */
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import * as Cesium from 'cesium'
 import * as echarts from 'echarts'
+import * as Cesium from 'cesium'
 import CesiumViewer from '@/components/cesium/CesiumViewer.vue'
 import { setupCameraInteraction } from '@/components/cesium/cameraControl'
-import { Twin3dController, type SelectedInfo } from '@/twin3d'
-import { MOCK_EQUIPMENT } from '@/twin3d/mock/mockData'
-import { cadGeoJsonToWgs84 } from '@/twin3d/geo'
+import { filterByCategory } from '@/components/cesium/layerManager'
 import { CAD_GEOJSON_URL } from '@/config/runtime'
+import {
+  DEFAULT_DATA_MODE,
+  DtsDataService,
+  REGION_OPTIONS,
+  VENDOR_CONTROL_SYSTEMS,
+  buildEhmsAssetUrl,
+  getCrossSystemLinks,
+  getPortalUrl,
+  type DataSourceMode,
+  type DtsFeedStatus,
+  type RegionCode,
+} from '@/services/dtsDataService'
+import { useAlertStore, type AlertItem } from '@/stores/alert'
+import { buildDefaultDeviceSnapshot, useDeviceStore } from '@/stores/device'
+import { Twin3dController, type SelectedInfo } from '@/twin3d'
+import { BulkProcessDemoController } from '@/twin3d/bulkProcessDemo'
 import { flyToCameraPreset, type CameraPresetId } from '@/twin3d/cameraPresets'
+import { cadGeoJsonToWgs84 } from '@/twin3d/geo'
+import { MOCK_EQUIPMENT } from '@/twin3d/mock/mockData'
+import { MOCK_CARGO, MOCK_OPERATIONS, MOCK_PERSONNEL, Phase6LayerController } from '@/twin3d/phase6'
 import {
-  MOCK_CARGO,
-  MOCK_OPERATIONS,
-  MOCK_PERSONNEL,
-  Phase6LayerController,
-  type CargoItem,
-  type OperationTask,
-  type PersonnelItem,
-} from '@/twin3d/phase6'
-import {
-  SteelUnloadDemoController,
-  type DemoViewState,
-} from '@/twin3d/steelUnloadDemo'
-import { useAlertStore } from '@/stores/alert'
-import { useDeviceStore } from '@/stores/device'
-import { STATUS_NAMES } from '@/twin3d/constants'
+  BULK_FIVE_PHASES,
+  STEEL_FIVE_PHASES,
+  type ProcessControllerHandle,
+  type ProcessDemoState,
+  type ProcessKind,
+  type UnifiedProcessRuntime,
+} from '@/twin3d/processTypes'
+import { SITE_LAYOUT_V4 } from '@/twin3d/siteLayoutV4'
+import { SteelUnloadDemoController, type SteelSubMode } from '@/twin3d/steelUnloadDemo'
 
-type ThemeId = 'overview' | 'operation' | 'safety' | 'storage' | 'equipment' | 'energy'
+type ThemeId = 'overview' | 'bulk' | 'steel' | 'safety' | 'ehms' | 'weigh'
 
-interface BigScreenTheme {
+interface ThemeMeta {
   id: ThemeId
   label: string
   title: string
@@ -43,122 +48,331 @@ interface BigScreenTheme {
   chartTitle: string
 }
 
-const THEMES: BigScreenTheme[] = [
-  { id: 'overview', label: '综合态势', title: '场站综合态势', note: '全站设备、库存与任务概览', camera: 'overview', chartTitle: '24 小时综合吞吐趋势' },
-  { id: 'operation', label: '作业进度', title: '钢材卸车作业', note: '龙门吊、车辆与任务进度联动', camera: 'gantry', chartTitle: '作业效率趋势' },
-  { id: 'safety', label: '安全监控', title: '区域安全态势', note: '仅展示区域人数和状态，不展示个人信息', camera: 'route', chartTitle: '安全事件趋势' },
-  { id: 'storage', label: '仓储管理', title: '钢筋露天仓位', note: '13 个料位库存容量与关注线', camera: 'steel', chartTitle: '库存占用趋势' },
-  { id: 'equipment', label: '设备健康', title: '关键设备状态', note: '三台龙门吊与钢材线设备状态汇总', camera: 'processing', chartTitle: '设备可用率趋势' },
-  { id: 'energy', label: '能源管控', title: '煤灰储运工艺线', note: '煤灰两轨、筒仓组与输送带；单仓尺寸为比例推断', camera: 'ash', chartTitle: '模拟综合能耗趋势' },
+const THEMES: ThemeMeta[] = [
+  { id: 'overview', label: '全站总览', title: '中沙坝转运站数字孪生综合指挥大屏', note: '给大连大.dwg V4 实测基准 · 40座3000T筒仓 + 13跨钢筋库双线协同', camera: 'overview', chartTitle: '全站装卸吞吐小时趋势（吨/小时）' },
+  { id: 'bulk', label: '散料入仓与定量装车', title: '水泥/粉煤灰翻箱入仓与库底定量装车态势', note: '货1/货2 → 集装箱门吊 → 移动翻箱机(135°) → 40m提升机 → 空气斜槽 → 40筒仓', camera: 'tipper', chartTitle: '散料入仓与定量装车小时流量（t/h）' },
+  { id: 'steel', label: '钢材联合吊装', title: '钢材 40t 门吊 + 13 跨室内桥吊联合吊装态势', note: '货3/货4 → CR-01~03 40t门吊 → 转接区B → 9×20t磁吸 + 4×32t C型桥吊', camera: 'gantry', chartTitle: '钢材入库与货车装车作业效率（%）' },
+  { id: 'safety', label: '安全防撞 (SCS)', title: '安全防碰撞监测与四步联锁监控态势（S4）', note: '门吊/翻箱机动态测距预警(15m)/停机(6m) + 库底电子围栏 + 静电接地联锁', camera: 'loader', chartTitle: '防碰撞预警与联锁处置响应分布' },
+  { id: 'ehms', label: '设备健康 (EHMS)', title: '核心装卸装备 EHMS 健康评分与 BOM 风险（S3）', note: 'CR-01~03 / TIPPER-01~04 / BC-01~13 / ELV-01~04 机构级预测性维护上屏', camera: 'steel', chartTitle: '核心装卸装备群组健康指数（EHMS 分值）' },
+  { id: 'weigh', label: '地磅计量与车流', title: '100t 汽车衡/轨道衡计量与场内车流态势', note: 'WB-TRUCK-01/02 空车初检与满车复磅 · 轨道衡自动采集', camera: 'weighbridge', chartTitle: '公路/铁路计量过磅车次统计' },
+]
+
+interface VideoChannelMeta {
+  id: string
+  title: string
+  camera: CameraPresetId
+  status: string
+  controlSystemId: 'CTRL-BULK' | 'CTRL-CRANE' | 'CTRL-TIPPER'
+  targetDeviceId: string
+  aiOverlayTag: string
+}
+
+const VIDEO_CHANNELS: VideoChannelMeta[] = [
+  {
+    id: 'CAM-01',
+    title: '1# 卸料室与翻箱机监控',
+    camera: 'tipper',
+    status: '在线 · 1080P · PLC联锁',
+    controlSystemId: 'CTRL-TIPPER',
+    targetDeviceId: 'TIPPER-01',
+    aiOverlayTag: 'AI 识别：集装箱四角旋锁闭锁 · 倾角 0~135° 轨行净空正常',
+  },
+  {
+    id: 'CAM-02',
+    title: '2# 门吊-钢筋库跨间转接区',
+    camera: 'gantry',
+    status: '在线 · AI防撞 · 交接复核',
+    controlSystemId: 'CTRL-CRANE',
+    targetDeviceId: 'CR-02',
+    aiOverlayTag: 'AI 识别：转接区B交接等待复核 · 门吊撤离净空 >18.5m',
+  },
+  {
+    id: 'CAM-03',
+    title: '钢筋库 07/03 跨室内桥吊',
+    camera: 'rebar',
+    status: '在线 · 1080P · 光电测距',
+    controlSystemId: 'CTRL-CRANE',
+    targetDeviceId: 'BC-07',
+    aiOverlayTag: 'AI 识别：室内跨间光电防撞正常 · 20t磁吸/32t C型吊具稳钩',
+  },
+  {
+    id: 'CAM-04',
+    title: 'SILO-01 库底定量散装车道',
+    camera: 'loader',
+    status: '在线 · 电子围栏 · 接地',
+    controlSystemId: 'CTRL-BULK',
+    targetDeviceId: 'LOADER-01',
+    aiOverlayTag: 'AI 识别：罐车青B·88219 静电接地闭锁 · 伸缩散装头对接密封',
+  },
 ]
 
 const deviceStore = useDeviceStore()
 const alertStore = useAlertStore()
+const crossLinks = getCrossSystemLinks()
+const portalUrl = getPortalUrl()
+const s1DispatchUrl = crossLinks.find((c) => c.key === 'S1')?.url ?? '/production-dispatch/'
 
+const activeTheme = ref<ThemeId>('overview')
+const activeProcess = ref<ProcessKind>('bulk')
+const steelSubMode = ref<SteelSubMode>('rebar_magnet')
+const activeRegion = ref<RegionCode>('SHEN_TIE')
+const vendorModalOpen = ref(false)
+const activeVideoChannel = ref<VideoChannelMeta | null>(null)
+const videoSnapshotDataUrl = ref('')
+const dataMode = ref<DataSourceMode>(DEFAULT_DATA_MODE)
+const feedStatus = reactive<DtsFeedStatus>({
+  mode: DEFAULT_DATA_MODE,
+  quality: DEFAULT_DATA_MODE === 'offline_sim' ? 'SIM' : 'GOOD',
+  sourceLabel: DEFAULT_DATA_MODE === 'offline_sim' ? '本地工艺仿真推演（给大连大.dwg）' : '正在连接只读底座 (/api/v1/dts)',
+  lastSyncAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+  errorNote: '',
+})
+
+const carouselPaused = ref(false)
+const sceneStatus = ref<'loading' | 'ready' | 'error'>('loading')
+const sceneError = ref('')
+const selectedInfo = ref<SelectedInfo | null>(null)
+const cargoItems = ref(structuredClone(MOCK_CARGO))
+const personnelItems = ref(structuredClone(MOCK_PERSONNEL))
+const operationTasks = ref(structuredClone(MOCK_OPERATIONS))
+
+const demoState = reactive<ProcessDemoState>({
+  processKind: 'bulk',
+  running: false,
+  completed: false,
+  stepIndex: 0,
+  phaseIndex: 0,
+  stepCount: 5,
+  title: '就绪：一键启动散料翻箱或钢材联合吊装全流程演示',
+  narration: '基于 2026.11.14 两份工艺细化图与给大连大.dwg 施工图驱动',
+  progress: 0,
+  payloadTons: 0,
+  safetyDistanceM: 28.5,
+  interlockChecks: [
+    { label: '门吊与翻箱机防碰撞测距正常（>15m）', passed: true },
+    { label: '库底装车电子围栏与接地待命', passed: true },
+    { label: '42m³ 料斗与提升机联锁就绪', passed: true },
+  ],
+})
+
+const chartRef = ref<HTMLElement | null>(null)
 let viewer: Cesium.Viewer | null = null
 let yardDataSource: Cesium.GeoJsonDataSource | null = null
 let twin3d: Twin3dController | null = null
 let phase6Layers: Phase6LayerController | null = null
-let demoController: SteelUnloadDemoController | null = null
+let demoController: ProcessControllerHandle | null = null
+let dataService: DtsDataService | null = null
+let chart: echarts.ECharts | null = null
+let chartResizeObserver: ResizeObserver | null = null
 let carouselTimer: ReturnType<typeof setInterval> | null = null
 let carouselResumeTimer: ReturnType<typeof setTimeout> | null = null
 let alertShrinkTimer: ReturnType<typeof setTimeout> | null = null
-let chart: echarts.ECharts | null = null
-let chartResizeObserver: ResizeObserver | null = null
 
-const chartRef = ref<HTMLElement | null>(null)
-const selectedInfo = ref<SelectedInfo | null>(null)
-const sceneStatus = ref<'loading' | 'ready' | 'error'>('loading')
-const sceneError = ref('')
-const activeTheme = ref<ThemeId>('overview')
-const carouselPaused = ref(false)
-const alertExpanded = ref(true)
 const alertOverlay = ref(false)
 const alertMinimized = ref(false)
-const cargoItems = ref<CargoItem[]>(structuredClone(MOCK_CARGO))
-const personnelItems = ref<PersonnelItem[]>(structuredClone(MOCK_PERSONNEL))
-const operationTasks = ref<OperationTask[]>(structuredClone(MOCK_OPERATIONS))
-const demoState = reactive<DemoViewState>({
-  running: false,
-  completed: false,
-  stepIndex: 0,
-  stepCount: 5,
-  title: '钢材卸车与堆存演示',
-  narration: '场景加载后可播放可复现的钢材卸车验收流程。',
-  progress: 0,
+const activeModalAlert = ref<AlertItem | null>(null)
+let lastPromptedAlertId = ''
+
+const activeThemeInfo = computed(() => THEMES.find((t) => t.id === activeTheme.value) ?? THEMES[0])
+const fivePhases = computed(() => (activeProcess.value === 'bulk' ? BULK_FIVE_PHASES : STEEL_FIVE_PHASES))
+const selectedDeviceState = computed(() => (selectedInfo.value ? deviceStore.devices[selectedInfo.value.id] : undefined))
+const ehmsUrlForSelected = computed(() => {
+  const base = crossLinks.find((c) => c.key === 'S3')?.url ?? 'https://ehms.bproject.de5.net/ehm/'
+  return buildEhmsAssetUrl(base, selectedInfo.value?.id || undefined)
 })
 
-const activeThemeInfo = computed(() => THEMES.find((theme) => theme.id === activeTheme.value) ?? THEMES[0])
-const activeTask = computed(() => operationTasks.value.find((task) => task.id === 'OP-240801') ?? operationTasks.value[0])
-const stockyard = computed(() => cargoItems.value.find((item) => item.id === 'CARGO-01') ?? cargoItems.value[0])
-const deviceSummary = computed(() => deviceStore.getSummary())
-const criticalAlert = computed(() => alertStore.alerts.find((alert) => alert.level === 'critical' && !alert.handled) ?? null)
 const unreadAlerts = computed(() => alertStore.unhandledCount)
-const stockUsage = computed(() => stockyard.value ? Math.round((stockyard.value.quantity / stockyard.value.capacity) * 100) : 0)
+const criticalAlert = computed(
+  () => activeModalAlert.value ?? alertStore.alerts.find((a) => !a.handled && (a.level === 'critical' || a.level === 'warning')) ?? null,
+)
+const activeVideoControlSystem = computed(() =>
+  activeVideoChannel.value
+    ? VENDOR_CONTROL_SYSTEMS.find((s) => s.id === activeVideoChannel.value?.controlSystemId) ?? VENDOR_CONTROL_SYSTEMS[0]
+    : null,
+)
+const deviceSummary = computed(() => deviceStore.getSummary())
+const ehmsTopRisks = computed(() => deviceStore.ehmsTopRisks)
+const ehmsAvgScore = computed(() => {
+  const list = Object.values(deviceStore.devices).filter((d) => d.ehms)
+  if (!list.length) return 93.4
+  return Number((list.reduce((s, d) => s + (d.ehms?.healthScore ?? 92), 0) / list.length).toFixed(1))
+})
+
+const bulkTotalTons = computed(() => {
+  const c = cargoItems.value.find((i) => i.id === 'CARGO-02')?.quantity ?? 15600
+  const f = cargoItems.value.find((i) => i.id === 'CARGO-04')?.quantity ?? 58400
+  return c + f
+})
+const rebarStockTons = computed(() => cargoItems.value.find((i) => i.id === 'CARGO-01')?.quantity ?? 14200)
+const activeTask = computed(() =>
+  operationTasks.value.find((i) => i.id === (activeProcess.value === 'bulk' ? 'OP-240802' : 'OP-240801')),
+)
+
+const materialFlowNodes = computed(() =>
+  activeProcess.value === 'bulk'
+    ? ['货1/货2 列车', '40t集装箱门吊', '移动翻箱机(135°)', '42m³料斗/卸料室', '40m斗式提升机', '仓顶空气斜槽', '40×3000T筒仓', '库底散装→100t磅']
+    : ['货3/货4 钢材专列', 'CR-01~03 门吊(40t)', '库外交接转接区 B', '20t磁吸 / 32t C型桥吊', '1~13 跨智能库位', '电子围栏防碰撞拣选', '公路挂车装车', '100t 汽车衡复磅'],
+)
+
 const kpis = computed(() => [
-  { label: '今日吞吐量', value: `${(1280 + Math.round(demoState.progress * 7.2)).toLocaleString()} t`, delta: '+6.8%', tone: 'cyan' },
-  { label: '卸车效率', value: `${(22.6 + demoState.progress * 0.035).toFixed(1)} t/h`, delta: '+2.1%', tone: 'blue' },
-  { label: '装车效率', value: '18.4 t/h', delta: '持平', tone: 'violet' },
-  { label: '转运效率', value: `${Math.min(98, 82 + Math.round(demoState.progress * 0.08))}%`, delta: '+1.4%', tone: 'green' },
-  { label: '未处理告警', value: String(unreadAlerts.value), delta: unreadAlerts.value ? '待核验' : '运行平稳', tone: unreadAlerts.value ? 'amber' : 'green' },
+  {
+    label: '40座×3000T 散料总储',
+    value: `${bulkTotalTons.value.toLocaleString()} t`,
+    delta: `总仓容 120,000t · ${Math.round((bulkTotalTons.value / 120000) * 100)}%`,
+    tone: 'cyan',
+  },
+  {
+    label: '钢筋仓库（23,882 m²）',
+    value: `${rebarStockTons.value.toLocaleString()} t`,
+    delta: '13跨 · 9磁吸 + 4 C型吊具',
+    tone: 'blue',
+  },
+  {
+    label: '核心装备健康 (EHMS)',
+    value: `${ehmsAvgScore.value} 分`,
+    delta: `在线 ${deviceSummary.value.counts.ok ?? 0}/${deviceSummary.value.total} 台`,
+    tone: 'green',
+  },
+  {
+    label: '防碰撞测距 (SCS)',
+    value: `${demoState.safetyDistanceM.toFixed(1)} m`,
+    delta: demoState.safetyDistanceM <= 15 ? '预警减速 (<15m)' : '安全域 (预警15m/停机6m)',
+    tone: demoState.safetyDistanceM <= 15 ? 'amber' : 'green',
+  },
+  {
+    label: activeProcess.value === 'bulk' ? '散料入仓与装车进度' : '钢材联合吊装进度',
+    value: `${demoState.progress}%`,
+    delta: demoState.payloadTons > 0 ? `当前吊/装载 ${demoState.payloadTons.toFixed(1)} t` : activeProcess.value === 'bulk' ? '翻箱/提升/定量链' : '门吊/转接/桥吊链',
+    tone: 'violet',
+  },
 ])
 
 function seedDevices() {
-  deviceStore.batchUpdate(MOCK_EQUIPMENT.map((item) => ({
-    id: item.id,
-    name: item.name,
-    status: item.id === 'CR-02' ? 'ok' : 'standby',
-    updatedAt: new Date().toISOString(),
-  })))
+  deviceStore.batchUpdate(
+    MOCK_EQUIPMENT.map((item) => buildDefaultDeviceSnapshot(item.id, item.name, item.status)),
+  )
+}
+
+function setCamera(preset: CameraPresetId) {
+  if (viewer) flyToCameraPreset(viewer, preset)
 }
 
 function setCategoryVisible(category: string, visible: boolean) {
-  if (!yardDataSource) return
-  for (const entity of yardDataSource.entities.values) {
-    if ((entity.properties?.category?.getValue?.() ?? '') === category) entity.show = visible
-  }
-}
-
-function setCamera(id: CameraPresetId) {
-  if (viewer) flyToCameraPreset(viewer, id)
+  if (yardDataSource) void filterByCategory(yardDataSource, category, visible)
 }
 
 function syncOperationalLayers() {
   phase6Layers?.syncCargo(cargoItems.value)
   phase6Layers?.syncPersonnel(personnelItems.value)
-  // 大屏综合态势默认显示货物与人员的低干扰图层；人员仅通过区域统计呈现。
-  phase6Layers?.setCargoVisible(true)
-  phase6Layers?.setPersonnelVisible(activeTheme.value === 'safety')
+  phase6Layers?.setCargoVisible(activeTheme.value === 'overview' || activeTheme.value === 'steel' || activeTheme.value === 'bulk')
+  phase6Layers?.setPersonnelVisible(false)
 }
 
-function createDemoController() {
-  if (demoController) return
-  demoController = new SteelUnloadDemoController(
-    {
-      setCamera,
-      setDeviceStatus: (id, status) => deviceStore.updateDevice(id, status),
-      setStockyardQuantity: (quantity) => {
-        const cargo = cargoItems.value.find((item) => item.id === 'CARGO-01')
-        if (!cargo) return
+function createRuntime(): UnifiedProcessRuntime {
+  return {
+    setCamera,
+    setDeviceStatus: (id, status) => deviceStore.updateDevice(id, status),
+    setEquipmentLabel: (id, text) => twin3d?.setEquipmentLabel(id, text),
+    setStockyardQuantity: (cargoId, quantity) => {
+      const cargo = cargoItems.value.find((item) => item.id === cargoId)
+      if (cargo) {
         cargo.quantity = quantity
         cargo.warning = quantity / cargo.capacity >= 0.8
         phase6Layers?.syncCargo(cargoItems.value)
-      },
-      setUnloadOperation: (progress, status) => {
-        const task = operationTasks.value.find((item) => item.id === 'OP-240801')
-        if (task) {
-          task.progress = progress
-          task.status = status
-        }
-      },
-      setVehiclePose: (id, pose) => twin3d?.setVehiclePose(id, pose),
-      setCranePose: (pose) => twin3d?.setCranePose('CR-02', pose),
-      addAlert: (alert) => alertStore.addAlert(alert),
-      clearAlerts: () => alertStore.clear(),
-      requestRender: () => viewer?.scene.requestRender(),
+      }
     },
-    (state) => Object.assign(demoState, state),
-  )
+    setOperationState: (taskId, progress, status) => {
+      const task = operationTasks.value.find((item) => item.id === taskId)
+      if (task) {
+        task.progress = progress
+        task.status = status
+      }
+    },
+    setVehiclePose: (id, pose, height, pitchDeg, rollDeg) => twin3d?.setVehiclePose(id, pose, height, pitchDeg, rollDeg),
+    setActorVisible: (id, visible) => twin3d?.setActorVisible(id, visible),
+    setCranePose: (id, pose) => twin3d?.setCranePose(id, pose),
+    setBridgeCranePose: (id, pose) => twin3d?.setBridgeCranePose(id, pose),
+    setTipperPose: (id, pose) => twin3d?.setTipperPose(id, pose),
+    setLoaderPose: (id, pose) => twin3d?.setLoaderPose(id, pose),
+    setProcessHighlight: (patch) => twin3d?.setProcessHighlight(patch),
+    addAlert: (alert) => alertStore.addAlert(alert),
+    clearAlerts: () => alertStore.clear(),
+    requestRender: () => viewer?.scene.requestRender(),
+  }
+}
+
+function rebuildController(kind: ProcessKind) {
+  demoController?.destroy()
+  const runtime = createRuntime()
+  if (kind === 'bulk') {
+    demoController = new BulkProcessDemoController(runtime, (state) => Object.assign(demoState, state))
+  } else {
+    const ctrl = new SteelUnloadDemoController(runtime, (state) => Object.assign(demoState, state))
+    ctrl.setSubMode(steelSubMode.value)
+    demoController = ctrl
+  }
+  demoController.reset()
+}
+
+function switchProcess(kind: ProcessKind) {
+  if (activeProcess.value === kind) return
+  activeProcess.value = kind
+  seedDevices()
+  cargoItems.value = structuredClone(MOCK_CARGO)
+  personnelItems.value = structuredClone(MOCK_PERSONNEL)
+  operationTasks.value = structuredClone(MOCK_OPERATIONS)
+  syncOperationalLayers()
+  rebuildController(kind)
+  setCamera(kind === 'bulk' ? 'tipper' : 'gantry')
+}
+
+function switchSteelSubMode(mode: SteelSubMode) {
+  if (steelSubMode.value === mode) return
+  steelSubMode.value = mode
+  if (activeProcess.value === 'steel') {
+    resetDemo()
+    setCamera('rebar')
+  }
+}
+
+function onRegionChange(nextRegion: RegionCode) {
+  activeRegion.value = nextRegion
+  dataService?.setRegionId(nextRegion)
+}
+
+function openVideoChannel(cam: VideoChannelMeta) {
+  setCamera(cam.camera)
+  twin3d?.focusEquipment(cam.targetDeviceId)
+  activeVideoChannel.value = cam
+  setTimeout(() => {
+    try {
+      if (viewer) {
+        viewer.scene.render()
+        videoSnapshotDataUrl.value = viewer.scene.canvas.toDataURL('image/jpeg', 0.82)
+      }
+    } catch {
+      videoSnapshotDataUrl.value = ''
+    }
+  }, 450)
+}
+
+function inspectAlertWorkstation(alert?: AlertItem | null) {
+  const target = (alert ?? criticalAlert.value)?.targetId ?? ''
+  if (target.startsWith('LOADER-') || target.startsWith('SILO-')) {
+    openVideoChannel(VIDEO_CHANNELS[3])
+  } else if (target.startsWith('BC-') || target.startsWith('REBAR-BAY-')) {
+    openVideoChannel(VIDEO_CHANNELS[2])
+  } else if (target.startsWith('CR-0')) {
+    openVideoChannel(VIDEO_CHANNELS[1])
+  } else {
+    openVideoChannel(VIDEO_CHANNELS[0])
+  }
+}
+
+function toggleDataMode() {
+  const next: DataSourceMode = dataMode.value === 'offline_sim' ? 'realtime_readonly' : 'offline_sim'
+  dataMode.value = next
+  dataService?.setMode(next)
 }
 
 function resetDemo() {
@@ -227,18 +441,35 @@ function resumeAfterPointerLeave() {
   carouselResumeTimer = setTimeout(startCarousel, 5_000)
 }
 
-function focusCriticalAlert() {
-  const alert = criticalAlert.value
+function focusDevice(id: string) {
+  twin3d?.focusEquipment(id)
+}
+
+function focusCriticalAlert(customAlert?: AlertItem | null) {
+  const alert = customAlert ?? criticalAlert.value
   if (!alert) return
   const target = alert.targetId
-  if (target.startsWith('CR-')) setCamera('gantry')
-  else if (target.startsWith('REBAR-BAY-')) setCamera('rebar')
-  else setCamera('overview')
+  if (twin3d) {
+    const info = twin3d.focusEquipment(target)
+    if (info) selectedInfo.value = info
+  }
+  if (target.startsWith('TIPPER-') || target.startsWith('CR-BULK')) setCamera('tipper')
+  else if (target.startsWith('LOADER-') || target.startsWith('SILO-')) setCamera('loader')
+  else if (target.startsWith('CR-')) setCamera('gantry')
+  else if (target.startsWith('REBAR-BAY-') || target.startsWith('BC-')) setCamera('rebar')
+}
+
+function onAlertItemClick(alert: AlertItem) {
+  activeModalAlert.value = alert
+  alertOverlay.value = true
+  alertMinimized.value = false
+  focusCriticalAlert(alert)
 }
 
 function acknowledgeCritical() {
   const alert = criticalAlert.value
   if (alert) alertStore.markHandled(alert.id)
+  activeModalAlert.value = null
   alertOverlay.value = false
   alertMinimized.value = false
   if (!carouselPaused.value) startCarousel()
@@ -247,33 +478,61 @@ function acknowledgeCritical() {
 function updateChart() {
   if (!chart) return
   const chartSeries: Record<ThemeId, number[]> = {
-    overview: [48, 54, 51, 68, 72, 65, 78, 86, 91, 88, 96, 104],
-    operation: [73, 76, 74, 79, 82, 84, 80, 86, 89, 91, 88, 93],
-    safety: [1, 0, 2, 1, 1, 0, 3, 1, 0, 1, 0, 0],
-    storage: [68, 69, 70, 70, 71, 72, 73, 75, 76, 78, 80, stockUsage.value],
-    equipment: [94, 94, 95, 96, 95, 96, 97, 96, 97, 98, 97, 98],
-    energy: [42, 46, 45, 50, 54, 52, 59, 61, 63, 60, 66, 64],
+    overview: [320, 380, 410, 460, 490, 510, 480, 540, 560, 520, 580, 615],
+    bulk: [180, 210, 240, 265, 290, 275, 310, 340, 355, 330, 368, 390],
+    steel: [72, 76, 80, 82, 85, 84, 88, 91, 90, 93, 94, 96],
+    safety: [1, 0, 2, 1, 0, 0, 1, 2, 0, 1, 0, 0],
+    ehms: [96, 95, 95, 94, 94, 93, 95, 94, 93, 92, 93, ehmsAvgScore.value],
+    weigh: [14, 18, 22, 26, 24, 29, 31, 35, 33, 38, 40, 42],
   }
   const safety = activeTheme.value === 'safety'
-  chart.setOption({
-    animationDuration: 300,
-    backgroundColor: 'transparent',
-    grid: { left: 42, right: 18, top: 34, bottom: 24 },
-    title: { text: activeThemeInfo.value.chartTitle, left: 10, top: 2, textStyle: { color: '#b8d7ed', fontSize: 13, fontWeight: 500 } },
-    xAxis: { type: 'category', boundaryGap: false, data: ['00', '02', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22'], axisLine: { lineStyle: { color: '#24455f' } }, axisLabel: { color: '#6f93ab', fontSize: 10 } },
-    yAxis: { type: 'value', min: 0, splitLine: { lineStyle: { color: 'rgba(68, 123, 151, 0.16)' } }, axisLabel: { color: '#6f93ab', fontSize: 10 } },
-    tooltip: { trigger: 'axis', backgroundColor: 'rgba(5, 20, 37, .96)', borderColor: '#237b9b', textStyle: { color: '#e4f8ff' } },
-    series: [{
-      type: safety ? 'bar' : 'line',
-      data: chartSeries[activeTheme.value],
-      smooth: !safety,
-      symbol: 'none',
-      barMaxWidth: 18,
-      itemStyle: { color: safety ? '#f6b44d' : '#16d7e7' },
-      lineStyle: { width: 2, color: '#16d7e7' },
-      areaStyle: safety ? undefined : { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(22, 215, 231, .38)' }, { offset: 1, color: 'rgba(22, 215, 231, .02)' }]) },
-    }],
-  }, true)
+  chart.setOption(
+    {
+      animationDuration: 300,
+      backgroundColor: 'transparent',
+      grid: { left: 44, right: 16, top: 28, bottom: 22 },
+      title: {
+        text: activeThemeInfo.value.chartTitle,
+        left: 10,
+        top: 2,
+        textStyle: { color: '#b8d7ed', fontSize: 12, fontWeight: 500 },
+      },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: ['00', '02', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22'],
+        axisLine: { lineStyle: { color: '#24455f' } },
+        axisLabel: { color: '#6f93ab', fontSize: 10 },
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        splitLine: { lineStyle: { color: 'rgba(68, 123, 151, 0.16)' } },
+        axisLabel: { color: '#6f93ab', fontSize: 10 },
+      },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(5, 20, 37, .96)', borderColor: '#237b9b', textStyle: { color: '#e4f8ff' } },
+      series: [
+        {
+          type: safety ? 'bar' : 'line',
+          data: chartSeries[activeTheme.value],
+          smooth: !safety,
+          symbol: 'none',
+          barMaxWidth: 16,
+          itemStyle: { color: safety ? '#f6b44d' : '#16d7e7' },
+          lineStyle: { width: 2, color: '#16d7e7' },
+          areaStyle: safety
+            ? undefined
+            : {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(22, 215, 231, .36)' },
+                  { offset: 1, color: 'rgba(22, 215, 231, .02)' },
+                ]),
+              },
+        },
+      ],
+    },
+    true,
+  )
 }
 
 function initChart() {
@@ -295,19 +554,18 @@ function onViewerReady(nextViewer: Cesium.Viewer) {
       if (!response.ok) throw new Error(`CAD 图层 HTTP ${response.status}`)
       return response.json()
     })
-    .then((cadGeoJson) => Cesium.GeoJsonDataSource.load(cadGeoJsonToWgs84(cadGeoJson), {
-      stroke: Cesium.Color.fromCssColorString('#2A88A8').withAlpha(0.08),
-      strokeWidth: 1,
-      fill: Cesium.Color.fromCssColorString('#1D5D9B').withAlpha(0.005),
-      clampToGround: false,
-      markerSize: 0,
-    }))
+    .then((cadGeoJson) =>
+      Cesium.GeoJsonDataSource.load(cadGeoJsonToWgs84(cadGeoJson), {
+        stroke: Cesium.Color.fromCssColorString('#2A88A8').withAlpha(0.08),
+        strokeWidth: 1,
+        fill: Cesium.Color.fromCssColorString('#1D5D9B').withAlpha(0.005),
+        clampToGround: false,
+        markerSize: 0,
+      }),
+    )
     .then((dataSource) => {
       nextViewer.dataSources.add(dataSource)
       yardDataSource = dataSource
-      // The big screen is a presentation surface.  CAD stays locally loaded
-      // for verification and failure isolation, but is hidden by default so
-      // its engineering linework never competes with the GLB scene.
       setCategoryVisible('track', false)
       setCategoryVisible('area', false)
       setCamera('overview')
@@ -316,14 +574,15 @@ function onViewerReady(nextViewer: Cesium.Viewer) {
       sceneError.value = error instanceof Error ? error.message : String(error)
     })
     .finally(() => {
-      // CAD 失败不会阻止 GLB 资产和业务面板；这是大屏的局部降级策略。
       seedDevices()
       twin3d = new Twin3dController(nextViewer, { onSelect: (info) => { selectedInfo.value = info } })
-      twin3d.setVehicleRouteAnimation(false)
+      twin3d.setVehicleRouteAnimation(true)
       phase6Layers = new Phase6LayerController(nextViewer)
       syncOperationalLayers()
-      createDemoController()
-      resetDemo()
+      rebuildController(activeProcess.value)
+      dataService = new DtsDataService(deviceStore, alertStore, (s) => Object.assign(feedStatus, s), activeRegion.value)
+      activeRegion.value = dataService.getRegionId()
+      dataService.start(dataMode.value, 5000)
       sceneStatus.value = sceneError.value ? 'error' : 'ready'
       nextViewer.scene.requestRender()
     })
@@ -337,19 +596,25 @@ watch(
   { deep: true },
 )
 
-watch(criticalAlert, (alert) => {
-  if (!alert) return
-  stopCarousel()
-  alertExpanded.value = true
-  alertOverlay.value = true
-  alertMinimized.value = false
-  focusCriticalAlert()
-  if (alertShrinkTimer) clearTimeout(alertShrinkTimer)
-  alertShrinkTimer = setTimeout(() => {
-    alertMinimized.value = true
-    alertOverlay.value = false
-  }, 15_000)
-})
+watch(
+  () => alertStore.alerts[0],
+  (latestAlert) => {
+    if (!latestAlert || latestAlert.handled) return
+    if (latestAlert.level !== 'critical' && !latestAlert.id.includes('DONE')) return
+    if (latestAlert.id === lastPromptedAlertId) return
+    lastPromptedAlertId = latestAlert.id
+    activeModalAlert.value = latestAlert
+    stopCarousel()
+    alertOverlay.value = true
+    alertMinimized.value = false
+    focusCriticalAlert(latestAlert)
+    if (alertShrinkTimer) clearTimeout(alertShrinkTimer)
+    alertShrinkTimer = setTimeout(() => {
+      alertMinimized.value = true
+      alertOverlay.value = false
+    }, 12_000)
+  },
+)
 
 watch(activeTheme, updateChart)
 watch(() => demoState.progress, updateChart)
@@ -368,27 +633,71 @@ onBeforeUnmount(() => {
   chartResizeObserver = null
   chart?.dispose()
   chart = null
+  dataService?.stop()
   demoController?.destroy()
   phase6Layers?.destroy()
   twin3d?.destroy()
   viewer = null
   yardDataSource = null
 })
+
+void SITE_LAYOUT_V4.version
 </script>
 
 <template>
   <main class="bigscreen" @pointerenter="pauseOnPointerEnter" @pointerleave="resumeAfterPointerLeave">
     <header class="screen-header">
       <div>
-        <p class="eyebrow">RAIL FREIGHT DIGITAL TWIN · OFFLINE DEMONSTRATION</p>
+        <p class="eyebrow">ZHONGSHABA RAIL TRANSFER HUB · S5 DIGITAL TWIN · 1+5+2 架构 · 只监不控安全边界</p>
         <h1>{{ activeThemeInfo.title }}</h1>
       </div>
       <div class="header-meta">
-        <span class="data-badge">本地模拟 / 推断数据</span>
-        <span class="clock">{{ new Date().toLocaleDateString('zh-CN') }}</span>
-        <RouterLink to="/" class="back-link">返回三维作业台</RouterLink>
+        <select class="region-select" :value="activeRegion" @change="onRegionChange(($event.target as HTMLSelectElement).value as RegionCode)">
+          <option v-for="r in REGION_OPTIONS" :key="r.id" :value="r.id">{{ r.label }}</option>
+        </select>
+        <button class="mode-switch" @click="toggleDataMode">
+          数据源：<b>{{ dataMode === 'offline_sim' ? '离线仿真 (.eddx)' : '只读数据库 (/api/v1)' }}</b>
+          <em class="quality-pill" :class="feedStatus.quality.toLowerCase()">{{ feedStatus.quality }}</em>
+        </button>
+        <button class="mode-switch vendor-pill" @click="vendorModalOpen = !vendorModalOpen">
+          1+5+2 厂家控制系统 (3套)
+        </button>
+        <nav class="cross-links" aria-label="业务系统联动跳转">
+          <a v-for="item in crossLinks" :key="item.key" :href="item.url" target="_blank" rel="noopener noreferrer" :title="`${item.name} (${item.badge})`">
+            {{ item.key }}·{{ item.badge }}
+          </a>
+        </nav>
+        <RouterLink to="/calibration" class="back-link">CAD校核</RouterLink>
+        <RouterLink to="/" class="back-link">← 三维作业台</RouterLink>
+        <a :href="portalUrl" class="back-link">统一门户 →</a>
       </div>
     </header>
+
+    <!-- Slide 40: 顶部 5 步全流程可视化追踪条 -->
+    <section class="process-tracker" aria-label="双线工艺五步流程追踪">
+      <div class="process-switch">
+        <button :class="{ active: activeProcess === 'bulk' }" @click="switchProcess('bulk')">散料翻箱入仓+定量装车</button>
+        <button :class="{ active: activeProcess === 'steel' }" @click="switchProcess('steel')">钢材门吊+桥吊联合吊装</button>
+        <template v-if="activeProcess === 'steel'">
+          <button :class="{ active: steelSubMode === 'rebar_magnet' }" @click="switchSteelSubMode('rebar_magnet')">20t磁吸·螺纹钢(07跨)</button>
+          <button :class="{ active: steelSubMode === 'coil_chook' }" @click="switchSteelSubMode('coil_chook')">32t C型·卷材(03跨)</button>
+        </template>
+      </div>
+      <div class="five-steps">
+        <div
+          v-for="(label, idx) in fivePhases"
+          :key="label"
+          class="step-pill"
+          :class="{ done: demoState.completed || idx < demoState.phaseIndex, current: !demoState.completed && idx === demoState.phaseIndex }"
+        >
+          <span>{{ label }}</span>
+        </div>
+      </div>
+      <div class="tracker-summary">
+        <b>{{ demoState.progress }}%</b>
+        <small>{{ activeProcess === 'bulk' ? '货1/货2→40筒仓' : '货3/货4→13跨库' }}</small>
+      </div>
+    </section>
 
     <section class="kpi-row" aria-label="运营关键指标">
       <article v-for="kpi in kpis" :key="kpi.label" class="kpi-card" :class="`tone-${kpi.tone}`">
@@ -400,50 +709,165 @@ onBeforeUnmount(() => {
 
     <section class="screen-grid">
       <aside class="side-column left-column">
-        <section class="panel alert-panel">
-          <div class="panel-heading"><span>实时告警</span><em>{{ unreadAlerts }} 条待处理</em></div>
+        <section class="panel scs-panel">
+          <div class="panel-heading"><span>S4 安全防撞与联锁回执</span><em>预警15m/停6m</em></div>
+          <div class="safety-meter">
+            <span>门吊/翻箱/桥吊安全间距</span>
+            <strong :class="{ warn: demoState.safetyDistanceM <= 15 }">{{ demoState.safetyDistanceM.toFixed(1) }} m</strong>
+          </div>
+          <div class="interlock-list">
+            <div v-for="chk in demoState.interlockChecks" :key="chk.label" class="interlock-row">
+              <i :class="{ pass: chk.passed }">✔</i>
+              <span>{{ chk.label }}</span>
+            </div>
+          </div>
           <div v-if="alertStore.alerts.length" class="alert-list">
-            <button v-for="alert in alertStore.alerts.slice(0, 5)" :key="alert.id" class="alert-item" :class="alert.level" @click="focusCriticalAlert">
+            <button v-for="alert in alertStore.alerts.slice(0, 3)" :key="alert.id" class="alert-item" :class="alert.level" @click="onAlertItemClick(alert)">
               <span class="level-dot"></span>
               <span><b>{{ alert.targetName }}</b><small>{{ alert.message }}</small></span>
             </button>
           </div>
-          <div v-else class="empty-state">当前无未处理告警<br /><small>演示进入第 5 阶段后将生成堆位关注告警</small></div>
         </section>
 
-        <section class="panel zone-panel">
-          <div class="panel-heading"><span>区域安全概览</span><em>脱敏</em></div>
-          <div class="zone-metrics">
-            <div><strong>{{ personnelItems.length }}</strong><span>场内人员</span></div>
-            <div><strong>0</strong><span>围栏入侵</span></div>
-            <div><strong>1</strong><span>重点关注</span></div>
+        <section class="panel topology-panel">
+          <div class="panel-heading"><span>物料流向拓扑（Slide 40）</span><em>{{ unreadAlerts }} 告警</em></div>
+          <div class="flow-chain">
+            <span v-for="(node, i) in materialFlowNodes" :key="node" class="flow-node" :class="{ lit: i <= demoState.phaseIndex * 1.6 }">
+              {{ node }}
+            </span>
           </div>
-          <p>人员姓名及精确位置仅在作业台授权界面显示。</p>
+        </section>
+
+        <section class="panel video-panel">
+          <div class="panel-heading"><span>重点工位关联视频 & PLC核查</span><em>点击核查</em></div>
+          <div class="video-grid">
+            <button v-for="cam in VIDEO_CHANNELS" :key="cam.id" class="video-tile" @click="openVideoChannel(cam)">
+              <b>{{ cam.id }}</b>
+              <span>{{ cam.title }}</span>
+              <small>{{ cam.status }}</small>
+            </button>
+          </div>
         </section>
       </aside>
 
       <section class="scene-panel">
         <CesiumViewer @viewer-ready="onViewerReady" />
-        <div v-if="sceneStatus === 'loading'" class="scene-overlay loading">正在加载本地 CAD 与 GLB 场站资产…</div>
-        <div v-else-if="sceneStatus === 'error'" class="scene-overlay warning">CAD 底图未完整加载：{{ sceneError }}<br /><small>三维资产和业务面板仍可继续使用。</small></div>
+        <div v-if="sceneStatus === 'loading'" class="scene-overlay loading">正在加载《给大连大.dwg》V4 实测三维场站与 GLB 装备…</div>
+        <div v-else-if="sceneStatus === 'error'" class="scene-overlay warning">CAD 底图未完整加载：{{ sceneError }}</div>
+
         <div class="scene-caption">
           <span class="live-dot"></span>
-          {{ activeThemeInfo.note }}
+          <span>{{ activeThemeInfo.note }}</span>
+          <small class="feed-note">{{ feedStatus.sourceLabel }} · {{ feedStatus.lastSyncAt }}</small>
           <button class="scene-action" @click="setCamera(activeThemeInfo.camera)">复位镜头</button>
         </div>
-        <div v-if="selectedInfo" class="selection-card">
-          <b>{{ selectedInfo.name }}</b><span>{{ selectedInfo.id }} · {{ selectedInfo.statusName }}</span>
+
+        <!-- Slide 41: 设备空间选取与运行参数 HUD 卡 -->
+        <div v-if="selectedInfo" class="selection-hud">
+          <div class="hud-head">
+            <div>
+              <b>{{ selectedInfo.name }}</b>
+              <small>{{ selectedInfo.id }} · {{ selectedInfo.statusName }}</small>
+            </div>
+            <button @click="selectedInfo = null">✕</button>
+          </div>
+          <div v-if="selectedDeviceState?.telemetry" class="hud-grid">
+            <div><span>当前载荷</span><b>{{ selectedDeviceState.telemetry.loadTons }} t</b></div>
+            <div><span>实时风速</span><b>{{ selectedDeviceState.telemetry.windSpeedMps }} m/s</b></div>
+            <div><span>液压压力</span><b>{{ selectedDeviceState.telemetry.hydraulicPsi }} MPa</b></div>
+            <div><span>累计运行</span><b>{{ selectedDeviceState.telemetry.runHours }} h</b></div>
+            <div><span>今日循环</span><b>{{ selectedDeviceState.telemetry.todayCycles }} 次</b></div>
+            <div><span>维保提示</span><b>{{ selectedDeviceState.telemetry.maintenanceDue }}</b></div>
+          </div>
+          <div v-if="selectedDeviceState?.ehms" class="hud-ehms">
+            <span>EHMS 健康评分 <b>{{ selectedDeviceState.ehms.healthScore }}</b> · {{ selectedDeviceState.ehms.riskSubsystem }}</span>
+            <a :href="ehmsUrlForSelected" target="_blank" rel="noopener noreferrer">前往 S3 EHMS →</a>
+          </div>
+          <div v-if="Object.keys(selectedInfo.params ?? {}).length" class="hud-params">
+            <div v-for="(val, key) in selectedInfo.params" :key="key" class="hud-param-row">
+              <span>{{ key }}</span><b>{{ val }}</b>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 40: 工位关联视频与厂家控制系统 PLC 状态核查浮窗 -->
+        <div v-if="activeVideoChannel" class="video-inspect-modal">
+          <div class="vim-head">
+            <div>
+              <b>{{ activeVideoChannel.id }} · {{ activeVideoChannel.title }}（工位关联视频 & 厂家控制系统核查）</b>
+              <small>{{ activeVideoChannel.status }} · 严守 S5 只监不控安全边界</small>
+            </div>
+            <button class="vim-close" @click="activeVideoChannel = null">✕</button>
+          </div>
+          <div class="vim-body">
+            <div class="vim-viewport">
+              <img v-if="videoSnapshotDataUrl" :src="videoSnapshotDataUrl" alt="工位实时视频镜像" class="vim-canvas-img" />
+              <div class="vim-osd-top">
+                <span>REC ● {{ activeVideoChannel.id }} · 中沙坝场站专网 RTSP/WebRTC</span>
+                <span>防碰撞测距: {{ demoState.safetyDistanceM.toFixed(1) }} m</span>
+              </div>
+              <div class="vim-ai-box">
+                <span>{{ activeVideoChannel.aiOverlayTag }}</span>
+              </div>
+            </div>
+            <div v-if="activeVideoControlSystem" class="vim-plc">
+              <div class="vim-plc-title">
+                <b>{{ activeVideoControlSystem.name }}</b>
+                <em>{{ activeVideoControlSystem.category }}</em>
+              </div>
+              <p class="vim-plc-sub">{{ activeVideoControlSystem.interlockSummary }}</p>
+              <div class="vim-sig-list">
+                <div v-for="sig in activeVideoControlSystem.plcSignals" :key="sig.tag" class="vim-sig-row">
+                  <span>{{ sig.label }}</span>
+                  <b>{{ sig.value }}</b>
+                </div>
+              </div>
+              <div class="vim-actions">
+                <button @click="setCamera(activeVideoChannel.camera)">复位工位镜头</button>
+                <a :href="s1DispatchUrl" target="_blank" rel="noopener noreferrer" class="s1-jump-btn">
+                  进入 S1 装卸工艺管理系统处置 →
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1+5+2 底层控制系统只读状态总览弹窗 -->
+        <div v-if="vendorModalOpen" class="vendor-overview-modal">
+          <div class="vim-head">
+            <div>
+              <b>1+5+2 架构 · 底层厂家/合研控制系统只读状态监控</b>
+              <small>2套外购厂家控制系统 + 1套合研移动翻箱机控制系统（OPC UA / Profinet 只读镜像）</small>
+            </div>
+            <button class="vim-close" @click="vendorModalOpen = false">✕</button>
+          </div>
+          <div class="vendor-cards-row">
+            <article v-for="sys in VENDOR_CONTROL_SYSTEMS" :key="sys.id" class="v-card">
+              <div class="v-card-head">
+                <b>{{ sys.name }}</b>
+                <em>{{ sys.category }}</em>
+              </div>
+              <p>{{ sys.protocol }} · 纳管: {{ sys.boundDevices.join(' / ') }}</p>
+              <div v-for="sig in sys.plcSignals" :key="sig.tag" class="vim-sig-row">
+                <span>{{ sig.label }}</span>
+                <b>{{ sig.value }}</b>
+              </div>
+            </article>
+          </div>
         </div>
       </section>
 
       <aside class="side-column right-column">
         <section class="panel task-panel">
-          <div class="panel-heading"><span>钢材卸车任务</span><em>{{ demoState.progress }}%</em></div>
+          <div class="panel-heading">
+            <span>{{ activeProcess === 'bulk' ? '散料入仓与装车演示' : '钢材联合吊装演示' }}</span>
+            <em>{{ demoState.progress }}%</em>
+          </div>
           <h2>{{ demoState.title }}</h2>
           <p>{{ demoState.narration }}</p>
           <div class="progress-track"><span :style="{ width: `${demoState.progress}%` }"></span></div>
           <div class="task-meta">
-            <span>任务状态：{{ activeTask?.status === 'done' ? '已完成' : demoState.running ? '执行中' : '待启动' }}</span>
+            <span>状态：{{ activeTask?.status === 'done' ? '已完成' : demoState.running ? '执行中' : '待启动' }}</span>
             <span>阶段 {{ Math.min(demoState.stepIndex + 1, demoState.stepCount) }}/{{ demoState.stepCount }}</span>
           </div>
           <div class="demo-controls">
@@ -452,17 +876,18 @@ onBeforeUnmount(() => {
           </div>
         </section>
 
-        <section class="panel equipment-panel">
-          <div class="panel-heading"><span>关键设备状态</span><em>{{ deviceSummary.total }} 台</em></div>
-          <div v-for="device in Object.values(deviceStore.devices).slice(0, 5)" :key="device.id" class="equipment-row">
-            <span class="status-led" :class="device.status"></span><b>{{ device.name }}</b><em>{{ STATUS_NAMES[device.status] }}</em>
+        <!-- S3 EHMS 关键健康状态与 BOM 风险专区（第 20 次组会明确要求） -->
+        <section class="panel ehms-panel">
+          <div class="panel-heading"><span>S3 EHMS 健康与 BOM 风险</span><em>均值 {{ ehmsAvgScore }}</em></div>
+          <div v-for="dev in ehmsTopRisks" :key="dev.id" class="ehms-row" @click="focusDevice(dev.id)">
+            <div class="ehms-top">
+              <span class="status-led" :class="dev.status"></span>
+              <b>{{ dev.id }}</b>
+              <em>{{ dev.name.replace('（40t）', '') }}</em>
+              <strong :class="dev.ehms?.healthLevel">{{ dev.ehms?.healthScore }}分</strong>
+            </div>
+            <div class="ehms-sub">{{ dev.ehms?.riskSubsystem }} · RUL {{ dev.ehms?.predictedRulDays }}d</div>
           </div>
-        </section>
-
-        <section class="panel stock-panel">
-          <div class="panel-heading"><span>钢筋露天仓位汇总</span><em>{{ stockUsage }}%</em></div>
-          <strong>{{ stockyard?.quantity.toLocaleString() }} t</strong><span>容量 {{ stockyard?.capacity.toLocaleString() }} t</span>
-          <div class="stock-bar"><span :style="{ width: `${stockUsage}%` }"></span></div>
         </section>
       </aside>
     </section>
@@ -474,67 +899,233 @@ onBeforeUnmount(() => {
         <button v-for="theme in THEMES" :key="theme.id" :class="{ active: activeTheme === theme.id }" @click="applyTheme(theme.id)">{{ theme.label }}</button>
       </nav>
       <button class="carousel-control" @click="toggleCarousel">{{ carouselPaused ? '▶ 恢复自动轮播' : 'Ⅱ 暂停自动轮播' }}</button>
-      <span>轮播间隔 30 秒 · 鼠标移入暂停 · 离开 5 秒后恢复</span>
+      <span>S5 只监不控 · 严禁对厂内起重机/翻箱机下发控制指令 · 给大连大.dwg V4</span>
     </footer>
 
     <div v-if="alertOverlay && criticalAlert" class="alert-modal" role="alertdialog">
-      <p>严重告警 · 轮播已暂停</p>
+      <p>Slide 40 交接等待 / 安全联锁回执 · 自动轮播已暂停</p>
       <h2>{{ criticalAlert.targetName }}</h2>
       <span>{{ criticalAlert.message }}</span>
-      <div><button @click="focusCriticalAlert">定位场景</button><button class="primary" @click="acknowledgeCritical">确认告警</button></div>
+      <div class="receipt-tags" v-if="criticalAlert.interlockReceipt">
+        <b v-for="act in criticalAlert.interlockReceipt.actions" :key="act">{{ act }}</b>
+      </div>
+      <div class="alert-modal-actions">
+        <button @click="focusCriticalAlert(criticalAlert)">1. 定位三维工位</button>
+        <button @click="inspectAlertWorkstation(criticalAlert)">2. 核查厂家状态及关联视频</button>
+        <a :href="s1DispatchUrl" target="_blank" rel="noopener noreferrer" class="modal-link-btn">3. 进入 S1 工艺管理处置 →</a>
+        <button class="primary" @click="acknowledgeCritical">已核实确认</button>
+      </div>
     </div>
-    <button v-if="alertMinimized && criticalAlert" class="critical-toast" @click="alertOverlay = true">严重告警：{{ criticalAlert.targetName }}</button>
+    <button v-if="alertMinimized && criticalAlert" class="critical-toast" @click="alertOverlay = true">告警提示：{{ criticalAlert.targetName }}</button>
   </main>
 </template>
 
 <style scoped lang="scss">
 .bigscreen {
-  --panel-bg: rgba(8, 26, 47, .88);
-  --panel-border: rgba(45, 133, 173, .48);
+  --panel-bg: rgba(8, 25, 45, 0.9);
+  --panel-border: rgba(45, 138, 178, 0.45);
   min-width: 1180px;
-  min-height: 720px;
+  min-height: 740px;
   height: 100%;
   box-sizing: border-box;
   overflow: hidden;
   color: #d9f1ff;
   background:
-    radial-gradient(circle at 48% 32%, rgba(10, 72, 106, .22), transparent 34%),
+    radial-gradient(circle at 48% 30%, rgba(10, 74, 110, 0.24), transparent 38%),
     linear-gradient(135deg, #020918 0%, #061427 48%, #020a17 100%);
-  padding: clamp(12px, 1.25vw, 24px) clamp(18px, 1.8vw, 34px) 14px;
+  padding: 10px 18px 10px;
   display: grid;
-  grid-template-rows: auto auto minmax(360px, 1fr) 136px auto;
-  gap: 10px;
+  grid-template-rows: auto auto auto minmax(340px, 1fr) 122px auto;
+  gap: 8px;
   position: relative;
 }
 
-.screen-header, .kpi-row, .screen-grid, .screen-footer { min-width: 0; }
-.screen-header { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
-.eyebrow { margin: 0 0 4px; color: #2abdd4; font-size: clamp(9px, .58vw, 12px); letter-spacing: .15em; }
-h1 { margin: 0; font-size: clamp(22px, 1.65vw, 34px); letter-spacing: .06em; color: #e1fbff; }
-.header-meta { display: flex; align-items: center; gap: 12px; color: #87a9bd; font-size: 12px; }
-.data-badge { border: 1px solid rgba(42, 189, 212, .48); color: #6edbe9; padding: 4px 8px; border-radius: 99px; }
-.back-link { color: #b8eaff; text-decoration: none; }
+.screen-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.eyebrow { margin: 0 0 2px; color: #2abdd4; font-size: 11px; letter-spacing: 0.14em; }
+h1 { margin: 0; font-size: clamp(20px, 1.45vw, 28px); letter-spacing: 0.05em; color: #e6fbff; }
+.header-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; flex-wrap: wrap; }
+.region-select {
+  padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(42, 189, 212, 0.52);
+  background: rgba(8, 36, 58, 0.85); color: #cdefff; font-size: 11px; cursor: pointer;
+}
+.mode-switch {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px;
+  border: 1px solid rgba(42, 189, 212, 0.52); background: rgba(8, 36, 58, 0.8); color: #cdefff; cursor: pointer; font-size: 11px;
+  &.vendor-pill { border-color: #00e5ff; color: #7ef4ff; font-weight: 600; }
+}
+.quality-pill {
+  font-style: normal; padding: 1px 6px; border-radius: 99px; font-weight: 700; font-size: 10px;
+  &.sim { background: rgba(0, 229, 255, 0.18); color: #5ce7ff; }
+  &.good { background: rgba(52, 211, 153, 0.22); color: #34d399; }
+  &.fallback { background: rgba(245, 184, 76, 0.22); color: #f5b84c; }
+}
+.cross-links { display: flex; gap: 6px; }
+.cross-links a {
+  padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(64, 150, 186, 0.42); background: rgba(11, 40, 62, 0.72);
+  color: #9de2f5; text-decoration: none; font-size: 11px;
+  &:hover { border-color: #2ee6ff; color: #fff; }
+}
+.back-link { color: #b8eaff; text-decoration: none; font-size: 12px; margin-left: 4px; }
 
-.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-.kpi-card, .panel { border: 1px solid var(--panel-border); background: var(--panel-bg); box-shadow: inset 0 1px 0 rgba(112, 211, 255, .04), 0 12px 28px rgba(0, 0, 0, .16); }
-.kpi-card { min-height: 68px; padding: 9px 14px; border-radius: 5px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
-.kpi-card span { color: #83a8bd; font-size: 12px; }.kpi-card strong { grid-row: 2; font-size: clamp(20px, 1.4vw, 29px); line-height: 1.05; color: #e5fbff; }.kpi-card small { grid-column: 2; grid-row: 2; color: #77d6b2; font-size: 11px; }
-.tone-amber small { color: #f6ba57; }.tone-violet strong { color: #d5c2ff; }.tone-blue strong { color: #84caff; }.tone-green strong { color: #7be6bb; }
+.process-tracker {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+  padding: 6px 10px; border: 1px solid var(--panel-border); border-radius: 6px; background: rgba(7, 25, 44, 0.88);
+}
+.process-switch { display: flex; gap: 4px; }
+.process-switch button {
+  padding: 5px 10px; border: 1px solid rgba(49, 134, 170, 0.45); background: rgba(11, 35, 58, 0.8); color: #8cb7cd; border-radius: 4px; cursor: pointer; font-size: 11px;
+  &.active { border-color: #00e5ff; background: rgba(10, 94, 122, 0.55); color: #e8fcff; font-weight: 600; }
+}
+.five-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.step-pill {
+  padding: 5px 8px; border-radius: 4px; border: 1px solid rgba(58, 114, 146, 0.38); background: rgba(10, 28, 46, 0.72);
+  font-size: 11px; color: #7da5bc; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  &.done { border-color: rgba(52, 211, 153, 0.55); color: #7aeab9; background: rgba(16, 66, 52, 0.45); }
+  &.current { border-color: #00e5ff; color: #ffffff; background: linear-gradient(90deg, rgba(12, 108, 136, 0.72), rgba(14, 72, 108, 0.72)); font-weight: 600; box-shadow: 0 0 12px rgba(0, 229, 255, 0.25); }
+}
+.tracker-summary { text-align: right; font-size: 11px; color: #9de2f5; }
+.tracker-summary b { font-size: 15px; color: #4ff0db; margin-right: 6px; }
 
-.screen-grid { min-height: 0; display: grid; grid-template-columns: minmax(210px, 16%) minmax(500px, 1fr) minmax(240px, 18%); gap: 10px; }
-.side-column { min-height: 0; display: grid; gap: 10px; }.left-column { grid-template-rows: minmax(0, 1fr) auto; }.right-column { grid-template-rows: minmax(0, 1fr) auto auto; }
-.panel { border-radius: 5px; padding: 12px; min-width: 0; overflow: hidden; }.panel-heading { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(72, 143, 174, .28); padding-bottom: 8px; color: #d7f7ff; font-weight: 600; font-size: 13px; }.panel-heading em, .equipment-row em { color: #63c9dc; font-style: normal; font-size: 11px; font-weight: 400; }
-.scene-panel { min-height: 0; position: relative; border: 1px solid rgba(42, 146, 185, .6); overflow: hidden; background: #030a17; box-shadow: 0 0 30px rgba(0, 129, 175, .1); }.scene-panel :deep(.cesium-viewer) { min-width: 0; min-height: 0; height: 100%; }.scene-caption { position: absolute; left: 12px; bottom: 10px; right: 12px; display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-left: 2px solid #15d4e6; background: linear-gradient(90deg, rgba(3, 15, 30, .88), rgba(3, 15, 30, .25)); color: #bdebf4; font-size: 12px; pointer-events: none; }.live-dot { height: 7px; width: 7px; border-radius: 50%; background: #48e1ad; box-shadow: 0 0 8px #48e1ad; }.scene-action { margin-left: auto; pointer-events: auto; border: 0; color: #bceffc; background: rgba(30, 135, 173, .3); padding: 3px 7px; cursor: pointer; }
-.scene-overlay { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; align-content: center; padding: 20px; text-align: center; background: rgba(2, 10, 23, .84); color: #bceef7; font-size: 14px; }.scene-overlay.warning { inset: auto 12px 42px; padding: 7px 10px; display: block; background: rgba(75, 42, 8, .9); color: #ffe6b2; border-left: 2px solid #f6b44d; font-size: 11px; }.scene-overlay.warning small { color: #e8c994; }
-.selection-card { position: absolute; top: 12px; left: 12px; padding: 8px 10px; background: rgba(2, 13, 27, .88); border: 1px solid rgba(53, 183, 208, .58); display: grid; font-size: 12px; }.selection-card span { color: #82acc2; margin-top: 4px; }
+.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.kpi-card, .panel { border: 1px solid var(--panel-border); background: var(--panel-bg); box-shadow: inset 0 1px 0 rgba(112, 211, 255, 0.05); border-radius: 5px; }
+.kpi-card { padding: 7px 12px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+.kpi-card span { color: #83a8bd; font-size: 11px; }
+.kpi-card strong { grid-row: 2; font-size: clamp(18px, 1.25vw, 24px); color: #e5fbff; }
+.kpi-card small { grid-column: 2; grid-row: 2; color: #77d6b2; font-size: 11px; }
+.tone-amber small { color: #f6ba57; } .tone-violet strong { color: #d5c2ff; } .tone-blue strong { color: #84caff; } .tone-green strong { color: #7be6bb; }
 
-.alert-list { display: grid; gap: 6px; margin-top: 8px; }.alert-item { text-align: left; display: grid; grid-template-columns: 8px 1fr; gap: 8px; border: 0; border-left: 2px solid #3589a9; background: rgba(18, 54, 76, .42); padding: 8px; color: #d7eff8; cursor: pointer; }.alert-item.warning { border-left-color: #f6b44d; }.alert-item.critical { border-left-color: #fa5e68; }.alert-item b, .alert-item small { display: block; }.alert-item b { font-size: 11px; }.alert-item small { margin-top: 3px; color: #84a6b9; font-size: 10px; line-height: 1.35; }.level-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 3px; background: #38cca0; }.warning .level-dot { background: #f6b44d; }.critical .level-dot { background: #fa5e68; }.empty-state { color: #6f93aa; text-align: center; padding: 32px 8px; font-size: 12px; line-height: 1.65; }.empty-state small { color: #506f85; }
-.zone-metrics { display: grid; grid-template-columns: repeat(3, 1fr); margin: 12px 0; }.zone-metrics div { display: grid; text-align: center; border-right: 1px solid rgba(67, 130, 160, .25); }.zone-metrics div:last-child { border: 0; }.zone-metrics strong { color: #6eddeb; font-size: 20px; }.zone-metrics span, .zone-panel p { color: #7293a9; font-size: 10px; }.zone-panel p { line-height: 1.45; margin: 0; }
-.task-panel h2 { margin: 12px 0 7px; font-size: 15px; color: #dff9ff; }.task-panel p { min-height: 32px; margin: 0; color: #8eafc1; font-size: 11px; line-height: 1.45; }.progress-track, .stock-bar { height: 6px; margin-top: 13px; background: #102c43; overflow: hidden; }.progress-track span { display: block; height: 100%; background: linear-gradient(90deg, #13bcd0, #68f0e5); transition: width .25s linear; }.task-meta { display: flex; justify-content: space-between; gap: 6px; margin-top: 8px; color: #78a4b8; font-size: 10px; }.demo-controls { display: flex; gap: 7px; margin-top: 13px; }.demo-controls button, .alert-modal button { flex: 1; border: 1px solid #296b85; color: #bdeefa; background: #102e47; padding: 7px; cursor: pointer; }.demo-controls .primary, .alert-modal .primary { border-color: #25cbd9; background: #0b6075; color: #edffff; }
-.equipment-row { display: grid; grid-template-columns: 8px 1fr auto; gap: 7px; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(69, 134, 164, .18); font-size: 11px; }.status-led { width: 6px; height: 6px; border-radius: 50%; background: #50ddac; box-shadow: 0 0 7px currentColor; color: #50ddac; }.status-led.standby { background: #f6b44d; color: #f6b44d; }.status-led.fault, .status-led.offline { background: #fa5e68; color: #fa5e68; }.status-led.maintenance { background: #a78bfa; color: #a78bfa; }.stock-panel strong { display: block; margin-top: 10px; color: #8ad5ff; font-size: 22px; }.stock-panel > span { color: #789cb1; font-size: 10px; }.stock-bar span { display: block; height: 100%; background: linear-gradient(90deg, #228fd5, #f4b44c); }
+.screen-grid { min-height: 0; display: grid; grid-template-columns: minmax(235px, 19%) minmax(460px, 1fr) minmax(245px, 20%); gap: 8px; }
+.side-column { min-height: 0; display: grid; gap: 6px; }
+.left-column { grid-template-rows: auto auto minmax(0, 1fr); }
+.right-column { grid-template-rows: auto minmax(0, 1fr); }
+.panel { padding: 8px 10px; min-width: 0; overflow-y: auto; }
+.panel-heading { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(72, 143, 174, 0.28); padding-bottom: 6px; color: #d7f7ff; font-weight: 600; font-size: 12px; }
+.panel-heading em { color: #63c9dc; font-style: normal; font-size: 11px; font-weight: 400; }
 
-.chart-row { padding: 0; min-height: 0; }.trend-chart { width: 100%; height: 136px; }.screen-footer { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; min-height: 28px; color: #668ca2; font-size: 10px; }.theme-tabs { display: flex; gap: 4px; }.theme-tabs button, .carousel-control { border: 1px solid transparent; background: transparent; color: #7fa5b9; font-size: 11px; padding: 5px 10px; cursor: pointer; }.theme-tabs button.active { color: #d9fbff; border-color: #27bfd6; background: rgba(20, 114, 139, .26); }.carousel-control { border-color: rgba(66, 160, 190, .42); }
-.alert-modal { z-index: 20; position: absolute; left: 25%; top: 25%; width: 50%; box-sizing: border-box; padding: clamp(24px, 3vw, 48px); border: 1px solid #f45b65; background: linear-gradient(140deg, rgba(65, 10, 22, .97), rgba(20, 16, 29, .98)); box-shadow: 0 0 0 100vmax rgba(1, 6, 15, .56), 0 22px 70px rgba(0, 0, 0, .55); text-align: center; }.alert-modal p { color: #ff858d; letter-spacing: .1em; }.alert-modal h2 { margin: 8px; font-size: 26px; }.alert-modal span { color: #e8c9cc; }.alert-modal div { display: flex; justify-content: center; gap: 10px; margin-top: 24px; }.alert-modal button { max-width: 150px; }.critical-toast { z-index: 15; position: absolute; right: 28px; top: 110px; border: 1px solid #f05c64; background: #501723; color: #ffe5e7; padding: 10px 15px; cursor: pointer; }
+.safety-meter { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0 4px; font-size: 11px; color: #91b9ce; }
+.safety-meter strong { font-size: 18px; color: #34d399; &.warn { color: #f5b84c; } }
+.interlock-list { display: grid; gap: 4px; margin-bottom: 6px; }
+.interlock-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #bfe6f7; }
+.interlock-row i { font-style: normal; color: #47687f; &.pass { color: #34d399; } }
+.alert-list { display: grid; gap: 4px; }
+.alert-item { text-align: left; display: grid; grid-template-columns: 7px 1fr; gap: 6px; border: 0; border-left: 2px solid #f6b44d; background: rgba(18, 54, 76, 0.48); padding: 5px 7px; color: #d7eff8; cursor: pointer; }
+.alert-item b { display: block; font-size: 11px; } .alert-item small { display: block; color: #8cb2c7; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.level-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 4px; background: #f6b44d; }
 
-@media (max-width: 1300px) { .bigscreen { padding: 12px 16px; }.screen-grid { grid-template-columns: 200px minmax(430px, 1fr) 220px; }.header-meta .clock { display: none; }.trend-chart { height: 118px; }.bigscreen { grid-template-rows: auto auto minmax(340px, 1fr) 118px auto; } }
+.flow-chain { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.flow-node {
+  padding: 3px 6px; border-radius: 3px; border: 1px solid rgba(64, 128, 160, 0.35); background: rgba(10, 30, 50, 0.72); font-size: 10px; color: #7fa7be;
+  &.lit { border-color: #24cfe6; color: #dffaff; background: rgba(13, 86, 114, 0.55); }
+}
+
+.video-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 5px; }
+.video-tile {
+  text-align: left; padding: 4px 7px; border: 1px solid rgba(52, 124, 158, 0.42); background: rgba(8, 28, 48, 0.85); border-radius: 4px; cursor: pointer; color: #d3f2ff;
+  display: grid; gap: 1px;
+  &:hover { border-color: #00e5ff; background: rgba(14, 54, 82, 0.9); }
+  b { font-size: 10px; color: #00e5ff; } span { font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } small { font-size: 9px; color: #67d9ac; }
+}
+
+.scene-panel { min-height: 0; position: relative; border: 1px solid rgba(42, 146, 185, 0.6); overflow: hidden; background: #030a17; border-radius: 5px; }
+.scene-panel :deep(.cesium-viewer) { min-width: 0; min-height: 0; height: 100%; }
+.scene-overlay { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: rgba(2, 10, 23, 0.84); color: #bceef7; font-size: 14px; }
+.scene-overlay.warning { inset: auto 12px 42px; padding: 7px 10px; display: block; background: rgba(75, 42, 8, 0.9); color: #ffe6b2; }
+.scene-caption { position: absolute; left: 10px; bottom: 8px; right: 10px; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-left: 2px solid #15d4e6; background: linear-gradient(90deg, rgba(3, 15, 30, 0.9), rgba(3, 15, 30, 0.35)); color: #bdebf4; font-size: 11px; }
+.live-dot { height: 7px; width: 7px; border-radius: 50%; background: #48e1ad; box-shadow: 0 0 8px #48e1ad; flex: none; }
+.feed-note { color: #75adc4; margin-left: auto; }
+.scene-action { border: 0; color: #bceffc; background: rgba(30, 135, 173, 0.36); padding: 3px 8px; cursor: pointer; border-radius: 3px; }
+
+.selection-hud {
+  position: absolute; top: 10px; right: 10px; width: 290px; padding: 10px; border: 1px solid rgba(0, 229, 255, 0.65); border-radius: 6px;
+  background: rgba(5, 18, 36, 0.94); box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5); z-index: 6; font-size: 11px;
+}
+.hud-head { display: flex; justify-content: space-between; align-items: start; border-bottom: 1px solid rgba(68, 148, 182, 0.32); padding-bottom: 6px; }
+.hud-head b { display: block; font-size: 13px; color: #dffaff; } .hud-head small { color: #67d3ea; }
+.hud-head button { border: 0; background: transparent; color: #9fc5da; cursor: pointer; font-size: 14px; }
+.hud-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px 0; }
+.hud-grid div { background: rgba(13, 40, 64, 0.72); padding: 4px 6px; border-radius: 4px; }
+.hud-grid span { display: block; color: #7da5bc; font-size: 10px; } .hud-grid b { color: #e8fcff; font-size: 12px; }
+.hud-ehms { display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px solid rgba(68, 148, 182, 0.28); color: #9ee8c8; }
+.hud-ehms a { color: #38e4ff; text-decoration: none; font-weight: 600; }
+.hud-params { margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(68, 148, 182, 0.28); display: grid; gap: 3px; }
+.hud-param-row { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; span { color: #7da5bc; } b { color: #dffaff; text-align: right; } }
+
+.video-inspect-modal, .vendor-overview-modal {
+  position: absolute; left: 14px; top: 14px; right: 14px; z-index: 12;
+  background: rgba(4, 16, 32, 0.96); border: 1px solid #00e5ff; border-radius: 8px;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.65); padding: 12px 14px; font-size: 11px;
+}
+.vim-head {
+  display: flex; justify-content: space-between; align-items: start; border-bottom: 1px solid rgba(58, 138, 174, 0.35); padding-bottom: 8px;
+  b { display: block; font-size: 13px; color: #e4fbff; } small { color: #67d3ea; font-size: 10px; }
+  .vim-close { border: 0; background: transparent; color: #9fc5da; cursor: pointer; font-size: 15px; }
+}
+.vim-body { display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; margin-top: 10px; }
+.vim-viewport {
+  position: relative; min-height: 190px; border: 1px solid rgba(0, 229, 255, 0.45); border-radius: 6px;
+  background: radial-gradient(circle at 50% 50%, #0b2944, #030d1a); overflow: hidden; display: flex; align-items: center; justify-content: center;
+}
+.vim-canvas-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
+.vim-osd-top {
+  position: absolute; top: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between;
+  padding: 3px 8px; background: rgba(2, 12, 24, 0.78); border-radius: 4px; color: #67e6b2; font-size: 10px; font-family: monospace;
+}
+.vim-ai-box {
+  position: absolute; left: 16px; right: 16px; bottom: 12px; padding: 6px 10px;
+  border: 1px dashed #00e5ff; background: rgba(6, 48, 72, 0.82); border-radius: 4px; color: #e8fcff; font-size: 11px;
+}
+.vim-plc { display: flex; flex-direction: column; gap: 6px; }
+.vim-plc-title { display: flex; justify-content: space-between; align-items: center; b { color: #7ef4ff; font-size: 12px; } em { font-style: normal; color: #34d399; font-size: 10px; } }
+.vim-plc-sub { margin: 0; color: #8cb7cd; font-size: 10px; }
+.vim-sig-list { display: grid; gap: 4px; }
+.vim-sig-row {
+  display: flex; justify-content: space-between; gap: 8px; padding: 3px 6px; background: rgba(11, 36, 58, 0.68); border-radius: 4px; font-size: 10px;
+  span { color: #9ec0d4; } b { color: #4ff0db; }
+}
+.vim-actions {
+  display: flex; gap: 8px; margin-top: auto; padding-top: 6px;
+  button, .s1-jump-btn {
+    flex: 1; text-align: center; padding: 6px 8px; border-radius: 4px; border: 1px solid #296b85;
+    background: #102e47; color: #d5faff; text-decoration: none; cursor: pointer; font-size: 11px;
+  }
+  .s1-jump-btn { border-color: #00e5ff; background: #0b6075; font-weight: 600; }
+}
+.vendor-cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.v-card {
+  background: rgba(9, 30, 50, 0.85); border: 1px solid rgba(58, 138, 174, 0.38); border-radius: 6px; padding: 8px 10px; display: grid; gap: 4px;
+  .v-card-head { display: flex; justify-content: space-between; b { color: #e4fbff; font-size: 11px; } em { font-style: normal; color: #00e5ff; font-size: 10px; } }
+  p { margin: 0 0 4px; color: #7da5bc; font-size: 10px; }
+}
+
+.task-panel h2 { margin: 8px 0 4px; font-size: 13px; color: #dff9ff; }
+.task-panel p { min-height: 36px; margin: 0; color: #8eafc1; font-size: 11px; line-height: 1.4; }
+.progress-track { height: 6px; margin-top: 8px; background: #102c43; overflow: hidden; border-radius: 3px; }
+.progress-track span { display: block; height: 100%; background: linear-gradient(90deg, #13bcd0, #68f0e5); transition: width 0.2s linear; }
+.task-meta { display: flex; justify-content: space-between; margin-top: 6px; color: #78a4b8; font-size: 10px; }
+.demo-controls { display: flex; gap: 6px; margin-top: 8px; }
+.demo-controls button, .alert-modal button { flex: 1; border: 1px solid #296b85; color: #bdeefa; background: #102e47; padding: 6px; cursor: pointer; border-radius: 4px; font-size: 11px; }
+.demo-controls .primary, .alert-modal .primary { border-color: #25cbd9; background: #0b6075; color: #edffff; font-weight: 600; }
+
+.ehms-panel { overflow-y: auto; }
+.ehms-row { padding: 6px 0; border-bottom: 1px solid rgba(69, 134, 164, 0.18); cursor: pointer; }
+.ehms-top { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.ehms-top em { flex: 1; font-style: normal; color: #9ec0d4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ehms-top strong { font-size: 11px; &.healthy { color: #34d399; } &.attention { color: #f5b84c; } &.risk { color: #ef4444; } }
+.ehms-sub { margin-top: 2px; padding-left: 12px; font-size: 10px; color: #6e94aa; }
+.status-led { width: 6px; height: 6px; border-radius: 50%; background: #50ddac; flex: none; &.standby { background: #f6b44d; } &.fault, &.offline { background: #fa5e68; } &.maintenance { background: #2b6fe0; } }
+
+.chart-row { padding: 0; min-height: 0; }
+.trend-chart { width: 100%; height: 122px; }
+.screen-footer { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; color: #668ca2; font-size: 10px; }
+.theme-tabs { display: flex; gap: 4px; }
+.theme-tabs button, .carousel-control { border: 1px solid transparent; background: transparent; color: #7fa5b9; font-size: 11px; padding: 4px 9px; cursor: pointer; }
+.theme-tabs button.active { color: #d9fbff; border-color: #27bfd6; background: rgba(20, 114, 139, 0.26); border-radius: 4px; }
+.carousel-control { border-color: rgba(66, 160, 190, 0.42); border-radius: 4px; }
+
+.alert-modal { z-index: 20; position: absolute; left: 20%; top: 22%; width: 60%; box-sizing: border-box; padding: 24px 28px; border: 1px solid #f45b65; background: rgba(35, 10, 22, 0.96); text-align: center; border-radius: 8px; box-shadow: 0 18px 48px rgba(0, 0, 0, 0.72); }
+.alert-modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: center; align-items: center; }
+.modal-link-btn { flex: 1; border: 1px solid #00e5ff; color: #e8fcff; background: rgba(11, 96, 117, 0.85); padding: 6px 8px; border-radius: 4px; font-size: 11px; text-decoration: none; font-weight: 600; }
+.receipt-tags { display: flex; justify-content: center; gap: 8px; margin-top: 12px; }
+.receipt-tags b { padding: 3px 8px; border-radius: 4px; background: rgba(244, 91, 101, 0.25); color: #ffb3b8; font-size: 11px; }
+.critical-toast { z-index: 15; position: absolute; right: 24px; top: 110px; border: 1px solid #f05c64; background: #501723; color: #ffe5e7; padding: 8px 12px; cursor: pointer; border-radius: 4px; }
 </style>

@@ -1,7 +1,9 @@
 import * as Cesium from 'cesium'
 import { cadToLonLat } from './geo'
 
-export type CargoKind = 'steel' | 'fly_ash' | 'cement'
+import { SITE_LAYOUT_V4 } from './siteLayoutV4'
+
+export type CargoKind = 'steel' | 'fly_ash' | 'cement' | 'coil'
 export type PersonnelStatus = 'normal' | 'warning' | 'restricted'
 export type OperationStatus = 'running' | 'queued' | 'warning' | 'done'
 
@@ -34,28 +36,34 @@ export interface OperationTask {
   status: OperationStatus
 }
 
+const BAY07 = SITE_LAYOUT_V4.rebar.bays[6]
+const SILO01 = SITE_LAYOUT_V4.ash.silos[0]
+const SILO09 = SITE_LAYOUT_V4.ash.silos[8]
+
 export const MOCK_CARGO: CargoItem[] = [
-  { id: 'CARGO-01', name: '钢筋露天仓位汇总', kind: 'steel', cadX: 3741.1065, cadY: 1710.019, quantity: 12500, capacity: 16000, warning: false },
-  { id: 'CARGO-02', name: '物料加工批次 A', kind: 'fly_ash', cadX: 3688, cadY: 1821, quantity: 800, capacity: 1200, warning: false },
-  { id: 'CARGO-03', name: '钢筋仓位 07', kind: 'steel', cadX: 3741.1065, cadY: 1710.019, quantity: 840, capacity: 1200, warning: false },
+  { id: 'CARGO-01', name: '钢筋仓库（1~13跨总库存）', kind: 'steel', cadX: SITE_LAYOUT_V4.rebar.warehouse.minX + 196, cadY: BAY07.cadY, quantity: 14200, capacity: 20000, warning: false },
+  { id: 'CARGO-02', name: '水泥筒仓组（8×3000T）', kind: 'cement', cadX: 3781, cadY: 1561, quantity: 15600, capacity: 24000, warning: false },
+  { id: 'CARGO-04', name: '粉煤灰筒仓组（32×3000T）', kind: 'fly_ash', cadX: SILO09.cadX + 90, cadY: SILO09.cadY, quantity: 58400, capacity: 96000, warning: false },
+  { id: 'CARGO-03', name: '钢筋 07 跨仓位（20t磁吸）', kind: 'steel', cadX: BAY07.cadX, cadY: BAY07.cadY, quantity: 1180, capacity: 1600, warning: false },
 ]
 
 export const MOCK_PERSONNEL: PersonnelItem[] = [
-  { id: 'P-01', name: '张建国', role: '龙门吊司机', cadX: 3820, cadY: 1710, status: 'normal', enteredAt: '07:42' },
-  { id: 'P-02', name: '李敏', role: '现场调度', cadX: 3690, cadY: 1816, status: 'normal', enteredAt: '07:55' },
-  { id: 'P-03', name: '王磊', role: '安全员', cadX: 3648, cadY: 1778, status: 'warning', enteredAt: '08:03' },
+  { id: 'SCS-ZONE-01', name: '2#门吊-07跨跨间交接防撞联锁区', role: 'S4 光电测距 (预警15m/停6m)', cadX: SITE_LAYOUT_V4.rebar.gantries[1].cadX, cadY: 1650, status: 'normal', enteredAt: '联锁在线' },
+  { id: 'SCS-ZONE-02', name: '1#卸料室与翻箱机协同电子围栏', role: 'S4 门吊吊具离空闭锁', cadX: SITE_LAYOUT_V4.ash.unloadingComplexes[0].cadX, cadY: 1532, status: 'normal', enteredAt: '联锁在线' },
+  { id: 'SCS-ZONE-03', name: 'SILO-01 库底定量散装电子围栏', role: 'S4 静电接地与红外围栏', cadX: SILO01.cadX, cadY: 1568, status: 'warning', enteredAt: '接地闭锁' },
 ]
 
 export const MOCK_OPERATIONS: OperationTask[] = [
-  { id: 'OP-240801', name: '钢材卸车', equipment: 'CR-02', progress: 62, status: 'running' },
-  { id: 'OP-240802', name: '物料加工准备', equipment: 'PROC-01', progress: 84, status: 'running' },
-  { id: 'OP-240803', name: '钢筋料位复核', equipment: 'REBAR-BAY-07', progress: 15, status: 'queued' },
+  { id: 'OP-240801', name: '钢材联合吊装入库（货4→转接区B→07跨）', equipment: 'CR-02 / BC-07', progress: 0, status: 'queued' },
+  { id: 'OP-240802', name: '水泥散料翻箱入仓与库底定量装车', equipment: 'CR-BULK-01 / TIPPER-01 / LOADER-01', progress: 0, status: 'queued' },
+  { id: 'OP-240803', name: '07跨跨间交接等待（防撞驻车 · 待S1调度确认）', equipment: 'CR-02 ↔ BC-07', progress: 65, status: 'warning' },
 ]
 
 const CARGO_COLORS: Record<CargoKind, Cesium.Color> = {
   steel: Cesium.Color.fromCssColorString('#60A5FA'),
+  coil: Cesium.Color.fromCssColorString('#38BDF8'),
   fly_ash: Cesium.Color.fromCssColorString('#F5B84C'),
-  cement: Cesium.Color.fromCssColorString('#E5E7EB'),
+  cement: Cesium.Color.fromCssColorString('#34D399'),
 }
 
 const PERSONNEL_COLORS: Record<PersonnelStatus, Cesium.Color> = {
@@ -116,7 +124,7 @@ export class Phase6LayerController {
   syncPersonnel(items: PersonnelItem[]) {
     for (const item of items) {
       const [lon, lat] = cadToLonLat(item.cadX, item.cadY)
-      const position = Cesium.Cartesian3.fromDegrees(lon, lat, 2)
+      const position = Cesium.Cartesian3.fromDegrees(lon, lat, 1.6)
       const color = PERSONNEL_COLORS[item.status]
       let entity = this.personnel.get(item.id)
       if (!entity) {
@@ -124,35 +132,23 @@ export class Phase6LayerController {
         this.personnel.set(item.id, entity)
       }
       entity.position = new Cesium.ConstantPositionProperty(position)
-      entity.point = new Cesium.PointGraphics({
-        pixelSize: 12,
-        color,
-        outlineColor: Cesium.Color.WHITE,
-        outlineWidth: 2,
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 260),
+      entity.box = new Cesium.BoxGraphics({
+        dimensions: new Cesium.Cartesian3(24, 14, 3.2),
+        material: color.withAlpha(0.16),
+        outline: true,
+        outlineColor: color.withAlpha(0.85),
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 480),
       })
       entity.label = new Cesium.LabelGraphics({
-        text: `${item.name} · ${item.role}`,
-        font: '12px Microsoft YaHei',
+        text: `${item.name}\n${item.role}`,
+        font: '600 12px Microsoft YaHei',
         fillColor: Cesium.Color.WHITE,
         outlineColor: Cesium.Color.BLACK,
         outlineWidth: 2,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        pixelOffset: new Cesium.Cartesian2(0, -20),
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 220),
+        pixelOffset: new Cesium.Cartesian2(0, -24),
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 360),
       })
-      const previous = this.trails.get(item.id)
-      if (previous?.polyline?.positions) {
-        const points = previous.polyline.positions.getValue(this.viewer.clock.currentTime) ?? []
-        points.push(position)
-        previous.polyline.positions = points.slice(-12)
-      } else {
-        const trail = this.dataSource.entities.add({
-          id: `${item.id}-trail`,
-          polyline: { positions: [position], width: 2, material: color.withAlpha(0.7) },
-        })
-        this.trails.set(item.id, trail)
-      }
     }
     this.viewer.scene.requestRender()
   }

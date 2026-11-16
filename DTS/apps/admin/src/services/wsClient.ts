@@ -43,6 +43,9 @@ export class WsClient {
   }
 
   connect() {
+    if (!this.url) {
+      return
+    }
     try {
       this.ws = new WebSocket(this.url)
     } catch (e) {

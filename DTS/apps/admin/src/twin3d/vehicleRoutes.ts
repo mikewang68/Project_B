@@ -1,27 +1,64 @@
+import { SITE_LAYOUT_V4 } from './siteLayoutV4'
+
 export interface VehicleRoute {
   id: string
   vehicleId: string
-  source: 'simulation-route'
-  confidence: 'inferred'
+  source: 'surveyed-cad-dxf' | 'simulation-route'
+  confidence: 'confirmed' | 'inferred'
   speedMps: number
   dwellMs: number
   points: Array<[number, number]>
 }
 
+const H4_Y = SITE_LAYOUT_V4.rebar.tracks[0].cadY
+const H2_Y = SITE_LAYOUT_V4.ash.tracks[1].cadY
+
 export const VEHICLE_ROUTES: VehicleRoute[] = [
   {
-    id: 'ROUTE-WAGON-FLAT-01', vehicleId: 'WAGON-FLAT-01', source: 'simulation-route', confidence: 'inferred',
-    speedMps: 4.5, dwellMs: 1900,
-    points: [[3656, 1664.806], [3690, 1664.806], [3727.235, 1664.806], [3782, 1664.806], [3727.235, 1664.806], [3690, 1664.806]],
+    id: 'ROUTE-WAGON-FLAT-01',
+    vehicleId: 'WAGON-FLAT-01',
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    speedMps: 5.5,
+    dwellMs: 1800,
+    points: [
+      [3530, H4_Y],
+      [3660, H4_Y],
+      [SITE_LAYOUT_V4.rebar.gantries[1].cadX, H4_Y],
+      [3780, H4_Y],
+      [SITE_LAYOUT_V4.rebar.gantries[1].cadX, H4_Y],
+      [3660, H4_Y],
+    ],
   },
   {
-    id: 'ROUTE-BULK-01', vehicleId: 'VEH-BULK-01', source: 'simulation-route', confidence: 'inferred',
-    speedMps: 8, dwellMs: 2300,
-    points: [[3688, 1840], [3792, 1840], [3905, 1770], [3980, 1705], [3905, 1770], [3792, 1840]],
+    id: 'ROUTE-WAGON-BULK-01',
+    vehicleId: 'WAGON-BULK-01',
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    speedMps: 5.5,
+    dwellMs: 1800,
+    points: [
+      [3720, H2_Y],
+      [SITE_LAYOUT_V4.ash.bulkGantries[0].cadX, H2_Y],
+      [SITE_LAYOUT_V4.ash.bulkGantries[1].cadX, H2_Y],
+      [SITE_LAYOUT_V4.ash.bulkGantries[0].cadX, H2_Y],
+    ],
   },
   {
-    id: 'ROUTE-FORKLIFT-01', vehicleId: 'VEH-FORKLIFT-01', source: 'simulation-route', confidence: 'inferred',
-    speedMps: 3.2, dwellMs: 700,
-    points: [[3620, 1762], [3662, 1762], [3662, 1781], [3608, 1781], [3608, 1762]],
+    id: 'ROUTE-TRUCK-TANK-01',
+    vehicleId: 'TRUCK-TANK-01',
+    source: 'simulation-route',
+    confidence: 'confirmed',
+    speedMps: 11.0,
+    dwellMs: 1400,
+    points: [
+      [SITE_LAYOUT_V4.weighbridges[1].cadX, SITE_LAYOUT_V4.weighbridges[1].cadY],
+      [4315, 1586.5],
+      [3760, 1586.5],
+      [3760, SITE_LAYOUT_V4.ash.silos[0].cadY],
+      [3760, 1586.5],
+      [4315, 1586.5],
+      [SITE_LAYOUT_V4.weighbridges[0].cadX, SITE_LAYOUT_V4.weighbridges[0].cadY],
+    ],
   },
 ]

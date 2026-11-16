@@ -8,11 +8,10 @@
 import { onMounted, onUnmounted, ref, shallowRef, watch, type Ref } from 'vue'
 import * as Cesium from 'cesium'
 import { createOfflineViewer, flyToYard } from './cesiumInit'
-import { cadGeoJsonToWgs84 } from '@/twin3d/geo'
+import { cadGeoJsonToWgs84, getYardCenterLonLat } from '@/twin3d/geo'
 
-// 场站设备区域中心（由 CAD 坐标范围 X 3294~4554 / Y 1485~1853 换算）
-// CAD(3924,1669) → lon 91.0403, lat 29.0151
-const YARD_CENTER: [number, number] = [91.0403, 29.0151]
+// 场站设备区域中心（由 给大连大.dwg CGCS2000 基准实时换算）
+const YARD_CENTER: [number, number] = getYardCenterLonLat()
 
 interface LayerConfig {
   /** 图层标识 */

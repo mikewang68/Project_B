@@ -51,13 +51,29 @@ export function useAnimation(steps: AnimStep[], options: UseAnimationOptions = {
     }
   }
 
-  /** 推进到下一步，或循环 */
+  /** 推进到下一步，或循环（步末精确吸附目标值，消除浮点累积漂移） */
   function advance() {
+    const finished = steps[stepIndex]
+    if (finished && finished.to !== undefined) {
+      const s = actorState.value
+      if (finished.el === 'gantry' && Array.isArray(finished.to)) {
+        s.gantry = [finished.to[0], finished.to[1]]
+      } else if (finished.el === 'trolley' && typeof finished.to === 'number') {
+        s.trolleyOffset = finished.to
+      } else if (finished.el === 'hoist' && typeof finished.to === 'number') {
+        s.hoistHeight = finished.to
+      }
+    }
     stepElapsed = 0
     stepIndex++
     if (stepIndex >= steps.length) {
       if (options.loop ?? true) {
         stepIndex = 0
+        actorState.value = {
+          gantry: options.initialState?.gantry ? [...options.initialState.gantry] : [3800, 1700],
+          trolleyOffset: options.initialState?.trolleyOffset ?? 0,
+          hoistHeight: options.initialState?.hoistHeight ?? 25,
+        }
       } else {
         stop()
         return

@@ -1,0 +1,1371 @@
+{
+  "version": "4.0.0-dalian-20261116",
+  "project": "雅鲁藏布江下游水电工程·中沙坝转运站铁路专用线变更设计",
+  "source": "给大连大.dwg (中铁二院 CREEC 2026.05/2026.10, DXF=dalian.dxf)",
+  "confidence": "surveyed-cad-geometry",
+  "axis": "cad-x",
+  "pivotOffset": [
+    512000.0,
+    3254935.0
+  ],
+  "geoOrigin": [
+    93.12,
+    29.415
+  ],
+  "rebar": {
+    "origin": [
+      3751.0,
+      1648.045
+    ],
+    "trackRangeX": [
+      3511.65,
+      4074.65
+    ],
+    "tracks": [
+      {
+        "id": "REBAR-TRACK-H4",
+        "label": "货4",
+        "cadY": 1641.546,
+        "lengthM": 564
+      },
+      {
+        "id": "REBAR-TRACK-H3",
+        "label": "货3",
+        "cadY": 1636.546,
+        "lengthM": 560
+      }
+    ],
+    "craneRunway": {
+      "minX": 3511.65,
+      "maxX": 4074.65,
+      "southRailY": 1633.045,
+      "northRailY": 1663.045,
+      "spanM": 30.0,
+      "girderHeightM": 22.0
+    },
+    "gantries": [
+      {
+        "id": "CR-01",
+        "name": "1# 门式起重机 (40t)",
+        "cadX": 3560.57,
+        "cadY": 1648.045,
+        "capacityT": 40,
+        "spanM": 30.0,
+        "powerKw": 370
+      },
+      {
+        "id": "CR-02",
+        "name": "2# 门式起重机 (40t)",
+        "cadX": 3737.06,
+        "cadY": 1648.045,
+        "capacityT": 40,
+        "spanM": 30.0,
+        "powerKw": 370
+      },
+      {
+        "id": "CR-03",
+        "name": "3# 门式起重机 (40t)",
+        "cadX": 3936.05,
+        "cadY": 1648.045,
+        "capacityT": 40,
+        "spanM": 30.0,
+        "powerKw": 370
+      }
+    ],
+    "wagonXs": [
+      3530.0,
+      3660.0,
+      3755.0
+    ],
+    "transferApronY": [
+      1663.045,
+      1673.84
+    ],
+    "truckLoadingY": 1655.0,
+    "warehouse": {
+      "id": "WH-REBAR-01",
+      "name": "钢筋仓库 (23,882 m²)",
+      "minX": 3555.01,
+      "maxX": 3947.61,
+      "minY": 1673.84,
+      "maxY": 1734.45,
+      "railHeightM": 13.0,
+      "eaveHeightM": 17.2,
+      "ridgeHeightM": 19.8,
+      "areaSqm": 23882
+    },
+    "bays": [
+      {
+        "id": "REBAR-BAY-01",
+        "bayIndex": 1,
+        "minX": 3555.644,
+        "maxX": 3585.744,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3570.694,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-01",
+        "cadEquipmentCode": "15",
+        "bridgeType": "magnetic_20t",
+        "craneCapacityT": 20,
+        "craneSpanM": 28.5,
+        "powerKw": 125,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1711.133,
+        "cargoKind": "rebar"
+      },
+      {
+        "id": "REBAR-BAY-02",
+        "bayIndex": 2,
+        "minX": 3585.734,
+        "maxX": 3615.834,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3600.784,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-02",
+        "cadEquipmentCode": "15",
+        "bridgeType": "magnetic_20t",
+        "craneCapacityT": 20,
+        "craneSpanM": 28.5,
+        "powerKw": 125,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1707.331,
+        "cargoKind": "rebar"
+      },
+      {
+        "id": "REBAR-BAY-03",
+        "bayIndex": 3,
+        "minX": 3615.737,
+        "maxX": 3645.837,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3630.787,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-03",
+        "cadEquipmentCode": "16",
+        "bridgeType": "chook_32t",
+        "craneCapacityT": 32,
+        "craneSpanM": 28.5,
+        "powerKw": 140,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1711.133,
+        "cargoKind": "coil"
+      },
+      {
+        "id": "REBAR-BAY-04",
+        "bayIndex": 4,
+        "minX": 3645.734,
+        "maxX": 3675.834,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3660.784,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-04",
+        "cadEquipmentCode": "15",
+        "bridgeType": "magnetic_20t",
+        "craneCapacityT": 20,
+        "craneSpanM": 28.5,
+        "powerKw": 125,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1707.331,
+        "cargoKind": "rebar"
+      },
+      {
+        "id": "REBAR-BAY-05",
+        "bayIndex": 5,
+        "minX": 3675.487,
+        "maxX": 3705.587,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3690.537,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-05",
+        "cadEquipmentCode": "15",
+        "bridgeType": "magnetic_20t",
+        "craneCapacityT": 20,
+        "craneSpanM": 28.5,
+        "powerKw": 125,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1711.133,
+        "cargoKind": "rebar"
+      },
+      {
+        "id": "REBAR-BAY-06",
+        "bayIndex": 6,
+        "minX": 3705.722,
+        "maxX": 3735.822,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3720.772,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-06",
+        "cadEquipmentCode": "16",
+        "bridgeType": "chook_32t",
+        "craneCapacityT": 32,
+        "craneSpanM": 28.5,
+        "powerKw": 140,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1709.043,
+        "cargoKind": "coil"
+      },
+      {
+        "id": "REBAR-BAY-07",
+        "bayIndex": 7,
+        "minX": 3736.687,
+        "maxX": 3766.787,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3751.737,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-07",
+        "cadEquipmentCode": "15",
+        "bridgeType": "magnetic_20t",
+        "craneCapacityT": 20,
+        "craneSpanM": 28.5,
+        "powerKw": 125,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1711.133,
+        "cargoKind": "rebar"
+      },
+      {
+        "id": "REBAR-BAY-08",
+        "bayIndex": 8,
+        "minX": 3765.734,
+        "maxX": 3795.834,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3780.784,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-08",
+        "cadEquipmentCode": "15",
+        "bridgeType": "magnetic_20t",
+        "craneCapacityT": 20,
+        "craneSpanM": 28.5,
+        "powerKw": 125,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1707.331,
+        "cargoKind": "rebar"
+      },
+      {
+        "id": "REBAR-BAY-09",
+        "bayIndex": 9,
+        "minX": 3796.687,
+        "maxX": 3826.787,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3811.737,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-09",
+        "cadEquipmentCode": "16",
+        "bridgeType": "chook_32t",
+        "craneCapacityT": 32,
+        "craneSpanM": 28.5,
+        "powerKw": 140,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1711.133,
+        "cargoKind": "coil"
+      },
+      {
+        "id": "REBAR-BAY-10",
+        "bayIndex": 10,
+        "minX": 3825.734,
+        "maxX": 3855.834,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3840.784,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-10",
+        "cadEquipmentCode": "15",
+        "bridgeType": "magnetic_20t",
+        "craneCapacityT": 20,
+        "craneSpanM": 28.5,
+        "powerKw": 125,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1707.331,
+        "cargoKind": "rebar"
+      },
+      {
+        "id": "REBAR-BAY-11",
+        "bayIndex": 11,
+        "minX": 3856.687,
+        "maxX": 3886.787,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3871.737,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-11",
+        "cadEquipmentCode": "15",
+        "bridgeType": "magnetic_20t",
+        "craneCapacityT": 20,
+        "craneSpanM": 28.5,
+        "powerKw": 125,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1711.133,
+        "cargoKind": "rebar"
+      },
+      {
+        "id": "REBAR-BAY-12",
+        "bayIndex": 12,
+        "minX": 3885.734,
+        "maxX": 3915.834,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3900.784,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-12",
+        "cadEquipmentCode": "15",
+        "bridgeType": "magnetic_20t",
+        "craneCapacityT": 20,
+        "craneSpanM": 28.5,
+        "powerKw": 125,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1707.331,
+        "cargoKind": "rebar"
+      },
+      {
+        "id": "REBAR-BAY-13",
+        "bayIndex": 13,
+        "minX": 3916.687,
+        "maxX": 3946.787,
+        "minY": 1673.84,
+        "maxY": 1734.45,
+        "cadX": 3931.737,
+        "cadY": 1704.145,
+        "bridgeCraneId": "BC-13",
+        "cadEquipmentCode": "16",
+        "bridgeType": "chook_32t",
+        "craneCapacityT": 32,
+        "craneSpanM": 28.5,
+        "powerKw": 140,
+        "railHeightM": 13.0,
+        "bridgeParkY": 1711.133,
+        "cargoKind": "coil"
+      }
+    ]
+  },
+  "ash": {
+    "origin": [
+      3893.0,
+      1550.0
+    ],
+    "trackRangeX": [
+      3474.03,
+      4228.04
+    ],
+    "tracks": [
+      {
+        "id": "ASH-TRACK-H1",
+        "label": "货1",
+        "cadY": 1509.794,
+        "lengthM": 950
+      },
+      {
+        "id": "ASH-TRACK-H2",
+        "label": "货2",
+        "cadY": 1514.794,
+        "lengthM": 790
+      }
+    ],
+    "craneRunway": {
+      "minX": 3474.03,
+      "maxX": 4228.04,
+      "southRailY": 1506.294,
+      "northRailY": 1536.294,
+      "spanM": 30.0,
+      "girderHeightM": 22.0
+    },
+    "bulkGantries": [
+      {
+        "id": "CR-BULK-01",
+        "name": "1# 散料集装箱门吊",
+        "cadX": 3819.5,
+        "cadY": 1521.294,
+        "capacityT": 40,
+        "spanM": 30.0,
+        "powerKw": 375
+      },
+      {
+        "id": "CR-BULK-02",
+        "name": "2# 散料集装箱门吊",
+        "cadX": 3881.84,
+        "cadY": 1521.294,
+        "capacityT": 40,
+        "spanM": 30.0,
+        "powerKw": 375
+      },
+      {
+        "id": "CR-BULK-03",
+        "name": "3# 散料集装箱门吊",
+        "cadX": 3966.71,
+        "cadY": 1521.294,
+        "capacityT": 40,
+        "spanM": 30.0,
+        "powerKw": 375
+      }
+    ],
+    "siloRowCentersY": [
+      1554.046,
+      1568.046
+    ],
+    "siloModules": [
+      {
+        "id": "SILO-MOD-01",
+        "name": "水泥筒仓区 (8座×3000T)",
+        "material": "cement",
+        "bounds": [
+          3753.04,
+          1547.05,
+          3809.04,
+          1575.05
+        ]
+      },
+      {
+        "id": "SILO-MOD-02",
+        "name": "粉煤灰筒仓区 I (12座×3000T)",
+        "material": "fly_ash",
+        "bounds": [
+          3809.04,
+          1547.05,
+          3893.04,
+          1575.05
+        ]
+      },
+      {
+        "id": "SILO-MOD-03",
+        "name": "粉煤灰筒仓区 II (10座×3000T)",
+        "material": "fly_ash",
+        "bounds": [
+          3893.04,
+          1547.05,
+          3963.04,
+          1575.05
+        ]
+      },
+      {
+        "id": "SILO-MOD-04",
+        "name": "粉煤灰筒仓区 III (10座×3000T)",
+        "material": "fly_ash",
+        "bounds": [
+          3963.04,
+          1547.05,
+          4033.04,
+          1575.05
+        ]
+      }
+    ],
+    "silos": [
+      {
+        "id": "SILO-01",
+        "code": "A01",
+        "row": "A",
+        "col": 1,
+        "moduleIndex": 1,
+        "material": "cement",
+        "cadX": 3760.037,
+        "cadY": 1568.049,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-02",
+        "code": "B01",
+        "row": "B",
+        "col": 1,
+        "moduleIndex": 1,
+        "material": "cement",
+        "cadX": 3760.036,
+        "cadY": 1554.049,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-03",
+        "code": "A02",
+        "row": "A",
+        "col": 2,
+        "moduleIndex": 1,
+        "material": "cement",
+        "cadX": 3774.037,
+        "cadY": 1568.049,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-04",
+        "code": "B02",
+        "row": "B",
+        "col": 2,
+        "moduleIndex": 1,
+        "material": "cement",
+        "cadX": 3774.036,
+        "cadY": 1554.049,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-05",
+        "code": "A03",
+        "row": "A",
+        "col": 3,
+        "moduleIndex": 1,
+        "material": "cement",
+        "cadX": 3788.037,
+        "cadY": 1568.049,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-06",
+        "code": "B03",
+        "row": "B",
+        "col": 3,
+        "moduleIndex": 1,
+        "material": "cement",
+        "cadX": 3788.036,
+        "cadY": 1554.049,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-07",
+        "code": "A04",
+        "row": "A",
+        "col": 4,
+        "moduleIndex": 1,
+        "material": "cement",
+        "cadX": 3802.037,
+        "cadY": 1568.048,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-08",
+        "code": "B04",
+        "row": "B",
+        "col": 4,
+        "moduleIndex": 1,
+        "material": "cement",
+        "cadX": 3802.036,
+        "cadY": 1554.048,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-09",
+        "code": "A05",
+        "row": "A",
+        "col": 5,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3816.037,
+        "cadY": 1568.048,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-10",
+        "code": "B05",
+        "row": "B",
+        "col": 5,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3816.036,
+        "cadY": 1554.048,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-11",
+        "code": "A06",
+        "row": "A",
+        "col": 6,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3830.037,
+        "cadY": 1568.048,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-12",
+        "code": "B06",
+        "row": "B",
+        "col": 6,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3830.036,
+        "cadY": 1554.048,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-13",
+        "code": "A07",
+        "row": "A",
+        "col": 7,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3844.037,
+        "cadY": 1568.047,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-14",
+        "code": "B07",
+        "row": "B",
+        "col": 7,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3844.036,
+        "cadY": 1554.047,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-15",
+        "code": "A08",
+        "row": "A",
+        "col": 8,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3858.037,
+        "cadY": 1568.047,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-16",
+        "code": "B08",
+        "row": "B",
+        "col": 8,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3858.036,
+        "cadY": 1554.047,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-17",
+        "code": "A09",
+        "row": "A",
+        "col": 9,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3872.037,
+        "cadY": 1568.047,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-18",
+        "code": "B09",
+        "row": "B",
+        "col": 9,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3872.036,
+        "cadY": 1554.047,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-19",
+        "code": "A10",
+        "row": "A",
+        "col": 10,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3886.037,
+        "cadY": 1568.047,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-20",
+        "code": "B10",
+        "row": "B",
+        "col": 10,
+        "moduleIndex": 2,
+        "material": "fly_ash",
+        "cadX": 3886.036,
+        "cadY": 1554.047,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-21",
+        "code": "A11",
+        "row": "A",
+        "col": 11,
+        "moduleIndex": 3,
+        "material": "fly_ash",
+        "cadX": 3900.037,
+        "cadY": 1568.046,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-22",
+        "code": "B11",
+        "row": "B",
+        "col": 11,
+        "moduleIndex": 3,
+        "material": "fly_ash",
+        "cadX": 3900.036,
+        "cadY": 1554.046,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-23",
+        "code": "A12",
+        "row": "A",
+        "col": 12,
+        "moduleIndex": 3,
+        "material": "fly_ash",
+        "cadX": 3914.037,
+        "cadY": 1568.046,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-24",
+        "code": "B12",
+        "row": "B",
+        "col": 12,
+        "moduleIndex": 3,
+        "material": "fly_ash",
+        "cadX": 3914.036,
+        "cadY": 1554.046,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-25",
+        "code": "A13",
+        "row": "A",
+        "col": 13,
+        "moduleIndex": 3,
+        "material": "fly_ash",
+        "cadX": 3928.037,
+        "cadY": 1568.046,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-26",
+        "code": "B13",
+        "row": "B",
+        "col": 13,
+        "moduleIndex": 3,
+        "material": "fly_ash",
+        "cadX": 3928.036,
+        "cadY": 1554.046,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-27",
+        "code": "A14",
+        "row": "A",
+        "col": 14,
+        "moduleIndex": 3,
+        "material": "fly_ash",
+        "cadX": 3942.037,
+        "cadY": 1568.045,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-28",
+        "code": "B14",
+        "row": "B",
+        "col": 14,
+        "moduleIndex": 3,
+        "material": "fly_ash",
+        "cadX": 3942.036,
+        "cadY": 1554.045,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-29",
+        "code": "A15",
+        "row": "A",
+        "col": 15,
+        "moduleIndex": 3,
+        "material": "fly_ash",
+        "cadX": 3956.037,
+        "cadY": 1568.045,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-30",
+        "code": "B15",
+        "row": "B",
+        "col": 15,
+        "moduleIndex": 3,
+        "material": "fly_ash",
+        "cadX": 3956.036,
+        "cadY": 1554.045,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-31",
+        "code": "A16",
+        "row": "A",
+        "col": 16,
+        "moduleIndex": 4,
+        "material": "fly_ash",
+        "cadX": 3970.037,
+        "cadY": 1568.045,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-32",
+        "code": "B16",
+        "row": "B",
+        "col": 16,
+        "moduleIndex": 4,
+        "material": "fly_ash",
+        "cadX": 3970.036,
+        "cadY": 1554.045,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-33",
+        "code": "A17",
+        "row": "A",
+        "col": 17,
+        "moduleIndex": 4,
+        "material": "fly_ash",
+        "cadX": 3984.037,
+        "cadY": 1568.045,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-34",
+        "code": "B17",
+        "row": "B",
+        "col": 17,
+        "moduleIndex": 4,
+        "material": "fly_ash",
+        "cadX": 3984.036,
+        "cadY": 1554.045,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-35",
+        "code": "A18",
+        "row": "A",
+        "col": 18,
+        "moduleIndex": 4,
+        "material": "fly_ash",
+        "cadX": 3998.037,
+        "cadY": 1568.044,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-36",
+        "code": "B18",
+        "row": "B",
+        "col": 18,
+        "moduleIndex": 4,
+        "material": "fly_ash",
+        "cadX": 3998.036,
+        "cadY": 1554.044,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-37",
+        "code": "A19",
+        "row": "A",
+        "col": 19,
+        "moduleIndex": 4,
+        "material": "fly_ash",
+        "cadX": 4012.037,
+        "cadY": 1568.044,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-38",
+        "code": "B19",
+        "row": "B",
+        "col": 19,
+        "moduleIndex": 4,
+        "material": "fly_ash",
+        "cadX": 4012.036,
+        "cadY": 1554.044,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-39",
+        "code": "A20",
+        "row": "A",
+        "col": 20,
+        "moduleIndex": 4,
+        "material": "fly_ash",
+        "cadX": 4026.037,
+        "cadY": 1568.043,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      },
+      {
+        "id": "SILO-40",
+        "code": "B20",
+        "row": "B",
+        "col": 20,
+        "moduleIndex": 4,
+        "material": "fly_ash",
+        "cadX": 4026.036,
+        "cadY": 1554.043,
+        "diameterM": 12.0,
+        "straightHeightM": 18.0,
+        "totalHeightM": 33.38,
+        "legElevationM": 1.0,
+        "capacityT": 3000
+      }
+    ],
+    "reservedSilosCount": 68,
+    "reservedSilosBounds": [
+      3480.04,
+      4222.04
+    ],
+    "unloadingComplexes": [
+      {
+        "id": "BULK-UNLOAD-01",
+        "tipperId": "TIPPER-01",
+        "material": "cement",
+        "cadX": 3785.04,
+        "cadY": 1526.7,
+        "roomWidthM": 13.7,
+        "roomDepthM": 11.4,
+        "tipperParkX": 3781.04,
+        "tipperUnloadX": 3785.04,
+        "tipperRailY": 1521.0,
+        "hopperCapacityM3": 42,
+        "compressorCadX": 3757.99,
+        "compressorCadY": 1527.0,
+        "elevatorId": "ELV-01",
+        "elevatorCadX": 3781.04,
+        "elevatorCadY": 1545.05,
+        "elevatorHeightM": 40.0,
+        "electricalCadX": 3781.04,
+        "electricalCadY": 1561.04,
+        "moduleBoundsX": [
+          3753.04,
+          3809.04
+        ]
+      },
+      {
+        "id": "BULK-UNLOAD-02",
+        "tipperId": "TIPPER-02",
+        "material": "fly_ash",
+        "cadX": 3855.04,
+        "cadY": 1526.7,
+        "roomWidthM": 13.7,
+        "roomDepthM": 11.4,
+        "tipperParkX": 3851.04,
+        "tipperUnloadX": 3855.04,
+        "tipperRailY": 1521.0,
+        "hopperCapacityM3": 42,
+        "compressorCadX": 3827.99,
+        "compressorCadY": 1527.0,
+        "elevatorId": "ELV-02",
+        "elevatorCadX": 3851.04,
+        "elevatorCadY": 1545.05,
+        "elevatorHeightM": 40.0,
+        "electricalCadX": 3851.04,
+        "electricalCadY": 1561.04,
+        "moduleBoundsX": [
+          3809.04,
+          3893.04
+        ]
+      },
+      {
+        "id": "BULK-UNLOAD-03",
+        "tipperId": "TIPPER-03",
+        "material": "fly_ash",
+        "cadX": 3939.04,
+        "cadY": 1526.7,
+        "roomWidthM": 13.7,
+        "roomDepthM": 11.4,
+        "tipperParkX": 3935.04,
+        "tipperUnloadX": 3939.04,
+        "tipperRailY": 1521.0,
+        "hopperCapacityM3": 42,
+        "compressorCadX": 3911.99,
+        "compressorCadY": 1527.0,
+        "elevatorId": "ELV-03",
+        "elevatorCadX": 3935.04,
+        "elevatorCadY": 1545.05,
+        "elevatorHeightM": 40.0,
+        "electricalCadX": 3935.04,
+        "electricalCadY": 1561.04,
+        "moduleBoundsX": [
+          3893.04,
+          3963.04
+        ]
+      },
+      {
+        "id": "BULK-UNLOAD-04",
+        "tipperId": "TIPPER-04",
+        "material": "fly_ash",
+        "cadX": 4009.04,
+        "cadY": 1526.7,
+        "roomWidthM": 13.7,
+        "roomDepthM": 11.4,
+        "tipperParkX": 4005.04,
+        "tipperUnloadX": 4009.04,
+        "tipperRailY": 1521.0,
+        "hopperCapacityM3": 42,
+        "compressorCadX": 3981.99,
+        "compressorCadY": 1527.0,
+        "elevatorId": "ELV-04",
+        "elevatorCadX": 4005.04,
+        "elevatorCadY": 1545.05,
+        "elevatorHeightM": 40.0,
+        "electricalCadX": 4005.04,
+        "electricalCadY": 1561.04,
+        "moduleBoundsX": [
+          3963.04,
+          4033.04
+        ]
+      }
+    ],
+    "tankerRoadY": 1587.0,
+    "tankerUnderSiloY": 1554.046
+  },
+  "weighbridges": [
+    {
+      "id": "WB-TRUCK-01",
+      "name": "1# 100t 汽车衡（重车出口）",
+      "kind": "truck_scale",
+      "capacityT": 100,
+      "cadX": 4548.56,
+      "cadY": 1590.55
+    },
+    {
+      "id": "WB-TRUCK-02",
+      "name": "2# 100t 汽车衡（空车入口）",
+      "kind": "truck_scale",
+      "capacityT": 100,
+      "cadX": 4554.6,
+      "cadY": 1625.29
+    },
+    {
+      "id": "WB-RAIL-01",
+      "name": "100t 铁路轨道衡",
+      "kind": "rail_scale",
+      "capacityT": 100,
+      "cadX": 3350.0,
+      "cadY": 1574.0
+    }
+  ],
+  "siteShell": {
+    "bounds": [
+      [
+        3310.68,
+        1487.79
+      ],
+      [
+        4584.14,
+        1487.79
+      ],
+      [
+        4584.14,
+        1690.0
+      ],
+      [
+        4130.0,
+        1873.79
+      ],
+      [
+        3310.68,
+        1873.79
+      ]
+    ],
+    "accessRoads": [
+      [
+        [
+          3340.0,
+          1616.5
+        ],
+        [
+          4585.0,
+          1616.5
+        ]
+      ],
+      [
+        [
+          3340.0,
+          1502.8
+        ],
+        [
+          4565.0,
+          1502.8
+        ]
+      ],
+      [
+        [
+          4315.0,
+          1502.8
+        ],
+        [
+          4315.0,
+          1670.0
+        ]
+      ],
+      [
+        [
+          4525.0,
+          1502.8
+        ],
+        [
+          4525.0,
+          1670.0
+        ]
+      ]
+    ],
+    "zones": [
+      {
+        "id": "ZONE-MECH-WH",
+        "name": "机电仓库 (5,036 m² · 2×50t桥吊)",
+        "state": "existing",
+        "bounds": [
+          4347.54,
+          1512.79,
+          4475.49,
+          1551.89
+        ],
+        "heightM": 14.5
+      },
+      {
+        "id": "ZONE-TIRE-CRANE",
+        "name": "轮胎式起重机作业区",
+        "state": "existing",
+        "bounds": [
+          4233.04,
+          1517.79,
+          4300.98,
+          1600.11
+        ],
+        "heightM": 0.5
+      },
+      {
+        "id": "ZONE-OFFICE",
+        "name": "货运综合楼 (50×40 m)",
+        "state": "existing",
+        "bounds": [
+          4395.86,
+          1630.29,
+          4445.86,
+          1670.29
+        ],
+        "heightM": 16.0
+      },
+      {
+        "id": "ZONE-DORM",
+        "name": "单身宿舍 (50×40 m)",
+        "state": "existing",
+        "bounds": [
+          4445.86,
+          1630.29,
+          4495.86,
+          1670.29
+        ],
+        "heightM": 16.0
+      },
+      {
+        "id": "ZONE-PARKING",
+        "name": "停车场",
+        "state": "existing",
+        "bounds": [
+          4330.11,
+          1562.79,
+          4510.5,
+          1592.83
+        ],
+        "heightM": 0.4
+      },
+      {
+        "id": "ZONE-SUB-35KV",
+        "name": "35/10kV 变电所 (50×35 m)",
+        "state": "existing",
+        "bounds": [
+          3357.85,
+          1522.21,
+          3407.85,
+          1557.21
+        ],
+        "heightM": 8.5
+      },
+      {
+        "id": "ZONE-REBAR-PROC",
+        "name": "钢筋加工区",
+        "state": "existing",
+        "bounds": [
+          3598.78,
+          1812.54,
+          3799.48,
+          1840.02
+        ],
+        "heightM": 9.0
+      },
+      {
+        "id": "ZONE-RSV-REBAR",
+        "name": "备用钢筋仓库(缓建 120×35 m)",
+        "state": "planned",
+        "bounds": [
+          3589.28,
+          1763.05,
+          3709.29,
+          1798.05
+        ],
+        "heightM": 12.0
+      },
+      {
+        "id": "ZONE-RSV-WH",
+        "name": "备用仓库(缓建 100×35 m)",
+        "state": "planned",
+        "bounds": [
+          3719.28,
+          1763.04,
+          3819.29,
+          1798.05
+        ],
+        "heightM": 12.0
+      }
+    ]
+  }
+}

@@ -1,14 +1,35 @@
 /**
- * 坐标转换：CAD 本地坐标(米) → Cesium 经纬度
- * 与 packages/twin-3d/src/geo/coordTransform.ts 逻辑一致（为快速集成在此内联）
+ * 坐标转换：中沙坝转运站（给大连大.dwg CGCS2000 统一偏移映射）→ 经纬度 / Cesium Cartesian3
+ * 局部 CAD 坐标 = CGCS2000 坐标 - PIVOT_OFFSET_CGCS2000，兼顾施工图真实尺度与零 WebGL 浮点抖动
  */
 import * as Cesium from 'cesium'
+import { SITE_LAYOUT_V4 } from './siteLayoutV4'
 
 const M_PER_DEG_LAT = 110540
 const M_PER_DEG_LON = (latDeg: number) => 111320 * Math.cos((latDeg * Math.PI) / 180)
 
-/** 场站原点经纬度（占位，待确认真实坐标后替换） */
-export const ORIGIN_LONLAT: [number, number] = [91.0, 29.0]
+export const PIVOT_OFFSET_CGCS2000: readonly [number, number] = SITE_LAYOUT_V4.pivotOffset
+
+/** 场站地理基准原点（西藏林芝米林中沙坝转运站参考坐标） */
+export const ORIGIN_LONLAT: [number, number] = [
+  SITE_LAYOUT_V4.geoOrigin[0],
+  SITE_LAYOUT_V4.geoOrigin[1],
+]
+
+/** 局部 CAD 坐标转 CGCS2000 平面坐标（米） */
+export function localToCgcs2000(cadX: number, cadY: number): [number, number] {
+  return [cadX + PIVOT_OFFSET_CGCS2000[0], cadY + PIVOT_OFFSET_CGCS2000[1]]
+}
+
+/** CGCS2000 平面坐标转局部 CAD 坐标（米） */
+export function cgcs2000ToLocal(cgcsX: number, cgcsY: number): [number, number] {
+  return [cgcsX - PIVOT_OFFSET_CGCS2000[0], cgcsY - PIVOT_OFFSET_CGCS2000[1]]
+}
+
+/** 获取中沙坝转运站场站几何中心经纬度 */
+export function getYardCenterLonLat(): [number, number] {
+  return cadToLonLat(SITE_LAYOUT_V4.siteShellCenter.cadX, SITE_LAYOUT_V4.siteShellCenter.cadY)
+}
 
 /** CAD 坐标 → 经纬度 */
 export function cadToLonLat(
@@ -30,6 +51,19 @@ export function cadToCartesian3(
 ): Cesium.Cartesian3 {
   const [lon, lat] = cadToLonLat(cadX, cadY, origin)
   return Cesium.Cartesian3.fromDegrees(lon, lat, height)
+}
+
+/** Cesium Cartesian3 → 局部 CAD 坐标与高程 */
+export function cartesian3ToCad(
+  position: Cesium.Cartesian3,
+  origin: [number, number] = ORIGIN_LONLAT,
+): { cadX: number; cadY: number; height: number } {
+  const carto = Cesium.Cartographic.fromCartesian(position)
+  const lon = Cesium.Math.toDegrees(carto.longitude)
+  const lat = Cesium.Math.toDegrees(carto.latitude)
+  const cadX = (lon - origin[0]) * M_PER_DEG_LON(origin[1])
+  const cadY = (lat - origin[1]) * M_PER_DEG_LAT
+  return { cadX, cadY, height: carto.height }
 }
 
 type GeoJsonCoordinates = unknown[]
