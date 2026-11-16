@@ -6,7 +6,7 @@
  * 所有实体挂状态色材质，支持状态切换时更新颜色
  */
 import * as Cesium from 'cesium'
-import { STATUS_COLORS, type EquipmentDef } from '../constants'
+import { STATUS_COLORS, type DeviceStatusCode, type EquipmentDef } from '../constants'
 import { cadToLonLat } from '../geo'
 
 /** 龙门吊三轴姿态（供动画驱动） */
@@ -14,10 +14,45 @@ export interface CranePose {
   /** 大车 CAD 位置 */
   gantryX: number
   gantryY: number
-  /** 小车相对大车 X 偏移（米） */
+  /** 小车相对大车 Y 偏移（米，横跨 30m 跨距） */
   trolleyOffset: number
   /** 吊具相对地面的高度（米） */
   hoistHeight: number
+  /** 吊具当前负载（吨，用于 Slide 41 空间 Billboard 显示） */
+  payloadTons?: number
+}
+
+/** 室内桥式起重机三轴姿态（S=28.5m，轨顶 13.0m） */
+export interface BridgeCranePose {
+  cadX: number
+  /** 大车沿厂房 CAD Y 纵移 */
+  bridgeY: number
+  /** 小车沿主梁 CAD X 横移偏移 */
+  trolleyOffsetX: number
+  /** 磁吸/C型吊具离地高度 */
+  hoistHeight: number
+  payloadTons?: number
+}
+
+/** 移动式翻箱机双轴姿态（X轨行 + 0~135° 翻转） */
+export interface TipperPose {
+  cadX: number
+  cadY: number
+  /** 翻转角度（0 = 水平装箱位，135 = 倾卸完料） */
+  tiltDeg: number
+  vibrating?: boolean
+  payloadTons?: number
+}
+
+/** 库底定量散装机伸缩溜管姿态 */
+export interface SiloLoaderPose {
+  cadX: number
+  cadY: number
+  /** 溜管底部高度（米，5.5m 收回 -> 3.4m 对接罐车顶口） */
+  spoutHeight: number
+  active: boolean
+  loadedTons?: number
+  targetTons?: number
 }
 
 /** 设备实体包装 */
@@ -26,8 +61,16 @@ export interface BuiltEquipment {
   entities: Cesium.Entity[]
   /** 更新状态色 */
   setStatus(status: EquipmentDef['status']): void
-  /** 更新龙门吊三轴姿态（仅 gantry_crane 支持） */
+  /** 更新 Billboard 实时标注（状态/载荷/动作阶段） */
+  setLabelText?(text: string): void
+  /** 更新龙门吊三轴姿态 */
   updatePose?(pose: CranePose): void
+  /** 更新室内桥吊三轴姿态 */
+  updateBridgePose?(pose: BridgeCranePose): void
+  /** 更新移动翻箱机位移+翻转姿态 */
+  updateTipperPose?(pose: TipperPose): void
+  /** 更新库底散装机伸缩姿态 */
+  updateLoaderPose?(pose: SiloLoaderPose): void
 }
 
 /** CAD 坐标换算为经纬度并转 Cartographic */
@@ -37,12 +80,12 @@ function toCarto(cadX: number, cadY: number): Cesium.Cartographic {
 }
 
 /** 状态色 → Cesium Color */
-function statusColor(status: string, alpha = 1): Cesium.Color {
+function statusColor(status: DeviceStatusCode, alpha = 1): Cesium.Color {
   return Cesium.Color.fromCssColorString(STATUS_COLORS[status] ?? '#64748B').withAlpha(alpha)
 }
 
 /** 状态色 → Cesium 材质 */
-function statusMaterial(status: string, alpha = 1): Cesium.ColorMaterialProperty {
+function statusMaterial(status: DeviceStatusCode, alpha = 1): Cesium.ColorMaterialProperty {
   return new Cesium.ColorMaterialProperty(statusColor(status, alpha))
 }
 
@@ -191,8 +234,28 @@ export function buildEquipment(
       break
     }
     case 'yard':
+    case 'weighbridge':
       entities = buildYard(dataSource, def)
       break
+    case 'elevator':
+    case 'silo_loader':
+    case 'mobile_tipper':
+    case 'bridge_crane': {
+      const carto = toCarto(def.cadX, def.cadY)
+      const h = def.height ?? 10
+      entities = [
+        dataSource.entities.add({
+          id: def.id,
+          position: cartoToPos(carto, h / 2),
+          box: {
+            dimensions: new Cesium.Cartesian3(6, 4, h),
+            material: statusMaterial(def.status, 0.75),
+          },
+          properties: { parent: def.id, type: def.type, name: def.name },
+        }),
+      ]
+      break
+    }
     default:
       entities = []
   }

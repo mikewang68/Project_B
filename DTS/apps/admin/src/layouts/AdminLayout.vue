@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { getPortalUrl } from '@/services/dtsDataService'
 
 const router = useRouter()
 const route = useRoute()
 
 const collapsed = ref(false)
+const portalUrl = computed(() => getPortalUrl())
+const isFrameless = computed(
+  () => route.path.startsWith('/bigscreen') || route.query.embed === '1' || route.query.fullscreen === '1',
+)
 
 /**
  * 数字孪生系统自身的导航菜单。
@@ -42,9 +47,9 @@ function handleSelect(path: string) {
 </script>
 
 <template>
-  <div class="admin-layout" :class="{ collapsed }">
-    <!-- 左侧菜单 -->
-    <aside class="sidebar">
+  <div class="admin-layout" :class="{ collapsed, frameless: isFrameless }">
+    <!-- 左侧菜单（大屏模式或 ?embed=1 内嵌模式自动隐藏） -->
+    <aside v-if="!isFrameless" class="sidebar">
       <div class="sidebar-logo">
         <div class="logo-icon">DT</div>
         <span v-if="!collapsed" class="logo-text">B项目数字孪生</span>
@@ -95,22 +100,29 @@ function handleSelect(path: string) {
     <!-- 主内容区 -->
     <div class="main-area">
       <!-- 顶部栏 -->
-      <header class="topbar">
+      <header v-if="!isFrameless" class="topbar">
         <div class="topbar-left">
           <span class="page-title">{{ route.meta.title || '数字孪生平台' }}</span>
         </div>
         <div class="topbar-right">
+          <a
+            :href="portalUrl"
+            class="portal-back-link"
+            title="返回 Project B 统一门户工作台"
+          >
+            统一门户 Portal →
+          </a>
           <el-tooltip placement="bottom">
-            <template #content>用户认证与功能权限已由独立 IAM 系统统一管理，当前为本地免登录运行模式</template>
+            <template #content>S5 数字孪生可视化系统（只监不控 · 1+5+2架构）· 用户认证与导航由 IAM / 统一门户管理</template>
             <el-tag type="info" size="small" effect="plain" class="mode-tag">
-              <el-icon style="vertical-align:-2px;margin-right:4px"><Lock /></el-icon>本地运行 · 权限由 IAM 统一管理
+              <el-icon style="vertical-align:-2px;margin-right:4px"><Lock /></el-icon>S5 孪生 · 只监不控 · 1+5+2
             </el-tag>
           </el-tooltip>
         </div>
       </header>
 
       <!-- 内容 -->
-      <main class="content">
+      <main class="content" :class="{ 'content-frameless': isFrameless }">
         <RouterView v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <component :is="Component" />
@@ -247,11 +259,33 @@ function handleSelect(path: string) {
   cursor: help;
 }
 
+.portal-back-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: #065a82;
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #b8d8e8;
+  background: #f0f9ff;
+  transition: all 0.2s;
+  &:hover {
+    background: #065a82;
+    color: #ffffff;
+    border-color: #065a82;
+  }
+}
+
 .content {
   flex: 1;
-  overflow: auto;
-  padding: 20px;
-  background: #f0f2f5;
+  overflow: hidden;
+  padding: 0;
+  background: var(--bg-primary, #071228);
+
+  &.content-frameless {
+    width: 100vw;
+    height: 100vh;
+  }
 }
 
 .fade-enter-active,

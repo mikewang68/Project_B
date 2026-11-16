@@ -23,7 +23,8 @@ function poseFor(a: [number, number], b: [number, number], progress: number): Ve
   return {
     cadX: a[0] + dx * progress,
     cadY: a[1] + dy * progress,
-    headingDeg: (Math.atan2(dy, dx) * 180) / Math.PI,
+    // Convert counter-clockwise math angle (CCW from +X East) to clockwise compass bearing expected by orientationFromHeading
+    headingDeg: (Math.atan2(-dy, dx) * 180) / Math.PI,
   }
 }
 

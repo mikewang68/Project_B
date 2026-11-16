@@ -1,7 +1,5 @@
 /**
- * Single source of truth for the core-area facts confirmed from the annotated
- * layout plan.  This is deliberately a semantic manifest, not a placement
- * manifest: a confirmed facility can still have a position awaiting review.
+ * 中铁二院《给大连大.dwg》施工图与第 20 次组会“一图一文档”工程事实真值清单（V4）
  */
 export type SiteFactStatus = 'confirmed' | 'position-review' | 'inferred' | 'inferred-proportional'
 
@@ -18,64 +16,40 @@ export const SITE_FACTS: SiteFact[] = [
   {
     id: 'FACT-REBAR-RAIL-LINE',
     category: 'rail',
-    name: '钢材作业线',
-    statement: '钢筋仓库前有 2 条铁路轨道；其服务对象不包含煤灰筒仓。',
-    status: 'confirmed',
-    source: 'annotated-steel-layout-plan',
-  },
-  {
-    id: 'FACT-ASH-RAIL-LINE',
-    category: 'rail',
-    name: '煤灰作业线',
-    statement: '绿色、紫色煤灰筒仓组下方的 B 线束内有 2 条铁路轨道，不位于钢筋仓位附近。',
-    status: 'confirmed',
-    source: 'annotated-steel-layout-plan',
-  },
-  {
-    id: 'FACT-GANTRY-CRANES',
-    category: 'equipment',
-    name: '三台龙门吊',
-    statement: '图纸标注为铁路货车卸货用龙门吊；网页中仅作为钢材线候选，纵向落位需继续复核。',
-    status: 'position-review',
-    source: 'annotated-steel-layout-plan',
-  },
-  {
-    id: 'FACT-REBAR-WAREHOUSES',
-    category: 'storage',
-    name: '13 个钢筋仓位',
-    statement: '中部灰色矩形为钢筋仓库，共 13 个；已按 CAD 中 13 个重复闭合矩形提取编号，蓝线表示整体范围。',
+    name: '钢材装卸线（货3/货4 + 3×40t门吊）',
+    statement: '货3（560m）与货4（564m）紧邻钢筋仓库南侧；3台 Q=40t, S=30m, 370kW 门吊（CR-01~03）跨越两轨及库外交接区。',
     status: 'confirmed',
     source: 'cad-dxf-geometry',
   },
   {
-    id: 'FACT-ASH-SILO-LINE',
+    id: 'FACT-REBAR-WAREHOUSE',
     category: 'storage',
-    name: '绿色煤灰筒仓组',
-    statement: '用户已确认绿色煤灰筒仓组应分为左右两段，紫色筒仓组夹在中间；精确单体数量、直径、高度和边界仍待校核。',
-    status: 'position-review',
-    source: 'annotated-steel-layout-plan',
+    name: '钢筋仓库（23,882 m² · 13跨桥吊）',
+    statement: '按给大连大.dwg 实测 13 跨布局，轨顶标高 13.0m：含 9 台 20t 磁吸桥吊（编号 15）与 4 台 32t C 型吊具桥吊（编号 16），与门吊联合吊装。',
+    status: 'confirmed',
+    source: 'cad-dxf-geometry',
   },
   {
-    id: 'FACT-ASH-SILO-ROUND',
-    category: 'storage',
-    name: '紫色煤灰筒仓与输送带',
-    statement: '用户已确认紫色圆形煤灰筒仓组位于两段绿色组之间；黑色线为向其供料的输送带，精确单体尺寸与支撑细节仍待校核。',
-    status: 'position-review',
-    source: 'annotated-steel-layout-plan',
+    id: 'FACT-ASH-RAIL-AND-TIPPER',
+    category: 'process',
+    name: '散料线（货1/货2 + 翻箱机 + 卸料室 + 提升机）',
+    statement: '货1（950m）与货2（790m）配 3 台 375kW 集装箱门吊及 4 套“移动翻箱机 + 半封闭卸料室（42m³料斗）+ 提升机 + 空气斜槽”。',
+    status: 'confirmed',
+    source: 'cad-dxf-geometry',
   },
   {
-    id: 'FACT-CAD-RAIL-EDGES',
-    category: 'rail',
-    name: 'CAD 轨道几何',
-    statement: '钢材线使用 Y=1661–1687 的两组轨道边线；煤灰线使用筒仓下方 B 线束 Y=1505–1512 的两组轨道边线。',
+    id: 'FACT-ASH-40-SILOS',
+    category: 'storage',
+    name: '40 座 3000T 筒仓与库底定量装车',
+    statement: '实测 4 组 40 座 Φ12m、直筒 18m、总高 33.38m、柱腿+1.00m 钢板筒仓（水泥+粉煤灰，总容 12 万吨），库底配 40 套伸缩散装定量装车设备及 2×100t 地磅。',
     status: 'confirmed',
     source: 'cad-dxf-geometry',
   },
 ]
 
 export const SITE_FACT_STATUS_LABEL: Record<SiteFactStatus, string> = {
-  confirmed: '已确认',
-  'position-review': '待落位复核',
-  inferred: '推断',
-  'inferred-proportional': '比例推断',
+  confirmed: '施工图实测已确认',
+  'position-review': '待现场复核',
+  inferred: '工艺推断',
+  'inferred-proportional': '比例估算',
 }

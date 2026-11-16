@@ -1,0 +1,18 @@
+{
+  "name": "dt-system",
+  "private": true,
+  "version": "0.1.0",
+  "description": "B项目 装卸区数字孪生可视化系统（S5）",
+  "scripts": {
+    "dev": "pnpm --filter admin dev",
+    "build": "pnpm --filter admin build",
+    "build:subpath": "pnpm --filter admin build:subpath",
+    "preview": "pnpm --filter admin preview",
+    "lint": "pnpm --filter admin lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "pnpm": ">=7.33.0"
+  }
+}

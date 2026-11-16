@@ -13,10 +13,11 @@ import {
   type CadPoint,
 } from '@/twin3d/siteCalibration'
 import { SITE_FACTS, SITE_FACT_STATUS_LABEL } from '@/twin3d/siteFacts'
+import { SITE_LAYOUT_V4 } from '@/twin3d/siteLayoutV4'
 
 let viewer: Cesium.Viewer | null = null
 let calibrationSource: Cesium.CustomDataSource | null = null
-const status = ref('正在加载第二次校准图：钢材两轨与筒仓组下方的煤灰两轨…')
+const status = ref('正在加载《给大连大.dwg》V4 实测 CAD 校准底图与 19 项装备台账…')
 
 function toPosition(point: CadPoint, height = 0) {
   return cadToCartesian3(point.cadX, point.cadY, height)
@@ -59,11 +60,11 @@ function addCalibrationOverlay() {
       },
     })
   }
-  addLabel(toPosition({ cadX: 3560, cadY: 1689.5 }, 1.8), '钢材作业线：2 条轨道', rebarRailColor, 14)
-  addLabel(toPosition({ cadX: 3698, cadY: 1517 }, 1.8), '煤灰作业线：2 条轨道', ashRailColor, 14)
+  addLabel(toPosition({ cadX: 3540, cadY: 1656 }, 1.8), '钢材装卸线：货3 / 货4（560/564m）', rebarRailColor, 14)
+  addLabel(toPosition({ cadX: 3540, cadY: 1518 }, 1.8), '散料装卸线：货1 / 货2（950/790m）', ashRailColor, 14)
 
   for (const gantry of CALIBRATION_GANTRIES) {
-    const halfSpan = 18
+    const halfSpan = 30
     calibrationSource.entities.add({
       polyline: {
         positions: [
@@ -74,11 +75,9 @@ function addCalibrationOverlay() {
         material: new Cesium.PolylineDashMaterialProperty({ color: gantryColor, dashLength: 16 }),
       },
     })
-    addLabel(toPosition({ cadX: gantry.center.cadX, cadY: 1691 }, 4), `${gantry.id}（候选）`, gantryColor, 13)
+    addLabel(toPosition({ cadX: gantry.center.cadX, cadY: gantry.center.cadY + 18 }, 4), `${gantry.id}（40t/30m）`, gantryColor, 13)
   }
 
-  // This remains intentionally empty until the 13 individual warehouse bays
-  // have been numbered against the plan; it prevents false precision.
   for (const bay of CALIBRATION_REBAR_BAYS) {
     const halfWidth = bay.width / 2
     const halfDepth = bay.depth / 2
@@ -101,13 +100,14 @@ function addCalibrationOverlay() {
         material: rebarColor,
       },
     })
-    addLabel(toPosition(bay.center, 2), bay.id.replace('REBAR-BAY-', ''), rebarColor, 12)
+    const craneHint = bay.bridgeType === 'chook_32t' ? '32t C型' : '20t 磁吸'
+    addLabel(toPosition(bay.center, 2), `${bay.id.replace('REBAR-BAY-', '')}#\n${craneHint}`, rebarColor, 11)
   }
 
   for (const zone of CALIBRATION_ZONES) {
-    const color = zone.kind === 'line-silo'
-      ? Cesium.Color.fromCssColorString('#66E6A7')
-      : Cesium.Color.fromCssColorString('#CC7DFF')
+    const color = zone.kind === 'cement-silo'
+      ? Cesium.Color.fromCssColorString('#34D399')
+      : Cesium.Color.fromCssColorString('#38BDF8')
     calibrationSource.entities.add({
       polyline: {
         positions: [...zone.points, zone.points[0]].map((point) => toPosition(point, 1.5)),
@@ -119,18 +119,55 @@ function addCalibrationOverlay() {
       (sum, point) => ({ cadX: sum.cadX + point.cadX / zone.points.length, cadY: sum.cadY + point.cadY / zone.points.length }),
       { cadX: 0, cadY: 0 },
     )
-    addLabel(toPosition(center, 2), zone.label, color)
+    addLabel(toPosition(center, 2), zone.label, color, 12)
   }
 
-  addLabel(toPosition({ cadX: 3740, cadY: 1720.5 }, 2), '13 个钢筋仓位：CAD 矩形编号', rebarColor, 14)
+  addLabel(toPosition({ cadX: 3751, cadY: 1742 }, 2), '钢筋仓库 (23,882 m²) · 13 跨桥吊实测落位', rebarColor, 14)
+
+  // 40 Silos (8 Cement + 32 Fly-Ash) & 4 Unloading Complexes + 40m Bucket Elevators
+  for (const silo of SITE_LAYOUT_V4.ash.silos) {
+    const sColor = silo.material === 'cement'
+      ? Cesium.Color.fromCssColorString('#34D399')
+      : Cesium.Color.fromCssColorString('#38BDF8')
+    calibrationSource.entities.add({
+      position: toPosition({ cadX: silo.cadX, cadY: silo.cadY }, 1.2),
+      ellipse: {
+        semiMajorAxis: silo.diameterM / 2,
+        semiMinorAxis: silo.diameterM / 2,
+        height: 1.2,
+        material: sColor.withAlpha(0.18),
+        outline: true,
+        outlineColor: sColor.withAlpha(0.85),
+      },
+    })
+    if (silo.col === 1 || silo.col === 4 || silo.col === 5 || silo.col === 20) {
+      addLabel(toPosition({ cadX: silo.cadX, cadY: silo.cadY }, 2.2), silo.code, sColor, 10)
+    }
+  }
+
+  const elevColor = Cesium.Color.fromCssColorString('#F472B6')
+  for (const u of SITE_LAYOUT_V4.ash.unloadingComplexes) {
+    calibrationSource.entities.add({
+      position: toPosition({ cadX: u.elevatorCadX, cadY: u.elevatorCadY }, 2.0),
+      point: { pixelSize: 9, color: elevColor, outlineColor: Cesium.Color.WHITE, outlineWidth: 1.5 },
+    })
+    addLabel(toPosition({ cadX: u.elevatorCadX, cadY: u.elevatorCadY + 5 }, 3.0), `${u.elevatorId} (40m)`, elevColor, 11)
+  }
+
+  // Electromechanical Warehouse (2×50t Bridge Cranes) & Weighbridges
+  const mechColor = Cesium.Color.fromCssColorString('#FBBF24')
+  addLabel(toPosition({ cadX: 4412, cadY: 1532 }, 3.0), '机电仓库 (5,036 m² · 2×50t桥吊)', mechColor, 12)
+  for (const wb of SITE_LAYOUT_V4.weighbridges) {
+    addLabel(toPosition({ cadX: wb.cadX, cadY: wb.cadY }, 2.5), `${wb.id} (${wb.capacityT}t)`, mechColor, 11)
+  }
 }
 
 function focusCalibrationView(view: 'steel' | 'ash' | 'all') {
   if (!viewer) return
   const options = {
-    steel: { cadX: 3740, cadY: 1685, radius: 260, range: 600, headingDeg: 0, pitchDeg: -89.5 },
-    ash: { cadX: 3860, cadY: 1530, radius: 330, range: 650, headingDeg: 0, pitchDeg: -89.5 },
-    all: { cadX: 3760, cadY: 1600, radius: 500, range: 940, headingDeg: -28, pitchDeg: -62 },
+    steel: { cadX: 3751, cadY: 1682, radius: 240, range: 520, headingDeg: 0, pitchDeg: -89.5 },
+    ash: { cadX: 3893, cadY: 1545, radius: 280, range: 560, headingDeg: 0, pitchDeg: -89.5 },
+    all: { cadX: 3920, cadY: 1615, radius: 520, range: 960, headingDeg: -22, pitchDeg: -58 },
   }[view]
   viewer.camera.flyToBoundingSphere(
     new Cesium.BoundingSphere(cadToCartesian3(options.cadX, options.cadY), options.radius),
@@ -165,7 +202,7 @@ function onViewerReady(nextViewer: Cesium.Viewer) {
       nextViewer.dataSources.add(source)
       addCalibrationOverlay()
       focusCalibrationView('all')
-      status.value = '第二次校准已应用：钢材两轨位于钢筋仓位一侧；煤灰两轨位于绿色/紫色筒仓组下方 B 线束。13 个钢筋仓位来自 CAD 重复矩形；三台龙门吊仅服务钢材线，纵向位置仍待最终确认。'
+      status.value = '已切换至《给大连大.dwg》实测 V4 坐标基准：40 座 Φ12m×33.38m 筒仓、4 座卸料室/提升机、6 台 40t/30m 门吊及 13 跨室内桥吊均与中铁二院施工图 1:1 对齐。'
       nextViewer.scene.requestRender()
     })
     .catch((error: unknown) => {
@@ -184,7 +221,7 @@ onBeforeUnmount(() => {
   <main class="calibration-page">
     <header>
       <div>
-        <p>FACT-CHECK MODE · 未替换正式模型</p>
+        <p>SURVEYED CAD V4 · 给大连大.dwg 实测基准</p>
         <h1>核心区 CAD 落位校核</h1>
       </div>
       <RouterLink to="/">返回当前作业台</RouterLink>
@@ -197,16 +234,16 @@ onBeforeUnmount(() => {
       </article>
     </section>
     <nav class="view-controls" aria-label="校核镜头">
-      <button @click="focusCalibrationView('steel')">钢材两轨与龙门吊（俯视）</button>
-      <button @click="focusCalibrationView('ash')">煤灰两轨、筒仓与输送带（俯视）</button>
-      <button @click="focusCalibrationView('all')">完整核心区</button>
+      <button @click="focusCalibrationView('steel')">钢材双轨 + 钢筋库13跨（俯视）</button>
+      <button @click="focusCalibrationView('ash')">散料双轨 + 40筒仓/卸料室（俯视）</button>
+      <button @click="focusCalibrationView('all')">完整中沙坝转运站</button>
     </nav>
     <section class="viewer-wrap"><CesiumViewer @viewer-ready="onViewerReady" /></section>
     <footer>
-      <span><i class="steel-rail"></i>钢材/钢筋仓库前：2 条轨道</span>
-      <span><i class="ash-rail"></i>煤灰筒仓前：2 条轨道</span>
-      <span><i class="gantry"></i>3 台龙门吊：仅钢材线候选</span>
-      <span><i class="rebar"></i>13 个钢筋仓位：CAD 矩形已编号</span>
+      <span><i class="steel-rail"></i>钢材线：货3/货4 + 13跨桥吊</span>
+      <span><i class="ash-rail"></i>散料线：货1/货2 + 40座Φ12m筒仓</span>
+      <span><i class="gantry"></i>6台40t/30m门吊（钢材3+散料3）</span>
+      <span><i class="rebar"></i>钢筋仓库：23,882 m²（9×20t磁吸 + 4×32t C型）</span>
     </footer>
   </main>
 </template>
