@@ -38,6 +38,25 @@ public final class ScsCentralScope {
     return RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes a
       &&Boolean.TRUE.equals(a.getRequest().getAttribute("SCS_LEGACY_MACHINE_INGRESS"));
   }
+  /**
+   * 机器来源写“派生根”时的窄授权：例如雷达来源只登记了 COLLISION 对象，但按阈值
+   * 需要新建/升级 ALERT。派生授权只在当前请求内、且仅对显式列出的 writeRoots 生效，
+   * 归属仍由绑定对象校验；不会放宽到其它根或其它设备。
+   */
+  private static final String DERIVED_ATTRIBUTE=ScsCentralScope.class.getName()+".derived";
+  record DerivedAuth(Root ownerRoot,String ownerKey,Set<Root> writeRoots){}
+  public static void bindDerivedMachineAuth(Root ownerRoot,String ownerKey,Root... writeRoots){
+    if(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes a)
+      a.getRequest().setAttribute(DERIVED_ATTRIBUTE,new DerivedAuth(ownerRoot,ownerKey,Set.of(writeRoots)));
+  }
+  public static void clearDerivedMachineAuth(){
+    if(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes a)
+      a.getRequest().removeAttribute(DERIVED_ATTRIBUTE);
+  }
+  static DerivedAuth derivedMachineAuth(){
+    return RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes a
+      &&a.getRequest().getAttribute(DERIVED_ATTRIBUTE) instanceof DerivedAuth d?d:null;
+  }
   public static boolean permits(UserContext context,String method,String path){
     if(context==null)return true;
     if(method.equals("GET")&&path.equals("/ws/live"))return com.bproject.safety.common.realtime.ScopedLiveEventPolicy.mayConnect(context);
@@ -121,8 +140,22 @@ public final class ScsCentralScope {
    * events) instead of the server-generated business key, which no registration can
    * know in advance. Non-machine callers are unaffected.
    */
+  /**
+   * 机器来源写权限判定：直接拥有 machineAuth 对象，或持有对显式 writeRoots 的派生授权
+   * （派生授权仍要求来源拥有 owner 对象）。抽成独立方法便于在不连库的情况下锁定边界。
+   */
+  static boolean machineMayWrite(ScsMachineRegistry.Binding machine,Root root,Root machineAuthRoot,
+                                 String machineAuthKey,DerivedAuth derived){
+    if(machine==null)return true;
+    boolean direct=machine.owns(machineAuthRoot,machineAuthKey);
+    boolean viaDerived=derived!=null&&derived.writeRoots().contains(root)
+        &&machine.owns(derived.ownerRoot(),derived.ownerKey());
+    return direct||viaDerived;
+  }
   public static Stamp beforeWrite(NamedParameterJdbcTemplate db,Root root,String key,Root machineAuthRoot,String machineAuthKey){
-    var machine=ScsMachineRegistry.current();if(machine!=null&&!machine.owns(machineAuthRoot,machineAuthKey))throw ScsMachineRegistry.denied();
+    var machine=ScsMachineRegistry.current();
+    if(!machineMayWrite(machine,root,machineAuthRoot,machineAuthKey,derivedMachineAuth()))
+      throw ScsMachineRegistry.denied();
     var context=current();
     if(context==null){
       if(legacyMachineIngress()){

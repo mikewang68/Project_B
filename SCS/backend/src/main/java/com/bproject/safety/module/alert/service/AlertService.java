@@ -1,5 +1,6 @@
 package com.bproject.safety.module.alert.service;
 
+import com.bproject.iam.context.ScopeTriple;
 import com.bproject.safety.common.error.ApiException;
 import com.bproject.safety.common.idempotency.IdempotencyService;
 import com.bproject.safety.module.alert.dto.AlertRequests.AssignRequest;
@@ -524,6 +525,22 @@ public class AlertService {
     /** 按去重键查找未关闭告警（不存在返回 null）。 */
     public DemoAlert findOpenByDedupKey(String dedupKey) {
         return repository.findOpenByDedupKey(dedupKey).orElse(null);
+    }
+
+    /**
+     * 命名机器来源首次接管时的去重：先按当前元组查；若没有，再查旧共享 key/
+     * 公共底座留下的无范围戳未关闭防碰撞告警，把它认领到当前元组后复用，
+     * 避免同一 dedup_key 出现两条 open 告警。认领是受控的 UPDATE，只作用于
+     * project/region/subsystem 三列全 NULL 且未关闭的 COLLISION 告警。
+     */
+    public DemoAlert findOpenByDedupKeyForMachine(String dedupKey, ScopeTriple scope) {
+        DemoAlert open = findOpenByDedupKey(dedupKey);
+        if (open != null) return open;
+        var legacy = repository.findOpenLegacyCollisionAlertNo(dedupKey);
+        if (legacy.isEmpty()) return null;
+        int claimed = repository.claimLegacyCollisionAlert(legacy.get(), scope);
+        if (claimed != 1) return null;
+        return get(legacy.get());
     }
 
     /**

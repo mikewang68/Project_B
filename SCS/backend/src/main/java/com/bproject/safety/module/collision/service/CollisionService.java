@@ -2,6 +2,8 @@ package com.bproject.safety.module.collision.service;
 
 import com.bproject.safety.common.error.ApiException;
 import com.bproject.safety.common.realtime.DomainLivePublisher;
+import com.bproject.safety.config.ScsCentralScope;
+import com.bproject.safety.config.ScsMachineRegistry;
 import com.bproject.safety.common.realtime.LiveEventGate;
 import com.bproject.safety.common.realtime.LiveEventTypes;
 import com.bproject.safety.module.alert.dto.AlertRequests.LinkageRequest;
@@ -192,9 +194,14 @@ public class CollisionService {
             step(pair, "stop", "running", "正在发送紧急停机指令");
             ensureCollisionAlert(pair, CollisionRiskLevels.SEVERE);
             if (pair.activeAlertId != null) {
-                DemoAlert upgraded = alertService.upgradeRisk(pair.activeAlertId, RiskLevels.URGENT,
-                        "相对距离降至 " + value + "m，达到紧急碰撞阈值");
-                pair.activeAlertId = upgraded.id;
+                // 持续处于 <3m 时每个轮询周期都会走到这里；已 URGENT 的告警不重复升级，
+                // 避免每 2 秒追加一条 ESCALATED 时间线/广播。
+                DemoAlert current = alertService.get(pair.activeAlertId);
+                if (!RiskLevels.URGENT.equals(current.riskCode)) {
+                    DemoAlert upgraded = alertService.upgradeRisk(pair.activeAlertId, RiskLevels.URGENT,
+                            "相对距离降至 " + value + "m，达到紧急碰撞阈值");
+                    pair.activeAlertId = upgraded.id;
+                }
             }
         }
         if (!before.equals(pair.riskCode)) {
@@ -204,7 +211,14 @@ public class CollisionService {
 
     /** 严重风险首次建单；同一设备对存在未关闭告警时复用（去重），紧急阶段只升级不新建。 */
     private void ensureCollisionAlert(PairState pair, String collisionRiskCode) {
-        DemoAlert open = alertService.findOpenByDedupKey(dedupKey(pair));
+        var machine = ScsMachineRegistry.current();
+        boolean pairOwned = machine != null
+                && machine.owns(ScsCentralScope.Root.COLLISION, pair.currentId);
+        // 命名机器来源首次接管时，把旧共享 key/公共底座留下的无范围戳未关闭告警
+        // 认领到当前来源的元组后复用（否则 scoped 查询看不到它，会重复建单）。
+        DemoAlert open = pairOwned
+                ? alertService.findOpenByDedupKeyForMachine(dedupKey(pair), machine.scope())
+                : alertService.findOpenByDedupKey(dedupKey(pair));
         if (open != null) {
             pair.activeAlertId = open.id;
             return;
@@ -212,8 +226,9 @@ public class CollisionService {
         if (pair.activeAlertId != null) {
             pair.activeAlertId = null;
         }
-        DemoCollisionDevice cur = repository.findById(pair.currentId).orElseThrow();
-        DemoCollisionDevice rel = repository.findById(pair.relatedId).orElseThrow();
+        var allowedMachine = pairOwned ? machine : null;
+        DemoCollisionDevice cur = resolvePairDevice(pair.currentId, allowedMachine);
+        DemoCollisionDevice rel = resolvePairDevice(pair.relatedId, allowedMachine);
         String alertRiskCode = CollisionRiskLevels.toAlertRiskCode(collisionRiskCode);
         // 防碰撞阈值判定：provenance 标记 COLLISION，不伪造 SafetyRule 版本（F-07）。
         DemoAlert alert = alertService.createRiskAlert(new AlertService.NewRiskAlert(
@@ -230,6 +245,21 @@ public class CollisionService {
         // Phase B：显式持久化当前设备的 latestAlertId（copy-on-write 后不再有内部引用魔法）。
         cur.latestAlertId = alert.id;
         repository.save(cur);
+    }
+
+    /**
+     * 命名机器来源只登记了配对设备，但历史台账行可能仍是无范围戳的 legacy 行。
+     * 先走常规（按当前会话范围）读取；读不到时，仅在“当前机器来源确实拥有该设备”的前提下
+     * 做一次无范围读取，用于生成告警所需的设备名/区域。普通用户会话与 legacy 通道行为不变。
+     */
+    private DemoCollisionDevice resolvePairDevice(String id, ScsMachineRegistry.Binding machine) {
+        var scoped = repository.findById(id);
+        if (scoped.isPresent()) return scoped.get();
+        // 对端设备由服务端固定配对关系确定，不需要出现在来源对象清单里；
+        // 只要来源确实拥有上报的当前设备，就允许读同一配对的对端（仍限制为
+        // 无范围 legacy 行或来源自己的元组，见 findByIdUnscoped）。
+        if (machine != null) return repository.findByIdUnscoped(id, machine.scope()).orElseThrow();
+        return scoped.orElseThrow();
     }
 
     private void toggleRadar(PairState pair, boolean down) {
@@ -359,14 +389,25 @@ public class CollisionService {
                 double distance = Math.max(0, Math.min(500, reading.distance()));
                 double speed = reading.relSpeed() == null ? pair.relSpeed : reading.relSpeed();
                 String direction = speed > 0.05 ? "接近" : speed < -0.05 ? "远离" : "保持";
-                applyDistance(pair, distance, speed, direction);
-                applyRadarHealth(pair, reading.health());
-                if (reading.radarQuality() != null) {
-                    pair.radarQuality = (int) Math.round(Math.max(0, Math.min(100, reading.radarQuality())));
+                var machine = ScsMachineRegistry.current();
+                if (machine != null) {
+                    // 雷达来源只登记了 COLLISION 对象；按阈值派生新建/升级的 ALERT 走窄授权，
+                    // 归属仍校验当前配对设备，且只允许 ALERT 根。
+                    ScsCentralScope.bindDerivedMachineAuth(
+                            ScsCentralScope.Root.COLLISION, pair.currentId, ScsCentralScope.Root.ALERT);
                 }
-                pair.updatedAt = OffsetDateTime.now(clock);
-                reportedDevices.add(pair.currentId);reportedDevices.add(pair.relatedId);
-                applied[0]++;
+                try {
+                    applyDistance(pair, distance, speed, direction);
+                    applyRadarHealth(pair, reading.health());
+                    if (reading.radarQuality() != null) {
+                        pair.radarQuality = (int) Math.round(Math.max(0, Math.min(100, reading.radarQuality())));
+                    }
+                    pair.updatedAt = OffsetDateTime.now(clock);
+                    reportedDevices.add(pair.currentId);reportedDevices.add(pair.relatedId);
+                    applied[0]++;
+                } finally {
+                    if (machine != null) ScsCentralScope.clearDerivedMachineAuth();
+                }
             }
             if (applied[0] > 0) {
                 Map<String, Object> data = new LinkedHashMap<>();

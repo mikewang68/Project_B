@@ -33,6 +33,22 @@ public interface AlertRepository {
      */
     Optional<DemoAlert> findOpenByDedupKey(String dedupKey);
 
+    /**
+     * 未关闭的无范围戳（legacy）防碰撞告警编号。仅供命名机器来源首次接管时
+     * 认领旧告警，普通业务路径不得使用。
+     */
+    default Optional<String> findOpenLegacyCollisionAlertNo(String dedupKey) {
+        return Optional.empty();
+    }
+
+    /**
+     * 把无范围戳的 legacy 防碰撞告警认领到指定元组；仅当三列仍全 NULL 且未关闭时生效。
+     * 返回受影响行数（0=已被认领/已关闭/不存在）。
+     */
+    default int claimLegacyCollisionAlert(String alertNo, com.bproject.iam.context.ScopeTriple scope) {
+        return 0;
+    }
+
     /** 新增或整体更新（聚合快照，由实现负责 copy-on-write）。 */
     DemoAlert save(DemoAlert alert);
 

@@ -59,4 +59,34 @@ class ScsMachineRegistryTest {
     verify(publisher,times(1)).publish(anyString(),any());
     RequestContextHolder.resetRequestAttributes();assertFalse(zones.apply("LEGACY-UNKNOWN",true,false,null,null));
   }
+  @Test void radarRouteAuthenticatesAndBodyRequiresOwnedPairDevice()throws Exception{
+    var s=source("SIM-A",secret,"VEH-07");
+    s.put("routes",List.of("/api/v1/ingest/radar"));
+    s.put("objects",Map.of("COLLISION",List.of("VEH-07","TIP-02")));
+    write(List.of(s));
+    var binding=registry.authenticate("SIM-A",secret,"POST","/api/v1/ingest/radar");
+    var db=mock(NamedParameterJdbcTemplate.class);
+    when(db.queryForObject(anyString(),anyMap(),eq(Long.class))).thenReturn(1L);
+    var advice=new ScsMachineBodyAdvice(mapper,db);
+    String p="/api/v1/ingest/radar";
+    advice.validate(binding,p,mapper.readTree("{\"source\":\"SIM-A\",\"readings\":[{\"pairDevice\":\"VEH-07\",\"distance\":9.5}]}"));
+    assertThrows(Exception.class,()->advice.validate(binding,p,mapper.readTree("{\"readings\":[{\"pairDevice\":\"VEH-08\"}]}")));
+    assertThrows(Exception.class,()->advice.validate(binding,p,mapper.readTree("{\"readings\":[]}")));
+  }
+  @Test void derivedMachineAlertAuthOnlyRelaxesCollisionDedupAlerts()throws Exception{
+    var s=source("SIM-A",secret,"VEH-07");
+    s.put("objects",Map.of("COLLISION",List.of("VEH-07","TIP-02")));
+    write(List.of(s));
+    var binding=registry.authenticate("SIM-A",secret,"POST","/api/v1/ingest/person-position");
+    var request=new MockHttpServletRequest("POST","/api/v1/ingest/radar");
+    ScsMachineRegistry.bind(request,binding);
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    assertEquals(" AND 1=0 ",ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.ALERT,"o."));
+    ScsCentralScope.bindDerivedMachineAuth(ScsCentralScope.Root.COLLISION,"VEH-07",ScsCentralScope.Root.ALERT);
+    String alertFilter=ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.ALERT,"o.");
+    assertTrue(alertFilter.contains("o.dedup_key LIKE 'COLLISION:%'"));
+    assertTrue(ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.COLLISION,"o.").contains("device_code IN"));
+    ScsCentralScope.clearDerivedMachineAuth();
+    assertEquals(" AND 1=0 ",ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.ALERT,"o."));
+  }
 }

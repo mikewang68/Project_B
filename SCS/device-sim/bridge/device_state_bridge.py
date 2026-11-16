@@ -13,6 +13,10 @@
   python bridge/device_state_bridge.py --scs http://127.0.0.1:20986 --api-key <KEY> --once
   python bridge/device_state_bridge.py --scs https://scs.example.com --api-key-env SCS_API_KEY
 
+雷达命名来源（可选）：
+  设置 SCS_RADAR_SOURCE_ID / SCS_RADAR_API_KEY 后，雷达通道改走 per-device 命名来源
+  （X-SCS-Source-ID 头），device-state / zone-state 仍用全局 key；未设置则维持原全局通道。
+
 凭据不硬编码：从 --api-key 或环境变量读取（--api-key-env 指定变量名）。
 纯标准库。
 """
@@ -172,12 +176,18 @@ def position_sensor_state(host: str, port: int) -> dict:
     }
 
 
-def push(scs: str, api_key: str, path: str, payload: dict) -> tuple[int, str]:
+def push(scs: str, api_key: str, path: str, payload: dict, source_id: str = "") -> tuple[int, str]:
     url = scs.rstrip("/") + path
+    if source_id:
+        # 命名来源绑定要求 body.source 与来源 id 一致（ScsMachineBodyAdvice 校验）
+        payload = dict(payload)
+        payload["source"] = source_id
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json; charset=utf-8")
     req.add_header("X-API-Key", api_key)
+    if source_id:
+        req.add_header("X-SCS-Source-ID", source_id)
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             return resp.status, resp.read().decode("utf-8", "replace")[:300]
@@ -185,6 +195,29 @@ def push(scs: str, api_key: str, path: str, payload: dict) -> tuple[int, str]:
         return e.code, e.read().decode("utf-8", "replace")[:300]
     except Exception as e:  # 网络/证书/超时
         return 0, str(e)[:200]
+
+
+def resolve_credentials(a) -> tuple[str, str, str]:
+    """按通道解析凭据：radar 用命名来源 key，device-state/zone-state 用 legacy key。
+
+    返回 (radar_source_id, radar_api_key, legacy_api_key)。缺任一通道所需凭据时
+    抛 ValueError，由 main 打印并以 2 退出；不再要求一个与具体通道无关的
+    --api-key 必须存在。
+    """
+    api_key = (a.api_key or os.environ.get(a.api_key_env, "")).strip()
+    radar_source_id = os.environ.get(a.radar_source_id_env, "").strip()
+    radar_api_key = os.environ.get(a.radar_api_key_env, "").strip()
+    legacy_api_key = os.environ.get(a.legacy_api_key_env, "").strip() or api_key
+    if radar_source_id and not radar_api_key:
+        raise ValueError(f"雷达来源 {radar_source_id} 缺少凭据：设置 {a.radar_api_key_env}")
+    if not radar_api_key:
+        radar_api_key = api_key or legacy_api_key
+    if not legacy_api_key:
+        raise ValueError(
+            f"缺少 device-state/zone-state 的 legacy 凭据：设置 {a.legacy_api_key_env} 或 --api-key-env {a.api_key_env}")
+    if not radar_api_key:
+        raise ValueError(f"缺少雷达凭据：设置 {a.radar_api_key_env} 或 --api-key-env {a.api_key_env}")
+    return radar_source_id, radar_api_key, legacy_api_key
 
 
 def main():
@@ -197,13 +230,20 @@ def main():
     ap.add_argument("--switch", default="127.0.0.1:15070", help="装卸区 A 限位开关")
     ap.add_argument("--position", default="127.0.0.1:15080", help="装卸区 B 位置传感器")
     ap.add_argument("--radar", default="127.0.0.1:15020", help="毫米波测距雷达")
+    ap.add_argument("--radar-source-id-env", default="SCS_RADAR_SOURCE_ID",
+                    help="雷达命名来源标识的环境变量名（X-SCS-Source-ID）；未设置则雷达维持全局 key 通道")
+    ap.add_argument("--radar-api-key-env", default="SCS_RADAR_API_KEY",
+                    help="雷达命名来源凭据的环境变量名；未设置则复用 --api-key")
+    ap.add_argument("--legacy-api-key-env", default="SCS_LEGACY_API_KEY",
+                    help="device-state/zone-state 的 legacy 全局 key 环境变量名；未设置则复用 --api-key")
     ap.add_argument("--interval", type=float, default=2.0)
     ap.add_argument("--once", action="store_true", help="只推一次，便于验证")
     a = ap.parse_args()
 
-    api_key = a.api_key or os.environ.get(a.api_key_env, "")
-    if not api_key:
-        print(f"[bridge] 缺少凭据：用 --api-key 或设置环境变量 {a.api_key_env}", file=sys.stderr)
+    try:
+        radar_source_id, radar_api_key, legacy_api_key = resolve_credentials(a)
+    except ValueError as exc:
+        print(f"[bridge] {exc}", file=sys.stderr)
         return 2
 
     ch, cp = a.crane.rsplit(":", 1)
@@ -237,17 +277,17 @@ def main():
 
         ok = True
         if readings:
-            status, text = push(a.scs, api_key, "/api/v1/ingest/radar",
-                                {"source": "device-sim/bridge", "readings": readings})
+            status, text = push(a.scs, radar_api_key, "/api/v1/ingest/radar",
+                                {"source": "device-sim/bridge", "readings": readings}, radar_source_id)
             print(f"[bridge] push {len(readings)} radar  -> HTTP {status} {text[:120]}")
             ok = ok and status == 200
         if devices:
-            status, text = push(a.scs, api_key, "/api/v1/ingest/device-state",
+            status, text = push(a.scs, legacy_api_key, "/api/v1/ingest/device-state",
                                 {"source": "device-sim/bridge", "devices": devices})
             print(f"[bridge] push {len(devices)} device(s) -> HTTP {status} {text[:120]}")
             ok = ok and status == 200
         if zones:
-            status, text = push(a.scs, api_key, "/api/v1/ingest/zone-state",
+            status, text = push(a.scs, legacy_api_key, "/api/v1/ingest/zone-state",
                                 {"source": "device-sim/bridge", "zones": zones})
             print(f"[bridge] push {len(zones)} zone(s) -> HTTP {status} {text[:120]}")
             ok = ok and status == 200

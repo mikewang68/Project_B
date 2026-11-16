@@ -83,6 +83,7 @@ public class JdbcAlertRepository implements AlertRepository {
             """;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final NamedParameterJdbcTemplate rawJdbcTemplate;
     private final ObjectMapper objectMapper;
     private final DemoMasterData masterData;
     private final Clock clock;
@@ -91,6 +92,7 @@ public class JdbcAlertRepository implements AlertRepository {
                                ObjectMapper objectMapper,
                                DemoMasterData masterData,
                                Clock clock) {
+        this.rawJdbcTemplate = jdbcTemplate;
         this.jdbcTemplate = new com.bproject.safety.config.ScsScopedJdbcTemplate(jdbcTemplate);
         this.objectMapper = objectMapper;
         this.masterData = masterData;
@@ -199,6 +201,36 @@ public class JdbcAlertRepository implements AlertRepository {
 
         loadAggregateChildren(alertMap);
         return alertMap.values().stream().findFirst().map(DemoAlert::copy);
+    }
+
+    @Override
+    public Optional<String> findOpenLegacyCollisionAlertNo(String dedupKey) {
+        if (dedupKey == null || dedupKey.isBlank()) return Optional.empty();
+        var rows = rawJdbcTemplate.query(
+                "SELECT alert_no FROM safety.safety_alert "
+                        + "WHERE dedup_key = :dedupKey AND dedup_key LIKE 'COLLISION:%' "
+                        + "AND status_code <> 'CLOSED' AND status_code <> 'CANCELLED' "
+                        + "AND (project_id IS NULL OR project_id = 'LEGACY') "
+                        + "AND (region_id IS NULL OR region_id = 'UNASSIGNED') "
+                        + "AND subsystem_code IS NULL "
+                        + "ORDER BY occurred_at DESC, id DESC LIMIT 1",
+                Map.of("dedupKey", dedupKey.trim()),
+                (rs, rowNum) -> rs.getString(1));
+        return rows.stream().findFirst();
+    }
+
+    @Override
+    public int claimLegacyCollisionAlert(String alertNo, com.bproject.iam.context.ScopeTriple scope) {
+        if (alertNo == null || alertNo.isBlank() || scope == null) return 0;
+        return rawJdbcTemplate.update(
+                "UPDATE safety.safety_alert SET project_id = :p, region_id = :r, subsystem_code = :s "
+                        + "WHERE alert_no = :alertNo AND dedup_key LIKE 'COLLISION:%' "
+                        + "AND status_code <> 'CLOSED' AND status_code <> 'CANCELLED' "
+                        + "AND (project_id IS NULL OR project_id = 'LEGACY') "
+                        + "AND (region_id IS NULL OR region_id = 'UNASSIGNED') "
+                        + "AND subsystem_code IS NULL",
+                Map.of("p", scope.projectId(), "r", scope.regionId(),
+                        "s", scope.subsystemCode(), "alertNo", alertNo));
     }
 
     @Override

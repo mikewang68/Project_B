@@ -688,11 +688,11 @@ GET `/api/v1/zones` 返回 `{"list":[...]}`，每项含 code/name/sensorType/per
 | 旧共享机器 | 不带来源头，X-API-Key；可经旧路径访问 ingest 与 AI ingest | server 的既有对象需三属性全部 null；有归属/部分归属不能靠共享 key 更新；区域/UWB guard 仍需数据库核查 |
 | 中央范围用户 | 走用户权限/范围路由策略 | 当前没有放行这些设备 ingest 或 AI 新根创建；不能用浏览器可见区域反推上报权限 |
 
-命名机器的 root 映射：person-position→PERSONNEL/personnel_code；device-state→COLLISION/device_code；zone-state→AREA/area_code；uwb-station→RUNTIME/`UWB:<stationId>`。
+命名机器的 root 映射：person-position→PERSONNEL/personnel_code；device-state→COLLISION/device_code；radar→COLLISION/`readings[].pairDevice`；zone-state→AREA/area_code；uwb-station→RUNTIME/`UWB:<stationId>`。
 
 命名批次还要求：body≤256KiB；数组 1～1000 条；ID 不重复；全部对象允许；如写 source，必须精确等于 source ID；不能在 body 递归注入 project/region/subsystem/userContext 等归属信息。失败可整批拒绝，不是逐条 ignored。带命名来源头失败不会回落共享 key。
 
-**当前不支持命名来源的路由是 radar 与 AI ingest。** 不能只给桥接新增头就声称这两条已完成中央范围接入。现有任意旧 SSO/JWT 配置下是否能调用接口还取决于 SecurityInterceptor 的实际分支，不能把 controller 的“机器接口”注释写成所有配置下的绝对限制。
+**当前不支持命名来源的路由是 AI ingest。** radar 已于 2026-11-16 接入命名来源（`/api/v1/ingest/radar`，`readings[].pairDevice` 对应 COLLISION；可按距离阈值派生/升级 ALERT，边界见 `SCS/docs/scoped-realtime-machine-contract.md`）。不能只给桥接新增头就声称 AI ingest 已完成中央范围接入。现有任意旧 SSO/JWT 配置下是否能调用接口还取决于 SecurityInterceptor 的实际分支，不能把 controller 的“机器接口”注释写成所有配置下的绝对限制。
 
 启用中央归属前按 v21 README 执行/核实 001→002 迁移，再按权威依据登记已有业务根对象与 UWB 运行归属、机器来源。迁移不会自动登记来源或给对象/账号授权；未知归属不能按演示名称批量推定。
 
@@ -874,7 +874,7 @@ AI ingest 建立 PENDING/待复核事件并发布 ai.new，**不会仅因 confid
 | UWB 基站独立性（本地已修） | station调度在人员早退分支之前；仅station流、长人员周期、dry-run均覆盖；HTTP串行，仍非严格实时定时器 |
 | UWB 身份映射 | 默认routes八人P-1001等与后端演示七人P-ZHAO/P-002等不同；不配置映射/权威身份时会忽略，HTTP200不代表位置已更新 |
 | 区域故障清空（本地已修） | 显式null清空旧信号和距离，缺省保留，false/0有效；A/B未知显示一致。online沿用原含义，区域停报过期未增加 |
-| 命名来源适配 | 两份桥接均只带共享key；radar与AI ingest更不在命名来源路由集合，不能认定已完成中央归属接入 |
+| 命名来源适配 | UWB/车辆桥接已支持命名来源；radar 桥已支持 `SCS_RADAR_SOURCE_ID`+`SCS_RADAR_API_KEY`（device-state/zone-state 用独立的 `SCS_LEGACY_API_KEY`），AI ingest 仍不在命名来源路由集合，不能认定其已完成中央归属接入 |
 | 雷达失效处理 | 距离/告警先处理、health后处理；fault=0m/DOWN可能先建告警，读取失败又只跳过，没有完整停报过期策略 |
 | AI盒转换 | 原始entry/objectConfidence/UUID与SCS业务DTO/百分比/幂等头不同，缺专用转换与截图可达性处理 |
 | edge-ai 图片检测 | PERSON框产score不产confidence，图片入口却读confidence；随后还把百分比坐标交给需要像素的入侵检测，可能报错/判定失真 |

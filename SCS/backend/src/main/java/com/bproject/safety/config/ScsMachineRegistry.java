@@ -19,7 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Component
 public class ScsMachineRegistry {
   private static final String ATTRIBUTE=ScsMachineRegistry.class.getName();
-  public static final Set<String> ROUTES=Set.of("/api/v1/ingest/person-position","/api/v1/ingest/device-state","/api/v1/ingest/zone-state","/api/v1/ingest/uwb-station","/api/v1/ai-events/ingest");
+  public static final Set<String> ROUTES=Set.of("/api/v1/ingest/person-position","/api/v1/ingest/device-state","/api/v1/ingest/zone-state","/api/v1/ingest/uwb-station","/api/v1/ingest/radar","/api/v1/ai-events/ingest");
   private final ObjectMapper mapper;private final String file;
   public ScsMachineRegistry(ObjectMapper mapper,@Value("${app.security.machine-bindings-file:}")String file){this.mapper=mapper;this.file=file;}
   public record Binding(String id,ScopeTriple scope,Set<String> routes,Map<ScsCentralScope.Root,Set<String>> objects,String revision,ScsMachineRegistry registry){
@@ -95,7 +95,13 @@ public class ScsMachineRegistry {
     throw denied();
   }
   public static String sqlObjectFilter(ScsCentralScope.Root root,String alias){
-    var binding=current();if(binding==null)return "";binding.revalidate();var keys=binding.objects().getOrDefault(root,Set.of());
+    var binding=current();if(binding==null)return "";binding.revalidate();
+    // 机器来源派生告警：只放行本来源设备产生的防碰撞告警（dedup 前缀固定），
+    // 仍叠加作用域元组过滤；其它根/其它告警仍按绑定对象白名单。
+    var derived=ScsCentralScope.derivedMachineAuth();
+    if(root==ScsCentralScope.Root.ALERT&&derived!=null&&derived.writeRoots().contains(ScsCentralScope.Root.ALERT))
+      return " AND "+alias+"dedup_key LIKE 'COLLISION:%' ";
+    var keys=binding.objects().getOrDefault(root,Set.of());
     if(keys.isEmpty())return " AND 1=0 ";
     return " AND "+alias+root.key+" IN ("+keys.stream().sorted().map(s->"'"+s+"'").collect(java.util.stream.Collectors.joining(","))+") ";
   }

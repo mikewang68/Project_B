@@ -79,6 +79,7 @@ public class JdbcCollisionRepository implements CollisionRepository {
             """;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final NamedParameterJdbcTemplate rawJdbcTemplate;
     private final DemoMasterData masterData;
     private final Clock clock;
     private final RowMapper<DemoCollisionDevice> rowMapper;
@@ -86,6 +87,7 @@ public class JdbcCollisionRepository implements CollisionRepository {
     public JdbcCollisionRepository(NamedParameterJdbcTemplate jdbcTemplate,
                                    DemoMasterData masterData,
                                    Clock clock) {
+        this.rawJdbcTemplate = jdbcTemplate;
         this.jdbcTemplate = new com.bproject.safety.config.ScsScopedJdbcTemplate(jdbcTemplate);
         this.masterData = masterData;
         this.clock = clock;
@@ -100,11 +102,34 @@ public class JdbcCollisionRepository implements CollisionRepository {
 
     @Override
     public Optional<DemoCollisionDevice> findById(String id) {
+        return queryByCode(jdbcTemplate, id);
+    }
+
+    @Override
+    public Optional<DemoCollisionDevice> findByIdUnscoped(String id, com.bproject.iam.context.ScopeTriple scope) {
+        if (scope == null) return Optional.empty();
+        if (id == null || id.isBlank()) return Optional.empty();
+        String sql = SELECT_BY_CODE
+                + " AND (project_id IS NULL OR (project_id = :projectId AND region_id = :regionId AND subsystem_code = :subsystemCode))";
+        java.util.Map<String, Object> params = java.util.Map.of(
+                "deviceCode", id.trim(),
+                "projectId", scope.projectId(),
+                "regionId", scope.regionId(),
+                "subsystemCode", scope.subsystemCode());
+        try {
+            DemoCollisionDevice device = rawJdbcTemplate.queryForObject(sql, params, rowMapper);
+            return Optional.ofNullable(device).map(DemoCollisionDevice::copy);
+        } catch (EmptyResultDataAccessException ex) {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<DemoCollisionDevice> queryByCode(NamedParameterJdbcTemplate template, String id) {
         if (id == null || id.isBlank()) {
             return Optional.empty();
         }
         try {
-            DemoCollisionDevice device = jdbcTemplate.queryForObject(
+            DemoCollisionDevice device = template.queryForObject(
                     SELECT_BY_CODE,
                     Map.of("deviceCode", id.trim()),
                     rowMapper

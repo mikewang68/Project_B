@@ -44,6 +44,7 @@ public class ScsMachineBodyAdvice extends RequestBodyAdviceAdapter {
     switch(path){
       case "/api/v1/ingest/person-position"->{array="positions";key="id";root=ScsCentralScope.Root.PERSONNEL;}
       case "/api/v1/ingest/device-state"->{array="devices";key="code";root=ScsCentralScope.Root.COLLISION;}
+      case "/api/v1/ingest/radar"->{array="readings";key="pairDevice";root=ScsCentralScope.Root.COLLISION;}
       case "/api/v1/ingest/zone-state"->{array="zones";key="code";root=ScsCentralScope.Root.AREA;}
       case "/api/v1/ingest/uwb-station"->{array="stations";key="stationId";prefix="UWB:";root=ScsCentralScope.Root.RUNTIME;}
       default->throw ScsMachineRegistry.denied();
