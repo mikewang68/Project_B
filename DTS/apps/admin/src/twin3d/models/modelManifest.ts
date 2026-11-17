@@ -14,7 +14,7 @@ export interface ModelDescriptor {
 }
 
 const ROOT = MODEL_ROOT
-const ASSET_VERSION = '?layout=20261116-dalian-v4b'
+const ASSET_VERSION = '?layout=20261117-dalian-v5-hd'
 const glb = (name: string) => `${ROOT}${name}.glb${ASSET_VERSION}`
 
 export const MODEL_MANIFEST: ModelDescriptor[] = [

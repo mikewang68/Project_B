@@ -40,6 +40,9 @@ function orientation(
   )
 }
 
+const DEFAULT_IBL_FACTOR = new Cesium.Cartesian2(1.65, 1.38)
+const DEFAULT_MODEL_LIGHT_COLOR = new Cesium.Color(2.15, 2.20, 2.28, 1.0)
+
 function modelEntity(
   dataSource: Cesium.CustomDataSource,
   id: string,
@@ -59,6 +62,8 @@ function modelEntity(
       scale: placement.scale ?? 1,
       minimumPixelSize: descriptor.minimumPixelSize ?? 0,
       maximumScale: descriptor.maximumScale ?? 1,
+      imageBasedLightingFactor: DEFAULT_IBL_FACTOR,
+      lightColor: DEFAULT_MODEL_LIGHT_COLOR,
     },
     properties: {
       parent: parentId ?? placement.id,

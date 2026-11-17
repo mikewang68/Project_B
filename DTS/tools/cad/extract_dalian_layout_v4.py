@@ -184,7 +184,7 @@ def extract_rebar_bays(msp) -> list[dict]:
 
 
 def extract_geojson(msp) -> dict:
-    """Export clean yards.geojson strictly for the station plan region in local coordinates."""
+    """Export fine-grained yards.geojson strictly for the station plan region in local coordinates."""
     features: list[dict] = []
     Y_PLAN_MIN = 3256410.0
 
@@ -204,7 +204,7 @@ def extract_geojson(msp) -> dict:
             total += math.hypot(pts[j][0] - pts[i][0], pts[j][1] - pts[i][1])
 
         coords = [to_local(p[0], p[1]) for p in pts]
-        if closed and len(pts) >= 4 and total >= 35.0:
+        if closed and len(pts) >= 4 and total >= 16.0:
             if coords[0] != coords[-1]:
                 coords.append(coords[0])
             features.append({
@@ -212,7 +212,7 @@ def extract_geojson(msp) -> dict:
                 "properties": {"category": "area", "layer": e.dxf.layer, "perimeter_m": round(total, 1)},
                 "geometry": {"type": "Polygon", "coordinates": [coords]},
             })
-        elif not closed and total >= 35.0:
+        elif not closed and total >= 12.0:
             features.append({
                 "type": "Feature",
                 "properties": {"category": "track", "layer": e.dxf.layer, "length_m": round(total, 1)},
@@ -224,12 +224,27 @@ def extract_geojson(msp) -> dict:
         if not all_in_plan([(s[0], s[1]), (en[0], en[1])]):
             continue
         length = math.hypot(en[0] - s[0], en[1] - s[1])
-        if length >= 45.0:
+        if length >= 15.0:
             features.append({
                 "type": "Feature",
                 "properties": {"category": "track", "layer": e.dxf.layer, "length_m": round(length, 1)},
                 "geometry": {"type": "LineString", "coordinates": [to_local(s[0], s[1]), to_local(en[0], en[1])]},
             })
+
+    for e in msp.query("CIRCLE"):
+        c = e.dxf.center
+        r = float(e.dxf.radius)
+        if not all_in_plan([(c[0], c[1])]) or not (2.0 <= r <= 8.0):
+            continue
+        ring = [
+            to_local(c[0] + r * math.cos(2.0 * math.pi * k / 24), c[1] + r * math.sin(2.0 * math.pi * k / 24))
+            for k in range(25)
+        ]
+        features.append({
+            "type": "Feature",
+            "properties": {"category": "silo_ring", "layer": e.dxf.layer, "radius_m": round(r, 2)},
+            "geometry": {"type": "LineString", "coordinates": ring},
+        })
 
     return {"type": "FeatureCollection", "features": features}
 
