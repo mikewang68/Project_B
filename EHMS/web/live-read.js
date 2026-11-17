@@ -3,7 +3,7 @@
   let pending=false,stopped=false,timer,lastSuccess='';
   const auth=window.EhmAuth;
   const allowed=()=>!!auth?.user&&window.EhmCentralPolicy?.enabled(auth);
-  const editing=()=>!!document.querySelector('#modal.open, #drawer.open')
+  const editing=()=>!!document.querySelector('#modal.open, #drawer.open, #contextDrawer.open')
     || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||'')
     || document.activeElement?.isContentEditable===true;
   const identity=()=>JSON.stringify([auth?.user,auth?.authorizationVersion,auth?.projectId]);

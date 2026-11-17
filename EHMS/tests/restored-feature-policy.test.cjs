@@ -21,7 +21,7 @@ test('central refresh is observation only and does not change the existing simul
  const source=fs.readFileSync(require.resolve('../web/central-scope.js'),'utf8');
  assert.match(source,/setInterval\(pulse,5000\)/);assert.match(source,/system\/activity/);
  assert.doesNotMatch(source,/system\/simulation\/(start|install|tick|settings)/);
- assert.match(source,/document\.querySelector\('#modal.open, #drawer.open'\)/);
+ assert.match(source,/document\.querySelector\('#modal.open, #drawer.open, #contextDrawer.open'\)/);
  assert.match(source,/eventChart\(overview\)/);assert.match(source,/distributionRows\(overview\.healthDistribution\)/);
 });
 

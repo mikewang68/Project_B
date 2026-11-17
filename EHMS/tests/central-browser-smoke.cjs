@@ -129,15 +129,25 @@ test('central UI restores charts and real feature renderers without probing glob
   rejectOrder=false;await page.locator('#modalConfirm').click();await page.waitForSelector('#modal[aria-hidden="true"]',{state:'attached'});
   await page.waitForFunction(()=>document.getElementById('pageView').textContent.includes('WO-UI-TEST'));
   assert.equal(savedOrders.length,1);assert.equal(orderPosts,2);
+  // Actual next-step commands collect reasons and preserve phase-specific permissions.
+  for(const [expected,label] of [['待执行','审批通过'],['执行中','开始维修']]){
+    await page.locator('[data-action="advanceWork"]').click();await page.locator('#mwTransitionReason').fill('合成测试：'+label+'的实际依据');
+    await page.locator('#modalConfirm').click();await page.waitForSelector('#modal[aria-hidden="true"]',{state:'attached'});
+    assert.equal(savedOrders[0].status,expected);
+  }
+  // Pagination retains all 35 loaded orders, with direct repair access on every page.
+  const extras=Array.from({length:34},(_,i)=>({...savedOrders[0],orderNo:'PAGE-'+i,status:'待审批'}));savedOrders.push(...extras);
+  await page.evaluate(async()=>{await loadBackendData();setPage('workorders');});await page.waitForFunction(()=>document.querySelectorAll('.maintenance-workspace tbody tr').length===20);assert.equal(await page.locator('tbody tr').count(),20);
+  await page.locator('#mwNext').click();assert.equal(await page.locator('tbody tr').count(),15);await page.locator('#mwPrevious').click();
+  savedOrders.splice(1);await page.evaluate(async()=>{await loadBackendData();setPage('workorders');});
   // Workbook repair UI: real forms, no prefilled fake observations, retained inputs on rejection.
-  savedOrders[0].status='执行中';await page.evaluate(async()=>{await loadBackendData();setPage('workorders');});
   await page.locator('[data-action="openOrderRepair"]').click();await page.waitForSelector('[data-action="repairPlan"]');
   await page.locator('[data-action="repairPlan"]').click();await page.locator('[name="rwPlan"]').check();await page.locator('#modalConfirm').click();
   await page.waitForSelector('#modal[aria-hidden="true"]',{state:'attached'});assert.equal(repairRecord.requiredPoints.length,1);
   await page.locator('[data-action="repairExecution"]').click();assert.equal(await page.locator('#rwAction').inputValue(),'');
   await page.locator('#rwAction').fill('合成测试：核验安装');await page.locator('#rwResult').fill('合成测试：处置完成');await page.locator('#rwSafety').fill('合成测试：核对许可');await page.locator('#rwParts').fill('合成测试：未用备件');await page.locator('#modalConfirm').click();
   await page.waitForSelector('#modal[aria-hidden="true"]',{state:'attached'});assert.equal(repairRecord.executions.length,1);
-  savedOrders[0].status='待复测';await page.evaluate(async()=>{await loadBackendData();});
+  await page.locator('#drawerClose').click();await page.locator('[data-action="advanceWork"]').click();await page.locator('#mwTransitionReason').fill('合成测试：实际维修已记录，申请复测');await page.locator('#modalConfirm').click();await page.waitForSelector('#modal[aria-hidden="true"]',{state:'attached'});assert.equal(savedOrders[0].status,'待复测');await page.locator('[data-action="openOrderRepair"]').click();
   await page.locator('[data-action="repairRetest"]').click();assert.equal(await page.locator('#rwBefore').inputValue(),'');assert.equal(await page.locator('#rwAfter').inputValue(),'');
   await page.locator('#rwBefore').fill('8.5');await page.locator('#rwAfter').fill('3.5');await page.locator('#rwCriterion').fill('合成测试：按已确认工况与标准');await page.selectOption('#rwPass','true');await page.locator('#modalConfirm').click();
   await page.waitForSelector('.ux-submit-error');assert.equal(await page.locator('#rwBefore').inputValue(),'8.5');assert.equal(repairRecord.retests.length,0);
@@ -152,6 +162,10 @@ test('central UI restores charts and real feature renderers without probing glob
   assert.match(await page.locator('#dataScopeContext').innerText(),/全局或多范围查询/);
   const refused=await page.evaluate(async()=>{try{await apiRequest('/work-orders',{method:'POST',body:'{}'});return false;}catch(e){return e.code==='SINGLE_SCOPE_REQUIRED';}});
   assert.equal(refused,true);assert.equal(orderPosts,2);
+  await page.evaluate(()=>setPage('workorders'));await page.waitForSelector('.maintenance-scope.blocked');
+  assert.match(await page.locator('.maintenance-scope').innerText(),/单一|一个完整/);
+  await page.locator('#mwAcceptanceGuide').click();assert.equal(await page.locator('.acceptance-case').count(),8);assert.equal(await page.locator('.acceptance-case dt').count(),72);
+  await page.locator('#drawerClose').click();
   await page.screenshot({path:path.join(screen,'workspace-scope-readonly.png'),fullPage:true});
   currentScope={mode:'SCOPED',source:'IAM_VERIFIED_CONTEXT',active:[{projectId:'PROJECT_B',regionId:'EHMS_DEMO',subsystemCode:'EHMS'}]};
   await page.evaluate(async()=>{await EhmAuth.refresh();setPage('fleet');});await page.waitForSelector('#deviceKeyword');
@@ -176,7 +190,15 @@ test('central UI restores charts and real feature renderers without probing glob
   await page.waitForTimeout(250);
   await page.evaluate(()=>setPage('ai-assistant'));
   await page.screenshot({path:path.join(screen,'scoped-assistant.png'),fullPage:true});
-  await page.evaluate(()=>aiClose());
+  for(const width of [1440,1366]){
+    await page.setViewportSize({width,height:900});
+    for(let i=0;i<3;i++){
+      await page.evaluate(()=>{aiOpen();document.getElementById('assistantPanel').classList.add('expanded');});
+      await page.evaluate(()=>aiClose());
+      assert.equal(await page.locator('#assistantPanel').isVisible(),false);
+      assert.equal(await page.locator('#assistantPanel').evaluate(e=>e.hidden&&e.inert&&e.getBoundingClientRect().width===0),true);
+    }
+  }
   await page.evaluate(()=>setPage('dashboard'));
   await page.waitForFunction(()=>!!state.visual.overview);
   const beforePulse=summaryReads;await page.waitForTimeout(5200);assert.ok(summaryReads>beforePulse,'authorized data refreshes without a write command');

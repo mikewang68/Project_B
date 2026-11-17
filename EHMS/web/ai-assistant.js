@@ -19,8 +19,8 @@ function aiControls(ready){
   document.getElementById('assistantTest').disabled=!aiAllowed()||EHM_AI.busy;
   document.querySelectorAll('.assistant-prompts button').forEach(b=>b.disabled=!ready||EHM_AI.busy);
 }
-function aiOpen(){if(!aiAllowed()){aiBlocked();toast('当前账号未获AI查看授权，请点击左侧AI菜单查看诊断。');return;}aiPanel.classList.add('open');aiPanel.setAttribute('aria-hidden','false');aiSyncDevices();void refreshAssistantStatus();if(!document.getElementById('assistantInput').disabled)document.getElementById('assistantInput').focus();}
-function aiClose(){if(aiPanel.contains?.(document.activeElement)){document.activeElement?.blur?.();if(!document.getElementById('assistantEntry').hidden)document.getElementById('assistantEntry').focus();}aiPanel.classList.remove('open');aiPanel.setAttribute('aria-hidden','true');}
+function aiOpen(){if(!aiAllowed()){aiBlocked();toast('当前账号未获AI查看授权，请点击左侧AI菜单查看诊断。');return;}aiPanel.hidden=false;aiPanel.inert=false;aiPanel.classList.add('open');aiPanel.setAttribute('aria-hidden','false');aiSyncDevices();void refreshAssistantStatus();if(!document.getElementById('assistantInput').disabled)document.getElementById('assistantInput').focus();}
+function aiClose(){if(aiPanel.contains?.(document.activeElement)){document.activeElement?.blur?.();if(!document.getElementById('assistantEntry').hidden)document.getElementById('assistantEntry').focus();}aiPanel.classList.remove('open');aiPanel.setAttribute('aria-hidden','true');aiPanel.inert=true;aiPanel.hidden=true;}
 function aiSyncDevices(){
   const select=document.getElementById('assistantDevice'),previous=select.value;
   select.innerHTML='<option value="">全场设备</option>'+EQUIPMENT.map(d=>`<option value="${esc(d.code)}">${esc(d.code)} · ${esc(d.name)}</option>`).join('');

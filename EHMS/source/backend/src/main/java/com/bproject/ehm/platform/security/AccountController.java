@@ -36,8 +36,7 @@ public class AccountController {
                 result.put("menuOperations",context.menuOperations());
                 result.put("centralAdminLevel",context.adminLevel());
                 result.put("authorizationVersion",context.authorizationVersion());
-                result.put("dataScope",Map.of("mode",context.scopeMode().name(),"active",context.activeScope(),
-                    "allowed",context.allowedScopes(),"source","IAM_VERIFIED_CONTEXT"));
+                result.put("dataScope",scopeView(context,Objects.toString(request.getAttribute("EHM_PROJECT_ID"),"")));
             }
             return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);
         }
@@ -47,6 +46,15 @@ public class AccountController {
         if(mode.equals("iam")){var service=ssoSessions.getIfAvailable();if(service==null)throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);service.logout(request.getSession(false));return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();}
         local().logout((String)request.getAttribute(LocalSessionFilter.SESSION_TOKEN),request);
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).header(HttpHeaders.SET_COOKIE,sessionCookie("",0)).build();
+    }
+    /** Read-only projection of the verified central context; never selects or grants a scope. */
+    static Map<String,Object> scopeView(com.bproject.iam.context.UserContext context,String selectedProject){
+        boolean single=context.scopeMode()==com.bproject.iam.context.ScopeSql.Mode.SCOPED&&context.activeScope().size()==1;
+        boolean matching=single&&context.activeScope().get(0).projectId().equals(selectedProject)
+            &&context.activeScope().get(0).subsystemCode().equals("EHMS");
+        String reason=context.readOnly()?"READ_ONLY":!single?"SINGLE_SCOPE_REQUIRED":!matching?"SCOPE_MISMATCH":"";
+        return Map.of("mode",context.scopeMode().name(),"active",context.activeScope(),"allowed",context.allowedScopes(),
+            "source","IAM_VERIFIED_CONTEXT","writeAllowed",reason.isEmpty(),"writeBlockReason",reason);
     }
     public record UserCreate(String username,String displayName,String password,String role){}
     public record UserUpdate(String displayName,String role,Boolean enabled){}

@@ -295,7 +295,7 @@
   });
   async function pulse(){
     if(!active()||!auth.user||refreshing||flight||document.hidden||!['dashboard','area-map','kpi','reliability','oee','failure-report','maintenance-cost','coverage-report','resource-forecast','energy-health','period-report','sample-workbench'].includes(state.page)||!policy.page(auth,state.page))return;
-    if(document.querySelector('#modal.open, #drawer.open')||/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||''))return;
+    if(document.querySelector('#modal.open, #drawer.open, #contextDrawer.open')||/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||''))return;
     refreshing=true;const identity=generation;
     try{const value=await apiRequest('/system/activity');if(identity!==generation)return;
       activity=value;if(value.lastChangedAt!==lastPulse){lastPulse=value.lastChangedAt;await loadBackendData();}

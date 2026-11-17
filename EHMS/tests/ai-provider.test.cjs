@@ -129,3 +129,10 @@ test('model API rejection displays a bounded error instead of an endless loading
  assert.match(el('assistantStatusText').textContent,/授权校验失败/);assert.match(el('assistantModel').innerHTML,/未获授权/);
  assert.equal(el('assistantSend').disabled,true);
 });
+
+ test('expanded assistant close hides the whole panel and reopening restores interaction',async()=>{
+  const {c,el}=context();await c.refreshAssistantStatus();
+  c.aiOpen();assert.equal(el('assistantPanel').hidden,false);assert.equal(el('assistantPanel').inert,false);
+  c.aiClose();assert.equal(el('assistantPanel').hidden,true);assert.equal(el('assistantPanel').inert,true);
+  c.aiClose();c.aiOpen();assert.equal(el('assistantPanel').hidden,false);assert.equal(el('assistantPanel').inert,false);
+ });
