@@ -204,6 +204,17 @@ public class JdbcAlertRepository implements AlertRepository {
     }
 
     @Override
+    public int stampScope(String alertNo, com.bproject.iam.context.ScopeTriple scope) {
+        if (alertNo == null || alertNo.isBlank() || scope == null) return 0;
+        return rawJdbcTemplate.update(
+                "UPDATE safety.safety_alert SET project_id = :p, region_id = :r, subsystem_code = :s "
+                        + "WHERE alert_no = :alertNo AND project_id IS NULL AND region_id IS NULL "
+                        + "AND subsystem_code IS NULL",
+                Map.of("p", scope.projectId(), "r", scope.regionId(),
+                        "s", scope.subsystemCode(), "alertNo", alertNo));
+    }
+
+    @Override
     public Optional<String> findOpenLegacyCollisionAlertNo(String dedupKey) {
         if (dedupKey == null || dedupKey.isBlank()) return Optional.empty();
         var rows = rawJdbcTemplate.query(

@@ -69,6 +69,14 @@ class ScsScopedSqlTest {
     bind(context(false,ScopeSql.Mode.DENY,"L4_OPERATOR"));assertEquals(0,count("SELECT count(*) FROM safety.safety_alert"));
     bind(null);assertEquals(4,count("SELECT count(*) FROM safety.safety_alert"));
   }
+  @Test void l1SuperScopedWritesUseGlobalAuthorityWhileReadsStayScoped(){
+    bind(context(false,ScopeSql.Mode.SCOPED,"L1_SUPER"));
+    String sql="UPDATE safety.safety_alert SET title=:v WHERE id=2";
+    assertEquals(sql,ScsScopedSql.apply(sql,ScsCentralScope.current()));
+    assertEquals(1,scoped.update(sql,Map.of("v","l1")));
+    assertEquals("l1",raw.queryForObject("SELECT title FROM safety.safety_alert WHERE id=2",Map.of(),String.class));
+    assertEquals(1,count("SELECT count(*) FROM safety.safety_alert"));
+  }
   @Test void globalModelCatalogIsReadableButConfigurationRequiresL1(){
     assertEquals("SELECT * FROM safety.ai_model",ScsScopedSql.apply("SELECT * FROM safety.ai_model",ScsCentralScope.current()));
     assertThrows(org.springframework.web.server.ResponseStatusException.class,()->ScsScopedSql.apply("UPDATE safety.ai_model SET is_selected=true WHERE model_code='m'",ScsCentralScope.current()));

@@ -61,6 +61,20 @@ public class DemoAiEvent {
     public OffsetDateTime occurredAt;
     public OffsetDateTime updatedAt;
 
+    /** 事件所在可信范围（来自 ai_event 表；L1 用户据此给派生 Alert 补范围戳）。 */
+    public String projectId;
+    public String regionId;
+    public String subsystemCode;
+
+    public com.bproject.iam.context.ScopeTriple scope() {
+        if (projectId == null || projectId.isBlank()
+                || regionId == null || regionId.isBlank()
+                || subsystemCode == null || subsystemCode.isBlank()) {
+            return null;
+        }
+        return new com.bproject.iam.context.ScopeTriple(projectId, regionId, subsystemCode);
+    }
+
     /** 前端卡片 Fade 动画标记（不参与业务）。 */
     @JsonProperty("fresh")
     public Boolean fresh;
@@ -111,6 +125,9 @@ public class DemoAiEvent {
         c.snapshotUrl = snapshotUrl;
         c.occurredAt = occurredAt;
         c.updatedAt = updatedAt;
+        c.projectId = projectId;
+        c.regionId = regionId;
+        c.subsystemCode = subsystemCode;
         c.fresh = fresh;
         return c;
     }

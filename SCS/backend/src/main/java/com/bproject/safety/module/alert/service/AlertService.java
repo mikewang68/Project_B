@@ -471,11 +471,19 @@ public class AlertService {
      * 入参 risk 为风险机器 code（{@link RiskLevels}），provenance 三字段记录判定来源。
      */
     public DemoAlert createRiskAlert(NewRiskAlert draft) {
-        String dedupKey = draft.dedupKey();
-        return keyedLock.execute(dedupKey, () -> executeInTransaction(() -> doCreateRiskAlert(draft)));
+        return createRiskAlert(draft, null);
     }
 
-    private DemoAlert doCreateRiskAlert(NewRiskAlert draft) {
+    /**
+     * 带范围戳的建单：用于 L1_SUPER scoped 会话创建的派生告警（如 AI 确认）。
+     * 通用 L1 写仍不盖全局元组；只有调用方明确给出事件所属 tuple 时才补戳。
+     */
+    public DemoAlert createRiskAlert(NewRiskAlert draft, ScopeTriple scope) {
+        String dedupKey = draft.dedupKey();
+        return keyedLock.execute(dedupKey, () -> executeInTransaction(() -> doCreateRiskAlert(draft, scope)));
+    }
+
+    private DemoAlert doCreateRiskAlert(NewRiskAlert draft, ScopeTriple scope) {
         if (draft.dedupKey() != null && !draft.dedupKey().isBlank()) {
             DemoAlert open = findOpenByDedupKey(draft.dedupKey());
             if (open != null) {
@@ -517,6 +525,10 @@ public class AlertService {
                 AlertTimelineEventTypes.NOTE, 2));
         a.timeline = nodes;
         repository.save(a);
+        if (scope != null) {
+            // 必须在 get(id) 之前补戳：门户 SCOPED 会话的 scoped 查询只认 tuple 匹配行。
+            repository.stampScope(a.id, scope);
+        }
         notifier.changed("new", a);
         log.info("感知风险生成告警 id={} source={} risk={} dedup={}", id, a.source, riskCode, a.dedupKey);
         return get(id);
@@ -574,6 +586,11 @@ public class AlertService {
 
     /** 由已确认违规的 AI 事件创建一条新的安全告警（状态：待确认，来源：AI违规）。 */
     public DemoAlert createFromAi(NewAlertFromAi draft) {
+        return createFromAi(draft, null);
+    }
+
+    /** AI 确认建单；scope 来自 AI 事件的权威 tuple，用于让门户 scoped 会话可见。 */
+    public DemoAlert createFromAi(NewAlertFromAi draft, ScopeTriple scope) {
         String riskCode = RiskLevels.normalize(draft.risk());
         return createRiskAlert(new NewRiskAlert(
                 "AI违规", null, draft.title(), draft.eventType(), riskCode, draft.area(),
@@ -581,7 +598,7 @@ public class AlertService {
                 DecisionSources.AI_MODEL, draft.modelCode(), draft.modelVersion(),
                 draft.durationSec(), draft.evidence(),
                 "AI 识别到" + draft.eventType(),
-                "AI 复核确认为真实违规（来源事件 " + draft.aiEventId() + "），生成安全告警"));
+                "AI 复核确认为真实违规（来源事件 " + draft.aiEventId() + "），生成安全告警"), scope);
     }
 
     /** 边缘断网事件补传建单（不新建 EdgeAlert，仍是同一条 Alert 主链）。 */

@@ -63,7 +63,10 @@ public final class ScsScopedSql {
         throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"全局模型配置仅允许平台管理员修改");
       return sql;
     }
-    if(context!=null&&!context.readOnly()&&context.adminLevel().equals("L1_SUPER")&&context.scopeMode()==ScopeSql.Mode.GLOBAL)return sql;
+    // L1_SUPER 平台总管理员：全局权威写，与 ScsCentralScope.beforeWrite/writeScope 的豁免一致。
+    // 门户 SCOPED 会话（activeScope 可能为 0/多个）也必须放行，否则 AI 确认在
+    // claimLinkedAlert / 事件回写等后续 UPDATE 上会 403（2026-11-17 实测）。
+    if(context!=null&&!context.readOnly()&&context.adminLevel().equals("L1_SUPER")&&context.scopeMode()!=ScopeSql.Mode.DENY)return sql;
     if(context!=null&&(context.readOnly()||context.scopeMode()!=ScopeSql.Mode.SCOPED||context.activeScope().size()!=1))
       throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"写入须选择唯一授权范围");
     // Existing UPDATE predicates are grouped, then constrained in the same SQL

@@ -69,6 +69,7 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
                    e.review_time, e.false_reason, e.assignee_user_code, e.assignee_name_snapshot,
                    e.assignment_priority, e.process_status_code, e.assignment_note, e.linked_alert_id,
                    e.occurred_at, e.updated_at, e.created_at,
+                   e.project_id, e.region_id, e.subsystem_code,
                    sa.alert_no AS linked_alert_no
             FROM safety.ai_event e
             LEFT JOIN safety.safety_alert sa ON e.linked_alert_id = sa.id
@@ -601,6 +602,9 @@ public class JdbcAiEventRepository implements AiEventRepository, DemoClearableSt
         e.riskCode = rs.getString("risk_code");
         e.health = rs.getString("camera_health_code");
         e.scene = rs.getString("scene_type");
+        e.projectId = rs.getString("project_id");
+        e.regionId = rs.getString("region_id");
+        e.subsystemCode = rs.getString("subsystem_code");
 
         String boxesJson = rs.getString("detection_boxes");
         if (boxesJson != null && !boxesJson.isBlank()) {

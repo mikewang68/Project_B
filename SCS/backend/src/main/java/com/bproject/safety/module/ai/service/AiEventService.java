@@ -187,7 +187,8 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
                         var matched = ruleRuntime == null
                                 ? java.util.Optional.<com.bproject.safety.module.rule.service.RuleRuntimeService.MatchedRule>empty()
                                 : ruleRuntime.matchAi(event);
-                        DemoAlert alert = alertService.createFromAi(toAlertDraft(event, matched.orElse(null)));
+                        DemoAlert alert = alertService.createFromAi(
+                                toAlertDraft(event, matched.orElse(null)), event.scope());
                         if (repository.claimLinkedAlert(id, alert.id)) {
                             event.linkedAlertId = alert.id;
                             appendTimeline(event, "已生成安全告警 " + alert.id + "，进入统一处置主链", "done",
@@ -263,7 +264,7 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
 
                     String alertId = event.linkedAlertId;
                     if (alertId == null) {
-                        DemoAlert created = alertService.createFromAi(toAlertDraft(event));
+                        DemoAlert created = alertService.createFromAi(toAlertDraft(event), event.scope());
                         alertId = created.id;
                         event.linkedAlertId = alertId;
                     }

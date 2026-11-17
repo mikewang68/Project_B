@@ -49,6 +49,14 @@ public interface AlertRepository {
         return 0;
     }
 
+    /**
+     * 给新建告警补范围戳（仅当三列仍全 NULL）。用于 L1_SUPER scoped 会话创建的派生告警：
+     * 保持“L1 写不盖全局元组”的通用语义，但让门户 scoped 会话能看到自己刚建的行。
+     */
+    default int stampScope(String alertNo, com.bproject.iam.context.ScopeTriple scope) {
+        return 0;
+    }
+
     /** 新增或整体更新（聚合快照，由实现负责 copy-on-write）。 */
     DemoAlert save(DemoAlert alert);
 
