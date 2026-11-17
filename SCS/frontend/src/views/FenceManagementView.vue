@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus/es'
+import { ElMessage, ElMessageBox } from 'element-plus/es'
 import { Delete, RefreshRight } from '@element-plus/icons-vue'
 import SafetyMapCanvas from '@/components/shared/SafetyMapCanvas.vue'
 import FenceList from '@/components/fence/FenceList.vue'
@@ -173,6 +173,26 @@ async function retry(): Promise<void> {
     ElMessage.error(err instanceof Error ? err.message : '重新下发失败')
   }
 }
+async function disableFence(): Promise<void> {
+  const fence = selectedFence.value
+  if (!fence) return
+  try {
+    await ElMessageBox.confirm(
+      `停用后围栏「${fence.name}」将从边缘节点撤下，并停止参与人员闯入告警；历史版本保留。`,
+      '停用围栏',
+      { type: 'warning', confirmButtonText: '确认停用', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    upsert(await fenceApi.disable(fence.id))
+    ElMessage.success(`围栏 ${fence.id} 已停用`)
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '停用失败')
+  }
+}
+
 async function published(): Promise<void> {
   const fence = selectedFence.value; if (!fence) return
   try {
@@ -234,6 +254,7 @@ onBeforeUnmount(() => disposeLive?.())
         @save="ensureDraft('草稿')"
         @review="editing ? ensureDraft('待评审') : submitSelectedReview()"
         @publish="publishOpen = true"
+        @disable="disableFence"
         @fail="simulateFail"
         @retry="retry"
       />

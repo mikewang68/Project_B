@@ -70,6 +70,30 @@ describe('central actions on existing rule and fence details', () => {
     wrapper.unmount()
   })
 
+  it('exposes fence disable for an effective fence and gates it by EDIT', async () => {
+    const { auth, global } = setup(['VIEW', 'EDIT'])
+    const draft: FenceDraft = { name: '', kind: '危险区域', riskLevel: '一般',
+      teams: '', startsAt: '', endsAt: '' }
+    const fence: FenceRecord = { id: 'FENCE-001', name: '作业警戒红线', kind: '危险区域',
+      tone: 'danger', area: '装卸区 A', version: 'v1.0', status: '已生效', effectiveAt: '', expiresAt: '',
+      teams: '', approver: '', edgeSynced: 4, edgeTotal: 4, polygon: [], nodes: [] }
+    const wrapper = mount(FenceDetailPanel, {
+      props: { fence, draft, editing: false, pointCount: 0 }, global,
+    })
+    const disable = () => wrapper.findAll<HTMLButtonElement>('.fence-panel-actions button')
+      .find(button => button.text() === '停用围栏')
+    expect(disable()).toBeTruthy()
+    expect(disable()!.element.disabled).toBe(false)
+    disable()!.element.click()
+    expect(wrapper.emitted('disable')).toHaveLength(1)
+    auth.setCurrentUser(identity(['VIEW', 'ADD']))
+    await nextTick()
+    expect(disable()!.element.disabled).toBe(true)
+    disable()!.element.click()
+    expect(wrapper.emitted('disable')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
   it('requires EDIT for existing fence editing and review without disabling a permitted new draft', async () => {
     const { auth, global } = setup(['VIEW', 'ADD'])
     const draft: FenceDraft = { name: '', kind: '危险区域', riskLevel: '一般',

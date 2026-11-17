@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Close, Edit, RefreshRight, UploadFilled } from '@element-plus/icons-vue'
+import { Check, CircleClose, Close, Edit, RefreshRight, UploadFilled } from '@element-plus/icons-vue'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
 import type { FenceDraft, FenceRecord } from '@/types/fence'
 
@@ -18,6 +18,7 @@ defineEmits<{
   save: []
   review: []
   publish: []
+  disable: []
   fail: []
   retry: []
 }>()
@@ -155,6 +156,9 @@ defineEmits<{
       <div class="fence-panel-actions">
         <button v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT'}" type="button" @click="$emit('edit')">
           <el-icon><Edit /></el-icon>编辑围栏
+        </button>
+        <button v-if="['已生效','版本不一致','待发布'].includes(fence.status)" v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT'}" type="button" class="danger" @click="$emit('disable')">
+          <el-icon><CircleClose /></el-icon>停用围栏
         </button>
         <button v-if="fence.status === '已生效'" v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT',adapted:false}" type="button" @click="$emit('fail')">模拟下发失败</button>
         <button v-if="fence.status === '草稿'" v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT'}" type="button" class="primary" @click="$emit('review')">
