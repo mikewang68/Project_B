@@ -3,6 +3,11 @@
  * - 模式 1（realtime_readonly）：优先只读轮询 S1~S4 数据库网关 REST API（/api/v1/dts/*）与原生 WS；
  *   若内网/离线不可达则自动降级到本地推演并显式标注数据质量码。
  * - 模式 2（offline_sim）：大连线下离线演示模式，按两份 .eddx 工艺逻辑确定性推演。
+ *
+ * 全面对齐组长《系统需求功能工作簿 v2.0/v2.1》：
+ * - R-D01 ~ R-D05 业务需求 ↔ F-D01 ~ F-D08 系统功能多对多双向挂载
+ * - R-D03 显式拆分为 F-D06（固定工艺演示播放 SIM）与 F-D07（S1 真实任务节点接入与展示 X04）
+ * - F-D04（S2 仓储库位与 40 座筒仓料位映射 X08）及 X03/X04/X05/X08~X11 跨系统带参联查
  */
 import type { AlertItem, useAlertStore } from '@/stores/alert'
 import { buildDefaultDeviceSnapshot, type DeviceStatusCode, type DeviceTelemetry, type useDeviceStore } from '@/stores/device'
@@ -12,6 +17,7 @@ import { restClient } from './restClient'
 import { wsClient } from './wsClient'
 
 export type DataSourceMode = 'offline_sim' | 'realtime_readonly'
+export type ProcessTrackMode = 'f_d06_sim' | 'f_d07_live'
 export type DataQualityTag = 'GOOD' | 'SIM' | 'FALLBACK' | 'OFFLINE'
 export type RegionCode = 'SHEN_TIE' | 'XIZANG_TIE' | 'WUHAN_TIE'
 
@@ -24,6 +30,218 @@ export const REGION_OPTIONS: Array<{ id: RegionCode; label: string; station: str
 export const DEFAULT_DATA_MODE: DataSourceMode =
   import.meta.env.VITE_DEFAULT_DATA_MODE === 'realtime_readonly' ? 'realtime_readonly' : 'offline_sim'
 
+export interface LiveTaskNodeItem {
+  taskId: string
+  planNo: string
+  cargoName: string
+  tonnage: number
+  processChain: 'BULK_CEMENT_FLYASH' | 'STEEL_REBAR_20T' | 'STEEL_COIL_32T'
+  processKind: 'bulk' | 'steel'
+  steelSubMode: 'rebar_magnet' | 'coil_chook'
+  currentStepIndex: number
+  stepStatus: 'PENDING' | 'RUNNING' | 'HANDOVER_WAIT' | 'COMPLETED' | 'EXCEPTION'
+  handoverWaitReason: string
+  assignedDevices: string[]
+  focusDeviceId: string
+  sourceSystem: string
+  qualityCode: 'GOOD' | 'FALLBACK' | 'SIM'
+  contractNote: string
+  updatedAt: string
+}
+
+export interface StorageLocationSummary {
+  locationId: string
+  locationCode: string
+  category: 'CEMENT_SILO' | 'FLYASH_SILO' | 'STEEL_BAY'
+  materialName: string
+  batchNo: string
+  availableTon: number
+  capacityTon: number
+  levelMeters: number
+  highLevelWarning: boolean
+  sourceSystem: string
+  qualityCode: 'GOOD' | 'FALLBACK' | 'SIM'
+  updatedAt: string
+}
+
+export interface RequirementFunctionItem {
+  fnId: 'F-D01' | 'F-D02' | 'F-D03' | 'F-D04' | 'F-D05' | 'F-D06' | 'F-D07' | 'F-D08'
+  fnName: string
+  reqIds: string
+  collabCode: string
+  partnerSystem: string
+  roleInReq: string
+  reuseRelation: string
+  statusLabel: string
+  actionLabel: string
+}
+
+export const REQUIREMENT_FUNCTION_MATRIX: RequirementFunctionItem[] = [
+  {
+    fnId: 'F-D01',
+    fnName: '装卸区域场景与图层展示',
+    reqIds: 'R-D01',
+    collabCode: '本系统核心',
+    partnerSystem: '中铁二院《给大连大.dwg》实测底图',
+    roleInReq: '展示散料区(40座筒仓/翻箱/提升/散装)与钢材区(13跨钢筋库/门吊/桥吊)三维场景与图层开关',
+    reuseRelation: '支撑 R-D01 装卸工艺区场景可视化',
+    statusLabel: '已上线 (V4.2)',
+    actionLabel: '全景复位核验',
+  },
+  {
+    fnId: 'F-D02',
+    fnName: 'CAD与设备模型落位校核',
+    reqIds: 'R-D01',
+    collabCode: '本系统核心',
+    partnerSystem: '《给大连大.dwg》+ 两份 11.14 .eddx',
+    roleInReq: '核对 76 项三维对象(36台设备+40座筒仓)与 CAD 实测坐标 1:1 叠合，区分实测与远期缓建示意区',
+    reuseRelation: '支撑 R-D01 图纸一致性核验（/dts/calibration）',
+    statusLabel: '已上线 (76项台账)',
+    actionLabel: '打开CAD校核页',
+  },
+  {
+    fnId: 'F-D03',
+    fnName: '设备对象映射与状态面板',
+    reqIds: 'R-D02 / R-D04 / R-E08',
+    collabCode: '协作 X03 / X09 / X10',
+    partnerSystem: 'S3 EHMS(闫鑫钰) + 厂家控制系统(董博涵)',
+    roleInReq: '单点拾取 36 台设备展示实时状态、差异化遥测、EHMS 健康分/BOM风险与厂家 PLC 只读信号',
+    reuseRelation: '跨系统共享功能；同时支撑 R-D02、R-D04、R-E08、R-B01~03、R-C01~03',
+    statusLabel: '已上线 (14/14 PASS)',
+    actionLabel: '拾取CR-02核验',
+  },
+  {
+    fnId: 'F-D04',
+    fnName: '仓储库位与40座筒仓料位状态映射及联查',
+    reqIds: 'R-D01 / R-D02 / R-W01/05/06',
+    collabCode: '协作 X08 (新增补缺)',
+    partnerSystem: 'S2 装卸区仓储 WMS(周绪敬)',
+    roleInReq: '映射 40 座 3000T 筒仓(SILO-01..40)料位/吨数与 13 跨钢筋库(REBAR-BAY-01..13)批次库存并带参跳 S2',
+    reuseRelation: '跨系统共享功能；补齐组长表空缺编号 F-D04，支撑 R-D01、R-D02 与 S2 库存联查',
+    statusLabel: '已上线 (40仓+13跨)',
+    actionLabel: '聚焦SILO-01核验',
+  },
+  {
+    fnId: 'F-D05',
+    fnName: '异常定位与业务详情联查',
+    reqIds: 'R-D04 / R-E08 / R-S06',
+    collabCode: '协作 X03 / X04 / X05',
+    partnerSystem: 'S1(李润泽) / S3(闫鑫钰) / S4(敬昌隆)',
+    roleInReq: '告警自动三维聚焦、打开 CAM-01..04 工位关联视频+厂家 PLC 核查浮窗，一键带参跳 S1~S4 处置',
+    reuseRelation: '跨系统共享功能；同时支撑 R-D04、R-E08(EHMS)、R-S06(SCS)',
+    statusLabel: '已上线 (S1~S4 200)',
+    actionLabel: '触发视频+联查核验',
+  },
+  {
+    fnId: 'F-D06',
+    fnName: '固定工艺演示播放 (SIM)',
+    reqIds: 'R-D03',
+    collabCode: '本系统演示',
+    partnerSystem: '两份 2026-11-14 .eddx 工艺细化图',
+    roleInReq: '显式标 SIM，支持散料(135°翻箱复位+空箱回吊)与钢材(20t磁吸/32t C型钩) 1~5 步任意跳步与单步驻留',
+    reuseRelation: '支撑 R-D03 模拟演示路径（与 F-D07 真实节点严格区分）',
+    statusLabel: '已上线 (自由跳步)',
+    actionLabel: '切换F-D06演示轨',
+  },
+  {
+    fnId: 'F-D07',
+    fnName: '真实任务节点接入与展示 (LIVE)',
+    reqIds: 'R-D03 / R-P05',
+    collabCode: '协作 X04',
+    partnerSystem: 'S1 工艺管理系统 PSMS(李润泽)',
+    roleInReq: '只读接入 S1 /api/plans 真实计划主账，映射 1~5 工序节点与交接等待原因，点击工单联动三维设备并跳 S1',
+    reuseRelation: '跨系统共享功能；同时支撑 R-D03 与 PSMS R-P05(F-P13)',
+    statusLabel: '已接通S1 (40条计划)',
+    actionLabel: '切换F-D07真实轨',
+  },
+  {
+    fnId: 'F-D08',
+    fnName: '总体看板无框内嵌、多区域隔离与只读安全网关',
+    reqIds: 'R-D05 / R-PUB01',
+    collabCode: '协作 X11 (PPT第39页)',
+    partnerSystem: '上位信息专业总体看板 + 统一门户(雷文)',
+    roleInReq: '支持 ?embed=1 无框内嵌与 ?deviceId=/taskId= URL 定位，沈铁/西藏/武汉区域隔离，非GET写请求 405 拦截',
+    reuseRelation: '支撑 R-D05 统一入口与全系统只监不控红线',
+    statusLabel: '已上线 (405硬拦截)',
+    actionLabel: '查看PLC/只读网关',
+  },
+]
+
+export const DEFAULT_LIVE_TASKS: LiveTaskNodeItem[] = [
+  {
+    taskId: 'PSMS-20261117-01',
+    planNo: 'PLN-ASH-20261117-001',
+    cargoName: '散装粉煤灰专列（货1线 20t集装箱×16）',
+    tonnage: 512.0,
+    processChain: 'BULK_CEMENT_FLYASH',
+    processKind: 'bulk',
+    steelSubMode: 'rebar_magnet',
+    currentStepIndex: 1,
+    stepStatus: 'RUNNING',
+    handoverWaitReason: '',
+    assignedDevices: ['CR-BULK-01', 'TIPPER-01', 'ELV-01', 'SILO-09', 'LOADER-02'],
+    focusDeviceId: 'TIPPER-01',
+    sourceSystem: 'S1-PSMS (/api/plans)',
+    qualityCode: 'GOOD',
+    contractNote: '计划主账来自S1；当前处于第2步[135°翻箱倾卸与振动清箱]',
+    updatedAt: '10:42:15',
+  },
+  {
+    taskId: 'PSMS-20261117-02',
+    planNo: 'PLN-REB-20261117-002',
+    cargoName: 'HRB400E 螺纹钢专列（货3线 07跨入库）',
+    tonnage: 240.0,
+    processChain: 'STEEL_REBAR_20T',
+    processKind: 'steel',
+    steelSubMode: 'rebar_magnet',
+    currentStepIndex: 1,
+    stepStatus: 'HANDOVER_WAIT',
+    handoverWaitReason: '跨间转接区B：CR-02 门吊与 BC-07 室内桥吊防撞安全净空复核（待S1调度确认放行）',
+    assignedDevices: ['CR-02', 'BC-07', 'WB-TRUCK-01'],
+    focusDeviceId: 'CR-02',
+    sourceSystem: 'S1-PSMS (/api/plans)',
+    qualityCode: 'GOOD',
+    contractNote: '对应 PPT 第40页“交接等待”典型工单；可一键跳 S1 处置',
+    updatedAt: '10:43:02',
+  },
+  {
+    taskId: 'PSMS-20261117-03',
+    planNo: 'PLN-COIL-20261117-003',
+    cargoName: '盘螺/卷材入库工单（货4线 03跨32t C型钩）',
+    tonnage: 192.0,
+    processChain: 'STEEL_COIL_32T',
+    processKind: 'steel',
+    steelSubMode: 'coil_chook',
+    currentStepIndex: 2,
+    stepStatus: 'RUNNING',
+    handoverWaitReason: '',
+    assignedDevices: ['CR-01', 'BC-03', 'WB-TRUCK-02'],
+    focusDeviceId: 'BC-03',
+    sourceSystem: 'S1-PSMS (/api/plans)',
+    qualityCode: 'GOOD',
+    contractNote: '32t C型卷材钩桥吊 BC-03 跨内转运落位中',
+    updatedAt: '10:41:50',
+  },
+  {
+    taskId: 'PSMS-20261117-04',
+    planNo: 'PLN-CEM-20261117-004',
+    cargoName: 'P·O 42.5 水泥库底定量装车（SILO-01→青B·88219）',
+    tonnage: 48.5,
+    processChain: 'BULK_CEMENT_FLYASH',
+    processKind: 'bulk',
+    steelSubMode: 'rebar_magnet',
+    currentStepIndex: 3,
+    stepStatus: 'RUNNING',
+    handoverWaitReason: '',
+    assignedDevices: ['SILO-01', 'LOADER-01', 'WB-TRUCK-01'],
+    focusDeviceId: 'LOADER-01',
+    sourceSystem: 'S1-PSMS + S2-WMS',
+    qualityCode: 'GOOD',
+    contractNote: '关联 X07/X08 库底定量装车与 100t 地磅复核',
+    updatedAt: '10:43:18',
+  },
+]
+
 export interface DtsFeedStatus {
   mode: DataSourceMode
   quality: DataQualityTag
@@ -33,6 +251,8 @@ export interface DtsFeedStatus {
   regionId?: RegionCode
   upstreamCount?: number
   inboxEventsCount?: number
+  liveTasks?: LiveTaskNodeItem[]
+  storageLocations?: StorageLocationSummary[]
 }
 
 export interface CrossSystemLink {
@@ -187,6 +407,38 @@ export function getCrossSystemLinks(): CrossSystemLink[] {
   ]
 }
 
+export function buildPsmsTaskUrl(
+  baseUrl: string,
+  opts?: { taskId?: string; planNo?: string; deviceId?: string; step?: number },
+): string {
+  try {
+    const u = new URL(baseUrl, window.location.origin)
+    if (opts?.taskId) u.searchParams.set('taskId', opts.taskId)
+    if (opts?.planNo) u.searchParams.set('planNo', opts.planNo)
+    if (opts?.deviceId) u.searchParams.set('deviceId', opts.deviceId)
+    if (opts?.step != null) u.searchParams.set('step', String(opts.step))
+    u.searchParams.set('from', 'dts')
+    return u.href
+  } catch {
+    return baseUrl
+  }
+}
+
+export function buildWmsLocationUrl(baseUrl: string, targetId?: string, batchNo?: string): string {
+  try {
+    const u = new URL(baseUrl, window.location.origin)
+    if (targetId) {
+      const locCode = targetId.startsWith('BC-') ? targetId.replace('BC-', 'REBAR-BAY-') : targetId
+      u.searchParams.set('locationCode', locCode)
+    }
+    if (batchNo) u.searchParams.set('batchNo', batchNo)
+    u.searchParams.set('from', 'dts')
+    return u.href
+  } catch {
+    return baseUrl
+  }
+}
+
 export function buildEhmsAssetUrl(baseUrl: string, deviceId?: string): string {
   try {
     const u = new URL(baseUrl, window.location.origin)
@@ -205,12 +457,93 @@ export function buildEhmsAssetUrl(baseUrl: string, deviceId?: string): string {
   }
 }
 
+export function buildScsAlertUrl(
+  baseUrl: string,
+  opts?: { alertId?: string; deviceId?: string; zoneId?: string },
+): string {
+  try {
+    const u = new URL(baseUrl, window.location.origin)
+    if (opts?.alertId) u.searchParams.set('alertId', opts.alertId)
+    if (opts?.deviceId) u.searchParams.set('deviceId', opts.deviceId)
+    if (opts?.zoneId) u.searchParams.set('zoneId', opts.zoneId)
+    u.searchParams.set('from', 'dts')
+    return u.href
+  } catch {
+    return baseUrl
+  }
+}
+
+export function getStorageSummaryForTarget(
+  targetId: string,
+  remoteList?: StorageLocationSummary[],
+): StorageLocationSummary | null {
+  if (!targetId) return null
+  const normalizedId = targetId.startsWith('BC-') && !targetId.startsWith('BC-MECH')
+    ? targetId.replace('BC-', 'REBAR-BAY-')
+    : targetId === 'LOADER-01'
+      ? 'SILO-01'
+      : targetId === 'LOADER-02'
+        ? 'SILO-09'
+        : targetId === 'LOADER-03'
+          ? 'SILO-17'
+          : targetId === 'LOADER-04'
+            ? 'SILO-25'
+            : targetId
+
+  const found = remoteList?.find((item) => item.locationId === normalizedId)
+  if (found) return found
+
+  if (normalizedId.startsWith('SILO-')) {
+    const num = Number.parseInt(normalizedId.replace('SILO-', ''), 10) || 1
+    const isCement = num <= 8
+    const tons = isCement ? 2180 + (num * 95) % 680 : 1940 + (num * 83) % 820
+    return {
+      locationId: normalizedId,
+      locationCode: isCement ? `C${String(num).padStart(2, '0')}` : `F${String(num - 8).padStart(2, '0')}`,
+      category: isCement ? 'CEMENT_SILO' : 'FLYASH_SILO',
+      materialName: isCement ? 'P·O 42.5 散装水泥' : 'Ⅰ级散装粉煤灰',
+      batchNo: 'SIM-IDENTITY-20260928',
+      availableTon: tons,
+      capacityTon: 3000,
+      levelMeters: Number(((tons / 3000) * 31.5).toFixed(1)),
+      highLevelWarning: tons >= 2650,
+      sourceSystem: 'S2-WMS (协作X08)',
+      qualityCode: 'GOOD',
+      updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+    }
+  }
+
+  if (normalizedId.startsWith('REBAR-BAY-')) {
+    const num = Number.parseInt(normalizedId.replace('REBAR-BAY-', ''), 10) || 1
+    const isChook = [3, 4, 9, 12].includes(num)
+    const tons = 920 + (num * 110) % 760
+    return {
+      locationId: normalizedId,
+      locationCode: `STEEL-BAY-${String(num).padStart(2, '0')}`,
+      category: 'STEEL_BAY',
+      materialName: isChook ? '盘螺/冷轧卷钢 (32t C型钩跨)' : 'HRB400E 螺纹钢 (20t电磁吸盘跨)',
+      batchNo: `SIM-IDENTITY-20260928-B${String(num).padStart(2, '0')}`,
+      availableTon: tons,
+      capacityTon: 1800,
+      levelMeters: Number((1.2 + (tons / 1800) * 3.4).toFixed(2)),
+      highLevelWarning: tons >= 1550,
+      sourceSystem: 'S2-WMS (协作X08)',
+      qualityCode: 'GOOD',
+      updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+    }
+  }
+
+  return null
+}
+
 export class DtsDataService {
   private timer: ReturnType<typeof setInterval> | null = null
   private mode: DataSourceMode = 'offline_sim'
   private regionId: RegionCode = 'SHEN_TIE'
   private wsRegistered = false
   private tickCount = 0
+  private latestLiveTasks: LiveTaskNodeItem[] = structuredClone(DEFAULT_LIVE_TASKS)
+  private latestStorageLocations: StorageLocationSummary[] = []
 
   private readonly deviceStore: ReturnType<typeof useDeviceStore>
   private readonly alertStore: ReturnType<typeof useAlertStore>
@@ -308,13 +641,29 @@ export class DtsDataService {
       const qs = `?regionId=${encodeURIComponent(this.regionId)}`
       const [overviewRes, devRes, alertRes] = await Promise.all([
         restClient
-          .get<{ inbox_events_count?: number; upstream?: Record<string, unknown>; region_note?: string }>(`/dts/overview${qs}`, { timeout: 3500 })
+          .get<{
+            inbox_events_count?: number
+            upstream?: Record<string, unknown>
+            region_note?: string
+            tasks?: LiveTaskNodeItem[]
+            storage?: StorageLocationSummary[]
+          }>(`/dts/overview${qs}`, { timeout: 3500 })
           .catch(() => null),
         restClient.get<{ items?: RemoteDeviceRow[]; source?: string; region_note?: string } | RemoteDeviceRow[]>(`/dts/devices${qs}`, { timeout: 3500 }),
         restClient.get<{ items?: RemoteAlertRow[]; source?: string } | RemoteAlertRow[]>(`/dts/alerts${qs}`, { timeout: 3500 }),
       ])
       const devRows = Array.isArray(devRes) ? devRes : (devRes.items ?? [])
       const alertRows = Array.isArray(alertRes) ? alertRes : (alertRes.items ?? [])
+      if (overviewRes?.tasks && Array.isArray(overviewRes.tasks) && overviewRes.tasks.length > 0) {
+        this.latestLiveTasks = overviewRes.tasks
+      } else if (this.regionId !== 'SHEN_TIE') {
+        this.latestLiveTasks = []
+      } else {
+        this.latestLiveTasks = structuredClone(DEFAULT_LIVE_TASKS)
+      }
+      if (overviewRes?.storage && Array.isArray(overviewRes.storage)) {
+        this.latestStorageLocations = overviewRes.storage
+      }
       if (devRows.length > 0) {
         this.deviceStore.batchUpdate(
           devRows
@@ -374,7 +723,6 @@ export class DtsDataService {
         inboxCount,
       )
     } catch (err) {
-      // Explicit transparent fallback when unified openGauss backend is offline
       this.stepOfflineSimulation()
       const reason = err instanceof Error ? err.message : '后端网关离线'
       this.emitStatus('realtime_readonly', 'FALLBACK', `库接口不可达 (${reason}) · 已降级本地推演`, reason)
@@ -427,6 +775,8 @@ export class DtsDataService {
       regionId: this.regionId,
       upstreamCount,
       inboxEventsCount,
+      liveTasks: this.latestLiveTasks,
+      storageLocations: this.latestStorageLocations,
     })
   }
 }
