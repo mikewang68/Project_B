@@ -25,28 +25,25 @@ public class AlarmController {
 
     @GetMapping
     public PageResult<AlarmView> list(@RequestParam(defaultValue = "0") int page,
-                                      @RequestParam(defaultValue = "50") int size) {
-        return alarms.list(new PageQuery(page, size));
+                                      @RequestParam(defaultValue = "50") int size,
+                                      @RequestParam(required=false) String keyword,@RequestParam(required=false) String level,
+                                      @RequestParam(required=false) String status,@RequestParam(required=false) String category) {
+        return alarms.search(new PageQuery(page, size),keyword,level,status,category);
     }
 
     @PostMapping("/{alarmNo}/acknowledge")
-    public AlarmView acknowledge(@PathVariable String alarmNo, @RequestBody(required = false) OperatorRequest request) {
-        return alarms.acknowledge(alarmNo, operator(request));
+    public AlarmView acknowledge(@PathVariable String alarmNo, @RequestBody(required = false) OperatorRequest request, jakarta.servlet.http.HttpServletRequest http) {
+        return alarms.acknowledge(alarmNo, com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     @PostMapping("/{alarmNo}/close")
-    public AlarmView close(@PathVariable String alarmNo, @RequestBody(required = false) OperatorRequest request) {
-        return alarms.close(alarmNo, operator(request), request == null ? null : request.reason());
+    public AlarmView close(@PathVariable String alarmNo, @RequestBody(required = false) OperatorRequest request, jakarta.servlet.http.HttpServletRequest http) {
+        return alarms.close(alarmNo, com.bproject.ehm.platform.security.EhmOperationIdentity.require(http), request == null ? null : request.reason());
     }
 
     @PostMapping("/batch-assign")
-    public List<AlarmView> assignBatch(@RequestBody BatchAssignRequest request) {
-        return alarms.assignBatch(request.alarmNos(), request.assignee(), request.operator(), request.reason());
-    }
-
-    private String operator(OperatorRequest request) {
-        return request == null || request.operator() == null || request.operator().isBlank()
-                ? "Demo设备管理员" : request.operator();
+    public List<AlarmView> assignBatch(@RequestBody BatchAssignRequest request, jakarta.servlet.http.HttpServletRequest http) {
+        return alarms.assignBatch(request.alarmNos(), request.assignee(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http), request.reason());
     }
 
     public record OperatorRequest(String operator, String reason) {

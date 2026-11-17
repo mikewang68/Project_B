@@ -18,12 +18,15 @@
           if(response.status===401||!auth.user)auth.lock(response.status===401?'':'登录服务暂不可用，请检查后端版本与连接');
           return false;
         }
-        const signature=()=>JSON.stringify([auth.user,auth.permissions,auth.readOnly,auth.menuOperations,auth.authorizationVersion,auth.projectId]);
+        const signature=()=>JSON.stringify([auth.user,auth.permissions,auth.readOnly,auth.menuOperations,auth.authorizationVersion,auth.projectId,auth.dataScope]);
         const before=signature(),data=await response.json();
         auth.enabled=data.enabled!==false;auth.mode=data.mode;auth.user=data.user||null;
         auth.permissions=Array.isArray(data.permissions)?data.permissions:[];auth.readOnly=data.readOnly!==false;
         auth.menuOperations=data.menuOperations&&typeof data.menuOperations==='object'?data.menuOperations:null;
         auth.authorizationVersion=data.authorizationVersion||'';auth.centralAdminLevel=data.centralAdminLevel||'';
+        auth.dataScope=data.dataScope&&typeof data.dataScope==='object'?data.dataScope:null;
+        // Older deployed servers enforce scope but do not expose diagnostics in /auth/me.
+        auth.scopeDiagnostics=auth.mode==='iam'&&!auth.dataScope?'SERVER_ENFORCED_LEGACY':'';
         auth.nativeGlobalRead=data.globalRead===true;auth.globalRead=auth.menuOperations==null&&auth.nativeGlobalRead;
         auth.csrf=data.csrfToken||'';auth.projectIds=Array.isArray(data.projectIds)?data.projectIds:[];auth.projectId=data.projectId||'';
         auth.unlock(before!==signature());return true;
@@ -34,6 +37,7 @@
     async request(path,method='GET',body){const response=await window.fetch('/api/ehm/v1/auth'+path,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});let data=null;try{data=await response.json();}catch{}if(!response.ok)throw Error(data?.message||`HTTP ${response.status}`);return data;}
   };
   document.body.classList.add('ehm-auth-locked');
+  document.addEventListener('ehm-auth-change',()=>{if(!auth.user)auth.dataScope=null;});
   const container=document.createElement('section');container.id='ehmLogin';container.className='ehm-login';
   container.innerHTML=`<div class="login-card"><div class="login-brand"><span>EHM</span><div><h1>设备健康管理系统</h1><p>Equipment Health Management</p></div></div><h2 id="authScopeTitle">账号登录</h2><p class="login-intro">使用分配的账号进入系统，操作权限由服务器核验。</p><form id="ehmLoginForm"><label for="authUsername">用户名</label><input id="authUsername" name="username" autocomplete="username" maxlength="32" required autofocus placeholder="请输入用户名"/><label for="authPassword">密码</label><input id="authPassword" name="password" type="password" autocomplete="current-password" maxlength="128" required placeholder="请输入密码"/><p id="authError" class="auth-error" role="alert"></p><button id="authSubmit" type="submit">登录系统</button></form><div id="authScopeFailure" hidden><p id="authScopeMessage" role="alert"></p><button id="authScopeBack" type="button">返回授权项目</button></div><div class="login-permissions"><div><b>一般用户</b><span>查看设备、运行数据和本人日志</span></div><div><b>超级管理员</b><span>业务数据增删改查、账号管理</span></div></div><small>密码不会保存在浏览器中。请勿使用共享管理员账号处理正式业务。</small></div>`;
   document.body.appendChild(container);

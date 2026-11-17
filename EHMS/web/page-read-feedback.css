@@ -1,0 +1,8 @@
+/* Readability fix only; never hides authorization failures or changes grants. */
+.topbar{display:flex;flex-wrap:wrap;height:auto;min-height:58px;gap:8px 16px;padding-block:8px}
+.topbar-left{flex:0 0 auto}.topbar-center{flex:1 1 280px;min-width:220px}.topbar-right{flex:0 1 auto;flex-wrap:wrap;max-width:100%;gap:8px}
+.topbar-right>*{flex-shrink:0;white-space:nowrap}.topbar-right .status-button{white-space:nowrap;min-width:130px}
+.topbar-right .auth-account-label{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar .shift{min-width:80px}
+@media(max-width:1800px){.topbar-center{display:none}.topbar{justify-content:space-between}.topbar-right{flex:0 1 auto}}
+@media(max-width:760px){.topbar-right{justify-content:flex-start}.topbar-right .auth-account-label{max-width:180px}}

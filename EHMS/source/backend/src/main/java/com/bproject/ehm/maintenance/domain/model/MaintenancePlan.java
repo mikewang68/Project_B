@@ -49,8 +49,14 @@ public record MaintenancePlan(
         if (!enabled) throw new DomainConflictException("已停用计划不能生成点检任务");
         return new MaintenancePlan(planId, assetCode, assetName, componentCode, name, strategyType,
                 cycleDays, triggerCondition, checklistTemplate, ownerTeam,
-                generatedAt.plus(cycleDays, ChronoUnit.DAYS), true, generatedAt,
+                nextDueAt, true, generatedAt,
                 createdAt, generatedAt, version);
+    }
+
+    public MaintenancePlan markCompleted(Instant completedAt) {
+        return new MaintenancePlan(planId,assetCode,assetName,componentCode,name,strategyType,cycleDays,
+                triggerCondition,checklistTemplate,ownerTeam,completedAt.plus(cycleDays,ChronoUnit.DAYS),
+                enabled,lastGeneratedAt,createdAt,completedAt,version);
     }
 
     private static String required(String value, String label) {

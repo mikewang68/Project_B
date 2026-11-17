@@ -39,6 +39,7 @@ public class EhmSsoSessionFilter extends OncePerRequestFilter {
         if(project==null||project.isBlank())project=actor.projects().stream().sorted().findFirst().orElse("");
         if(!actor.projects().contains(project)){LocalSessionFilter.reject(mapper,response,403,"未获此项目授权");return;}
         request.setAttribute("EHM_PROJECT_ID",project);
+        request.setAttribute("EHM_TRUSTED_CENTRAL_SCOPE",actor.context());
         request.setAttribute(IamAuditIdentityFilter.VERIFIED_ACTOR,actor);request.setAttribute(IamAuditIdentityFilter.VERIFIED_READ_ONLY,actor.readOnly());request.setAttribute(IamAuditIdentityFilter.VERIFIED_ADMIN,actor.admin());
         try(var scope=ProjectContext.bind(project);var central=EhmCentralScope.bind(actor.context())){
             chain.doFilter(new HttpServletRequestWrapper(request){@Override public java.security.Principal getUserPrincipal(){return actor;}},response);

@@ -1,0 +1,20 @@
+[Unit]
+Description=EHMS committed-event business consumer (opt-in, bounded round)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Operator must provision this restricted Unix identity and the private configuration first.
+User=ehms-public-data
+Group=ehms-public-data
+WorkingDirectory=/home/bpoc-data/projects/Project_B/integrations/EHMS-public-data/current
+ExecStart=/usr/bin/java -Xms64m -Xmx384m -cp bin/ehms-public-data-worker.jar:bin/ehms-public-data-mq.jar:lib/*:mq-lib/* CommittedMqMain /etc/ehms-public-data/worker.private.json /etc/ehms-public-data/mq-client.json 900 5000
+Restart=no
+TimeoutStopSec=45
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+StandardOutput=journal
+StandardError=journal

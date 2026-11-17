@@ -18,7 +18,15 @@ public interface TelemetrySeriesPort {
             Double value,
             String quality,
             Instant sourceTimestamp,
-            Instant receivedAt
+            Instant receivedAt,
+            String eventId,
+            Boolean simulated,
+            String observationRef
     ) {
+        public TelemetrySample(String pointCode, String assetCode, String metric, String unit, Double value,
+                               String quality, Instant sourceTimestamp, Instant receivedAt) {
+            this(pointCode, assetCode, metric, unit, value, quality, sourceTimestamp, receivedAt,
+                    null, pointCode != null && (pointCode.startsWith("SAMPLE-LIVE-") || pointCode.startsWith("MQ-SIM-")), null);
+        }
     }
 }

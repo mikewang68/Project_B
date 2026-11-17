@@ -28,8 +28,8 @@ import java.util.UUID;
 
 @Service
 public class HealthAssessmentApplicationService {
-    private static final String HEALTH_MODEL = "rule-health-baseline-v1.0";
-    private static final String FEATURE_VERSION = "threshold-utilization-v1.0";
+    private static final String HEALTH_MODEL = "rule-health-baseline-v1.1";
+    private static final String FEATURE_VERSION = "threshold-utilization-v1.1";
 
     private final HealthAssessmentRepository assessments;
     private final AssetQueryFacade assets;
@@ -70,10 +70,16 @@ public class HealthAssessmentApplicationService {
         if (!quality.healthAssessmentAllowed()) {
             throw new DomainConflictException("数据质量未达到自动健康评估门槛：" + quality.assessmentMessage());
         }
-        List<HealthFactor> factors = points.stream()
+        var usablePoints = points.stream()
                 .filter(DataQualityPointView::enabled)
                 .filter(point -> "GOOD".equals(point.qualityStatus()))
                 .filter(point -> point.lastValue() != null)
+                // Public raw acquisition is not a health model. No fallback 50% utilization for unconfigured public points.
+                .filter(point -> point.upperLimit()!=null && Double.isFinite(point.upperLimit()) && point.upperLimit()>0)
+                .filter(point -> Double.isFinite(point.lastValue()) && (point.lowerLimit()==null
+                    || Double.isFinite(point.lowerLimit()) && point.lowerLimit()<point.upperLimit()))
+                .filter(point -> point.sourceTimestamp()!=null).toList();
+        List<HealthFactor> factors = usablePoints.stream()
                 .map(this::factorOf)
                 .sorted(Comparator.comparingDouble(HealthFactor::deduction).reversed())
                 .toList();
@@ -86,13 +92,13 @@ public class HealthAssessmentApplicationService {
         double confidence = Math.min(82, 62 + factors.size() * 3 + quality.availabilityPercent() * 0.05);
         Instant now = clock.instant();
         RulPrediction prediction = RulPrediction.unavailable("尚未接入经验证的寿命模型、故障终点和工况标签；台账RUL字段不是模型预测结果");
-        Instant inputStart = points.stream().filter(p -> "GOOD".equals(p.qualityStatus()))
+        Instant inputStart = usablePoints.stream()
                 .map(DataQualityPointView::sourceTimestamp).min(Instant::compareTo).orElse(now);
-        Instant inputEnd = points.stream().filter(p -> "GOOD".equals(p.qualityStatus()))
+        Instant inputEnd = usablePoints.stream()
                 .map(DataQualityPointView::sourceTimestamp).max(Instant::compareTo).orElse(now);
         List<String> limitations = List.of(
                 "当前健康分采用阈值利用率规则基线，尚未替代经甲方验收的设备专用模型",
-                "可信度是规则覆盖度提示，不是经校准的统计置信概率；RUL未启用",
+                "可信度是规则覆盖度提示，不是经校准的统计置信概率；RUL未启用；本次有依据因子"+factors.size()+"项 / 启用测点"+points.stream().filter(DataQualityPointView::enabled).count()+"项，未配置有效阈值的测点不评分",
                 replay ? "历史回放：仅核验数据库中已有样本的规则结果，不能代表设备当前健康状态"
                         : "仅使用当前有效测点快照，不等同于连续采集窗口或经训练AI预测"
         );
@@ -122,6 +128,7 @@ public class HealthAssessmentApplicationService {
 
     public HealthAssessment review(String assessmentId, String decision, String comment, String reviewer) {
         HealthAssessment current = find(assessmentId);
+        requireCurrent(current);
         try {
             return assessments.save(current.review(decision, comment, reviewer, clock.instant()));
         } catch (IllegalArgumentException exception) {
@@ -133,6 +140,7 @@ public class HealthAssessmentApplicationService {
                                             String plannedWindow, String operator) {
         HealthAssessment current = find(assessmentId);
         if (current.workOrderNo() != null && !current.workOrderNo().isBlank()) return current;
+        requireCurrent(current);
         if (current.review() == null || !"ACCEPTED".equals(current.review().decision())) {
             throw new DomainConflictException("只有人工审核为接受的预测建议才能转工单");
         }
@@ -152,6 +160,11 @@ public class HealthAssessmentApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("未找到健康评估：" + assessmentId));
     }
 
+    private void requireCurrent(HealthAssessment value) {
+        if (value.method().contains("回放") || value.validUntil() == null || !value.validUntil().isAfter(clock.instant()))
+            throw new DomainConflictException("历史回放或已过期评估不能作为当前维修决策，请重新进行实时评估");
+    }
+
     private HealthFactor factorOf(DataQualityPointView point) {
         double utilization = utilization(point);
         double deduction = utilization <= 65 ? 0 : Math.min(25, (utilization - 65) / 35 * 25);
@@ -164,7 +177,8 @@ public class HealthAssessmentApplicationService {
     }
 
     private double utilization(DataQualityPointView point) {
-        if (point.upperLimit() == null || point.upperLimit() == 0) return 50;
+        if (point.upperLimit() == null || !Double.isFinite(point.upperLimit()) || point.upperLimit() <= 0)
+            throw new IllegalArgumentException("缺少可解释的有效阈值");
         if (point.lowerLimit() != null && point.upperLimit() > point.lowerLimit()) {
             return Math.abs((point.lastValue() - point.lowerLimit()) / (point.upperLimit() - point.lowerLimit())) * 100;
         }

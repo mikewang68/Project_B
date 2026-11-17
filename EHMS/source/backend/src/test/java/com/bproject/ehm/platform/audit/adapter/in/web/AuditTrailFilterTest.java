@@ -8,6 +8,17 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 class AuditTrailFilterTest {
+    @Test void auditFinallyRebindsOnlyTheServerSelectedProjectAfterBusinessScopeCloses()throws Exception{
+        var audit=mock(AuditApplicationService.class);ObjectProvider<EhmAuditRelay> provider=mock(ObjectProvider.class);
+        when(audit.record(any(),any(),any(),any(),anyInt(),any(),any(),anyLong())).thenAnswer(inv->{
+            org.junit.jupiter.api.Assertions.assertEquals("PROJECT_B",com.bproject.ehm.platform.security.ProjectContext.require("UNASSIGNED"));return null;
+        });
+        var request=new MockHttpServletRequest("GET","/api/ehm/v1/devices");
+        request.addHeader("X-Project-Id","FORGED");
+        new AuditTrailFilter(audit,provider).doFilter(request,new MockHttpServletResponse(),(a,b)->request.setAttribute("EHM_PROJECT_ID","PROJECT_B"));
+        verify(audit).record(any(),any(),any(),any(),anyInt(),any(),any(),anyLong());
+        org.junit.jupiter.api.Assertions.assertEquals("UNASSIGNED",com.bproject.ehm.platform.security.ProjectContext.require("UNASSIGNED"));
+    }
     @Test void legacyFailureDoesNotBlockPublicQueue() throws Exception {
         var audit=mock(AuditApplicationService.class); ObjectProvider<EhmAuditRelay> provider=mock(ObjectProvider.class);
         var relay=mock(EhmAuditRelay.class);when(provider.getIfAvailable()).thenReturn(relay);

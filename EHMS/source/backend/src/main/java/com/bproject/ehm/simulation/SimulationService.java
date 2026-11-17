@@ -94,13 +94,19 @@ public class SimulationService {
         // Configuration is checked on every access; request read scope is left to the existing store.
         SimulationBackgroundPolicy.check(backgroundAuthMode,backgroundRegion,backgroundSubject,
                 backgroundSession,false);
-        try(var ignored=ProjectContext.bind(project)){return body.get();}
+        try(var ignored=ProjectContext.bind(project)){
+            if("DEMO_SERVICE".equals(backgroundAuthMode)&&org.springframework.web.context.request.RequestContextHolder.getRequestAttributes()==null){
+                try(var worker=SimulationRunScope.bindDemo()){return body.get();}
+            }
+            return body.get();
+        }
         catch(RuntimeException e){throw e;}catch(Exception e){throw new IllegalStateException(e);}
     }
     public boolean currentProjectAllowed(){return project.equals(ProjectContext.require(defaultProject));}
     private Control control(){return store.find("simulation-control","control",Control.class).orElseThrow();}
     private void validateBackgroundExecution(){SimulationBackgroundPolicy.check(backgroundAuthMode,
-            backgroundRegion,backgroundSubject,backgroundSession,EhmCentralScope.current()!=null);}
+            backgroundRegion,backgroundSubject,backgroundSession,EhmCentralScope.current()!=null
+                ||"DEMO_SERVICE".equals(backgroundAuthMode)&&org.springframework.web.context.request.RequestContextHolder.getRequestAttributes()!=null);}
     private <T>T locked(Supplier<T> body){validateBackgroundExecution();return scoped(()->tx.execute(s->{store.lockSimulationControl();return body.get();}));}
     public Map<String,Object> status(){return scoped(()->{
         var c=control();var result=new LinkedHashMap<String,Object>();

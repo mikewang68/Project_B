@@ -17,6 +17,7 @@ import java.util.List;
 public class AlarmApplicationService implements AlarmQueryFacade {
     private final AlarmRepository alarms;
     private final Clock clock;
+    @Autowired(required=false) private com.bproject.ehm.caseflow.ports.MaintenanceCaseRepository cases;
 
     @Autowired
     public AlarmApplicationService(AlarmRepository alarms) {
@@ -33,6 +34,11 @@ public class AlarmApplicationService implements AlarmQueryFacade {
         return alarms.findAll(page).map(AlarmView::from);
     }
 
+    public PageResult<AlarmView> search(PageQuery page,String keyword,String level,String status,String category){
+        if(java.util.stream.Stream.of(keyword,level,status,category).allMatch(v->v==null||v.isBlank()))return list(page);
+        return alarms.search(page,keyword,level,status,category).map(AlarmView::from);
+    }
+
     @Override
     public List<AlarmView> findOpenByDeviceCode(String deviceCode, int limit) {
         return alarms.findOpenByDeviceCode(deviceCode, Math.max(1, Math.min(limit, 100))).stream()
@@ -45,6 +51,9 @@ public class AlarmApplicationService implements AlarmQueryFacade {
     }
 
     public AlarmView close(String alarmNo, String operator, String reason) {
+        if (reason == null || reason.isBlank()) throw new ValidationException("请填写真实的告警关闭原因");
+        if(cases!=null&&cases.findByAlarmNo(alarmNo).filter(c->c.status()!=com.bproject.ehm.caseflow.domain.model.CaseStatus.CLOSED).isPresent())
+            throw new com.bproject.ehm.shared.error.DomainConflictException("该告警关联的维修档案尚未闭环，请从维修复测流程完成关闭");
         Alarm current = find(alarmNo);
         return AlarmView.from(alarms.save(current.close(operator, reason, clock.instant())));
     }

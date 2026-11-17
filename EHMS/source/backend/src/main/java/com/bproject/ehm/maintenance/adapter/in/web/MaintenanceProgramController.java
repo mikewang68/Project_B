@@ -70,17 +70,17 @@ public class MaintenanceProgramController {
 
     @PatchMapping("/inspection-tasks/{taskNo}/start")
     public InspectionTask start(@PathVariable String taskNo,
-                                @RequestBody(required = false) OperatorRequest request) {
-        return maintenance.startTask(taskNo, request == null ? null : request.operator());
+                                @RequestBody(required = false) OperatorRequest request, jakarta.servlet.http.HttpServletRequest http) {
+        return maintenance.startTask(taskNo, com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     @PostMapping("/inspection-tasks/{taskNo}/submit")
     public InspectionSubmissionResult submit(@PathVariable String taskNo,
-                                             @Valid @RequestBody SubmitTaskRequest request) {
+                                             @Valid @RequestBody SubmitTaskRequest request, jakarta.servlet.http.HttpServletRequest http) {
         List<InspectionTask.ItemSubmission> items = request.items().stream()
                 .map(item -> new InspectionTask.ItemSubmission(item.itemId(), item.measuredValue(),
                         item.result(), item.remark())).toList();
-        return maintenance.submitTask(taskNo, items, request.conclusion(), request.operator(),
+        return maintenance.submitTask(taskNo, items, request.conclusion(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http),
                 request.defectSeverity(), request.defectDescription());
     }
 
@@ -91,11 +91,11 @@ public class MaintenanceProgramController {
 
     @PostMapping("/maintenance-defects/{defectNo}/work-order")
     public DefectRecord createWorkOrder(@PathVariable String defectNo,
-                                        @RequestBody(required = false) DefectWorkOrderRequest request) {
+                                        @RequestBody(required = false) DefectWorkOrderRequest request, jakarta.servlet.http.HttpServletRequest http) {
         DefectWorkOrderRequest value = request == null
                 ? new DefectWorkOrderRequest(null, null, null, null) : request;
         return maintenance.createDefectWorkOrder(defectNo, value.title(), value.assignee(),
-                value.plannedWindow(), value.operator());
+                value.plannedWindow(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     public record PlanRequest(

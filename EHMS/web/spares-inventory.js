@@ -25,9 +25,11 @@ function transactionTone(value){return value==='ISSUE'?'purple':value==='RESERVE
 
 function renderSpareInventory(){
   const s=state.spares,m=s.summary||{};
+  const warehouses=[...new Set([s.warehouseCode,...s.transactions.map(t=>t.warehouseCode).filter(Boolean)])];
+  const warehousePicker=`<section class="panel"><div class="panel-head"><label for="spareWarehouseInput">当前仓库 <input class="control" id="spareWarehouseInput" list="spareWarehouseChoices" value="${esc(s.warehouseCode)}" maxlength="64"/></label><datalist id="spareWarehouseChoices">${warehouses.map(w=>`<option value="${esc(w)}"></option>`).join('')}</datalist><button class="button" id="spareWarehouseApply">查询该仓库</button><small class="muted">候选来自当前范围最近的库存流水；切换只查询，不生成库存或修改余额。</small></div></section>`;
   const pending=s.loading?`<div class="empty-state"><b>正在读取备件库存与流水…</b></div>`:s.error?`<div class="callout warning"><h3>后端数据暂不可用</h3><p>${esc(s.error)}</p>${button('重新加载','reloadSpares')}</div>`:'';
   return `<div class="page">${pageHead('备件库存与需求建议','用工单约束备件预留和领用，实时区分账面、预留、可用和在途数量，并按补货点生成采购建议。',`${button('刷新','reloadSpares')}${button('新建备件','newSparePart')}${s.parts.length?'':button('生成Demo台账','seedSpareDemo','primary')}`)}
-    <div class="notice-bar"><strong>受控库存</strong><span>前端不能直接修改库存余额；入库、预留、领用、释放和退库都由后端校验并写入流水。</span>${tag('openGauss持久化','good')}</div>
+    <div class="notice-bar"><strong>库存流水</strong><span>入库、预留、领用与退库自动记录流水，库存余额不能直接修改。</span></div>${warehousePicker}
     ${pending||`<div class="grid cols-4 mb-12">${metric('备件种类',String(m.partTypes||0),'种','仓库 '+esc(s.warehouseCode))}${metric('低库存',String(m.lowStockPartTypes||0),'种','低于补货点','risk')}${metric('在库金额',spareMoney(m.onHandValue),'','按台账单价计算')}${metric('活动预留',String(m.activeReservations||0),'条',`涉及${m.reservedPartTypes||0}种备件`,'warn')}</div>
     ${spareStockTable()}<div class="grid cols-2 mt-12"><div>${spareReservationTable()}</div><div>${sparePurchaseAdvice()}</div></div><div class="mt-12">${spareTransactionTable()}</div>`}
   </div>`;
@@ -98,4 +100,5 @@ async function seedSpareDemo(){
 
 const baseRenderPageSpares=renderPage;renderPage=function(){if(state.page!=='spares')return baseRenderPageSpares();$('#pageView').innerHTML=renderSpareInventory();syncNav();$('#content').scrollTop=0;bindPageEvents();};
 const baseSetPageSpares=setPage;setPage=function(page,options){baseSetPageSpares(page,options);if(page==='spares')loadSpares();};
+const baseBindSpares=bindPageEvents;bindPageEvents=function(){baseBindSpares();const apply=document.getElementById('spareWarehouseApply');if(apply)apply.onclick=()=>{const code=document.getElementById('spareWarehouseInput').value.trim();if(!code)return toast('请输入仓库编码');state.spares.warehouseCode=code;void loadSpares(true);};};
 const baseHandleActionSpares=handleAction;handleAction=function(event){const button=event.currentTarget,action=button.dataset.action;if(action==='reloadSpares')return loadSpares(true);if(action==='newSparePart')return openNewSparePart();if(action==='seedSpareDemo')return seedSpareDemo();if(action==='receiveSpare')return openReceiveSpare(button.dataset.id);if(action==='reserveSpare')return openReserveSpare(button.dataset.id);if(action==='issueSpare')return openIssueSpare(button.dataset.id);if(action==='releaseSpare')return openReleaseSpare(button.dataset.id);if(action==='returnSpare')return openReturnSpare(button.dataset.id);return baseHandleActionSpares(event);};

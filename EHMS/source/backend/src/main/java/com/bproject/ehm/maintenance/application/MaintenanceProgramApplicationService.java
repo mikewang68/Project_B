@@ -116,7 +116,9 @@ public class MaintenanceProgramApplicationService {
             Instant now = clock.instant();
             InspectionTask submitted = getTask(taskNo).submit(items, conclusion, operator, now);
             if (submitted.failedItems().isEmpty()) {
-                return new InspectionSubmissionResult(tasks.save(submitted), null);
+                InspectionTask saved=tasks.save(submitted);
+                plans.save(findPlan(submitted.planId()).markCompleted(now));
+                return new InspectionSubmissionResult(saved, null);
             }
             String evidence = submitted.failedItems().stream()
                     .map(this::failureEvidence).collect(Collectors.joining("；"));

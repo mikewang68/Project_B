@@ -10,6 +10,23 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 class HealthAssessmentApplicationServiceTest {
+    @Test void ordinaryPointsAlsoRequireRealThresholds(){
+        var repository=mock(HealthAssessmentRepository.class);var assets=mock(AssetQueryFacade.class);var quality=mock(DataQualityApplicationService.class);var work=mock(WorkOrderApplicationService.class);var now=Instant.now();
+        when(assets.get("EQ-1")).thenReturn(mock(DeviceView.class));
+        when(quality.allPoints("EQ-1")).thenReturn(List.of(new DataQualityPointView("P1","EQ-1",null,"电流","电流","A","TEST",null,5,null,null,true,"GOOD","正常",3d,now,now,now,"ok",0)));
+        when(quality.summarize(eq("EQ-1"),any())).thenReturn(new DataQualitySummary("EQ-1",1,1,1,0,0,0,0,0,100,true,"ok",now));
+        assertThrows(DomainConflictException.class,()->new HealthAssessmentApplicationService(repository,assets,quality,work).run("EQ-1"));verifyNoInteractions(repository);
+    }
+    @Test void publicRawPointWithoutApprovedThresholdCannotProduceHealthScore() {
+        var repository=mock(HealthAssessmentRepository.class);var assets=mock(AssetQueryFacade.class);
+        var quality=mock(DataQualityApplicationService.class);var work=mock(WorkOrderApplicationService.class);
+        when(assets.get("MQ-SIM-TEST")).thenReturn(mock(DeviceView.class));Instant now=Instant.now();
+        var point=new DataQualityPointView("MQ-SIM-TEST-EHM-PT-1","MQ-SIM-TEST",null,"电流","电流","A","PUBLIC_COMMITTED_SIM",null,5,null,null,true,"GOOD","正常",12.0,now,now,now,"ok",0);
+        when(quality.allPoints("MQ-SIM-TEST")).thenReturn(List.of(point));
+        when(quality.summarize(eq("MQ-SIM-TEST"),any())).thenReturn(new DataQualitySummary("MQ-SIM-TEST",1,1,1,0,0,0,0,0,100,true,"ok",now));
+        var service=new HealthAssessmentApplicationService(repository,assets,quality,work);
+        assertThrows(DomainConflictException.class,()->service.run("MQ-SIM-TEST"));verifyNoInteractions(repository);
+    }
     @Test void replayUsesActualInputTimesAndNeverTreatsAssetRulAsPrediction() {
         var repository=mock(HealthAssessmentRepository.class);var assets=mock(AssetQueryFacade.class);
         var quality=mock(DataQualityApplicationService.class);var work=mock(WorkOrderApplicationService.class);

@@ -22,19 +22,19 @@ class AssistantAuditAspectTest {
     }
     @Test void falseConnectivityResultIsFailureDespiteHttp200(){
         var service=mock(AssistantApplicationService.class);var relay=mock(EhmAuditRelay.class);
-        when(service.test()).thenReturn(Map.of("success",false,"message","private provider error"));
-        assertEquals(false,proxy(service,relay,"/api/ehm/v1/assistant/test").test().get("success"));
+        when(service.test(null)).thenReturn(Map.of("success",false,"message","private provider error"));
+        assertEquals(false,proxy(service,relay,"/api/ehm/v1/assistant/test").test(null).get("success"));
         verify(relay).record(any(),eq("FAILED"),eq("REQUEST"),anyLong());
     }
     @Test void modelFallbackIsNotModelSuccess(){
         var service=mock(AssistantApplicationService.class);var relay=mock(EhmAuditRelay.class);
-        when(service.answer(any(),any(),any())).thenReturn(new AssistantApplicationService.AssistantResponse("private answer","local-fallback",Instant.now(),"S1",List.of(),"warning","model",0,0,"","lab"));
-        proxy(service,relay,"/api/ehm/v1/assistant/chat").chat(new AssistantController.ChatRequest("private prompt","S1",null));
+        when(service.answer(any(),any(),any(),any())).thenReturn(new AssistantApplicationService.AssistantResponse("private answer","local-fallback",Instant.now(),"S1",List.of(),"warning","model",0,0,"","lab"));
+        proxy(service,relay,"/api/ehm/v1/assistant/chat").chat(new AssistantController.ChatRequest("private prompt","S1",null,"lab-qwen"));
         verify(relay).record(any(),eq("FAILED"),eq("REQUEST"),anyLong());
     }
     @Test void providerSuccessIsRecordedOnce(){
-        var service=mock(AssistantApplicationService.class);var relay=mock(EhmAuditRelay.class);when(service.test()).thenReturn(Map.of("success",true));
-        proxy(service,relay,"/api/ehm/v1/assistant/test").test();
+        var service=mock(AssistantApplicationService.class);var relay=mock(EhmAuditRelay.class);when(service.test(null)).thenReturn(Map.of("success",true));
+        proxy(service,relay,"/api/ehm/v1/assistant/test").test(null);
         verify(relay,times(1)).record(any(),eq("SUCCESS"),eq("REQUEST"),anyLong());
         assertEquals(true,((ServletRequestAttributes)RequestContextHolder.getRequestAttributes()).getRequest().getAttribute(EhmAuditRelay.BUSINESS_RECORDED));
     }

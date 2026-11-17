@@ -222,27 +222,7 @@ class OpenGaussMaintenanceCaseRepository extends OpenGaussAdapterSupport impleme
         return store.findAll(TYPE, MaintenanceCase.class).stream()
                 .filter(value -> workOrderNo.equals(value.workOrderNo())).findFirst();
     }
-    public MaintenanceCase save(MaintenanceCase value) { return store.save(TYPE, value.alarmNo(), value); }
-}
-
-@Repository
-@Profile("server")
-class OpenGaussHealthAssessmentRepository extends OpenGaussAdapterSupport implements HealthAssessmentRepository {
-    private static final String TYPE = "health-assessment";
-    OpenGaussHealthAssessmentRepository(OpenGaussJsonStore store) { super(store); }
-    public Optional<HealthAssessment> findById(String id) { return store.find(TYPE, id, HealthAssessment.class); }
-    public Optional<HealthAssessment> findLatestByAssetCode(String assetCode) {
-        return recent(assetCode).stream().findFirst();
-    }
-    public List<HealthAssessment> findRecentByAssetCode(String assetCode, int limit) {
-        return recent(assetCode).stream().limit(Math.max(1, Math.min(limit, 100))).toList();
-    }
-    public HealthAssessment save(HealthAssessment value) { return store.save(TYPE, value.assessmentId(), value); }
-    private List<HealthAssessment> recent(String assetCode) {
-        return store.findAll(TYPE, HealthAssessment.class).stream()
-                .filter(value -> assetCode.equals(value.assetCode()))
-                .sorted(Comparator.comparing(HealthAssessment::generatedAt, newestFirst())).toList();
-    }
+    public MaintenanceCase save(MaintenanceCase value) { long version=value.version()==null?0:value.version();return store.saveVersioned(TYPE, value.alarmNo(), value.withVersion(version+1),version); }
 }
 
 @Repository
@@ -370,19 +350,6 @@ class OpenGaussPointQualityRepository extends OpenGaussAdapterSupport implements
                 .filter(value -> assetCode.equals(value.assetCode()) && selected.contains(value.pointCode()))
                 .forEach(value -> result.merge(value.status(), 1L, Long::sum));
         return result;
-    }
-}
-
-@Repository
-@Profile("server")
-class OpenGaussAuditRepository extends OpenGaussAdapterSupport implements AuditRepository {
-    private static final String TYPE = "audit";
-    OpenGaussAuditRepository(OpenGaussJsonStore store) { super(store); }
-    public AuditRecord append(AuditRecord value) { return store.save(TYPE, value.auditId(), value); }
-    public List<AuditRecord> latest(int limit) {
-        return store.findAll(TYPE, AuditRecord.class).stream()
-                .sorted(Comparator.comparing(AuditRecord::occurredAt, newestFirst()))
-                .limit(Math.max(1, Math.min(limit, 200))).toList();
     }
 }
 

@@ -24,8 +24,25 @@ import java.util.regex.Pattern;
 @Repository
 @Profile("server")
 public class OpenGaussJsonStore {
-    private String scope(){return com.bproject.ehm.platform.security.EhmCentralScope.readPredicate();}
-    private com.bproject.iam.context.ScopeTriple tuple(){return com.bproject.ehm.platform.security.EhmCentralScope.writeTuple(project());}
+    private String scope(){
+        var worker=com.bproject.ehm.simulation.SimulationRunScope.current();
+        if(worker!=null){
+            if(com.bproject.ehm.platform.security.EhmCentralScope.current()!=null||!project().equals(worker.projectId()))
+                throw new IllegalStateException("SIMULATOR_SCOPE_CONFLICT");
+            return " AND o.subsystem_code='EHMS' "+com.bproject.iam.context.ScopeSql.build(
+                com.bproject.iam.context.ScopeSql.Mode.SCOPED,List.of(worker),com.bproject.iam.context.ScopeSql.Columns.ORDER).my_info();
+        }
+        return com.bproject.ehm.platform.security.EhmCentralScope.readPredicate();
+    }
+    private com.bproject.iam.context.ScopeTriple tuple(){
+        var worker=com.bproject.ehm.simulation.SimulationRunScope.current();
+        if(worker!=null){
+            if(com.bproject.ehm.platform.security.EhmCentralScope.current()!=null||!project().equals(worker.projectId()))
+                throw new IllegalStateException("SIMULATOR_SCOPE_CONFLICT");
+            return worker;
+        }
+        return com.bproject.ehm.platform.security.EhmCentralScope.writeTuple(project());
+    }
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_]{0,62}");
 
     private final JdbcTemplate jdbc;
@@ -84,6 +101,47 @@ public class OpenGaussJsonStore {
                 (result, rowNum) -> decode(result.getString(1), valueType), project(), type);
     }
 
+    private volatile Boolean h2Dialect;
+    private boolean isH2(){
+        if(h2Dialect==null)h2Dialect=jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Boolean>)
+            connection->connection.getMetaData().getDatabaseProductName().equalsIgnoreCase("H2"));
+        return Boolean.TRUE.equals(h2Dialect);
+    }
+    private record TimedPayload(Instant at,String id,String payload){}
+    /** Server-side scoped filtering, chronological ordering and LIMIT; never hydrate the full history. */
+    public <T> List<T> recent(String type,String field,String value,String timeField,Instant from,Instant to,int limit,Class<T> valueType){
+        if(field!=null&&(!java.util.Set.of("assetCode","pointCode").contains(field)||value==null)
+            ||!java.util.Set.of("generatedAt","sourceTimestamp","occurredAt").contains(timeField)
+            ||limit<1||limit>10000||from!=null&&to!=null&&from.isAfter(to))throw new IllegalArgumentException("Invalid bounded history query");
+        String base=" FROM "+qualifiedTable+" o WHERE project_id=? AND aggregate_type=?"+scope();
+        if(isH2()){
+            // Test-database dialect: bounded heap, identical exact-field/time semantics. No production fallback.
+            var order=java.util.Comparator.comparing(TimedPayload::at,java.util.Comparator.nullsFirst(java.util.Comparator.<Instant>naturalOrder())).thenComparing(TimedPayload::id);
+            var selected=new java.util.PriorityQueue<TimedPayload>(order);
+            jdbc.query("SELECT aggregate_id,payload"+base,(org.springframework.jdbc.core.RowCallbackHandler)row->{
+                String payload=row.getString(2);com.fasterxml.jackson.databind.JsonNode json;
+                try{json=objectMapper.readTree(payload);}catch(JsonProcessingException ex){throw new IllegalStateException("Invalid persisted history",ex);}
+                if(field!=null&&!value.equals(json.path(field).asText()))return;
+                var timeNode=json.path(timeField);String raw=timeNode.asText("");Instant at;
+                if(timeNode.isNumber()){
+                    var seconds=timeNode.decimalValue();long whole=seconds.longValue();at=Instant.ofEpochSecond(whole,seconds.subtract(java.math.BigDecimal.valueOf(whole)).movePointRight(9).longValue());
+                }else at=raw.isBlank()?null:Instant.parse(raw);
+                if(from!=null&&(at==null||at.isBefore(from))||to!=null&&(at==null||at.isAfter(to)))return;
+                var candidate=new TimedPayload(at,row.getString(1),payload);selected.add(candidate);if(selected.size()>limit)selected.poll();
+            },project(),type);
+            return selected.stream().sorted(order.reversed()).map(row->decode(row.payload(),valueType)).toList();
+        }
+        String rawTime="json_extract_path_text(CAST(o.payload AS json),'"+timeField+"')";
+        String time="(CASE WHEN "+rawTime+" ~ '^-?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$' THEN to_timestamp(CAST("+rawTime+" AS DOUBLE PRECISION)) ELSE CAST(NULLIF("+rawTime+",'') AS TIMESTAMP WITH TIME ZONE) END)";
+        var params=new java.util.ArrayList<Object>();params.add(project());params.add(type);
+        if(field!=null){base+=" AND json_extract_path_text(CAST(o.payload AS json),'"+field+"')=?";params.add(value);}
+        if(from!=null){base+=" AND "+time+">=?";params.add(Timestamp.from(from));}
+        if(to!=null){base+=" AND "+time+"<=?";params.add(Timestamp.from(to));}
+        params.add(limit);
+        return jdbc.query("SELECT payload"+base+" ORDER BY "+time+" DESC NULLS LAST,aggregate_id DESC LIMIT ?",
+            (row,n)->decode(row.getString(1),valueType),params.toArray());
+    }
+
     /** Restrict synthetic history reads to one point; timestamps are still filtered in the adapter. */
     public <T> List<T> findByIdPrefix(String type,String prefix,Class<T> valueType){
         String escaped=prefix.replace("!","!!").replace("%","!%").replace("_","!_");
@@ -121,6 +179,49 @@ public class OpenGaussJsonStore {
         return value == null ? 0 : value;
     }
 
+    /** Compare-and-swap for new versioned aggregates; no last-write-wins on concurrent dossier edits. */
+    public <T> T saveVersioned(String type,String id,T value,long expectedVersion) {
+        var tuple=tuple();String project=project();
+        var rows=jdbc.query("SELECT payload FROM "+qualifiedTable+" WHERE project_id=? AND region_id=? AND subsystem_code=? AND aggregate_type=? AND aggregate_id=?",
+                (r,n)->r.getString(1),project,tuple.regionId(),tuple.subsystemCode(),type,id);
+        String payload=encode(value);Timestamp now=Timestamp.from(Instant.now());
+        if(rows.isEmpty()) {
+            if(expectedVersion!=0)throw new com.bproject.ehm.shared.error.DomainConflictException("设备资料已变更，请刷新后重试");
+            try {jdbc.update("INSERT INTO "+qualifiedTable+" (project_id,region_id,subsystem_code,aggregate_type,aggregate_id,payload,updated_at) VALUES (?,?,?,?,?,?,?)",
+                    project,tuple.regionId(),tuple.subsystemCode(),type,id,payload,now);}
+            catch(DuplicateKeyException ex){throw new com.bproject.ehm.shared.error.DomainConflictException("设备资料已被其他人保存，请刷新后重试");}
+        } else {
+            try {if(objectMapper.readTree(rows.get(0)).path("version").asLong()!=expectedVersion)
+                throw new com.bproject.ehm.shared.error.DomainConflictException("设备资料版本冲突，请刷新后重试");}
+            catch(JsonProcessingException ex){throw new IllegalStateException("资料版本读取失败",ex);}
+            int changed=jdbc.update("UPDATE "+qualifiedTable+" SET payload=?,updated_at=? WHERE project_id=? AND region_id=? AND subsystem_code=? AND aggregate_type=? AND aggregate_id=? AND payload=?",
+                    payload,now,project,tuple.regionId(),tuple.subsystemCode(),type,id,rows.get(0));
+            if(changed!=1)throw new com.bproject.ehm.shared.error.DomainConflictException("设备资料同时发生修改，请刷新后重试");
+        }
+        return value;
+    }
+
+    /** Aggregate-only pulse, subject to exactly the same trusted scope as every business read. */
+    public List<java.util.Map<String,Object>> activity(){
+        return jdbc.query("SELECT aggregate_type,COUNT(*) AS total,MAX(updated_at) AS last_at FROM "+qualifiedTable
+            +" o WHERE project_id=? AND aggregate_type IN ('asset','sample-telemetry','device-snapshot','alarm','work-order','health-assessment','user-task','shift-handover')"
+            +scope()+" GROUP BY aggregate_type",(r,n)->java.util.Map.of("type",r.getString(1),"total",r.getLong(2),
+                "lastChangedAt",r.getTimestamp(3).toInstant().toString()),project());
+    }
+
+    /** Infrastructure-only append. Read-only users still generate logs, never business writes. */
+    com.bproject.ehm.platform.audit.domain.model.AuditRecord appendAudit(com.bproject.ehm.platform.audit.domain.model.AuditRecord value){
+        var context=com.bproject.ehm.platform.security.EhmCentralScope.current();String region="UNASSIGNED";
+        if(context!=null&&context.scopeMode()==com.bproject.iam.context.ScopeSql.Mode.SCOPED&&context.activeScope().size()==1){
+            var selected=context.activeScope().get(0);
+            if(!selected.projectId().equals(project())||!selected.subsystemCode().equals("EHMS"))throw new IllegalStateException("Audit scope mismatch");
+            region=selected.regionId();
+        }
+        jdbc.update("INSERT INTO "+qualifiedTable+" (project_id,region_id,subsystem_code,aggregate_type,aggregate_id,payload,updated_at) VALUES (?,?,?,?,?,?,?)",
+            project(),region,"EHMS","audit",value.auditId(),encode(value),Timestamp.from(Instant.now()));
+        return value;
+    }
+
     /** Insert-only helper for opt-in sample bundles: never resets an existing business aggregate. */
     public boolean insertIfAbsent(String type, String id, Object value) {
         var tuple=tuple();
@@ -137,6 +238,24 @@ public class OpenGaussJsonStore {
 
     public void ping() {
         jdbc.queryForObject("SELECT 1", Integer.class);
+    }
+
+    /** Exact write tuple only; existing business row is the cross-JVM serialization key. */
+    public void lockAggregate(String type,String id) {
+        if(!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Aggregate lock requires a transaction");
+        var selected=tuple();
+        jdbc.queryForList("SELECT aggregate_id FROM "+qualifiedTable
+            +" WHERE project_id=? AND region_id=? AND subsystem_code=? AND aggregate_type=? AND aggregate_id=? FOR UPDATE",
+            project(),selected.regionId(),selected.subsystemCode(),type,id);
+    }
+
+    public com.bproject.iam.context.ScopeTriple readTuple(String type,String id) {
+        var rows=jdbc.query("SELECT region_id,subsystem_code FROM "+qualifiedTable
+            +" o WHERE project_id=? AND aggregate_type=? AND aggregate_id=?"+scope(),
+            (r,n)->new com.bproject.iam.context.ScopeTriple(project(),r.getString(1),r.getString(2)),project(),type,id);
+        if(rows.size()!=1)throw new com.bproject.ehm.shared.error.DomainConflictException("请选择唯一设备数据作用域");
+        return rows.get(0);
     }
 
     /** Caller must hold a transaction. Serializes a persisted simulation controller across JVMs. */

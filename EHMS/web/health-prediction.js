@@ -22,7 +22,7 @@ async function loadHealthFlow(showMessage=false){
     const results=await Promise.allSettled([
       healthRequest(`/devices/${code}/health-assessments/latest`),
       healthRequest(`/devices/${code}/health-assessments?limit=12`),
-      healthRequest(`/data-quality/summary?assetCode=${code}`)
+      window.EhmCentralPolicy?.enabled(window.EhmAuth)&&!window.EhmCentralPolicy.page(window.EhmAuth,'data-quality')?Promise.resolve(null):healthRequest(`/data-quality/summary?assetCode=${code}`)
     ]);
     if(seq!==state.healthFlow.requestSeq)return;
     const [latest,history,quality]=results;

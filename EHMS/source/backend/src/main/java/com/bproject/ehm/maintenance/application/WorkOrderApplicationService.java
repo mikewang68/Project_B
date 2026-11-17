@@ -58,6 +58,8 @@ public class WorkOrderApplicationService implements WorkOrderQueryFacade {
     }
 
     public WorkOrderView transition(String orderNo, String targetStatus, String operator, String reason) {
+        if (WorkOrderStatus.from(targetStatus) == WorkOrderStatus.CLOSED)
+            throw new com.bproject.ehm.shared.error.DomainConflictException("不能直接关单：请在维修复测档案中提交执行记录、复测结果及闭环结论");
         WorkOrder current = workOrders.findByOrderNo(orderNo)
                 .orElseThrow(() -> new ResourceNotFoundException("未找到工单：" + orderNo));
         WorkOrder changed = current.transitionTo(WorkOrderStatus.from(targetStatus), operator, reason, clock.instant());

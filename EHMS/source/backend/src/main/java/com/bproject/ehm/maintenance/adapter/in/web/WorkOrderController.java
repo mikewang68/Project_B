@@ -35,9 +35,9 @@ public class WorkOrderController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public WorkOrderView create(@Valid @RequestBody CreateRequest request) {
+    public WorkOrderView create(@Valid @RequestBody CreateRequest request, jakarta.servlet.http.HttpServletRequest http) {
         return workOrders.create(new WorkOrderCommand(request.deviceCode(), request.title(), request.priority(),
-                request.assignee(), request.source(), request.description(), request.plannedWindow(), request.operator()));
+                request.assignee(), request.source(), request.description(), request.plannedWindow(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http)));
     }
 
     @PatchMapping("/{orderNo}/status")
@@ -46,16 +46,16 @@ public class WorkOrderController {
         if(com.bproject.ehm.platform.audit.adapter.in.web.IamAuditIdentityFilter.actor(http) instanceof com.bproject.ehm.platform.security.EhmSsoSessions.Actor actor
             && !com.bproject.ehm.platform.security.EhmBusinessPermissions.permitsWorkOrderStatus(actor,request.status()))
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN,"Work order transition is not authorized");
-        return workOrders.transition(orderNo, request.status(), request.operator(), request.reason());
+        return workOrders.transition(orderNo, request.status(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http), request.reason());
     }
 
     public record CreateRequest(
             @NotBlank(message = "设备编码不能为空") String deviceCode,
             @NotBlank(message = "工单主题不能为空") String title,
             String priority,
-            String assignee,
+            @NotBlank(message = "责任班组不能为空") String assignee,
             String source,
-            String description,
+            @NotBlank(message = "检查或维修内容不能为空") String description,
             String plannedWindow,
             String operator
     ) {

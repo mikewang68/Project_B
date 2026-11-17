@@ -46,6 +46,12 @@ class InspectionTaskTest {
                 "提交", "点检员", NOW.plusSeconds(60)));
     }
 
+    @Test void requiredItemCannotPassWithNoObservationOrEvidence(){
+        var item=new InspectionItemResult("I","安全检查","观察","按确认标准","",true,null,"PENDING",null);
+        assertThrows(IllegalArgumentException.class,()->item.complete("","PASS",""));
+        assertEquals("PASS",item.complete("","PASS","已核查实际防护状态符合标准").result());
+    }
+
     private InspectionTask task() {
         return InspectionTask.create("INS-1", MaintenancePlanTest.plan(), NOW, "机修二班", NOW);
     }

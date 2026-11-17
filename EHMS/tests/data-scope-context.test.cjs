@@ -1,0 +1,8 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {describe}=require('../web/data-scope-context.js');
+const scope=(regions,project='PROJECT_B')=>({source:'IAM_VERIFIED_CONTEXT',mode:'SCOPED',active:regions.map(regionId=>({projectId:project,regionId,subsystemCode:'EHMS'}))});
+test('demo label requires the verified active EHMS tuple',()=>{assert.equal(describe(scope(['EHMS_DEMO']),'PROJECT_B').kind,'demo');assert.match(describe(scope(['EHMS_DEMO']),'PROJECT_B').message,/虚拟|演示/);});
+test('a different project or an allowed-but-not-active demo scope cannot select demo',()=>{const v=scope(['SHEN_TIE']);v.allowed=[...scope(['EHMS_DEMO']).active];assert.equal(describe(v,'PROJECT_B').kind,'scoped');assert.equal(describe(scope(['EHMS_DEMO'],'OTHER'),'PROJECT_B').kind,'empty');});
+test('missing scope is not fabricated as demo and global is explicitly labeled',()=>{assert.equal(describe(null,'PROJECT_B').kind,'unknown');assert.equal(describe({mode:'GLOBAL'},'PROJECT_B').kind,'unknown');assert.equal(describe({source:'IAM_VERIFIED_CONTEXT',mode:'GLOBAL'},'PROJECT_B').kind,'global');});
+test('multiple regions are disclosed rather than represented as an isolated demo',()=>{const info=describe(scope(['SHEN_TIE','EHMS_DEMO']),'PROJECT_B');assert.equal(info.kind,'scoped');assert.match(info.title,/SHEN_TIE.*EHMS_DEMO/);});
+test('authentication signature includes the actual data scope so all module caches reset on selection changes',()=>{const source=fs.readFileSync(path.resolve(__dirname,'../web/auth-session.js'),'utf8');assert.match(source,/const signature=.*auth\.dataScope/);assert.match(source,/if\(!auth.user\)auth.dataScope=null/);});

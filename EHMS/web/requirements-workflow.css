@@ -1,0 +1,11 @@
+/* Readable persisted workflow facts, using the existing restrained workspace visual language. */
+.workflow-record{border:1px solid #dce3ed;border-radius:8px;padding:14px;margin-block:12px;background:#f8fafc;overflow-wrap:anywhere}
+.workflow-record h4{margin:0 0 10px;font-size:14px;color:#1d3658}
+.workflow-record p{margin:8px 0;line-height:1.65}
+.workflow-record small{color:#60728b;line-height:1.6}
+.workflow-facts{display:grid;grid-template-columns:88px minmax(0,1fr);gap:8px 12px;margin:10px 0;font-size:13px;line-height:1.6}
+.workflow-facts dt{color:#60728b}.workflow-facts dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.workflow-measurement{font-variant-numeric:tabular-nums;font-size:16px;font-weight:650;color:#1d3658}
+.workflow-identity{overflow-wrap:anywhere;line-height:1.7}
+#rwAlarmFilters{flex-wrap:wrap}#rwAlarmKeyword{min-width:220px}
+@media(max-width:600px){.workflow-facts{grid-template-columns:1fr;gap:3px}.workflow-facts dd{margin-bottom:8px}}

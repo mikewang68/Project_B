@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "jdbcUrl": "jdbc:postgresql://127.0.0.1:15432/REPLACE_WITH_EHMS_DATABASE?connectTimeout=5&socketTimeout=30",
+  "dbUser": "REPLACE_WITH_EHMS_INTEGRATION_ROLE",
+  "dbPasswordFile": "/run/ehms-public-data/db-password",
+  "schema": "ehm",
+  "table": "aggregate_store",
+  "sourceId": "ehms-public-v1",
+  "projectId": "PROJECT_B",
+  "regionId": "EHMS_DEMO",
+  "principal": "b-sim-ehms-reader-v1",
+  "policyRevision": "allocation-20261111-v1",
+  "httpBase": "http://127.0.0.1:38121",
+  "httpTokenFile": "/run/ehms-public-data/http.token",
+  "catalogFile": "../mapping/owner-catalog.json",
+  "allocationFile": "../mapping/owner-allocation.json"
+}

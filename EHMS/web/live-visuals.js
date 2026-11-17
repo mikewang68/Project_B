@@ -13,7 +13,7 @@ lineChart=function(primary=[],secondary=[],opts={}){
   const valid=v=>typeof v==='number'&&Number.isFinite(v);
   const all=[...primary,...secondary].filter(valid);
   if(!all.length)return visualEmpty('暂无可绘制记录','当前范围未找到数值记录。请更换时间范围或先录入样本。');
-  if(!opts.live)return visualEmpty('原型示意曲线已隐藏','此入口仍需要真实历史数据，系统不再把固定数组当作统计图展示。');
+  if(!opts.live)return visualEmpty('暂无可用趋势','需要有效历史数据才能绘制趋势；请核对采样、时间窗口与数据质量。');
   const w=720,h=250,left=56,right=20,top=20,bottom=46;
   const lower=opts.min??Math.min(0,...all),upper=opts.max??Math.max(...all,opts.threshold??0)*1.1;
   const span=upper-lower||1,count=Math.max(primary.length,secondary.length);
@@ -38,20 +38,22 @@ lineChart=function(primary=[],secondary=[],opts={}){
 async function loadVisualOverview(showMessage=false){
   if(typeof window!=='undefined'&&window.EhmAuth){
     await window.EhmAuth.ready;
-    if(window.EhmCentralPolicy?.enabled(window.EhmAuth)&&!window.EhmCentralPolicy.page(window.EhmAuth,'dashboard')){
+    if(window.EhmCentralPolicy?.enabled(window.EhmAuth)&&!['dashboard','area-map',...VISUAL_REPORT_PAGES].some(page=>window.EhmCentralPolicy.page(window.EhmAuth,page))){
       state.visual.overview=null;return;
     }
   }
   const v=state.visual,seq=++v.seq;v.loading=true;v.error='';if(VISUAL_PAGES.has(state.page))renderPage();
-  try{const value=await apiRequest(`/analytics/overview?days=${v.days}`);if(seq!==v.seq)return;v.overview=value;v.readAt=new Date().toISOString();updateVisualBadges(value);
+  try{const value=await apiRequest(`/analytics/overview?days=${v.days}`);if(seq!==v.seq)return;
+    if(!value||Array.isArray(value)||typeof value.alarmStatus!=='object'||value.alarmStatus===null)throw Error('统计接口返回结构不完整，请核对后端版本或稍后重试');
+    v.overview=value;v.readAt=new Date().toISOString();updateVisualBadges(value);
     if(showMessage)toast(`统计已刷新：${value.devices}台设备、${value.alarms}条告警、${value.workOrders}张工单。`);
-  }catch(error){if(seq!==v.seq)return;v.error=error.message;}
+  }catch(error){if(seq!==v.seq)return;v.overview=null;v.error=error.message;}
   finally{if(seq===v.seq){v.loading=false;if(VISUAL_PAGES.has(state.page))renderPage();}}
 }
 function visualAsset(){return EQUIPMENT.find(e=>e.code===state.visual.assetCode)||EQUIPMENT[0];}
 async function loadVisualPoints(showMessage=false){
   if(typeof window!=='undefined'&&window.EhmCentralPolicy?.enabled(window.EhmAuth)
-    &&!['realtime','fleet','data-quality'].every(page=>window.EhmCentralPolicy.page(window.EhmAuth,page)))return;
+    &&(!['fleet','asset-tree','asset-profile'].some(page=>window.EhmCentralPolicy.page(window.EhmAuth,page))||!window.EhmCentralPolicy.page(window.EhmAuth,'data-quality')))return;
   const v=state.visual,asset=visualAsset();if(!asset)return;
   v.assetCode=asset.code;const seq=++v.pointSeq;++v.sampleSeq;v.pointsLoading=true;v.samplesLoading=false;v.pointError='';v.telemetryError='';v.samples=[];v.points=[];v.quality=null;renderPage();
   const results=await Promise.allSettled([apiList(`/data-quality/points?assetCode=${encodeURIComponent(asset.code)}`),apiRequest(`/data-quality/summary?assetCode=${encodeURIComponent(asset.code)}`)]);
@@ -60,16 +62,17 @@ async function loadVisualPoints(showMessage=false){
   v.pointError=results.filter(r=>r.status==='rejected').map(r=>r.reason.message).join('；');v.pointsLoading=false;
   if(!v.points.some(p=>p.pointCode===v.pointCode))v.pointCode=v.points[0]?.pointCode||'';
   renderPage();if(showMessage&&!v.pointError)toast(`${asset.code}测点与数据质量已刷新。`);
-  if(v.pointCode)await loadVisualSamples();
+  if(v.pointCode&&state.page!=='data-quality')await loadVisualSamples();
 }
 async function loadVisualSamples(showMessage=false){
   if(typeof window!=='undefined'&&window.EhmCentralPolicy?.enabled(window.EhmAuth)
-    &&!window.EhmCentralPolicy.page(window.EhmAuth,'realtime'))return;
+    &&!['realtime','diagnosis'].some(page=>window.EhmCentralPolicy.page(window.EhmAuth,page)))return;
   const v=state.visual;if(!v.pointCode)return;
   const seq=++v.sampleSeq,point=v.points.find(p=>p.pointCode===v.pointCode);v.samplesLoading=true;v.telemetryError='';v.samples=[];renderPage();
   // Historical range is explicitly anchored to the latest stored source time, not relabelled as current.
-  const to=v.hours==='stored'&&point?.sourceTimestamp?new Date(new Date(point.sourceTimestamp).getTime()+1000):new Date();
-  const hours=v.hours==='stored'?24:Number(v.hours),from=new Date(to.getTime()-hours*3600000);
+  const to=v.hours==='custom'?new Date(v.customTo):v.hours==='stored'&&point?.sourceTimestamp?new Date(new Date(point.sourceTimestamp).getTime()+1000):new Date();
+  const hours=v.hours==='stored'?24:Number(v.hours),from=v.hours==='custom'?new Date(v.customFrom):new Date(to.getTime()-hours*3600000);
+  if(!Number.isFinite(from.getTime())||!Number.isFinite(to.getTime())||from>=to||to-from>90*86400000){v.samplesLoading=false;v.telemetryError='起止时间须有效、起点早于终点，且单次不超过90天';renderPage();return;}
   v.rangeFrom=from.toISOString();v.rangeTo=to.toISOString();
   try{const samples=await apiRequest(`/telemetry/points/${encodeURIComponent(v.pointCode)}/samples?from=${encodeURIComponent(v.rangeFrom)}&to=${encodeURIComponent(v.rangeTo)}&limit=2000`);
     if(seq!==v.sampleSeq)return;v.samples=Array.isArray(samples)?samples:[];
@@ -87,7 +90,7 @@ function visualOverviewBody(){
   const v=state.visual,a=v.overview;if(v.error)return visualError(v.error,'reloadVisual');
   if(v.loading&&!a)return visualEmpty('统计正在加载','正在从后端读取完整分页业务数据…');
   if(!a)return visualEmpty('尚未读取统计数据','请刷新数据，系统不会用静态数组冒充数据库统计。');
-  return `${visualNotice('openGauss · 后端聚合统计',a.calculatedAt,a.interpretation)}
+  return `${visualNotice('业务记录统计',a.calculatedAt,a.interpretation)}
     <div class="grid cols-3 mb-12">${metric('活动台账设备',a.devices,'台','全部活动台账记录，不是现场设备总数')}${metric('告警记录',a.alarms,'条','包含已关闭的历史告警')}${metric('工单记录',a.workOrders,'张','包含已关闭 / 已取消工单')}</div>
     <div class="grid cols-2">${panel('每日告警 / 工单新建量',eventChart(a),'<span class="mini-badge">'+a.from+' 至 '+a.to+'</span>')}${panel('台账健康评分分布',distributionRows(a.healthDistribution),gotoButton('查看评估','health'))}</div>
     <div class="grid cols-3 mt-12">${panel('区域设备分布',distributionRows(a.areaDistribution,'visualDrill','area'))}${panel('告警状态',distributionRows(a.alarmStatus,'visualDrill','alarm'))}${panel('工单状态',distributionRows(a.workOrderStatus,'visualDrill','work'))}</div>`;
@@ -95,15 +98,17 @@ function visualOverviewBody(){
 renderDashboard=function(){return `<div class="page">${pageHead('综合驾驶舱','图表来自数据库；数据不足时明确留空，不伪造健康变化趋势。',`${visualDays()}${button('刷新统计','reloadVisual')}${gotoButton('查看台账','fleet')}`)}${visualOverviewBody()}</div>`;};
 
 function visualControls(){const v=state.visual;return `<select id="visualAsset" class="control" aria-label="监测设备">${EQUIPMENT.map(e=>`<option value="${esc(e.code)}" ${e.code===v.assetCode?'selected':''}>${esc(e.code+' · '+e.name)}</option>`).join('')}</select>${button('刷新测点','reloadVisualPoints')}`;}
-function telemetrySource(point=state.visual.pointCode){return String(point).startsWith('SAMPLE-LIVE-')?'虚拟样本库（独立标记）':'openGemini';}
+function telemetrySource(point=state.visual.pointCode){return String(point).startsWith('SAMPLE-LIVE-')?'虚拟样本库（独立标记）':String(point).startsWith('MQ-SIM-')?'公共提交事件库（MQ模拟）':'openGemini';}
 function telemetryChart(){
   const v=state.visual,p=v.points.find(p=>p.pointCode===v.pointCode);
   if(v.samplesLoading)return visualEmpty('读取时序历史…',`正在查询${telemetrySource()}，当前图表不会混用旧测点记录。`);
   if(v.telemetryError)return visualError(v.telemetryError,'reloadVisualSamples');
   if(!p)return visualEmpty('未选择测点','请先选择已登记测点。');
-  const samples=v.samples.filter(s=>Number.isFinite(s.value)&&s.sourceTimestamp).sort((a,b)=>new Date(a.sourceTimestamp)-new Date(b.sourceTimestamp));
+  const samples=v.samples.filter(s=>s.sourceTimestamp).sort((a,b)=>new Date(a.sourceTimestamp)-new Date(b.sourceTimestamp));
   if(!samples.length)return visualEmpty('此时间范围没有时序样本','质量快照与时序历史是不同数据源；旧快照不代表历史已入库。可切换“最近入库时间附近”或手动录入一条明确标注的演示样本。');
-  return `${lineChart(samples.map(s=>s.value),[],{live:true,times:samples.map(s=>s.sourceTimestamp),labels:samples.map(s=>new Date(s.sourceTimestamp).toLocaleString('zh-CN',{hour12:false})),unit:p.unit,threshold:p.upperLimit,name:p.name,caption:telemetrySource()+'实际保存的样本'})}<p class="muted">${samples.length===1?'仅1条样本，只显示一个点；不足以判断变化趋势。 ':''}GOOD ${samples.filter(s=>s.quality==='GOOD').length} / ${samples.length}${samples.some(s=>String(s.quality).startsWith('SYNTHETIC_'))?`；其中虚拟样本 ${samples.filter(s=>String(s.quality).startsWith('SYNTHETIC_')).length} 条（不计作现场GOOD）`:''}；最多2000条（达到上限时不是完整范围）。质量码为入库时判定，当前新鲜度请查看测点表。</p>`;
+  const sameUnit=s=>typeof s.unit==='string'&&s.unit===p.unit;
+  const usable=s=>Number.isFinite(s.value)&&sameUnit(s)&&['GOOD','SYNTHETIC_GOOD'].includes(s.quality);
+  return `${lineChart(samples.map(s=>usable(s)?s.value:null),samples.map(s=>Number.isFinite(s.value)&&sameUnit(s)&&!usable(s)?s.value:null),{live:true,times:samples.map(s=>s.sourceTimestamp),labels:samples.map(s=>visualDate(s.sourceTimestamp)),unit:p.unit,threshold:p.upperLimit,name:p.name,secondaryName:'质量异常原值（不参与正常趋势）',caption:telemetrySource()+'实际保存的样本'})}<p class="muted">GOOD ${samples.filter(s=>s.quality==='GOOD').length} / ${samples.length}；缺值、BAD、STALE处正常曲线断开；橙色为同单位异常质量原值。单位缺失或不一致的值不绘入此坐标轴。虚拟样本独立标记，不计作现场GOOD。最多2000条，达到上限时不是完整范围。</p><details><summary>样本明细与来源时间（${samples.length}条）</summary><div class="table-wrap"><table class="data-table"><thead><tr><th>源时间</th><th>接收时间</th><th>值</th><th>质量</th></tr></thead><tbody>${samples.map(s=>`<tr><td>${visualDate(s.sourceTimestamp)}</td><td>${visualDate(s.receivedAt)}</td><td>${s.value??'缺失'} ${esc(s.unit||'单位未提供')}</td><td>${esc(s.quality||'UNKNOWN')}${sameUnit(s)?'':' · 单位待核对'}</td></tr>`).join('')}</tbody></table></div></details>`;
 }
 function visualMonitorBody(){
   const v=state.visual;
@@ -111,7 +116,7 @@ function visualMonitorBody(){
   if(v.pointError)return panel('测点读取异常',visualError(v.pointError,'reloadVisualPoints'));
   const q=v.quality;
   const pointRows=v.points.map(p=>`<tr><td><button class="table-action" data-action="selectVisualPoint" data-id="${esc(p.pointCode)}">${esc(p.pointCode)}</button><small>${esc(p.name)}</small></td><td>${p.lastValue??'—'} ${esc(p.unit)}</td><td>${tag(p.qualityLabel,p.qualityStatus==='GOOD'?'good':'warn')}</td><td>${visualDate(p.sourceTimestamp)}</td><td>${esc(p.message)}</td><td><button class="table-action" data-action="visualSample" data-id="${esc(p.pointCode)}">录入演示样本</button></td></tr>`).join('');
-  return `${q?visualNotice('openGauss · 质量快照（含新鲜度复核）',q.assessedAt,`启用${q.enabledPoints}点，当前有效${q.goodPoints}点，断流/过期${q.missingPoints}点；${q.assessmentMessage}`):''}
+  return `${q?visualNotice('测点质量快照',q.assessedAt,`启用${q.enabledPoints}点，当前有效${q.goodPoints}点，断流/过期${q.missingPoints}点；${q.assessmentMessage}`):''}
   <section class="panel"><div class="panel-head"><h2>测点历史</h2><div class="filters"><select id="visualPoint" class="control" aria-label="历史测点">${v.points.map(p=>`<option value="${esc(p.pointCode)}" ${p.pointCode===v.pointCode?'selected':''}>${esc(p.name)} (${esc(p.unit)})</option>`).join('')}</select><select id="visualHours" class="control" aria-label="历史时间范围">${[[1,'最近1小时'],[24,'最近24小时'],[168,'最近7天'],[720,'最近30天'],['stored','最近入库时间附近（历史）']].map(([n,label])=>`<option value="${n}" ${String(n)===String(v.hours)?'selected':''}>${label}</option>`).join('')}</select>${button('查询历史','reloadVisualSamples')}${button('导出样本CSV','exportTelemetry')}</div></div><div class="panel-body">${telemetryChart()}</div></section>
   <section class="panel mt-12"><div class="panel-head"><h2>当前保存的测点快照</h2>${gotoButton('管理测点与质量','data-quality')}</div><div class="table-wrap"><table class="data-table"><thead><tr><th>测点</th><th>最后值</th><th>当前质量</th><th>源时间</th><th>判定原因</th><th>操作</th></tr></thead><tbody>${pointRows||'<tr><td colspan="6">设备尚未登记测点，请先在测点管理中新建。</td></tr>'}</tbody></table></div></section>`;
 }
@@ -120,7 +125,20 @@ renderDiagnosis=renderVisualMonitor;
 
 function reportCaveat(page){return ({reliability:'MTBF / MTTR需要故障起止和累计运行时长；当前告警数不等同故障次数，不计算伪指标。',oee:'OEE需要计划生产时间、实际运行时间、产量和合格率；尚未获得这些数据，当前不能计算OEE。','maintenance-cost':'费用和工时明细尚未完成接入，工单数量不能代替金额。','coverage-report':'设备接入状态为台账登记字段；实际有效测点覆盖请进入数据质量页按设备核查。','resource-forecast':'只统计已登记的待办工单；没有完整维修工时和班组容量，不做虚构资源预测。','energy-health':'没有同时间窗的能耗、负载和健康特征序列，不能生成相关性或因果结论。'})[page]||'报表按实际业务记录统计；现场业务口径仍需确认。';}
 function visualEventTable(a){return `<div class="table-wrap"><table class="data-table"><thead><tr><th>日期（北京时间）</th><th>新建告警</th><th>新建工单</th><th>关闭工单</th></tr></thead><tbody>${a.dailyEvents.map(d=>`<tr><td>${d.date}</td><td>${d.alarmsCreated}</td><td>${d.workOrdersCreated}</td><td>${d.workOrdersClosed}</td></tr>`).join('')}</tbody></table></div>`;}
-renderReports=function(){const v=state.visual,a=v.overview;return `<div class="page">${pageHead(menuInfo(state.page)?.label||'业务统计报表','可追溯到数据库记录；提供原始日统计与CSV导出。',`${visualDays()}${button('刷新报表','reloadVisual')}${button('导出统计CSV','exportVisualReport')}`)}${panel('统计口径与当前可用范围',`<p>${esc(reportCaveat(state.page))}</p>`)}${visualOverviewBody()}${a&&!v.error?panel('每日统计明细',visualEventTable(a)):''}</div>`;};
+function reportFocus(page,a){
+  if(!a)return '';
+  const days=a.dailyEvents||[],sum=key=>days.reduce((n,d)=>n+Number(d[key]||0),0);
+  if(page==='kpi'||page==='period-report')return panel('所选期间的已记录业务事件',`<div class="grid cols-3">${metric('新建告警',String(sum('alarmsCreated')),'条','按实际发生日期；不等同故障次数')}${metric('新建工单',String(sum('workOrdersCreated')),'单','按工单创建时间')}${metric('关闭工单',String(sum('workOrdersClosed')),'单','按已保存的关闭履历')}</div>`);
+  if(page==='failure-report')return panel('当前告警处置分布（不是故障率）',distributionRows(a.alarmStatus||{})+`<div class="inline-actions">${gotoButton('查看告警记录与证据','alarm-center')}${gotoButton('核对故障模式','fmeca')}</div>`);
+  if(page==='reliability')return panel('可核验的维修业务状态',distributionRows(a.workOrderStatus||{})+'<p>以上是工单状态分布。计算MTBF还需故障定义与有效运行时长；计算MTTR还需同口径维修起止时间，不能用这些数量直接代替。</p>'+gotoButton('核对维修与复测记录','repair-retest'));
+  if(page==='coverage-report')return panel('已登记设备类型与覆盖核查',distributionRows(a.typeDistribution||{})+'<p>设备类型数量不是传感器覆盖率。进入数据质量页，按设备核对已登记、启用、有效和过期测点。</p>'+gotoButton('逐设备核查测点质量','data-quality'));
+  if(page==='maintenance-cost')return panel('费用统计前置核验',distributionRows(a.workOrderStatus||{})+'<p>目前可核对关联工单；人工工时、费率、领料单价和外委费用未齐备，金额保留为“未核算”，不是0元。</p>'+gotoButton('核对工单与执行记录','workorders'));
+  if(page==='resource-forecast')return panel('已登记工作负荷（非资源预测）',distributionRows(a.workOrderStatus||{})+'<p>请先核对未完成工单，再补充工时估算、技能和班组可用容量，才能进行资源测算。</p>'+gotoButton('查看工单中心','workorders'));
+  if(page==='oee')return panel('OEE输入核查','<p>需同一设备、同一时间窗的计划生产时间、实际运行时间、理论节拍、总产量和合格产量。目前缺少完整生产计量输入，OEE不计算；设备在线率和健康分不能替代OEE。</p>'+gotoButton('核对设备与时间窗','realtime'));
+  if(page==='energy-health')return panel('关联分析输入核查','<p>需可对齐时间戳的能耗、负载与健康特征，并核对工况、单位及缺失值。目前只展示已保存的独立记录，不生成未经验证的相关系数或因果结论。</p>'+gotoButton('核对时序历史','realtime')+gotoButton('核对健康评估','health'));
+  return '';
+}
+renderReports=function(){const v=state.visual,a=v.overview;return `<div class="page">${pageHead(menuInfo(state.page)?.label||'业务统计报表','可追溯到数据库记录；提供原始日统计与CSV导出。',`${visualDays()}${button('刷新报表','reloadVisual')}${button('导出统计CSV','exportVisualReport')}`)}${panel('统计口径与当前可用范围',`<p>${esc(reportCaveat(state.page))}</p>`)}${a&&!v.error?reportFocus(state.page,a):''}${visualOverviewBody()}${a&&!v.error?panel('每日统计明细',visualEventTable(a)):''}</div>`;};
 
 function healthHistoryChart(){
   const values=[...state.healthFlow.history].sort((a,b)=>new Date(a.generatedAt)-new Date(b.generatedAt));
@@ -142,14 +160,14 @@ renderAssetTab=function(e){
   if(state.assetTab==='history')return `<div class="inline-actions">${gotoButton('配置变更履历','config-change')}${gotoButton('计量校准记录','sensor-cal')}${gotoButton('操作审计','audit-logs')}</div>`;
   if(state.assetTab==='maintenance')return panel('该设备的维保工单',WORK_ORDERS.filter(w=>w.deviceCode===e.code).map(w=>`<p><strong>${esc(w.orderNo)}</strong> · ${esc(w.title)} · ${esc(w.status)} · ${esc(w.assignee)}</p>`).join('')||visualEmpty('暂无工单','可从设备详情创建工单'),gotoButton('进入工单中心','workorders'));
   const alarms=ALARMS.map(normalizeAlarm).filter(a=>a.deviceCode===e.code&&a.status!=='已关闭');
-  return `${visualNotice('openGauss · 台账登记值',e.updatedAt,'台账健康分和风险为登记字段，不等同于当前自动评估。')}
+  return `${visualNotice('台账登记值',e.updatedAt,'台账健康分和风险为登记字段，不等同于当前自动评估。')}
     <div class="grid cols-3 mb-12">${metric('台账评分',e.health??'—','分','当前保存的登记字段')}${metric('该设备活动告警',alarms.length,'条','按设备编码过滤业务记录')}${metric('责任班组',esc(e.owner||'—'),'','设备档案字段')}</div>${panel('该设备活动告警',alarms.map(a=>`<div class="action-item"><div><b>${esc(a.alarmNo)} · ${esc(a.level)}</b><p>${esc(a.summary)}</p><small>${visualDate(a.occurredAt)} · ${esc(a.status)}</small></div><button class="table-action" data-action="visualEvidence" data-id="${esc(a.alarmNo)}">查看证据</button></div>`).join('')||visualEmpty('没有活动告警','以当前数据库记录为准'),button('查看本设备健康评估','assetHealth'))}`;
 };
 
 function csvCell(value){let text=String(value??'');if(/^[=+@-]/.test(text))text="'"+text;return '"'+text.replaceAll('"','""')+'"';}
 function downloadVisualCsv(name,rows){const blob=new Blob(['\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);}
 function exportVisualReport(){const a=state.visual.overview;if(!a||state.visual.error)return toast('统计未成功加载，不能导出。');downloadVisualCsv(`EHM-日统计-${a.from}-${a.to}.csv`,[['日期（北京时间）','新建告警','新建工单','关闭工单'],...a.dailyEvents.map(d=>[d.date,d.alarmsCreated,d.workOrdersCreated,d.workOrdersClosed])]);toast(`已导出${a.dailyEvents.length}天统计，与图表使用同一份查询结果。`);}
-function exportTelemetry(){const v=state.visual;if(!v.samples.length||v.telemetryError)return toast('没有成功读取的时序样本可导出。');downloadVisualCsv(`EHM-${v.pointCode}-时序样本.csv`,[['测点','源时间','接收时间','数值','单位','入库质量'],...v.samples.map(s=>[s.pointCode,s.sourceTimestamp,s.receivedAt,s.value,s.unit,s.quality])]);toast(`已导出${v.samples.length}条样本。`);}
+function exportTelemetry(){const v=state.visual;if(!v.samples.length||v.telemetryError)return toast('没有成功读取的时序样本可导出。');downloadVisualCsv(`EHM-${v.pointCode}-时序样本.csv`,[['测点','源时间','接收时间','数值','单位','入库质量','来源事件ID','模拟标志','来源定位'],...v.samples.map(s=>[s.pointCode,s.sourceTimestamp,s.receivedAt,s.value,s.unit,s.quality,s.eventId,s.simulated,s.observationRef])]);toast(`已导出${v.samples.length}条样本。`);}
 function openVisualSample(code){const p=state.visual.points.find(p=>p.pointCode===code);if(!p)return;openModal('手工样本（用于演示）','录入 '+code,`<div class="notice-bar warning"><strong>这是人工录入，不是传感器采集</strong><span>提交会真实写入openGemini与质量快照；源时间为提交时刻。不要将演示值作为设备安全判断依据。</span></div><div class="field mt-12"><label>采样值（${esc(p.unit)}）</label><input id="visualSampleValue" type="number" step="any" value="${p.lastValue??0}"/></div><div id="visualSampleError" class="form-error" role="alert"></div>`,'保存演示样本',async()=>{const text=$('#visualSampleValue').value,value=Number(text);if(!text||!Number.isFinite(value)){$('#visualSampleError').textContent='请输入有限数字';return false;}try{await apiRequest(`/data-quality/points/${encodeURIComponent(code)}/sample`,{method:'POST',body:JSON.stringify({value,sourceTimestamp:new Date().toISOString()})});state.visual.hours=24;state.visual.pointCode=code;await loadVisualPoints();toast(`${code}样本已保存，可在历史图中核查。`);return true;}catch(error){$('#visualSampleError').textContent=error.message;return false;}});}
 
 const baseVisualRender=renderPage;
@@ -180,7 +198,7 @@ bindPageEvents=function(){baseVisualBind();const select=(id,fn)=>{const el=$(id)
   select('#visualAsset',value=>{state.visual.assetCode=value;state.asset=value;loadVisualPoints();});
   select('#visualPoint',value=>{state.visual.pointCode=value;loadVisualSamples();});
   select('#visualHours',value=>{state.visual.hours=value==='stored'?value:Number(value);loadVisualSamples();});
-  select('#deviceHealthBand',value=>{state.crud.healthBand=value;renderPage();});
+  select('#deviceHealthBand',value=>{state.crud.healthBand=value;state.crud.page=1;renderPage();});
   applyVisualColumns();
   const replay=$('[data-action="runHealthAssessment"]');if(replay&&(!state.healthFlow.quality?.healthAssessmentAllowed||state.healthFlow.loading||state.healthFlow.running)){replay.disabled=true;replay.title='当前数据质量未满足实时评估条件或正在处理；可以使用历史回放核验规则';}
 };
@@ -188,7 +206,7 @@ const baseVisualBackendLoad=loadBackendData;
 loadBackendData=async function(show=false){await baseVisualBackendLoad(show);if(state.backendConnected){updateVisualBadges();await loadVisualOverview();}};
 
 async function updateVisualBadges(overview){
-  const alarm=$('[data-goto="alarm-center"] span');if(alarm)alarm.textContent=overview?Object.entries(overview.alarmStatus).filter(([status])=>status!=='已关闭').reduce((sum,[,n])=>sum+n,0):ALARMS.map(normalizeAlarm).filter(a=>a.status!=='已关闭').length;
+  const alarm=$('[data-goto="alarm-center"] span');if(alarm)alarm.textContent=overview?(overview.alarmStatus?Object.entries(overview.alarmStatus).filter(([status])=>status!=='已关闭').reduce((sum,[,n])=>sum+n,0):'—'):ALARMS.map(normalizeAlarm).filter(a=>a.status!=='已关闭').length;
   try{const tasks=await apiRequest('/my-tasks');const count=tasks.filter(t=>!['COMPLETED','CANCELLED'].includes(t.status)).length;const badge=$('[data-goto="my-tasks"] span');if(badge)badge.textContent=count;}catch{}
 }
 function searchSystemData(keyword){

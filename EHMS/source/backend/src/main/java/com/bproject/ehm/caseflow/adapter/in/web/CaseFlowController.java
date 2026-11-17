@@ -35,16 +35,16 @@ public class CaseFlowController {
     }
 
     @PostMapping("/alarms/{alarmNo}/case/diagnoses")
-    public CaseFlowView diagnose(@PathVariable String alarmNo, @Valid @RequestBody DiagnosisRequest request) {
+    public CaseFlowView diagnose(@PathVariable String alarmNo, @Valid @RequestBody DiagnosisRequest request, jakarta.servlet.http.HttpServletRequest http) {
         return cases.diagnose(alarmNo, request.conclusion(), request.probableCause(), request.confidence(),
-                request.evidence(), request.operator());
+                request.evidence(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     @PostMapping("/alarms/{alarmNo}/case/work-order")
-    public CaseFlowView convert(@PathVariable String alarmNo, @RequestBody(required = false) WorkOrderRequest request) {
+    public CaseFlowView convert(@PathVariable String alarmNo, @RequestBody(required = false) WorkOrderRequest request, jakarta.servlet.http.HttpServletRequest http) {
         WorkOrderRequest value = request == null ? new WorkOrderRequest(null, null, null, null, null, null) : request;
         return cases.convertToWorkOrder(alarmNo, value.title(), value.priority(), value.assignee(),
-                value.description(), value.plannedWindow(), value.operator());
+                value.description(), value.plannedWindow(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     @GetMapping("/work-orders/{orderNo}/case")
@@ -54,21 +54,27 @@ public class CaseFlowController {
 
     @PostMapping("/work-orders/{orderNo}/case/execution-records")
     public CaseFlowView recordExecution(@PathVariable String orderNo,
-                                        @Valid @RequestBody ExecutionRequest request) {
+                                        @Valid @RequestBody ExecutionRequest request, jakarta.servlet.http.HttpServletRequest http) {
         return cases.recordExecution(orderNo, request.action(), request.result(), request.safetyConfirmation(),
-                request.partsUsed(), request.operator());
+                request.partsUsed(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     @PostMapping("/work-orders/{orderNo}/case/retests")
-    public CaseFlowView recordRetest(@PathVariable String orderNo, @Valid @RequestBody RetestRequest request) {
+    public CaseFlowView recordRetest(@PathVariable String orderNo, @Valid @RequestBody RetestRequest request, jakarta.servlet.http.HttpServletRequest http) {
         return cases.recordRetest(orderNo, request.pointCode(), request.beforeValue(), request.afterValue(),
-                request.unit(), request.criterion(), request.passed(), request.operator());
+                request.unit(), request.criterion(), request.passed(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     @PostMapping("/work-orders/{orderNo}/case/close")
-    public CaseFlowView close(@PathVariable String orderNo, @Valid @RequestBody CloseRequest request) {
-        return cases.closeLoop(orderNo, request.conclusion(), request.operator());
+    public CaseFlowView close(@PathVariable String orderNo, @Valid @RequestBody CloseRequest request, jakarta.servlet.http.HttpServletRequest http) {
+        return cases.closeWithRecovery(orderNo, request.conclusion(), request.recoveryDecision(), request.recoveryReason(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
+
+    @PostMapping("/work-orders/{orderNo}/case/retest-plan")
+    public CaseFlowView plan(@PathVariable String orderNo,@RequestBody PlanRequest request,jakarta.servlet.http.HttpServletRequest http){
+        return cases.defineRetestPlan(orderNo,request.pointCodes(),com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
+    }
+    public record PlanRequest(java.util.List<String> pointCodes){}
 
     public record DiagnosisRequest(
             @NotBlank(message = "诊断结论不能为空") String conclusion,
@@ -111,7 +117,7 @@ public class CaseFlowController {
 
     public record CloseRequest(
             @NotBlank(message = "闭环结论不能为空") String conclusion,
-            String operator
+            String operator, String recoveryDecision, String recoveryReason
     ) {
     }
 }

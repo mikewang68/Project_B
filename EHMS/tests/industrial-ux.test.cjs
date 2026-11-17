@@ -1,0 +1,11 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+const root=path.resolve(__dirname,'../web'),source=fs.readFileSync(path.join(root,'industrial-ux.js'),'utf8');
+function fixture(fail=false){let callback;const errors=[];const body={querySelector(){return null},querySelectorAll(){return []},prepend(el){errors.push(el.textContent)}};
+ const c={apiRequest:async()=>{if(fail)throw Error('测试版本冲突');return {ok:true}},openModal:(a,b,d,e,fn)=>{callback=fn},closeModal(){},toast(){},
+  document:{activeElement:null,getElementById:id=>id==='modalBody'?body:null,querySelector:()=>null,addEventListener(){},createElement:()=>({setAttribute(){},focus(){}})},
+  window:{},setTimeout,clearTimeout,Event};vm.createContext(c);vm.runInContext(source,c);return {c,errors,invoke:()=>callback()};}
+test('a rejected save keeps the modal input rather than closing as success',async()=>{const f=fixture(true);f.c.openModal('a','b','','保存',async()=>{await f.c.apiRequest('/x',{method:'PUT'});});assert.equal(await f.invoke(),false);assert.match(f.errors[0],/未保存.*版本冲突.*输入已保留/);});
+test('legacy callbacks that swallow a mutation error still cannot close the modal',async()=>{const f=fixture(true);f.c.openModal('a','b','','保存',async()=>{try{await f.c.apiRequest('/x',{method:'POST'})}catch{}});assert.equal(await f.invoke(),false);assert.equal(f.errors.length,1);});
+test('successful callbacks preserve the original return semantics',async()=>{const f=fixture();f.c.openModal('a','b','','保存',async()=>{await f.c.apiRequest('/x',{method:'PUT'});return true;});assert.equal(await f.invoke(),true);});
+test('new dossier controls are excluded from the legacy unwired-button fallback',()=>{assert.match(fs.readFileSync(path.join(root,'index.html'),'utf8'),/button\.closest\('\.dossier-page'\)/);});
+test('dossier requests retain identity/sequence checks and explicit backend permission mappings',()=>{const code=fs.readFileSync(path.join(root,'equipment-dossier.js'),'utf8');assert.match(code,/who!==identity\(\)/);assert.match(code,/seq!==d.seq/);assert.match(code,/EhmCentralPolicy\.action/);assert.match(code,/ehm-auth-change/);assert.doesNotMatch(code,/localStorage.*(?:password|token|apiKey)/i);});

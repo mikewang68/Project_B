@@ -52,16 +52,16 @@ public class HealthAssessmentController {
 
     @PostMapping("/health-assessments/{assessmentId}/review")
     public HealthAssessment review(@PathVariable String assessmentId,
-                                   @Valid @RequestBody ReviewRequest request) {
-        return health.review(assessmentId, request.decision(), request.comment(), request.reviewer());
+                                   @Valid @RequestBody ReviewRequest request, jakarta.servlet.http.HttpServletRequest http) {
+        return health.review(assessmentId, request.decision(), request.comment(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     @PostMapping("/health-assessments/{assessmentId}/work-order")
     public HealthAssessment createWorkOrder(@PathVariable String assessmentId,
-                                            @RequestBody(required = false) WorkOrderRequest request) {
+                                            @RequestBody(required = false) WorkOrderRequest request, jakarta.servlet.http.HttpServletRequest http) {
         WorkOrderRequest value = request == null ? new WorkOrderRequest(null, null, null, null) : request;
         return health.createWorkOrder(assessmentId, value.title(), value.assignee(),
-                value.plannedWindow(), value.operator());
+                value.plannedWindow(), com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     public record ReviewRequest(

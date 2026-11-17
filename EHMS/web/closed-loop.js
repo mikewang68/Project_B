@@ -6,7 +6,8 @@ function alarmObjects(){ return ALARMS.map(normalizeAlarm); }
 function selectedCaseAlarm(){
   const values=alarmObjects();
   if(!state.caseFlow.alarmNo || !values.some(item=>item.alarmNo===state.caseFlow.alarmNo)){
-    state.caseFlow.alarmNo=(values.find(item=>item.status!=='已关闭')||values[0]||{}).alarmNo||null;
+    const candidates=state.asset?values.filter(item=>item.deviceCode===state.asset):values;
+    state.caseFlow.alarmNo=(candidates.find(item=>item.status!=='已关闭')||candidates[0]||{}).alarmNo||null;
   }
   return values.find(item=>item.alarmNo===state.caseFlow.alarmNo)||null;
 }
@@ -18,14 +19,14 @@ async function caseRequest(path, options={}){
 
 async function loadCaseFlow(showMessage=false){
   const alarm=selectedCaseAlarm();
-  if(!alarm) return;
+  if(!alarm) {state.caseFlow.value=null;state.caseFlow.points=[];state.caseFlow.error='';++state.caseFlow.requestSeq;return;}
   const requestSeq=++state.caseFlow.requestSeq;
   state.caseFlow.loading=true;state.caseFlow.error='';
   if(CASE_FLOW_PAGES.has(state.page)) renderPage();
   try{
     const value=await caseRequest(`/alarms/${encodeURIComponent(alarm.alarmNo)}/case`);
     let points=[];
-    if(value){
+    if(value&&(!window.EhmCentralPolicy?.enabled(window.EhmAuth)||window.EhmCentralPolicy.page(window.EhmAuth,'measurement'))){
       const pointPage=await apiRequest(`/assets/${encodeURIComponent(value.deviceCode)}/measurement-points?page=0&size=200`);
       points=pageContent(pointPage);
     }
@@ -42,7 +43,7 @@ async function loadCaseFlow(showMessage=false){
 
 function caseAlarmSelector(){
   const current=selectedCaseAlarm();
-  return `<select class="control" id="caseAlarmSelect" aria-label="选择告警">${alarmObjects().map(item=>`<option value="${esc(item.alarmNo)}" ${current?.alarmNo===item.alarmNo?'selected':''}>${esc(item.alarmNo)} · ${esc(item.deviceCode)} · ${esc(item.component)}</option>`).join('')}</select>`;
+  return `<select class="control" id="caseAlarmSelect" aria-label="选择告警"><option value="" ${!current?'selected':''}>请选择要处理的告警</option>${alarmObjects().map(item=>`<option value="${esc(item.alarmNo)}" ${current?.alarmNo===item.alarmNo?'selected':''}>${esc(item.alarmNo)} · ${esc(item.deviceCode)} · ${esc(item.component)}</option>`).join('')}</select>`;
 }
 
 function caseHeader(){
@@ -107,8 +108,11 @@ function orderControl(value){
   }
   const order=currentOrder();
   const next=order?.status==='待审批'?['待执行','审批通过']:order?.status==='待执行'?['执行中','开始执行']:order?.status==='执行中'?['待复测','提交复测']:null;
-  const canClose=order?.status==='待复测'&&value.retests.some(item=>item.passed);
-  return `<section class="panel"><div class="panel-head"><div><h2>关联工单 ${esc(value.workOrderNo)}</h2><p>${esc(order?.title||'已关联工单')} · ${esc(order?.assignee||'责任人待刷新')}</p></div>${tag(order?.status||'等待刷新',order?.status==='已关闭'?'good':'warn')}</div><div class="panel-body"><div class="inline-actions">${next?`<button class="button primary" data-action="advanceCaseOrder" data-id="${esc(next[0])}">${esc(next[1])}</button>`:''}${button('记录执行过程','newExecutionRecord')}${button('提交复测','newRetest')}${canClose?button('复测通过并闭环','closeCaseLoop','primary'):''}</div><p class="muted mt-12">生产环境中审批、执行和复核应由不同角色完成；Demo保留每一步接口和审计记录，不做一键越权跳转。</p></div></section>`;
+  const roundStart=value.executionRecords?.at(-1)?.executedAt;
+  const latest=new Map();for(const r of value.retests||[])if(!roundStart||new Date(r.testedAt)>=new Date(roundStart))latest.set(r.pointCode,r);
+  const plan=value.evidence?.filter(e=>e.type==='RETEST_PLAN').at(-1)?.content?.split(',')||[];
+  const canClose=order?.status==='待复测'&&value.statusCode==='VERIFIED'&&plan.length>0&&plan.every(code=>latest.get(code)?.passed)&&[...latest.values()].every(item=>item.passed);
+  return `<section class="panel"><div class="panel-head"><div><h2>关联工单 ${esc(value.workOrderNo)}</h2><p>${esc(order?.title||'已关联工单')} · ${esc(order?.assignee||'责任人待刷新')}</p></div>${tag(order?.status||'等待刷新',order?.status==='已关闭'?'good':'warn')}</div><div class="panel-body"><div class="inline-actions">${next?`<button class="button primary" data-action="advanceCaseOrder" data-id="${esc(next[0])}" data-status="${esc(next[0])}">${esc(next[1])}</button>`:''}${button('记录执行过程','newExecutionRecord')}${button('提交复测','newRetest')}${canClose?button('复测通过并闭环','closeCaseLoop','primary'):''}</div><p class="muted mt-12">审批、执行和复核分别按已授权动作核验，所有签名来自当前登录身份。工单关闭不自动恢复设备运行。</p></div></section>`;
 }
 
 function renderCaseFlowLive(){

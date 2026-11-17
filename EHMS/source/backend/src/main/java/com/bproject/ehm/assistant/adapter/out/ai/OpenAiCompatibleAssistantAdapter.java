@@ -99,17 +99,24 @@ public class OpenAiCompatibleAssistantAdapter implements AssistantModelPort {
         return new ModelStatus(enabled, key, ready, provider, model, policy, message);
     }
     @Override public Completion complete(List<Map<String, Object>> messages, List<Map<String, Object>> tools) {
+        return complete(messages, tools, timeout);
+    }
+    @Override public Completion complete(List<Map<String, Object>> messages, List<Map<String, Object>> tools, Duration remaining) {
+        if (remaining.isZero() || remaining.isNegative()) throw new ProviderException("TIMEOUT", "本轮分析已达到等待时限");
         if (!status().ready()) throw new ProviderException("NOT_CONFIGURED", status().message());
         try {
             URI uri = endpoint();
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("model", model); payload.put("messages", messages);
-            payload.put("temperature", 0.2); payload.put("max_tokens", 1800); payload.put("stream", false);
+            payload.put("temperature", 0.2); payload.put("max_tokens", 768); payload.put("stream", false);
             if ("api.deepseek.com".equals(uri.getHost())) payload.put("thinking", Map.of("type", "disabled"));
+            if (model.toLowerCase(java.util.Locale.ROOT).contains("qwen"))
+                payload.put("chat_template_kwargs", Map.of("enable_thinking", false));
             if (toolCallsEnabled && !tools.isEmpty()) { payload.put("tools", tools); payload.put("tool_choice", "auto"); }
             HttpRequest request = HttpRequest.newBuilder(uri)
                     .header("Authorization", "Bearer " + readKey()).header("Content-Type", "application/json")
-                    .timeout(timeout).POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload))).build();
+                    .timeout(remaining.compareTo(timeout)<0 ? remaining : timeout)
+                    .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload))).build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             int code = response.statusCode();
             if (code < 200 || code >= 300) {
@@ -123,6 +130,8 @@ public class OpenAiCompatibleAssistantAdapter implements AssistantModelPort {
                 throw new ProviderException("PROVIDER_HTTP_" + code, reason);
             }
             JsonNode root = mapper.readTree(response.body());
+            if ("length".equals(root.at("/choices/0/finish_reason").asText()))
+                throw new ProviderException("ANSWER_TRUNCATED", "模型回答达到长度上限，请缩小设备范围或分步提问；未将截断内容作为完整建议");
             JsonNode msg = root.at("/choices/0/message");
             if (!msg.isObject()) throw new ProviderException("INVALID_RESPONSE", "模型返回格式异常");
             List<ToolCall> calls = new ArrayList<>();

@@ -27,7 +27,7 @@ public final class EhmCentralScope {
         var c=current();
         // V1 records remain in their historical unassigned region and cannot read new V2 rows.
         return c==null?" AND o.region_id='UNASSIGNED' AND o.subsystem_code='EHMS' ":
-            ScopeSql.build(c.scopeMode(),c.activeScope(),ScopeSql.Columns.ORDER).my_info();
+            " AND o.subsystem_code='EHMS' "+ScopeSql.build(c.scopeMode(),c.activeScope(),ScopeSql.Columns.ORDER).my_info();
     }
     public static ScopeTriple writeTuple(String project){
         var c=current();if(c==null)return new ScopeTriple(project,"UNASSIGNED","EHMS");
@@ -80,6 +80,14 @@ public final class EhmCentralScope {
         if(c==null)return true;
         if(path.equals("/api/ehm/v1/auth/me")&&Set.of("GET","HEAD").contains(method)
             ||path.equals("/api/ehm/v1/auth/logout")&&method.equals("POST"))return true;
+        if(path.equals("/api/ehm/v1/system/client-events")&&method.equals("POST"))return true; // metadata only; not a business permission
+        var restored=EhmFeatureRoutes.resolve(method,path);
+        if(restored!=null)return restored.permits(c);
+        // No fallback to a broader devices/alarms permission for unregistered nested commands.
+        if(path.contains("/health-assessments")||path.contains("/case")||path.contains("/repair")
+            ||path.contains("/maintenance-reminders")||path.contains("/health-summary"))return false;
+        if(Set.of("GET","HEAD").contains(method)&&path.matches("/api/ehm/v1/devices(?:/[^/]+)?"))
+            return List.of("fleet","asset-tree","asset-profile").stream().anyMatch(p->c.hasAction("EHMS:"+p,"VIEW"));
         String relative=path.replaceFirst("^/api/ehm/v1/","");
         var governance=governanceRoute(method,relative);
         if(governance!=null)return c.hasAction(governance.menu(),governance.action())

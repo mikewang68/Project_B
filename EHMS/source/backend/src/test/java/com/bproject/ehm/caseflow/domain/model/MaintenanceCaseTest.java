@@ -76,6 +76,23 @@ class MaintenanceCaseTest {
         assertEquals("CLOSURE", closed.evidence().get(closed.evidence().size() - 1).type());
     }
 
+    @Test void previousPassCannotOverrideLaterFailedPointOrAnotherFailedPoint() {
+        var ready=opened().diagnose("检查","原因","人工","依据","工程师",NOW)
+            .linkWorkOrder("WO-1",NOW).recordExecution("维修","完成","隔离确认","无","工程师",NOW)
+            .recordRetest("P-1",8d,3d,"mm/s","标准",true,"工程师",NOW.plusSeconds(1))
+            .recordRetest("P-1",8d,7d,"mm/s","标准",false,"工程师",NOW.plusSeconds(2))
+            .recordRetest("P-2",8d,3d,"mm/s","标准",true,"工程师",NOW.plusSeconds(3));
+        assertThrows(DomainConflictException.class,()->ready.close("工程师","拟关闭",NOW.plusSeconds(4)));
+        var passed=ready.recordRetest("P-1",7d,2d,"mm/s","标准",true,"工程师",NOW.plusSeconds(5));
+        assertEquals(CaseStatus.CLOSED,passed.close("工程师","已核全部最新结果",NOW.plusSeconds(6)).status());
+    }
+    @Test void newRepairExecutionRequiresNewVerification() {
+        var ready=opened().diagnose("检查","原因","人工","依据","工程师",NOW)
+            .linkWorkOrder("WO-1",NOW).recordExecution("维修","完成","隔离确认","无","工程师",NOW)
+            .recordRetest("P-1",8d,3d,"mm/s","标准",true,"工程师",NOW.plusSeconds(1))
+            .recordExecution("再次调整","待复测","隔离确认","无","工程师",NOW.plusSeconds(2));
+        assertThrows(DomainConflictException.class,()->ready.close("工程师","不能用旧复测关闭",NOW.plusSeconds(3)));
+    }
     private MaintenanceCase opened() {
         return MaintenanceCase.open("ALM-1", "GT-01", "1#门式起重机", "起升减速机",
                 "L3 严重", "振动异常", List.of(new EvidenceItem("ALARM", "告警", "振动异常", "ALM-1", NOW)), NOW);

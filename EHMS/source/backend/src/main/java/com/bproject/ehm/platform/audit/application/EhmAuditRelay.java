@@ -113,6 +113,8 @@ public class EhmAuditRelay {
         if(uri.contains("/reliability/fault-codes"))return "fault-codes";
         if(uri.contains("/reliability/sla-policies"))return "sla";
         if(uri.contains("health-assessments"))return "health";
+        if(uri.contains("/health-summary"))return "health";
+        if(uri.contains("/case-evidence-windows"))return "evidence";
         if(uri.contains("measurement-points")||uri.contains("/telemetry/"))return "measurement";
         if(uri.contains("/components"))return "bom";
         if(uri.contains("/device-templates"))return "device-template";

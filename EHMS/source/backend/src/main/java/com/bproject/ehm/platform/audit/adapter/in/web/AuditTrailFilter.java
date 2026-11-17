@@ -54,9 +54,10 @@ public class AuditTrailFilter extends OncePerRequestFilter {
             var principal = IamAuditIdentityFilter.actor(request);
             int status = failed && response.getStatus() < 400 ? 500 : response.getStatus();
             try {
-                audit.record(principal == null ? "anonymous" : principal.getName(), principal == null ? "未认证身份" : "已认证会话",
-                        request.getMethod(), com.bproject.ehm.platform.audit.application.AuditRequestMetadata.route(request), status, traceId,
-                        clientAddress(request), (System.nanoTime() - started) / 1_000_000L);
+                final String recordedTrace=traceId;
+                withTrustedScope(request,()->audit.record(principal == null ? "anonymous" : principal.getName(), principal == null ? "未认证身份" : "已认证会话",
+                        request.getMethod(), com.bproject.ehm.platform.audit.application.AuditRequestMetadata.route(request), status, recordedTrace,
+                        clientAddress(request), (System.nanoTime() - started) / 1_000_000L));
             } catch (RuntimeException exception) {
                 log.error("本地接口操作审计写入失败", exception);
             }
@@ -71,6 +72,14 @@ public class AuditTrailFilter extends OncePerRequestFilter {
                 log.error("公共审计入队失败；请检查audit-delivery诊断状态", exception);
             }
         }
+    }
+
+    private static void withTrustedScope(HttpServletRequest request,Runnable body){
+        Object project=request.getAttribute("EHM_PROJECT_ID"),scope=request.getAttribute("EHM_TRUSTED_CENTRAL_SCOPE");
+        if(!(project instanceof String p)){body.run();return;}
+        try(var selected=com.bproject.ehm.platform.security.ProjectContext.bind(p);
+            var central=com.bproject.ehm.platform.security.EhmCentralScope.bind(scope instanceof com.bproject.iam.context.UserContext c?c:null)){body.run();}
+        catch(RuntimeException e){throw e;}catch(Exception e){throw new IllegalStateException("Trusted audit scope unavailable",e);}
     }
 
     private String clientAddress(HttpServletRequest request) {

@@ -34,6 +34,7 @@ public class CaseFlowApplicationService {
     private final WorkOrderApplicationService workOrderService;
     private final DataQualityApplicationService dataQuality;
     private final Clock clock;
+    @Autowired(required=false) private com.bproject.ehm.asset.ports.MeasurementPointRepository measurementPoints;
 
     @Autowired
     public CaseFlowApplicationService(MaintenanceCaseRepository cases, AlarmRepository alarms,
@@ -125,11 +126,44 @@ public class CaseFlowApplicationService {
         }
         try {
             MaintenanceCase current = findCaseByWorkOrder(orderNo);
+            if(measurementPoints!=null){
+                var point=measurementPoints.findByCode(com.bproject.ehm.asset.domain.model.MeasurementPoint.normalizeCode(pointCode))
+                    .orElseThrow(()->new ValidationException("复测测点未登记"));
+                if(point.archived()||!point.enabled()||!point.assetCode().equals(order.deviceCode()))
+                    throw new ValidationException("复测测点必须属于该工单设备且处于启用状态");
+                if(!java.util.Objects.equals(point.unit(),unit))throw new ValidationException("复测单位与测点配置不一致");
+                var plan=current.evidence().stream().filter(e->e.type().equals("RETEST_PLAN")).reduce((a,b)->b);
+                if(plan.isEmpty()||!java.util.Arrays.asList(plan.get().content().split(",")).contains(point.code()))
+                    throw new ValidationException("请先登记复测计划，且只能提交计划内测点");
+                pointCode=point.code();
+            }
             return CaseFlowView.from(cases.save(current.recordRetest(pointCode, beforeValue, afterValue,
                     unit, criterion, passed, operator, clock.instant())));
         } catch (IllegalArgumentException exception) {
             throw new ValidationException(exception.getMessage());
         }
+    }
+
+    public CaseFlowView defineRetestPlan(String orderNo,List<String> codes,String operator){
+        var current=findCaseByWorkOrder(orderNo);
+        if(!current.retests().isEmpty())throw new DomainConflictException("已有复测结果后计划不可覆盖，请按原计划完成核验");
+        if(codes==null||codes.isEmpty()||codes.size()>100)throw new ValidationException("请选择1至100个必测测点");
+        var selected=codes.stream().map(com.bproject.ehm.asset.domain.model.MeasurementPoint::normalizeCode).distinct().toList();
+        for(String code:selected){var p=measurementPoints.findByCode(code).orElseThrow(()->new ValidationException("复测测点未登记"));
+            if(p.archived()||!p.enabled()||!p.assetCode().equals(current.deviceCode()))throw new ValidationException("复测计划包含其他设备或未启用测点");}
+        var now=clock.instant();return CaseFlowView.from(cases.save(current.appendEvidence(new EvidenceItem("RETEST_PLAN",
+            "必测测点计划；制定人："+operator,String.join(",",selected),orderNo,now),now)));
+    }
+
+    public CaseFlowView closeWithRecovery(String orderNo,String conclusion,String decision,String reason,String operator){
+        if(!java.util.Set.of("AVAILABLE","RESTRICTED","NOT_RESTORED").contains(decision==null?"":decision))
+            throw new ValidationException("请选择恢复可用、限制使用或未恢复");
+        if(reason==null||reason.isBlank())throw new ValidationException("请填写恢复决定的依据及限制条件");
+        var current=findCaseByWorkOrder(orderNo);
+        if(current.evidence().stream().noneMatch(e->e.type().equals("RETEST_PLAN")))throw new DomainConflictException("请先登记必测测点计划");
+        var now=clock.instant();cases.save(current.appendEvidence(new EvidenceItem("RECOVERY_DECISION",decision,
+            reason.trim()+"；复核人："+operator+"；仅记录业务决定，不下发PLC控制",orderNo,now),now));
+        return closeLoop(orderNo,conclusion,operator);
     }
 
     public CaseFlowView closeLoop(String orderNo, String conclusion, String operator) {

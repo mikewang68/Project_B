@@ -12,7 +12,7 @@ public final class AuditRequestMetadata {
     private static final Set<String> COMMANDS = Set.of("run", "replay", "close", "approve", "publish", "apply",
             "acknowledge", "complete", "disable", "issue", "release", "review", "verify", "test", "chat",
             "batch-assign", "generate", "submit", "receive", "receipt", "return", "start", "diagnoses",
-            "execution-records", "retests", "inspection-tasks", "work-order", "case", "spare-reservations");
+            "execution-records", "executions", "retests", "retest-plan", "plan", "scan", "evidence-windows", "revisions", "inspection-tasks", "work-order", "case", "spare-reservations");
     public static String action(String method, String path) {
         if(path.startsWith("/api/ehm/v1/auth/")&&path.endsWith("/password")&&method.equals("POST"))return "UPDATE";
         if (path.matches(".*/(export|download)(/.*)?")) return "EXPORT";
@@ -35,7 +35,7 @@ public final class AuditRequestMetadata {
         // Prefer the target resource over its parent (e.g. a component under an asset).
         for (String key : new String[]{"componentCode", "reservationNo", "defectNo", "taskNo", "orderNo",
                 "alarmNo", "handoverNo", "partCode", "caseNo", "recordNo", "changeNo", "templateCode",
-                "assessmentId", "pointCode", "planId", "severity", "code", "id", "assetCode"}) {
+                "assessmentId", "pointCode", "planId", "severity", "code", "id", "assetCode", "no"}) {
             Object value = vars.get(key);
             if (value instanceof String text) return clean(text, 192);
         }
@@ -46,7 +46,7 @@ public final class AuditRequestMetadata {
         if(!request.getMethod().equals("POST"))return;
         Object body=result instanceof org.springframework.http.ResponseEntity<?> response?response.getBody():result;
         if(body==null||!body.getClass().isRecord()||!body.getClass().getPackageName().startsWith("com.bproject.ehm."))return;
-        for(String name:new String[]{"code","orderNo","alarmNo","handoverNo","taskNo","recordNo","changeNo","templateCode","caseNo","reservationNo","id"}){
+        for(String name:new String[]{"code","orderNo","alarmNo","handoverNo","taskNo","recordNo","changeNo","templateCode","caseNo","reservationNo","evidenceId","reminderId","id"}){
             try{
                 Object value=body.getClass().getMethod(name).invoke(body);
                 if(value instanceof String text&&!text.isBlank()){request.setAttribute(CREATED_OBJECT,clean(text,192));return;}

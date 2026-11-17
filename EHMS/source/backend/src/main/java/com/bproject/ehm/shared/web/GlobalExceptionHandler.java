@@ -17,6 +17,17 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiError> uploadTooLarge(Exception exception) {
+        return response(HttpStatus.PAYLOAD_TOO_LARGE, "UPLOAD_TOO_LARGE", "资料文件超过上传限制，单文件最大5MB", List.of());
+    }
+
+    @ExceptionHandler({org.springframework.web.multipart.support.MissingServletRequestPartException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class})
+    ResponseEntity<ApiError> missingUploadField(Exception exception) {
+        return response(HttpStatus.BAD_REQUEST, "MISSING_FIELD", "请求缺少必填参数或文件，请补齐后重试", List.of());
+    }
+
     @ExceptionHandler(DependencyUnavailableException.class)
     ResponseEntity<ApiError> dependency(DependencyUnavailableException exception) {
         return response(HttpStatus.SERVICE_UNAVAILABLE, "DEPENDENCY_UNAVAILABLE", exception.getMessage(), List.of());

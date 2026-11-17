@@ -23,7 +23,7 @@ class AssistantApplicationServiceTest {
         }); return t;
     }
     @Test void toolConversationUsesFreshDataAndKeepsDeviceForFollowup() {
-        var tools=tools();var model=mock(AssistantModelPort.class);
+        var tools=tools();var model=mock(AssistantModelPort.class,CALLS_REAL_METHODS);
         when(model.supportsToolCalls()).thenReturn(true);
         when(model.status()).thenReturn(new ModelStatus(true,true,true,"DeepSeek","deepseek-chat","anonymized","ready"));
         when(model.complete(anyList(),anyList())).thenReturn(
@@ -40,7 +40,7 @@ class AssistantApplicationServiceTest {
         service.clear(first.sessionId());assertTrue(service.history(first.sessionId()).isEmpty());
     }
     @Test void missingKeyAndProviderFailureAreExplicitRatherThanPretendAi() {
-        var model=mock(AssistantModelPort.class);var service=new AssistantApplicationService(tools(),model,new ObjectMapper());
+        var model=mock(AssistantModelPort.class,CALLS_REAL_METHODS);var service=new AssistantApplicationService(tools(),model,new ObjectMapper());
         when(model.status()).thenReturn(new ModelStatus(false,false,false,"DeepSeek","deepseek-chat","disabled","未配置密钥"));
         var local=service.answer("检查设备");assertEquals("local-data",local.mode());assertTrue(local.warning().contains("未配置"));verify(model,never()).complete(anyList(),anyList());
         when(model.status()).thenReturn(new ModelStatus(true,true,true,"DeepSeek","deepseek-chat","anonymized","ready"));
@@ -48,7 +48,7 @@ class AssistantApplicationServiceTest {
         var fallback=service.answer("检查设备");assertEquals("local-fallback",fallback.mode());assertTrue(fallback.warning().contains("余额不足"));
     }
     @Test void boundsUserInputAndPreventsUnlimitedToolLoops() {
-        var model=mock(AssistantModelPort.class);var service=new AssistantApplicationService(tools(),model,new ObjectMapper());
+        var model=mock(AssistantModelPort.class,CALLS_REAL_METHODS);var service=new AssistantApplicationService(tools(),model,new ObjectMapper());
         when(model.supportsToolCalls()).thenReturn(true);
         assertThrows(ValidationException.class,()->service.answer("a".repeat(2001)));
         when(model.status()).thenReturn(new ModelStatus(true,true,true,"DeepSeek","deepseek-chat","anonymized","ready"));
@@ -56,7 +56,7 @@ class AssistantApplicationServiceTest {
         assertEquals("local-fallback",service.answer("设备风险").mode());verify(model,times(3)).complete(anyList(),anyList());
     }
     @Test void laboratoryModelWithoutToolsStillUsesAnonymizedDatabaseContext() {
-        var model=mock(AssistantModelPort.class);var tools=tools();
+        var model=mock(AssistantModelPort.class,CALLS_REAL_METHODS);var tools=tools();
         when(model.status()).thenReturn(new ModelStatus(true,true,true,"实验室千问","Qwen/Qwen3-test","anonymized","ready"));
         when(model.supportsToolCalls()).thenReturn(false);
         when(model.complete(anyList(),eq(List.of()))).thenReturn(new Completion("DEV_001需要复测[S1]",List.of(),Map.of(),20,8));
@@ -72,9 +72,37 @@ class AssistantApplicationServiceTest {
         for(String raw:List.of("GT-01","机密场站","甲方区域","张三","192.168","138123","x@y","abc","/data","sk-test"))assertFalse(safe.contains(raw),raw);
         assertEquals("GT-01",p.resolveCode("DEV_001"));assertEquals("GT-01检查",p.restore("DEV_001检查"));
     }
+    @Test void unconfiguredGreetingDoesNotQueryDatabaseOrDumpRecords() {
+        var tools=tools();var model=mock(AssistantModelPort.class,CALLS_REAL_METHODS);
+        when(model.status()).thenReturn(new ModelStatus(false,false,false,"DeepSeek","deepseek-flash","disabled","尚未开启"));
+        var result=new AssistantApplicationService(tools,model,new ObjectMapper()).answer("你好！");
+        assertEquals("local-chat",result.mode());assertTrue(result.answer().startsWith("你好"));
+        assertTrue(result.sources().isEmpty());assertTrue(result.warning().contains("未调用大模型"));
+        assertFalse(result.answer().contains("health"));verifyNoInteractions(tools);
+        verify(model,never()).complete(anyList(),anyList());
+    }
+    @Test void configuredGreetingAndConnectivityPhraseUseNoBusinessContext() {
+        var tools=tools();var model=mock(AssistantModelPort.class,CALLS_REAL_METHODS);
+        when(model.status()).thenReturn(new ModelStatus(true,true,true,"实验室千问","Qwen3.8-27B","anonymized","ready"));
+        when(model.complete(anyList(),anyList())).thenReturn(new Completion("连接成功",List.of(),Map.of(),3,2));
+        var result=new AssistantApplicationService(tools,model,new ObjectMapper()).answer("请只回答：连接成功");
+        assertEquals("model",result.mode());assertEquals("连接成功",result.answer());
+        verifyNoInteractions(tools);verify(model).complete(anyList(),eq(List.of()),argThat(d->d.toMillis()>0&&d.toMillis()<=30000));
+    }
+    @Test void localBusinessFallbackUsesReadableFieldsNotRawJson() {
+        var tools=tools();var model=mock(AssistantModelPort.class,CALLS_REAL_METHODS);
+        when(model.status()).thenReturn(new ModelStatus(false,false,false,"DeepSeek","deepseek-flash","disabled","尚未开启"));
+        when(tools.query(anyString(),anyString(),any(),anyInt())).thenReturn(new AssistantDataTools.QueryResult("{}",
+                Map.of("records",List.of(Map.of("assetCode","GT-01","calibrationType","温度校准","validUntil","2026-11-11","result","合格"))),
+                new AssistantDataTools.Source("S1","校准记录","sensor-cal",1,Instant.now())));
+        var result=new AssistantApplicationService(tools,model,new ObjectMapper()).answer("有哪些校准记录需要关注？");
+        assertEquals("local-data",result.mode());assertTrue(result.answer().contains("校准类型：温度校准"));
+        assertTrue(result.answer().contains("有效期至：2026-11-11"));assertFalse(result.answer().contains("\"assetCode\""));
+        verify(tools).query(eq("query_ehm"),contains("calibrations"),any(),eq(1));
+    }
     @Test void databaseFailureStopsOutboundDataInsteadOfPretendingNoRecords() {
         var tools=tools();when(tools.devices()).thenThrow(new RuntimeException("db error"));
-        var model=mock(AssistantModelPort.class);when(model.status()).thenReturn(new ModelStatus(true,true,true,"DeepSeek","deepseek-flash","anonymized","ready"));
+        var model=mock(AssistantModelPort.class,CALLS_REAL_METHODS);when(model.status()).thenReturn(new ModelStatus(true,true,true,"DeepSeek","deepseek-flash","anonymized","ready"));
         var result=new AssistantApplicationService(tools,model,new ObjectMapper()).answer("设备风险");
         assertEquals("local-fallback",result.mode());assertTrue(result.warning().contains("未发送"));assertTrue(result.sources().isEmpty());verify(model,never()).complete(anyList(),anyList());
     }

@@ -10,7 +10,9 @@ class AuditRequestMetadataTest {
     @Test void lifecycleCommandsAreNotCreates() {
         for (String path : new String[]{"shift-handovers/H1/submit", "shift-handovers/H1/receive",
                 "spare-parts/P1/receipt", "spare-parts/P1/return", "inspection-tasks/T1/submit",
-                "alarms/A1/case/diagnoses", "work-orders/W1/case/retests", "assistant/chat"})
+                "alarms/A1/case/diagnoses", "work-orders/W1/case/retests", "assistant/chat",
+                "devices/E1/maintenance-reminders/scan","work-orders/W1/repair/executions","work-orders/W1/repair/plan",
+                "work-orders/W1/case/retest-plan","alarms/A1/case/evidence-windows","alarms/A1/case/diagnoses/D1/revisions"})
             assertEquals("EXECUTE", AuditRequestMetadata.action("POST", "/api/ehm/v1/" + path), path);
         assertEquals("CREATE", AuditRequestMetadata.action("POST","/api/ehm/v1/inspection-tasks"));
         assertEquals("CREATE", AuditRequestMetadata.action("POST","/api/ehm/v1/devices"));

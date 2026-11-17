@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>B项目 · 设备健康管理系统（EHM）</title>
-  <meta name="description" content="设备健康管理系统亮色工业级交互原型" />
+  <meta name="description" content="设备档案、运行监测、故障处置与维护管理" />
   <script src="./preference.js?v=1.0"></script>
   <link rel="stylesheet" href="./styles.css?v=5.0" />
   <link rel="stylesheet" href="./closed-loop.css?v=1.0" />
@@ -15,8 +15,13 @@
   <link rel="stylesheet" href="./delivery-console.css?v=1.7.4" />
   <link rel="stylesheet" href="./auth-session.css?v=1.8.0" />
   <link rel="stylesheet" href="./unified-theme.css?v=2.0" />
-  <link rel="stylesheet" href="./ai-assistant.css?v=1.5.0" />
+  <link rel="stylesheet" href="./ai-assistant.css?v=2.1.3-access-feedback" />
   <link rel="stylesheet" href="./simulation-console.css?v=1.0.0" />
+  <link rel="stylesheet" href="./industrial-ux.css?v=20261110-business-r1" />
+  <link rel="stylesheet" href="./data-scope-context.css?v=20261110-demo-scope-r1" />
+  <link rel="stylesheet" href="./business-workspace.css?v=20261113" />
+<link rel="stylesheet" href="./page-read-feedback.css?v=EHMS-page-read-20261111-r1" />
+  <link rel="stylesheet" href="./requirements-workflow.css?v=EHMS-requirements-20261117-r1"/>
 </head>
 <body>
   <div class="app-shell" id="appShell" data-layout="side">
@@ -25,13 +30,13 @@
         <div class="brand-mark">EHM</div>
         <div>
           <strong>设备健康管理系统</strong>
-          <span>B项目 · 服务器运行演练版 1.9.0</span>
+          <span>B项目 · 设备运维工作空间</span>
         </div>
       </div>
 
       <div class="site-select">
-        <span>当前场站</span>
-        <button type="button" id="siteSelect">铁路智慧货场 · 示范区 <b>⌄</b></button>
+        <span>当前数据区域 · 统一门户切换</span>
+        <button type="button" id="siteSelect">正在确认区域</button>
       </div>
 
       <nav class="navigation" id="navigation" aria-label="系统功能导航"></nav>
@@ -39,10 +44,10 @@
       <div class="sidebar-foot">
         <button class="stack-entry" id="stackEntry" type="button">
           <span class="stack-dot online"></span>
-          <span><b>交付状态可检查</b><small>10 项能力状态已登记</small></span>
+          <span><b>设备健康管理</b><small>运行监测与维护协作</small></span>
           <i>›</i>
         </button>
-        <p>业务数据以服务器接口返回为准，未接入能力会明确标注。</p>
+        <p>AI 设备助手可通过右下角入口使用。</p>
       </div>
     </aside>
 
@@ -141,6 +146,7 @@
       <button type="button">有哪些校准记录需要关注？</button>
     </div>
     <form class="assistant-form" id="assistantForm">
+      <div class="assistant-model-picker"><label for="assistantModel">对话模型</label><select id="assistantModel" aria-label="选择AI模型"><option value="">正在读取模型…</option></select><span>切换即新对话 · 仅发送脱敏数据</span></div>
       <textarea id="assistantInput" rows="2" maxlength="2000" placeholder="输入问题，可连续追问；Enter发送，Shift+Enter换行" aria-label="助手问题"></textarea>
       <button id="assistantSend" type="submit">发送</button>
     </form>
@@ -148,42 +154,49 @@
 
   <div class="toast" id="toast" role="status"></div>
 
-  <script src="./central-scope-policy.js?v=2.1"></script>
-  <script src="./auth-session.js?v=2.1"></script>
+  <script src="./central-scope-policy.js?v=EHMS-requirements-20261117-r1"></script>
+  <script src="./workspace-policy.js?v=20261113"></script>
+  <script src="./auth-session.js?v=EHMS-business-workspace-20261116-r1"></script>
   <script src="./governance-console.js?v=1.0"></script>
-  <script src="./app.js?v=1.8.0"></script>
+  <script src="./app.js?v=20261113-business-workspace-r1"></script>
   <script src="./project-scope.js?v=1.8.1-project-scope"></script>
-  <script src="./asset-structure.js?v=1.8.1-project-scope"></script>
-  <script src="./closed-loop.js?v=1.8.1-project-scope"></script>
-  <script src="./health-prediction.js?v=1.8.1-project-scope"></script>
+  <script src="./asset-structure.js?v=20261113-business-workspace-r1"></script>
+  <script src="./closed-loop.js?v=EHMS-requirements-20261117-r1"></script>
+  <script src="./health-prediction.js?v=2.1.1-restored"></script>
   <script src="./maintenance-program.js?v=1.8.1-project-scope"></script>
-  <script src="./spares-inventory.js?v=1.8.1-project-scope"></script>
-  <script src="./reliability-governance.js?v=1.8.1-project-scope"></script>
-  <script src="./delivery-console.js?v=1.8.1-project-scope"></script>
+  <script src="./spares-inventory.js?v=20261113-business-workspace-r1"></script>
+  <script src="./reliability-governance.js?v=20261113-business-workspace-r1"></script>
+  <script src="./delivery-console.js?v=1.8.1-project-scope-ehms-r4"></script>
   <script src="./audit-browser.js?v=1.8.1-project-scope"></script>
-  <script src="./ai-assistant.js?v=1.6.1"></script>
-  <script src="./crud-console.js?v=1.6.0.1"></script>
-  <script src="./live-visuals.js?v=1.9.0-running"></script>
+  <script src="./ai-assistant.js?v=EHMS-ai-reliability-20261110-r1"></script>
+  <script src="./crud-console.js?v=20261113-business-workspace-r1"></script>
+  <script src="./live-visuals.js?v=EHMS-requirements-20261117-r1"></script>
   <script src="./audit-events.js?v=1.7.0"></script>
-  <script src="./asset-detail-data.js?v=1.8.1-project-scope"></script>
-  <script src="./sample-workbench.js?v=1.8.1"></script>
+  <script src="./asset-detail-data.js?v=20261113-business-workspace-r1"></script>
+  <script src="./sample-workbench.js?v=20261113-business-workspace-r1"></script>
   <script src="./simulation-console.js?v=1.1.0"></script>
-  <script src="./auth-users.js?v=1.8.1-project-scope"></script>
-  <script src="./central-scope.js?v=2.2-live-read"></script>
-  <script src="./live-read.js?v=1"></script>
+  <script src="./auth-users.js?v=20261113-business-workspace-r1"></script>
+  <script src="./business-review.js?v=20261113-business-workspace-r1"></script>
+  <script src="./central-scope.js?v=20261113-business-workspace-r1"></script>
+  <script src="./equipment-dossier.js?v=20261113-business-workspace-r1"></script>
+  <script src="./industrial-ux.js?v=20261113-business-workspace-r1"></script>
   <script id="prototype-fallback">
     document.addEventListener('click', function(event){
       const button = event.target.closest('button');
-      if(!button || button.dataset.action || button.dataset.goto || button.dataset.page || button.id || button.classList.contains('nav-parent') || button.closest('.assistant-prompts')) return;
+      if(!button || button.dataset.action || button.dataset.goto || button.dataset.page || button.hasAttribute('data-context-page') || button.hasAttribute('data-return-list') || button.id || button.classList.contains('nav-parent') || button.closest('.assistant-prompts') || button.closest('.dossier-page')) return;
       if(typeof handleUnwiredButton === 'function'){
         handleUnwiredButton(button);
       } else if(typeof toast === 'function'){
         const label = button.textContent.trim() || '当前按钮';
-        if(button.closest('.pagination-buttons')) toast('已切换演示分页；当前原型仅内置第一页虚拟数据。');
+        if(button.closest('.pagination-buttons')) toast('当前分页暂未接通，请使用本页查询条件。');
         else toast('“' + label + '”尚未纳入本轮可操作范围。');
       }
     });
   </script>
+  <script src="./data-scope-context.js?v=20261113-business-workspace-r1"></script>
+  <script src="./live-read.js?v=e452a8feebfd"></script>
+  <script src="./business-workspace.js?v=20261113"></script>
+  <script src="./requirements-workflow.js?v=EHMS-requirements-20261117-r1"></script>
 </body>
 </html>
 

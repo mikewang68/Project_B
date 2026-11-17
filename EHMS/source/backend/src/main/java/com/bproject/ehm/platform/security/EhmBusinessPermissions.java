@@ -18,10 +18,14 @@ public final class EhmBusinessPermissions {
         boolean read=Set.of("GET","HEAD").contains(method);
         if(path.equals("/api/ehm/v1/auth/me"))return read;
         if(path.equals("/api/ehm/v1/auth/logout")||path.equals("/api/ehm/v1/system/client-events"))return true;
+        var restored=EhmFeatureRoutes.resolve(method,path);
+        if(restored!=null&&restored.action().equals("VIEW"))
+            return actor.admin()||actor.globalRead()||restored.nativeAllowed(actor);
         if(actor.readOnly()&&!read)return false;
         if(actor.admin())return true;
         boolean export=path.matches(".*/(export|download|backup)(/.*)?");
         if(actor.globalRead()&&read&&!export)return true;
+        if(restored!=null)return restored.nativeAllowed(actor);
         if(read&&path.equals("/api/ehm/v1/system/simulation"))return actor.permissions().contains("ehealth:wb:cockpit:view");
         String relative=path.replaceFirst("^/api/ehm/v1/","");String permission;
         var governance=EhmCentralScope.governanceRoute(method,relative);

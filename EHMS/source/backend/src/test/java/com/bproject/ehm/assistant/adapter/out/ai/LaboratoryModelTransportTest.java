@@ -47,7 +47,27 @@ class LaboratoryModelTransportTest {
             assertEquals("Qwen/Qwen3-test",payload.path("model").asText());assertEquals("Bearer unit-test-key",auth.get());
             assertFalse(payload.has("tools"));assertFalse(payload.has("tool_choice"));assertFalse(payload.has("thinking"));
             assertEquals("建议复测[S1]",result.content());assertEquals(18,result.promptTokens());
+            assertEquals(768,payload.path("max_tokens").asInt());
             assertFalse(result.assistantMessage().containsKey("reasoning_content"));assertFalse(adapter.supportsToolCalls());
+        } finally {server.stop(0);}
+    }
+    @Test void remainingBudgetBoundsHttpWaitRatherThanStartingFreshProviderTimeout() throws Exception {
+        var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/v1/chat/completions",ex->{try{Thread.sleep(300);}catch(InterruptedException ignored){Thread.currentThread().interrupt();}ex.close();});server.start();
+        try {
+            var adapter=adapter("http://127.0.0.1:"+server.getAddress().getPort()+"/v1","","Qwen3.8-27B");
+            long started=System.nanoTime();
+            var error=assertThrows(ProviderException.class,()->adapter.complete(List.of(),List.of(),java.time.Duration.ofMillis(70)));
+            assertEquals("TIMEOUT",error.code());assertTrue(java.time.Duration.ofNanos(System.nanoTime()-started).toMillis()<2000);
+            assertEquals("TIMEOUT",assertThrows(ProviderException.class,()->adapter.complete(List.of(),List.of(),java.time.Duration.ZERO)).code());
+        } finally {server.stop(0);}
+    }
+    @Test void lengthLimitedAnswerIsNeverPresentedAsACompleteMaintenanceSuggestion() throws Exception {
+        var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.createContext("/v1/chat/completions",ex->{byte[] bytes="{\"choices\":[{\"finish_reason\":\"length\",\"message\":{\"content\":\"未完成建议\"}}]}".getBytes(StandardCharsets.UTF_8);ex.sendResponseHeaders(200,bytes.length);ex.getResponseBody().write(bytes);ex.close();});server.start();
+        try {
+            var adapter=adapter("http://127.0.0.1:"+server.getAddress().getPort()+"/v1","","Qwen3.8-27B");
+            assertEquals("ANSWER_TRUNCATED",assertThrows(ProviderException.class,()->adapter.complete(List.of(),List.of())).code());
         } finally {server.stop(0);}
     }
     @Test void providerRedirectCannotSendKeyToAnotherEndpoint() throws Exception {

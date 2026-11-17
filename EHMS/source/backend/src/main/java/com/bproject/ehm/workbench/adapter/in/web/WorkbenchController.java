@@ -34,8 +34,8 @@ public class WorkbenchController {
                 request.assignee(), request.team(), request.priority(), request.dueAt(), request.status());
     }
     @PostMapping("/my-tasks/{taskNo}/complete")
-    public UserTask completeTask(@PathVariable String taskNo, @RequestBody(required = false) OperatorRequest request) {
-        return service.completeTask(taskNo, request == null ? null : request.operator());
+    public UserTask completeTask(@PathVariable String taskNo, @RequestBody(required = false) OperatorRequest request, jakarta.servlet.http.HttpServletRequest http) {
+        return service.completeTask(taskNo, com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     @GetMapping("/shift-handovers")
@@ -60,12 +60,12 @@ public class WorkbenchController {
                 request.unfinishedItems(), request.equipmentExceptions(), request.notes());
     }
     @PostMapping("/shift-handovers/{handoverNo}/submit")
-    public ShiftHandover submit(@PathVariable String handoverNo, @RequestBody(required = false) OperatorRequest request) {
-        return service.submitHandover(handoverNo, request == null ? null : request.operator());
+    public ShiftHandover submit(@PathVariable String handoverNo, @RequestBody(required = false) OperatorRequest request, jakarta.servlet.http.HttpServletRequest http) {
+        return service.submitHandover(handoverNo, com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
     @PostMapping("/shift-handovers/{handoverNo}/receive")
-    public ShiftHandover receive(@PathVariable String handoverNo, @RequestBody(required = false) OperatorRequest request) {
-        return service.receiveHandover(handoverNo, request == null ? null : request.operator());
+    public ShiftHandover receive(@PathVariable String handoverNo, @RequestBody(required = false) OperatorRequest request, jakarta.servlet.http.HttpServletRequest http) {
+        return service.receiveHandover(handoverNo, com.bproject.ehm.platform.security.EhmOperationIdentity.require(http));
     }
 
     public record TaskRequest(String taskType, String sourceType, String sourceId,

@@ -1,4 +1,4 @@
-const MENU = [
+const PAGE_CATALOG = [
   { id:'workbench', icon:'总', label:'工作台', children:[
     ['dashboard','综合驾驶舱'],['my-tasks','我的待办'],['shift-handover','班组交接'],['ai-assistant','AI设备助手']
   ]},
@@ -30,6 +30,19 @@ const MENU = [
     ['external-api','外部接口 / API / 事件订阅'],['iam','用户、角色与数据权限'],['dictionaries','参数与字典配置'],['approvals','审批中心'],['audit-logs','操作 / 登录 / 接口 / 异常日志'],['audit-package','审计证据包'],['service-ops','服务监控、备份与韧性演练']
   ]}
 ];
+
+// Route keys remain stable for IAM and existing bookmarks. Daily navigation is business-oriented.
+const BUSINESS_SECTIONS = [
+  {id:'workbench',icon:'总',label:'工作台',primary:['dashboard','my-tasks','shift-handover'],pages:['dashboard','my-tasks','shift-handover','audit-logs','sample-workbench','ai-assistant']},
+  {id:'equipment',icon:'设',label:'设备与资料',primary:['fleet','asset-profile','bom','measurement'],pages:['fleet','asset-profile','bom','measurement','sensor-cal','config-change','device-template','asset-tree']},
+  {id:'operations',icon:'运',label:'运行与故障',primary:['realtime','alarm-center','fault-codes'],pages:['realtime','area-map','alarm-center','fault-codes','data-quality','alarm-rules','sla']},
+  {id:'maintenance',icon:'维',label:'维护与维修',primary:['maintenance-plan','inspection','workorders','repair-retest'],pages:['maintenance-plan','inspection','workorders','repair-retest','strategy','spares']},
+  {id:'analysis',icon:'析',label:'辅助分析',primary:['health','diagnosis','knowledge','kpi'],pages:['health','diagnosis','evidence','rootcause','knowledge','fmeca','baseline','degradation','rul','maintenance-advice','kpi','reliability','oee','failure-report','maintenance-cost','coverage-report','resource-forecast','energy-health','period-report']}
+];
+const PAGE_LABELS = Object.fromEntries(PAGE_CATALOG.flatMap(g=>g.children.map(c=>[c[0],c])));
+PAGE_LABELS['sample-workbench']=['sample-workbench','数据运行状态'];
+PAGE_LABELS.fleet=['fleet','设备台账与态势'];
+const MENU = BUSINESS_SECTIONS.map(g=>({...g,children:g.primary.map(id=>PAGE_LABELS[id])}));
 
 let EQUIPMENT = [
   {code:'GT-01',name:'1#门式起重机',type:'门吊',area:'装卸一区',condition:'重载作业',health:58,risk:'L3 严重',riskClass:'severe',quality:98.6,ready:'已接入',alarm:'起升减速机包络趋势异常',maint:'2026-09-06',owner:'机修二班'},
@@ -64,24 +77,42 @@ const state = { page:'dashboard', asset:'GT-01', assetTab:'overview', drawer:nul
 
 async function apiRequest(path,options={}){
   if(window.EhmAuth?.enabled&&!window.EhmAuth.user)await window.EhmAuth.ready;
-  const headers={Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})};
-  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),options.timeoutMs||25000);
-  let response;
-  try{response=await fetch(`${API_BASE}${path}`,{...options,headers,signal:options.signal||controller.signal});}
-  catch(error){throw new Error(error.name==='AbortError'?'请求超时，请重试或检查服务状态':'无法连接后端，请检查SSH隧道或服务器连接');}
-  finally{clearTimeout(timer);}
+  if(window.EhmWorkspacePolicy?.isBusinessWrite(path,options.method)){
+    const readiness=window.EhmWorkspacePolicy.writeReadiness(window.EhmAuth);
+    if(!readiness.allowed){const error=new Error(readiness.message);error.status=403;error.code=readiness.code;throw error;}
+  }
+  const multipart=typeof FormData!=='undefined'&&options.body instanceof FormData;
+  const headers={Accept:'application/json',...(options.body&&!multipart?{'Content-Type':'application/json'}:{}),...(options.headers||{})};
+  const controller=new AbortController();let timedOut=false;
+  const cancel=()=>controller.abort();
+  options.signal?.addEventListener('abort',cancel,{once:true});
+  if(options.signal?.aborted)cancel();
+  const timer=setTimeout(()=>{timedOut=true;controller.abort();},options.timeoutMs||25000);
+  try{
+  const response=await fetch(`${API_BASE}${path}`,{...options,headers,signal:controller.signal});
   if(!response.ok){
     let message=`HTTP ${response.status}`;
-    try{const body=await response.json();message=body.detail||body.message||message;if(body.traceId)message+=`（跟踪号 ${body.traceId.slice(0,8)}）`;}catch{}
+    let traceId='';
+    try{const body=await response.json();message=body.detail||body.message||message;traceId=body.traceId||'';}catch{}
+    message=window.EhmWorkspacePolicy?.errorMessage(message,response.status)||message;
+    if(traceId)message+=`（跟踪号 ${traceId.slice(0,8)}）`;
     const error=new Error(message);error.status=response.status;throw error;
   }
   if(response.status===204)return null;
-  return response.json();
+  return await response.json();
+  }catch(error){
+    if(error.name==='AbortError'){
+      if(!timedOut)throw error;
+      throw new Error('请求超时，请重试或检查服务状态');
+    }
+    if(error instanceof TypeError)throw new Error('无法连接后端，请检查SSH隧道或服务器连接');
+    throw error;
+  }finally{clearTimeout(timer);options.signal?.removeEventListener('abort',cancel);}
 }
 
-async function apiList(path){
+async function apiList(path,options={}){
   const rows=[];let page=0,total=1;
-  while(page<total){const result=await apiRequest(`${path}${path.includes('?')?'&':'?'}page=${page}&size=200`);
+  while(page<total){const result=await apiRequest(`${path}${path.includes('?')?'&':'?'}page=${page}&size=200`,options);
     if(Array.isArray(result))return result;
     rows.push(...(result?.content||[]));total=result?.totalPages||1;page++;}
   return rows;
@@ -114,7 +145,7 @@ async function loadBackendData(showMessage=false){
     const status=$('#runtimeStatus');if(status){status.classList.add('connected');status.innerHTML='<span></span>服务器后端已连接';}
     if(typeof refreshAssistantStatus==='function')refreshAssistantStatus();
     renderPage();
-    if(showMessage)toast('已从openGauss刷新设备、告警和工单数据。');
+    if(showMessage)toast('设备、告警和工单数据已刷新。');
   }catch(error){
     if(!current())return;
     state.backendConnected=false;state.backendError=error.message;
@@ -154,13 +185,13 @@ function lineChart(primary=[62,64,61,66,68,70,69,73,76,74,78,82],secondary=[42,4
 
 function renderNav(){
   const nav=$('#navigation');
-  nav.innerHTML=MENU.map((g,idx)=>`<section class="nav-group ${idx<2?'open':''}" data-group="${g.id}">
+  nav.innerHTML=MENU.map(g=>`<section class="nav-group ${g.pages.includes(state.page)||state.page==='asset-detail'&&g.id==='equipment'?'open':''}" data-group="${g.id}">
     <button class="nav-parent" type="button"><i class="nav-icon">${g.icon}</i><strong>${g.label}</strong><span class="chev">›</span></button>
     <div class="nav-children">${g.children.map(c=>`<button class="nav-child" type="button" data-page="${c[0]}">${c[1]}${c[2]?`<span class="stage">${c[2]}</span>`:''}</button>`).join('')}</div>
   </section>`).join('');
 }
 
-function menuInfo(page){for(const g of MENU){for(const c of g.children){if(c[0]===page)return {group:g,label:c[1],stage:c[2]||''};}}return null;}
+function menuInfo(page){const c=PAGE_LABELS[page],group=BUSINESS_SECTIONS.find(g=>g.pages.includes(page));return c?{group:group||PAGE_CATALOG.find(g=>g.children.some(x=>x[0]===page)),label:c[1],stage:c[2]||''}:null;}
 function pageFromLocation(){
   const query=new URLSearchParams(location.search);
   const requested=query.get('page')||query.get('navPageKey')||'dashboard';
@@ -168,7 +199,9 @@ function pageFromLocation(){
 }
 function syncPageUrl(page,replace=false){
   const url=new URL(location.href);url.searchParams.delete('navPageKey');url.searchParams.set('page',page);
-  history[replace?'replaceState':'pushState']({ehmPage:page},'',url.pathname+url.search+url.hash);
+  if(page==='asset-detail'){url.searchParams.set('asset',state.asset);url.searchParams.set('tab',state.assetTab||'prediction');}
+  else {url.searchParams.delete('asset');url.searchParams.delete('tab');}
+  history[replace?'replaceState':'pushState']({...history.state,ehmPage:page},'',url.pathname+url.search+url.hash);
 }
 function setPage(page,options={}){
   if(!menuInfo(page)&&page!=='asset-detail'){
@@ -177,8 +210,9 @@ function setPage(page,options={}){
   }
   state.page=page;if(!options.fromHistory)syncPageUrl(page,Boolean(options.replace));renderPage();return true;
 }
-window.addEventListener('popstate',()=>setPage(pageFromLocation(),{fromHistory:true}));
-window.addEventListener('load',()=>setPage(pageFromLocation(),{replace:true}));
+function restoreAssetRoute(){const q=new URLSearchParams(location.search);if(q.get('page')==='asset-detail'){state.asset=q.get('asset')||'';state.assetTab=['prediction','components','docs','maintenance','history'].includes(q.get('tab'))?q.get('tab'):'prediction';}}
+window.addEventListener('popstate',()=>{restoreAssetRoute();setPage(pageFromLocation(),{fromHistory:true});});
+window.addEventListener('load',()=>{restoreAssetRoute();setPage(pageFromLocation(),{replace:true});});
 function syncNav(){
   let active=state.page==='asset-detail'?'fleet':state.page;
   $$('.nav-child').forEach(b=>b.classList.toggle('active',b.dataset.page===active));
@@ -403,7 +437,7 @@ function renderAlarmCenterLive(){
   const count=status=>alarms.filter(a=>a.status===status).length;
   return `<div class="page">${pageHead('实时告警中心','告警业务数据已接入openGauss，支持人工确认、分派、关闭和转工单。',`${button('刷新数据','refreshBackend')}${button(`受控批量分派${state.selectedAlarmNos.size?'（'+state.selectedAlarmNos.size+'）':''}`,'batchAssign')}`)}
     <div class="grid cols-4 mb-12">${metric('新建',String(count('新建')+count('待确认')),'项','等待人工确认','risk')}${metric('处理中',String(count('处理中')),'项','已进入处置','warn')}${metric('待验证',String(count('待验证')),'项','需维修后复测')}${metric('已关闭',String(count('已关闭')),'项','当前数据','good')}</div>
-    <section class="panel"><div class="table-tools"><div class="filters"><input class="control search" placeholder="告警编号 / 设备 / 部件"/><select class="control"><option>全部等级</option><option>L3严重</option><option>L2警告</option></select><select class="control"><option>全部状态</option><option>新建</option><option>已确认</option><option>处理中</option><option>待验证</option><option>已关闭</option></select></div><div>${mini(state.backendConnected?'openGauss已连接':'离线降级',state.backendConnected?'ready':'pending')}</div></div><div class="table-wrap"><table class="data-table"><thead><tr><th><input id="selectAllAlarms" type="checkbox" aria-label="选择全部活动告警"/></th><th>告警编号 / 时间</th><th>设备 / 部件 / 责任人</th><th>等级</th><th>触发摘要</th><th>状态</th><th>SLA</th><th>触发方法</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>${pager(String(alarms.length))}</section></div>`;
+    <section class="panel"><div class="table-tools"><div class="filters"><input class="control search" placeholder="告警编号 / 设备 / 部件"/><select class="control"><option>全部等级</option><option>L3严重</option><option>L2警告</option></select><select class="control"><option>全部状态</option><option>新建</option><option>已确认</option><option>处理中</option><option>待验证</option><option>已关闭</option></select></div><div>${mini(state.backendConnected?'业务数据已连接':'离线降级',state.backendConnected?'ready':'pending')}</div></div><div class="table-wrap"><table class="data-table"><thead><tr><th><input id="selectAllAlarms" type="checkbox" aria-label="选择全部活动告警"/></th><th>告警编号 / 时间</th><th>设备 / 部件 / 责任人</th><th>等级</th><th>触发摘要</th><th>状态</th><th>SLA</th><th>触发方法</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>${pager(String(alarms.length))}</section></div>`;
 }
 
 function renderMaintenanceLive(){
@@ -454,8 +488,8 @@ function syncAlarmSelectionControls(){
 
 function handleAction(e){
   const b=e.currentTarget,a=b.dataset.action;
-  if(a==='openAsset'){state.asset=b.dataset.id||'GT-01';state.assetTab='overview';setPage('asset-detail');}
-  else if(a==='assetTab'){state.assetTab=b.dataset.tab;renderPage();}
+  if(a==='openAsset'){state.asset=b.dataset.id||'';state.assetTab='prediction';setPage('asset-detail');}
+  else if(a==='assetTab'){state.assetTab=b.dataset.tab;syncPageUrl('asset-detail',true);renderPage();}
   else if(a==='openEvidence')openEvidence();
   else if(a==='toDiagnosis')setPage('diagnosis');
   else if(a==='createWork'||a==='newWork')openCreateWork();
@@ -549,12 +583,14 @@ async function advanceWorkOrder(orderNo,status){
   try{await apiRequest('/work-orders/'+encodeURIComponent(orderNo)+'/status',{method:'PATCH',body:JSON.stringify({status})});await loadBackendData();toast(orderNo+' 已推进到“'+status+'”。');}catch(error){toast('工单推进失败：'+error.message);}
 }
 async function createWorkOrderFromForm(){
-  if(!state.backendConnected){toast('后端未连接，不能创建工单。');return;}
+  if(!state.backendConnected){toast('后端未连接，不能创建工单。');return false;}
   const payload={deviceCode:$('#workDevice')?.value,title:$('#workTitle')?.value,priority:$('#workPriority')?.value,assignee:$('#workAssignee')?.value,plannedWindow:$('#workWindow')?.value,description:$('#workDescription')?.value,source:'人工创建'};
-  try{const created=await apiRequest('/work-orders',{method:'POST',body:JSON.stringify(payload)});await loadBackendData();setPage('workorders');toast('已创建 '+created.orderNo+'，刷新后数据仍保留。');}catch(error){toast('创建工单失败：'+error.message);}
+  if(!payload.deviceCode||!payload.title?.trim()||!payload.assignee?.trim()||!payload.description?.trim())throw new Error('请填写设备、工单主题、责任班组和检查内容。');
+  const created=await apiRequest('/work-orders',{method:'POST',body:JSON.stringify(payload)});
+  setPage('workorders');await loadBackendData();toast('工单 '+created.orderNo+' 已保存，状态：'+(created.status||'待审批')+'。可在工单中心及操作日志核对。');return true;
 }
 function openNewAsset(){
-  openModal('设备台账','新建Demo设备',`<div class="form-grid"><div class="field"><label>设备编码</label><input id="assetCode" placeholder="例如 GT-05"/></div><div class="field"><label>设备名称</label><input id="assetName" placeholder="例如 5#门式起重机"/></div><div class="field"><label>设备类型</label><input id="assetType" value="门吊"/></div><div class="field"><label>所属区域</label><input id="assetArea" value="装卸作业区"/></div><div class="field"><label>责任班组</label><input id="assetOwner" value="机修班"/></div><div class="field"><label>接入状态</label><select id="assetReady"><option>待接入</option><option>可接入</option><option>已接入</option></select></div></div>`,'保存设备',createDeviceFromForm);
+  openModal('设备台账','新建设备',`<div class="form-grid"><div class="field"><label>设备编码</label><input id="assetCode" placeholder="例如 GT-05"/></div><div class="field"><label>设备名称</label><input id="assetName" placeholder="例如 5#门式起重机"/></div><div class="field"><label>设备类型</label><input id="assetType" value="门吊"/></div><div class="field"><label>所属区域</label><input id="assetArea" value="装卸作业区"/></div><div class="field"><label>责任班组</label><input id="assetOwner" value="机修班"/></div><div class="field"><label>接入状态</label><select id="assetReady"><option>待接入</option><option>可接入</option><option>已接入</option></select></div></div>`,'保存设备',createDeviceFromForm);
 }
 async function createDeviceFromForm(){
   if(!state.backendConnected){toast('后端未连接，不能保存设备。');return;}
@@ -574,11 +610,12 @@ function init(){
   $('#drawerClose').onclick=closeDrawer;$('#backdrop').onclick=closeDrawer;$('#modalClose').onclick=closeModal;
   $('#stackEntry').onclick=openStack;$('#runtimeStatus').onclick=openStack;
   $('#commandView').onclick=()=>setPage('command');$('#mobileView').onclick=()=>setPage('mobile');
-  $('#siteSelect').onclick=()=>toast('原型默认单场站，已预留多场站切换。');
+  $('#siteSelect').onclick=()=>window.open('https://bproject.de5.net/portal/?projectId='+encodeURIComponent(window.EhmAuth?.projectId||'PROJECT_B'),'_blank','noopener');
   $('#globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter'&&typeof searchSystemData==='function')searchSystemData(e.target.value);});
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#globalSearch').focus();}if(e.key==='Escape'){closeDrawer();closeModal();$('#assistantPanel').classList.remove('open');}});
-  $('#assistantEntry').onclick=()=>$('#assistantPanel').classList.add('open');$('#assistantClose').onclick=()=>$('#assistantPanel').classList.remove('open');
-  $$('.assistant-prompts button').forEach(b=>b.onclick=()=>{ $('#assistantInput').value=b.textContent;$('#assistantForm').requestSubmit(); });
+  $('#assistantEntry').onclick=()=>{if(typeof aiOpen==='function')aiOpen();else toast('助手模块尚未就绪，请刷新或检查页面资源。');};
+  $('#assistantClose').onclick=()=>{if(typeof aiClose==='function')aiClose();else $('#assistantPanel').classList.remove('open');};
+  $$('.assistant-prompts button').forEach(b=>b.onclick=()=>{if(typeof aiSend==='function')aiSend(b.textContent);else toast('助手模块尚未就绪，未发送请求。');});
   // The assistant module owns conversation, retrieval status and error handling.
   const tick=()=>{$('#clock').textContent=new Date().toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replaceAll('/','-')};tick();setInterval(tick,30000);
 }

@@ -49,7 +49,7 @@ public record MaintenanceCase(
                 required(conclusion, "诊断结论"), required(probableCause, "可能原因"),
                 fallback(confidence, "人工判断"), required(evidenceText, "诊断依据"),
                 normalizeOperator(operator), now));
-        return copy(CaseStatus.DIAGNOSED, next, workOrderNo, executionRecords, retests, now, null);
+        return copy(workOrderNo==null?CaseStatus.DIAGNOSED:status, next, workOrderNo, executionRecords, retests, now, null);
     }
 
     public MaintenanceCase linkWorkOrder(String orderNo, Instant now) {
@@ -78,7 +78,8 @@ public record MaintenanceCase(
                                         String criterion, boolean passed, String operator, Instant now) {
         ensureWorkOrderLinked();
         if (executionRecords.isEmpty()) throw new DomainConflictException("必须先记录维修执行过程，再提交复测结果");
-        if (beforeValue == null || afterValue == null) throw new IllegalArgumentException("维修前、维修后数值不能为空");
+        if (beforeValue == null || afterValue == null || !Double.isFinite(beforeValue) || !Double.isFinite(afterValue))
+            throw new IllegalArgumentException("维修前、维修后数值须为有效有限数值");
         List<RetestRecord> next = new ArrayList<>(retests);
         next.add(new RetestRecord("RET-" + alarmNo + "-" + (next.size() + 1),
                 required(pointCode, "复测测点"), beforeValue, afterValue, fallback(unit, "—"),
@@ -90,9 +91,14 @@ public record MaintenanceCase(
     public MaintenanceCase close(String operator, String conclusion, Instant now) {
         ensureWorkOrderLinked();
         if (executionRecords.isEmpty()) throw new DomainConflictException("缺少维修执行记录，不能闭环");
-        if (retests.stream().noneMatch(RetestRecord::passed)) {
-            throw new DomainConflictException("至少需要一条通过的维修后复测记录才能闭环");
-        }
+        java.util.Map<String,RetestRecord> latest=new java.util.LinkedHashMap<>();
+        Instant roundStart=executionRecords.get(executionRecords.size()-1).executedAt();
+        for(var retest:retests)if(!retest.testedAt().isBefore(roundStart))latest.put(retest.pointCode(),retest);
+        var plan=evidence.stream().filter(e->e.type().equals("RETEST_PLAN")).reduce((a,b)->b);
+        if(plan.isPresent() && java.util.Arrays.stream(plan.get().content().split(",")).anyMatch(p->!latest.containsKey(p)))
+            throw new DomainConflictException("复测计划中的必测项尚未全部完成，不能闭环");
+        if (status!=CaseStatus.VERIFIED || latest.isEmpty() || latest.values().stream().anyMatch(r->!r.passed()))
+            throw new DomainConflictException("各已复测测点的最新结果必须全部合格，且当前维修轮次已验证后才能闭环；不合格须返修或继续复测");
         List<EvidenceItem> nextEvidence = new ArrayList<>(evidence);
         nextEvidence.add(new EvidenceItem("CLOSURE", "闭环结论",
                 required(conclusion, "闭环结论") + "；签核人：" + normalizeOperator(operator),
@@ -101,6 +107,15 @@ public record MaintenanceCase(
                 CaseStatus.CLOSED, nextEvidence, diagnoses, workOrderNo, executionRecords, retests,
                 createdAt, now, now, version);
     }
+
+    public MaintenanceCase appendEvidence(EvidenceItem item, Instant now) {
+        ensureOpen();var next=new ArrayList<>(evidence);next.add(item);
+        return new MaintenanceCase(alarmNo,deviceCode,deviceName,component,alarmLevel,alarmSummary,status,
+                next,diagnoses,workOrderNo,executionRecords,retests,createdAt,now,closedAt,version);
+    }
+
+    public MaintenanceCase withVersion(long value){return new MaintenanceCase(alarmNo,deviceCode,deviceName,component,alarmLevel,alarmSummary,
+        status,evidence,diagnoses,workOrderNo,executionRecords,retests,createdAt,updatedAt,closedAt,value);}
 
     private MaintenanceCase copy(CaseStatus target, List<DiagnosisRecord> nextDiagnoses, String nextOrderNo,
                                  List<ExecutionRecord> nextExecution, List<RetestRecord> nextRetests,

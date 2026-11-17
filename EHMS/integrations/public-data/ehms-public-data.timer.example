@@ -1,0 +1,11 @@
+[Unit]
+Description=Opt-in EHMS MQ consumer rounds; never starts public data generators
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=30s
+Unit=ehms-public-data.service
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

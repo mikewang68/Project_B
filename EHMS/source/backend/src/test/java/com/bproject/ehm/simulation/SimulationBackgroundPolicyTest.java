@@ -24,6 +24,23 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class SimulationBackgroundPolicyTest {
+    @Test void demoModeIsAnExplicitWorkerConfigurationNotAUserSession(){
+        assertDoesNotThrow(()->SimulationBackgroundPolicy.check("DEMO_SERVICE","EHMS_DEMO","ehms-demo-simulator","",false));
+        for(String[] config:new String[][]{{"SHEN_TIE","ehms-demo-simulator",""},{"EHMS_DEMO","person",""},{"EHMS_DEMO","ehms-demo-simulator","human-session"}})
+            assertThrows(IllegalStateException.class,()->SimulationBackgroundPolicy.check("DEMO_SERVICE",config[0],config[1],config[2],false));
+        assertEquals(403,assertThrows(ResponseStatusException.class,()->SimulationBackgroundPolicy.check("DEMO_SERVICE","EHMS_DEMO","ehms-demo-simulator","",true)).getStatusCode().value());
+    }
+    @Test void demoControllerInitializationUsesWorkerTupleAndAlwaysCleansIt(){
+        var store=mock(OpenGaussJsonStore.class);var tx=mock(TransactionTemplate.class);
+        var service=new SimulationService(store,tx,null,null,null,new ObjectMapper(),"PROJECT_B","PROJECT_B",false,"openGemini","",false,"shared-synthetic",true,"openGauss");
+        doAnswer(call->{java.util.function.Consumer<org.springframework.transaction.TransactionStatus> body=call.getArgument(0);body.accept(mock(org.springframework.transaction.TransactionStatus.class));return null;}).when(tx).executeWithoutResult(any());
+        ReflectionTestUtils.setField(service,"backgroundAuthMode","DEMO_SERVICE");ReflectionTestUtils.setField(service,"backgroundRegion","EHMS_DEMO");ReflectionTestUtils.setField(service,"backgroundSubject","ehms-demo-simulator");
+        when(store.insertIfAbsent(eq("simulation-control"),eq("control"),any())).thenAnswer(call->{
+            assertEquals("EHMS_DEMO",SimulationRunScope.current().regionId());assertNull(EhmCentralScope.current());throw new IllegalStateException("test failure");});
+        assertThrows(IllegalStateException.class,service::initializeController);assertNull(SimulationRunScope.current());
+        org.springframework.web.context.request.RequestContextHolder.setRequestAttributes(new org.springframework.web.context.request.ServletRequestAttributes(new MockHttpServletRequest()));
+        try{assertThrows(ResponseStatusException.class,service::initializeController);}finally{org.springframework.web.context.request.RequestContextHolder.resetRequestAttributes();}
+    }
     @Test void unchangedLegacyDefaultsAndUnassignedRegionAreAccepted() {
         assertDoesNotThrow(()->SimulationBackgroundPolicy.check("LEGACY_ONLY","","","",false));
         assertDoesNotThrow(()->SimulationBackgroundPolicy.check("LEGACY_ONLY","UNASSIGNED","","",false));

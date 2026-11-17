@@ -4,9 +4,16 @@ package com.bproject.ehm.simulation;
 final class SimulationBackgroundPolicy {
     private SimulationBackgroundPolicy() {}
     static void check(String mode, String region, String subject, String session, boolean requestContext) {
-        if (!"LEGACY_ONLY".equals(mode) && !"IAM_V2".equals(mode))
+        if (!"LEGACY_ONLY".equals(mode) && !"IAM_V2".equals(mode) && !"DEMO_SERVICE".equals(mode))
             throw new IllegalStateException("BACKGROUND_AUTH_MODE_INVALID");
         if ("IAM_V2".equals(mode)) throw new IllegalStateException("BACKGROUND_V2_NOT_ADAPTED");
+        if("DEMO_SERVICE".equals(mode)) {
+            if(!SimulationRunScope.REGION.equals(region)||!SimulationRunScope.SUBJECT.equals(subject)||!"".equals(session))
+                throw new IllegalStateException("DEMO_WORKER_CONFIGURATION_INVALID");
+            if(requestContext)throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN,"BACKGROUND_REQUEST_CONTEXT_REJECTED");
+            return;
+        }
         if (subject == null || session == null || region == null || !subject.isEmpty() || !session.isEmpty()
                 || !region.isEmpty() && !"UNASSIGNED".equals(region))
             throw new IllegalStateException("BACKGROUND_LEGACY_SCOPE_CONFLICT");

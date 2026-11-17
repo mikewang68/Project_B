@@ -38,7 +38,7 @@ public class AssistantDataTools {
         this.governance=governance; this.reliability=reliability; this.mapper=mapper;
     }
 
-    public List<DeviceView> devices() { return scan(q -> assets.list(q, null, null, null)).rows(); }
+    public List<DeviceView> devices() { return AssistantScope.mayRead("fleet")?scan(q -> assets.list(q, null, null, null)).rows():List.of(); }
     public List<Map<String, Object>> definitions() {
         return List.of(Map.of("type", "function", "function", Map.of(
                 "name", "query_ehm", "description", "读取EHM数据库，返回脱敏业务数据和本地来源编号。需要当前系统事实时必须调用。无写入能力。最多返回30条，截断会标记。",
@@ -58,6 +58,7 @@ public class AssistantDataTools {
             if (args == null || !args.isObject()) return error("工具参数必须是JSON对象");
             String category = args.path("category").asText();
             if (!CATEGORIES.contains(category)) return error("未知业务类别");
+            if(!AssistantScope.mayRead(PAGES.get(category)))return error("当前账号未获该类业务数据的查看授权，助手不会代为读取");
             String code = privacy.resolveCode(args.path("device_code").asText(""));
             String keyword = args.path("keyword").asText("").trim().toLowerCase(Locale.ROOT);
             String status = args.path("status").asText("").trim();

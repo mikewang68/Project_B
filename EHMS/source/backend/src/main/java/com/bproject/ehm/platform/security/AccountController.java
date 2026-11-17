@@ -36,6 +36,8 @@ public class AccountController {
                 result.put("menuOperations",context.menuOperations());
                 result.put("centralAdminLevel",context.adminLevel());
                 result.put("authorizationVersion",context.authorizationVersion());
+                result.put("dataScope",Map.of("mode",context.scopeMode().name(),"active",context.activeScope(),
+                    "allowed",context.allowedScopes(),"source","IAM_VERIFIED_CONTEXT"));
             }
             return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);
         }

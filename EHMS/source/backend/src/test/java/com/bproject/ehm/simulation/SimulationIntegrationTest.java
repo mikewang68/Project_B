@@ -127,4 +127,30 @@ class SimulationIntegrationTest {
   mvc.perform(post(url).cookie(admin.cookie()).header("X-EHM-CSRF",admin.csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
   mvc.perform(get("/api/ehm/v1/system/simulation").cookie(viewer.cookie())).andExpect(status().isOk());
  }
+ @Test void publishedBusinessReadMatrixUsesPersistedScenarioRecords()throws Exception{
+  install();for(int n=1;n<=5;n++)tick(n);var admin=login("simadmin");
+  String a=ASSET,alarm=a+"-C1-ALM",order=a+"-C1-WO";
+  var paths=List.of("/devices","/dashboard/summary","/analytics/overview?days=30","/devices/"+a,
+   "/devices/"+a+"/dossier","/devices/"+a+"/dossier/maintenance-due","/assets/"+a+"/components","/assets/"+a+"/measurement-points",
+   "/data-quality/points?assetCode="+a,"/data-quality/summary?assetCode="+a,"/telemetry/points/"+a+"-TEMP/samples?limit=10",
+   "/devices/"+a+"/health-assessments/latest","/devices/"+a+"/health-assessments?limit=12",
+   "/alarms","/work-orders","/alarms/"+alarm+"/case","/work-orders/"+order+"/case",
+   "/maintenance-plans?assetCode="+a,"/inspection-tasks?assetCode="+a,"/maintenance-defects?assetCode="+a,
+   "/my-tasks","/shift-handovers","/device-templates","/calibration-records","/configuration-changes",
+   "/spare-parts?warehouseCode=SAMPLE-LIVE-WH","/spare-stock/summary?warehouseCode=SAMPLE-LIVE-WH","/spare-stock/alerts?warehouseCode=SAMPLE-LIVE-WH",
+   "/spare-stock/transactions?limit=100","/spare-reservations","/reliability/failure-modes","/reliability/fault-codes",
+   "/reliability/alarm-rules","/reliability/knowledge-cases","/reliability/sla-policies","/system/activity");
+  for(String path:paths){var response=mvc.perform(get("/api/ehm/v1"+path).cookie(admin.cookie())).andReturn().getResponse();
+   assertEquals(200,response.getStatus(),path+" must not become a failed/empty success page");assertNotNull(mapper.readTree(response.getContentAsString()),path);}
+  for(String path:List.of("/alarms","/work-orders","/my-tasks","/shift-handovers","/device-templates","/calibration-records",
+    "/assets/"+a+"/components","/assets/"+a+"/measurement-points","/devices/"+a+"/health-assessments?limit=12",
+    "/maintenance-plans?assetCode="+a,"/inspection-tasks?assetCode="+a,"/spare-parts?warehouseCode=SAMPLE-LIVE-WH")){
+   var response=mvc.perform(get("/api/ehm/v1"+path).cookie(admin.cookie())).andReturn().getResponse();
+   var body=mapper.readTree(response.getContentAsString());var rows=body.isArray()?body:body.path("content");
+   assertTrue(rows.isArray()&&!rows.isEmpty(),path+" must expose records persisted by the backend simulation, not just return 200");
+  }
+  mvc.perform(get("/api/ehm/v1/devices?page=0&size=50").cookie(admin.cookie())).andExpect(jsonPath("$.totalElements").value(29));
+  mvc.perform(get("/api/ehm/v1/data-quality/points?assetCode="+a+"&page=0&size=50").cookie(admin.cookie())).andExpect(jsonPath("$.totalElements").value(3));
+  mvc.perform(get("/api/ehm/v1/data-quality/points").cookie(admin.cookie())).andExpect(status().isBadRequest());
+ }
 }

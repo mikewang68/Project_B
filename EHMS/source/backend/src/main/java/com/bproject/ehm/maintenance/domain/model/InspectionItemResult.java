@@ -22,6 +22,8 @@ public record InspectionItemResult(
             throw new IllegalArgumentException("检查结果仅允许 PASS、FAIL 或 NA");
         }
         if (required && "NA".equals(normalized)) throw new IllegalArgumentException(name + "为必检项，不能填写NA");
+        if (required && (value==null||value.isBlank()) && (remark==null||remark.isBlank()))
+            throw new IllegalArgumentException(name + "为必检项，请填写实际测量值或现场观察依据，不能仅勾选通过");
         return new InspectionItemResult(itemId, name, method, standard, unit, required,
                 value == null ? "" : value.trim(), normalized, remark == null ? "" : remark.trim());
     }

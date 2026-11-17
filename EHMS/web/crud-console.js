@@ -31,7 +31,8 @@ function renderDeviceCrud(){
     const band=item.health==null?'未登记评分':item.health>=80?'健康 80–100':item.health>=60?'关注 60–79':'异常 0–59';
     return hit && (!c.area||item.area===c.area) && (!c.type||item.type===c.type) && (!c.condition||item.condition===c.condition) && (!c.healthBand||c.healthBand===band);
   });
-  const rows=filtered.map(item=>`<tr>
+  const pages=Math.max(1,Math.ceil(filtered.length/15));c.page=Math.min(Math.max(1,c.page||1),pages);
+  const rows=filtered.slice((c.page-1)*15,c.page*15).map(item=>`<tr>
     <td><button class="table-link" data-action="openAsset" data-id="${esc(item.code)}"><strong>${esc(item.code)}</strong><small>${esc(item.name)}</small></button></td>
     <td>${esc(item.type)}</td><td>${esc(item.area)}</td><td>${tag(item.condition||'待接入',deviceConditionTone(item.condition))}</td>
     <td class="num"><strong class="${item.health==null?'text-info':item.health<70?'text-danger':item.health<80?'text-warning':'text-success'}">${item.health??'—'}</strong></td>
@@ -40,10 +41,9 @@ function renderDeviceCrud(){
     <td>${esc(item.maint||'—')}</td><td>${esc(item.owner||'—')}</td>
     <td class="table-actions"><button class="table-action" data-action="openAsset" data-id="${esc(item.code)}">详情</button><button class="table-action" data-action="editAsset" data-id="${esc(item.code)}">编辑</button><button class="table-action danger-link" data-action="archiveAsset" data-id="${esc(item.code)}">归档</button></td>
   </tr>`).join('');
-  const title=state.page==='asset-profile'?'设备档案':state.page==='asset-tree'?'资产树与设备台账':'全场设备群态势';
+  const title=state.page==='asset-profile'?'设备档案':state.page==='asset-tree'?'资产树与设备台账':'设备台账与态势';
   return `<div class="page">
-    ${pageHead(title,'设备基础资料由openGauss持久化；支持新增、查询、编辑和受控归档。',`${button('刷新','refreshBackend')}${button('新建设备','newAsset','primary')}`)}
-    <div class="notice-bar"><strong>组会可演示闭环</strong><span>新增设备 → 条件查询 → 编辑档案 → 查看360°详情 → 归档。归档保留审计与历史数据，不做物理删除。</span>${tag(state.backendConnected?'openGauss已连接':'离线只读',state.backendConnected?'good':'warn')}</div>
+    ${pageHead(title,'查询运行状态、登记设备资料，进入详情查看健康、部件与维修履历。',`${button('刷新','refreshBackend')}${button('新建设备','newAsset','primary')}`)}
     <section class="panel">
       <div class="table-tools"><div class="filters">
         <input class="control search" id="deviceKeyword" value="${esc(c.keyword)}" placeholder="编码 / 名称 / 类型 / 责任组"/>
@@ -54,7 +54,7 @@ function renderDeviceCrud(){
         <button class="button" data-action="clearDeviceFilters">重置</button>
       </div><div class="tool-actions"><span class="mini-badge">显示 ${filtered.length} / ${EQUIPMENT.length} 台</span>${button('保存筛选','saveFilter')}</div></div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>设备编码 / 名称</th><th>类型</th><th>区域</th><th>状态</th><th class="num">健康分</th><th>风险</th><th class="num">数据质量</th><th>接入状态</th><th>下次维护</th><th>责任组</th><th>操作</th></tr></thead><tbody>${rows||'<tr><td colspan="11"><div class="empty-state"><b>没有符合条件的设备</b><p>请调整查询条件或新建设备。</p></div></td></tr>'}</tbody></table></div>
-      ${pager(String(filtered.length))}
+      <div class="table-pagination"><span>共 ${filtered.length} 台 · 第 ${c.page} / ${pages} 页</span><div><button class="button" id="devicePrev" ${c.page===1?'disabled':''}>上一页</button> <button class="button" id="deviceNext" ${c.page===pages?'disabled':''}>下一页</button></div></div>
     </section>
   </div>`;
 }
@@ -139,7 +139,7 @@ async function updateAsset(code){
     const updated=await apiRequest('/devices/'+encodeURIComponent(code),{method:'PUT',body:JSON.stringify(assetPayload(code))});
     await loadBackendData();
     state.asset=updated.code;
-    toast(`设备 ${updated.code} 已更新并写入openGauss。`);
+    toast(`设备 ${updated.code} 已保存，可在详情和操作日志中核对。`);
     return true;
   }catch(error){toast('设备更新失败：'+error.message);return false;}
 }
@@ -179,20 +179,20 @@ function loadSavedDeviceFilter(){
 function handleUnwiredButton(button){
   const label=button.textContent.trim()||'当前操作';
   if(button.closest('.pagination-buttons')){
-    button.parentElement.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));
-    toast('已切换页面视图；当前演示数据量为单页。');
+    toast('此列表暂不支持该分页操作，请使用查询条件缩小范围。');
     return;
   }
   if(label==='列配置'){
-    openModal('列表设置','选择当前列表显示列','<div class="checkbox-grid"><label><input type="checkbox" checked/> 编码与名称</label><label><input type="checkbox" checked/> 状态</label><label><input type="checkbox" checked/> 风险</label><label><input type="checkbox" checked/> 责任人</label></div>','应用',()=>toast('列显示方案已应用到当前会话。'));
+    if(typeof openVisualColumns==='function')return openVisualColumns(button);
+    toast('列设置暂未就绪，请刷新后重试。');
     return;
   }
   if(/查看|详情|明细|定位|条件/.test(label)){
     const page=MENU.flatMap(group=>group.children).find(item=>item[0]===state.page);
-    openDrawer('功能说明',page?.[1]||'当前页面',`<div class="callout"><h3>当前页面可见信息</h3><p>该入口的业务字段和效果已在页面中展示；若涉及现场控制、外部系统或尚未取得的数据，系统会保持只读并明确标注接入条件。</p></div><div class="notice-bar mt-12"><strong>可演示范围</strong><span>设备、BOM、测点、告警、工单、健康评估、点检、备件和可靠性治理使用真实后端接口。</span></div>`);
+    openDrawer('功能说明',page?.[1]||'当前页面',`<div class="callout"><h3>当前页面可见信息</h3><p>该入口的业务字段和效果已在页面中展示；若涉及现场控制、外部系统或尚未取得的数据，系统会保持只读并明确标注接入条件。</p></div><div class="notice-bar mt-12"><strong>功能范围</strong><span>设备、BOM、测点、告警、工单、健康评估、点检、备件和可靠性治理使用真实后端接口。</span></div>`);
     return;
   }
-  toast(`“${label}”尚未纳入本轮可操作闭环，页面未伪造执行成功。`);
+  toast(`“${label}”暂不可用，未执行任何更改。`);
 }
 
 const baseRenderBomEditable=renderBomLive;
@@ -265,7 +265,7 @@ handleAction=function(event){
   if(action==='archiveAsset') return confirmArchiveAsset(button.dataset.id||state.asset);
   if(action==='editComponent') return openEditComponent(button.dataset.id);
   if(action==='editPoint') return openEditPoint(button.dataset.id);
-  if(action==='clearDeviceFilters'){Object.assign(state.crud,{keyword:'',area:'',type:'',condition:'',healthBand:''});return renderPage();}
+  if(action==='clearDeviceFilters'){Object.assign(state.crud,{keyword:'',area:'',type:'',condition:'',healthBand:'',page:1});return renderPage();}
   if(action==='saveFilter') return saveDeviceFilter();
   if(action==='subscribe'){
     const code=state.asset;
@@ -285,10 +285,11 @@ bindPageEvents=function(){
   const area=$('#deviceArea');
   const type=$('#deviceType');
   const condition=$('#deviceCondition');
-  if(keyword) keyword.oninput=event=>{state.crud.keyword=event.target.value;window.clearTimeout(state.crud.filterTimer);state.crud.filterTimer=window.setTimeout(renderPage,180);};
-  if(area) area.onchange=event=>{state.crud.area=event.target.value;renderPage();};
-  if(type) type.onchange=event=>{state.crud.type=event.target.value;renderPage();};
-  if(condition) condition.onchange=event=>{state.crud.condition=event.target.value;renderPage();};
+  if(keyword) keyword.oninput=event=>{state.crud.keyword=event.target.value;state.crud.page=1;window.clearTimeout(state.crud.filterTimer);state.crud.filterTimer=window.setTimeout(renderPage,180);};
+  if(area) area.onchange=event=>{state.crud.area=event.target.value;state.crud.page=1;renderPage();};
+  if(type) type.onchange=event=>{state.crud.type=event.target.value;state.crud.page=1;renderPage();};
+  if(condition) condition.onchange=event=>{state.crud.condition=event.target.value;state.crud.page=1;renderPage();};
+  for(const [id,delta] of [['devicePrev',-1],['deviceNext',1]]){const b=document.getElementById(id);if(b)b.onclick=()=>{state.crud.page+=delta;renderPage();};}
 };
 
 const baseOpenNewAssetCrud=openNewAsset;
@@ -305,7 +306,7 @@ createDeviceFromForm=async function(){
     await loadBackendData();
     state.asset=created.code;
     setPage('asset-detail');
-    toast(`设备 ${created.code} 已写入openGauss。`);
+    toast(`设备 ${created.code} 已保存，可进入详情核对。`);
     return true;
   }catch(error){toast('保存设备失败：'+error.message);return false;}
 };

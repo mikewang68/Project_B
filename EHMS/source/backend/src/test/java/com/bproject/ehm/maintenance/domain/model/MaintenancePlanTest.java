@@ -13,10 +13,14 @@ class MaintenancePlanTest {
     private static final Instant NOW = Instant.parse("2026-09-08T00:00:00Z");
 
     @Test
-    void generatingTaskAdvancesNextDueDate() {
+    void generatingTaskDoesNotPretendMaintenanceWasCompleted() {
         MaintenancePlan generated = plan().markGenerated(NOW);
         assertEquals(NOW, generated.lastGeneratedAt());
-        assertEquals(NOW.plus(7, ChronoUnit.DAYS), generated.nextDueAt());
+        assertEquals(NOW, generated.nextDueAt());
+    }
+    @Test void successfulCompletionAdvancesFromActualCompletion() {
+        Instant completed=NOW.plus(2,ChronoUnit.DAYS);
+        assertEquals(completed.plus(7,ChronoUnit.DAYS),plan().markGenerated(NOW).markCompleted(completed).nextDueAt());
     }
 
     @Test

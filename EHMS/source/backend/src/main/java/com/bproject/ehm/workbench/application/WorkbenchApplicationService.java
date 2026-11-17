@@ -62,6 +62,7 @@ public class WorkbenchApplicationService {
     public UserTask createTask(String taskType, String sourceType, String sourceId, String title,
                                String description, String assetCode, String assignee, String team,
                                String priority, Instant dueAt) {
+        if("MAINTENANCE_REMINDER".equals(sourceType))throw new ValidationException("维护提醒待办只能由维护依据核算流程生成");
         try {
             Instant now = clock.instant();
             return tasks.save(UserTask.create("TASK-" + DAY.format(now) + "-" + shortId(), taskType,
@@ -75,6 +76,7 @@ public class WorkbenchApplicationService {
                                String assignee, String team, String priority, Instant dueAt, String status) {
         try {
             UserTask current = getTask(taskNo);
+            if("MAINTENANCE_REMINDER".equals(current.sourceType()))throw new DomainConflictException("维护待办由实际点检结果驱动，请在维护提醒中处理，不能手工覆盖");
             return tasks.save(current.revise(title, description, assetCode, assignee, team,
                     priority, dueAt, status, clock.instant()));
         } catch (IllegalArgumentException exception) {
@@ -83,6 +85,7 @@ public class WorkbenchApplicationService {
     }
 
     public UserTask completeTask(String taskNo, String operator) {
+        if("MAINTENANCE_REMINDER".equals(getTask(taskNo).sourceType()))throw new DomainConflictException("请关联本周期合格点检结果后完成维护提醒，不能直接勾选完成");
         return tasks.save(getTask(taskNo).complete(operator, clock.instant()));
     }
 

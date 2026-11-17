@@ -22,16 +22,20 @@ async function loadStructureData(showMessage=false){
   const asset = currentStructureAsset();
   if(!asset || state.structure.loading) return;
   state.structure.loading = true;
+  const requestSeq=state.structure.requestSeq=(state.structure.requestSeq||0)+1;
   state.structure.error = '';
   if(STRUCTURE_PAGES.has(state.page)) renderPage();
   try{
     const code = encodeURIComponent(asset.code);
+    const central=window.EhmCentralPolicy?.enabled(window.EhmAuth);
+    const permitted=page=>!central||window.EhmCentralPolicy.page(window.EhmAuth,page);
     const [components, points, qualityPoints, summary] = await Promise.all([
-      apiRequest(`/assets/${code}/components?page=0&size=200`),
-      apiRequest(`/assets/${code}/measurement-points?page=0&size=200`),
-      apiRequest(`/data-quality/points?assetCode=${code}&page=0&size=200`),
-      apiRequest(`/data-quality/summary?assetCode=${code}`)
+      permitted('bom')||permitted('asset-tree')?apiRequest(`/assets/${code}/components?page=0&size=200`):Promise.resolve([]),
+      permitted('measurement')?apiRequest(`/assets/${code}/measurement-points?page=0&size=200`):Promise.resolve([]),
+      permitted('data-quality')?apiRequest(`/data-quality/points?assetCode=${code}&page=0&size=200`):Promise.resolve([]),
+      permitted('data-quality')?apiRequest(`/data-quality/summary?assetCode=${code}`):Promise.resolve(null)
     ]);
+    if(requestSeq!==state.structure.requestSeq)return;
     state.structure.loadedAssetCode = asset.code;
     state.structure.components = pageContent(components);
     state.structure.points = pageContent(points);
@@ -42,6 +46,7 @@ async function loadStructureData(showMessage=false){
     if(STRUCTURE_PAGES.has(state.page)) renderPage();
     if(showMessage) toast(`${asset.code} 的BOM、测点和质量状态已刷新。`);
   }catch(error){
+    if(requestSeq!==state.structure.requestSeq)return;
     state.structure.loading = false;
     state.structure.error = error.message;
     if(STRUCTURE_PAGES.has(state.page)) renderPage();
@@ -51,6 +56,7 @@ async function loadStructureData(showMessage=false){
 
 function structureAssetSelector(){
   const asset=currentStructureAsset();
+  if(!asset) return '<select class="control" id="structureAssetSelect" aria-label="选择设备" disabled><option>正在读取设备…</option></select>';
   return `<select class="control" id="structureAssetSelect" aria-label="选择设备">${EQUIPMENT.map(item=>`<option value="${esc(item.code)}" ${item.code===asset.code?'selected':''}>${esc(item.code)} · ${esc(item.name)}</option>`).join('')}</select>`;
 }
 
@@ -62,8 +68,9 @@ function structureLoadState(){
 
 function structureHeader(title, description, primaryAction, primaryLabel){
   const asset=currentStructureAsset();
+  if(!asset) return `${pageHead(title,description,structureAssetSelector())}<div class="notice-bar"><strong>正在读取设备</strong><span>授权设备加载完成后自动显示资产结构。</span></div>`;
   return `${pageHead(title,description,`${structureAssetSelector()}${button('刷新','reloadStructure')}${button(primaryLabel,primaryAction,'primary')}`)}
-    <div class="notice-bar"><strong>当前设备：${esc(asset.code)}</strong><span>${esc(asset.name)} · 业务配置由openGauss持久化，遥测样本由openGemini存储；页面只依赖稳定业务接口。</span>${tag(state.structure.loadedAssetCode===asset.code?'结构已加载':'等待加载',state.structure.loadedAssetCode===asset.code?'good':'warn')}</div>`;
+    <div class="notice-bar"><strong>当前设备：${esc(asset.code)}</strong><span>${esc(asset.name)} · 部件、测点与维护记录按设备关联。</span>${tag(state.structure.loadedAssetCode===asset.code?'结构已加载':'等待加载',state.structure.loadedAssetCode===asset.code?'good':'warn')}</div>`;
 }
 
 function renderBomLive(){
@@ -80,7 +87,7 @@ function renderBomLive(){
   </tr>`).join('');
   return `<div class="page">${structureHeader('部件 BOM','维护设备—机构—部件层级、关键度、位置和在役状态，为测点、告警、预测与工单提供统一对象。','newComponent','新建部件')}
     <div class="grid cols-4 mb-12">${metric('BOM节点',String(state.structure.components.length),'项','当前设备有效部件')}${metric('A类关键部件',String(state.structure.components.filter(x=>x.criticality==='A类').length),'项','需要重点监测和变更评估','risk')}${metric('已配置测点',String(state.structure.points.length),'点','已绑定部件')}${metric('孤立测点',String(state.structure.points.filter(p=>!state.structure.components.some(c=>c.code===p.componentCode)).length),'点','目标为0','purple')}</div>
-    <section class="panel"><div class="panel-head"><h2>${esc(currentStructureAsset().code)} 部件清单</h2><span class="mini-badge">乐观锁版本控制</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>编码 / 名称</th><th>上级</th><th>分类</th><th>关键度</th><th>安装位置</th><th>厂家 / 型号</th><th>序列号</th><th>状态</th><th>版本</th><th>操作</th></tr></thead><tbody>${rows||'<tr><td colspan="10">该设备尚未建立BOM，请先新建根部件。</td></tr>'}</tbody></table></div>${pager(String(state.structure.components.length))}</section>
+    <section class="panel"><div class="panel-head"><h2>${esc(currentStructureAsset()?.code||'当前设备')} 部件清单</h2><span class="mini-badge">乐观锁版本控制</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>编码 / 名称</th><th>上级</th><th>分类</th><th>关键度</th><th>安装位置</th><th>厂家 / 型号</th><th>序列号</th><th>状态</th><th>版本</th><th>操作</th></tr></thead><tbody>${rows||'<tr><td colspan="10">该设备尚未建立BOM，请先新建根部件。</td></tr>'}</tbody></table></div>${pager(String(state.structure.components.length))}</section>
     <div class="grid cols-3 mt-12">${panel('为什么先建BOM','<p class="muted no-margin">告警、预测和工单必须落到明确部件，避免只知道“整机异常”却无法定位责任对象。</p>')}${panel('变更约束','<p class="muted no-margin">有活动测点的部件不能直接归档；部件替换后应生成新履历，不覆盖旧部件历史。</p>')}${panel('后续扩展','<p class="muted no-margin">下一阶段补充备件编码、寿命计数器、图纸附件、质保和FMECA关联。</p>')}</div>
   </div>`;
 }

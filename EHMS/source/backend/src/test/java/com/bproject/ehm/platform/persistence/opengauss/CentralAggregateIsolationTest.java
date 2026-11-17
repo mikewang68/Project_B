@@ -10,6 +10,17 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CentralAggregateIsolationTest {
+    @Test void readonlyRequestCanAppendInfrastructureAuditWithoutGainingBusinessWrite()throws Exception{
+        var jdbc=new JdbcTemplate(new DriverManagerDataSource("jdbc:h2:mem:"+UUID.randomUUID()+";DB_CLOSE_DELAY=-1","sa",""));
+        var store=new OpenGaussJsonStore(jdbc,new ObjectMapper().findAndRegisterModules(),"ehm","aggregate_store",true);store.initialize();
+        var logs=new OpenGaussAuditRepository(store);
+        try(var p=ProjectContext.bind("PROJECT_B");var c=EhmCentralScope.bind(context("PROJECT_B","REGION_A",true))){
+            var record=com.bproject.ehm.platform.audit.domain.model.AuditRecord.create("AUD-FIXTURE",java.time.Instant.now(),"subject","verified","GET","/api/ehm/v1/devices",200,"fixture-trace","loopback-fixture",1);
+            logs.append(record);assertEquals(1,logs.latest(10).size());
+            assertThrows(org.springframework.web.server.ResponseStatusException.class,()->store.save("asset","EVIL",Map.of()));
+        }
+        try(var p=ProjectContext.bind("PROJECT_B");var c=EhmCentralScope.bind(context("PROJECT_B","REGION_B",true))){assertTrue(logs.latest(10).isEmpty());}
+    }
     UserContext context(String project,String region,boolean readonly){
         var t=new ScopeTriple(project,region,"EHMS");var f=ScopeSql.build(ScopeSql.Mode.SCOPED,List.of(t));
         return new UserContext(2,"subject","operator","subject","operator","L4_OPERATOR",readonly,"EHMS",
