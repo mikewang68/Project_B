@@ -20,6 +20,8 @@ import com.bproject.safety.module.collision.model.DistancePoint;
 import com.bproject.safety.module.collision.model.PairState;
 import com.bproject.safety.module.collision.model.SensorHealth;
 import com.bproject.safety.module.collision.repository.CollisionRepository;
+import com.bproject.safety.module.rule.service.RuleRuntimeService;
+import com.bproject.safety.module.rule.service.RuleRuntimeService.MatchedRule;
 import jakarta.annotation.PostConstruct;
 import java.time.Clock;
 import java.time.OffsetDateTime;
@@ -49,6 +51,8 @@ public class CollisionService {
     private final DomainLivePublisher publisher;
     private final Clock clock;
     private final LiveEventGate gate;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private RuleRuntimeService ruleRuntime;
     private final Map<String, PairState> pairs = new LinkedHashMap<>();
 
     public CollisionService(CollisionRepository repository, AlertService alertService,
@@ -186,13 +190,19 @@ public class CollisionService {
             step(pair, "alarm", "success", "现场声光提醒已触发");
             step(pair, "driver", "success", "司机终端已收到提醒");
         }
-        if (value <= 5.4) {
+        var matchedRule = ruleRuntime == null
+                ? java.util.Optional.<MatchedRule>empty()
+                : ruleRuntime.matchCollision(value);
+        if (matchedRule.isPresent()) {
+            step(pair, "slow", "success", "规则阈值命中，减速请求已发送");
+            ensureCollisionAlert(pair, CollisionRiskLevels.SEVERE, matchedRule.get());
+        } else if (value <= 5.4) {
             step(pair, "slow", "success", "减速请求已发送");
-            ensureCollisionAlert(pair, CollisionRiskLevels.SEVERE);
+            ensureCollisionAlert(pair, CollisionRiskLevels.SEVERE, null);
         }
         if (value < 3) {
             step(pair, "stop", "running", "正在发送紧急停机指令");
-            ensureCollisionAlert(pair, CollisionRiskLevels.SEVERE);
+            ensureCollisionAlert(pair, CollisionRiskLevels.SEVERE, matchedRule.orElse(null));
             if (pair.activeAlertId != null) {
                 // 持续处于 <3m 时每个轮询周期都会走到这里；已 URGENT 的告警不重复升级，
                 // 避免每 2 秒追加一条 ESCALATED 时间线/广播。
@@ -211,6 +221,10 @@ public class CollisionService {
 
     /** 严重风险首次建单；同一设备对存在未关闭告警时复用（去重），紧急阶段只升级不新建。 */
     private void ensureCollisionAlert(PairState pair, String collisionRiskCode) {
+        ensureCollisionAlert(pair, collisionRiskCode, null);
+    }
+
+    private void ensureCollisionAlert(PairState pair, String collisionRiskCode, MatchedRule matchedRule) {
         var machine = ScsMachineRegistry.current();
         boolean pairOwned = machine != null
                 && machine.owns(ScsCentralScope.Root.COLLISION, pair.currentId);
@@ -230,12 +244,14 @@ public class CollisionService {
         DemoCollisionDevice cur = resolvePairDevice(pair.currentId, allowedMachine);
         DemoCollisionDevice rel = resolvePairDevice(pair.relatedId, allowedMachine);
         String alertRiskCode = CollisionRiskLevels.toAlertRiskCode(collisionRiskCode);
-        // 防碰撞阈值判定：provenance 标记 COLLISION，不伪造 SafetyRule 版本（F-07）。
+        // 防碰撞仍由实时距离判定；有匹配规则时把规则编号/版本写入 ruleCode/ruleVersion。
         DemoAlert alert = alertService.createRiskAlert(new AlertService.NewRiskAlert(
                 "设备防碰撞", dedupKey(pair),
                 cur.name + "距离" + rel.name + "过近", "设备距离风险", alertRiskCode,
                 firstArea(cur.area, rel.area), cur.name + " / " + rel.name,
-                null, null, DecisionSources.COLLISION, null, null, 0,
+                matchedRule != null ? matchedRule.code() : null,
+                matchedRule != null ? matchedRule.version() : null,
+                DecisionSources.COLLISION, null, null, 0,
                 CollisionEvidence.of(pair.distance, pair.relSpeed,
                         pair.trend.stream().map(DistancePoint::value).toList(),
                         pair.radarDown ? "数据中断" : "正常", "预测制动距离 2.4m"),

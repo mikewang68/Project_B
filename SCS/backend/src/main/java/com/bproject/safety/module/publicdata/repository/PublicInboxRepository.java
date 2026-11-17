@@ -15,6 +15,11 @@ public interface PublicInboxRepository {
     /** 当前状态（RECEIVED/PROCESSED/FAILED），不存在返回 null。 */
     String statusOf(String eventId);
 
+    /** 单事件接收详情（event_id 定位/业务去向）；不存在返回 null。 */
+    default java.util.Map<String, Object> detailOf(String eventId) {
+        return null;
+    }
+
     long countByStatus(String status);
 
     String backfillCursor();

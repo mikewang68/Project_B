@@ -76,4 +76,18 @@ public class InMemoryPublicInboxRepository implements PublicInboxRepository {
     public Record find(String eventId) {
         return inbox.get(eventId);
     }
+
+    @Override
+    public Map<String, Object> detailOf(String eventId) {
+        Record r = inbox.get(eventId);
+        if (r == null) return null;
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("eventId", eventId);
+        out.put("status", r.status);
+        out.put("committedMs", r.committedMs);
+        out.put("wireSha256", r.wireSha256);
+        out.put("lastError", r.lastError);
+        out.put("payload", r.payload);
+        return out;
+    }
 }

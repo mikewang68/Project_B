@@ -71,9 +71,10 @@ public class PersonnelController {
     }
 
     @GetMapping("/{id}/track")
-    @Operation(summary = "人员历史轨迹（Demo 固定样本）")
-    public Map<String, List<TrackPoint>> track(@PathVariable String id) {
-        return Map.of("points", service.track(id));
+    @Operation(summary = "人员历史轨迹（低频采样点，可按分钟窗口查询）")
+    public Map<String, List<TrackPoint>> track(@PathVariable String id,
+                                               @RequestParam(required = false) Integer minutes) {
+        return Map.of("points", service.track(id, minutes));
     }
 
     @GetMapping("/{id}/alerts")

@@ -110,3 +110,6 @@
 .uwb-station-chip.is-offline { background: var(--color-danger-soft); }
 .uwb-station-chip.is-offline i { background: var(--color-danger); }
 .uwb-station-bar__summary { margin-left: auto; color: var(--color-text-tertiary); font-size: 9px; }
+.person-detail-track-range { display: flex; gap: 8px; grid-column: 1 / -1; }
+.person-detail-track-range select { min-height: 38px; padding: 0 8px; border: 1px solid var(--color-border); border-radius: 11px; background: #fff; font-size: 9px; color: var(--color-text-secondary); }
+.person-detail-track-range button { flex: 1; }

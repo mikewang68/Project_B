@@ -99,8 +99,14 @@ public class ScsMachineRegistry {
     // 机器来源派生告警：只放行本来源设备产生的防碰撞告警（dedup 前缀固定），
     // 仍叠加作用域元组过滤；其它根/其它告警仍按绑定对象白名单。
     var derived=ScsCentralScope.derivedMachineAuth();
-    if(root==ScsCentralScope.Root.ALERT&&derived!=null&&derived.writeRoots().contains(ScsCentralScope.Root.ALERT))
-      return " AND "+alias+"dedup_key LIKE 'COLLISION:%' ";
+    if(root==ScsCentralScope.Root.ALERT&&derived!=null&&derived.writeRoots().contains(ScsCentralScope.Root.ALERT)){
+      String prefix=switch(derived.ownerRoot()){
+        case COLLISION -> "COLLISION:"+derived.ownerKey()+":";
+        case PERSONNEL -> "PERSON_INTRUSION:"+derived.ownerKey()+":";
+        default -> null;
+      };
+      if(prefix!=null)return " AND "+alias+"dedup_key LIKE '"+prefix+"%' ";
+    }
     var keys=binding.objects().getOrDefault(root,Set.of());
     if(keys.isEmpty())return " AND 1=0 ";
     return " AND "+alias+root.key+" IN ("+keys.stream().sorted().map(s->"'"+s+"'").collect(java.util.stream.Collectors.joining(","))+") ";

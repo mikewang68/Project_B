@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.bproject.safety.module.personnel.repository.PersonnelTrackRepository;
 import com.bproject.safety.module.personnel.service.PersonnelPositionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +16,7 @@ import java.util.Base64;
 import java.util.stream.StreamSupport;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +57,13 @@ class PersonPositionIngestTest {
     private PersonnelPositionService service;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private PersonnelTrackRepository trackRepository;
+
+    @BeforeEach
+    void clearTrack() {
+        trackRepository.clear();
+    }
 
     private String body(String positionsJson) {
         return "{\"source\":\"unit-test\",\"positions\":[" + positionsJson + "]}";
@@ -112,6 +121,23 @@ class PersonPositionIngestTest {
         assertThat(live.y()).isEqualTo(100.0);
         // 钳制后落在作业区之外，归入底图剩余可通行区域
         assertThat(live.area()).isEqualTo("车辆通道");
+    }
+
+    @Test
+    @DisplayName("位置上报按低频采样落轨迹，轨迹接口可按时间窗口查询")
+    void persistsLowFrequencyTrackAndServesIt() throws Exception {
+        push("{\"id\":\"P-006\",\"x\":22,\"y\":24,\"battery\":70}");
+
+        String token = jwt("admin_01", new String[]{"ADMIN"}, "safety", now() + 3600);
+        String json = mvc.perform(get("/api/v1/personnel/P-006/track?minutes=30")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        JsonNode points = objectMapper.readTree(json).path("points");
+        assertThat(points.size()).isGreaterThanOrEqualTo(1);
+        assertThat(points.get(0).path("x").asDouble()).isEqualTo(22.0);
+        assertThat(points.get(0).path("y").asDouble()).isEqualTo(24.0);
+        assertThat(points.get(0).path("time").asText()).isNotBlank();
     }
 
     @Test

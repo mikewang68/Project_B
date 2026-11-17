@@ -80,6 +80,8 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
 
     private final AiEventRepository repository;
     private final AlertService alertService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.bproject.safety.module.rule.service.RuleRuntimeService ruleRuntime;
     private final IdempotencyService idempotency;
     private final AiChangeNotifier notifier;
     private final DemoUserProperties demoUser;
@@ -182,7 +184,10 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
 
                     // 已有关联 Alert（重复 confirm / 派单后回流）不重复创建
                     if (event.linkedAlertId == null) {
-                        DemoAlert alert = alertService.createFromAi(toAlertDraft(event));
+                        var matched = ruleRuntime == null
+                                ? java.util.Optional.<com.bproject.safety.module.rule.service.RuleRuntimeService.MatchedRule>empty()
+                                : ruleRuntime.matchAi(event);
+                        DemoAlert alert = alertService.createFromAi(toAlertDraft(event, matched.orElse(null)));
                         if (repository.claimLinkedAlert(id, alert.id)) {
                             event.linkedAlertId = alert.id;
                             appendTimeline(event, "已生成安全告警 " + alert.id + "，进入统一处置主链", "done",
@@ -609,6 +614,12 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
 
     /** AI 事件 → Alert 新建草稿（AI 风险等级 / 类型映射到统一告警口径）。 */
     private AlertService.NewAlertFromAi toAlertDraft(DemoAiEvent e) {
+        return toAlertDraft(e, null);
+    }
+
+    /** AI 事件 → Alert 新建草稿；匹配到运行时规则时把规则编号/版本写入 Alert。 */
+    private AlertService.NewAlertFromAi toAlertDraft(DemoAiEvent e,
+            com.bproject.safety.module.rule.service.RuleRuntimeService.MatchedRule matchedRule) {
         Map<String, String[]> titleMap = Map.of(
                 "未佩戴安全帽", new String[]{"作业人员未佩戴安全帽（AI 复核确认）", "未佩戴安全帽"},
                 "未穿反光衣", new String[]{"作业人员未穿反光衣（AI 复核确认）", "未穿反光衣"},
@@ -626,7 +637,10 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
         AiEvidence evidence = AiEvidence.of(e.scene, boxes, e.confidence, e.model, e.camera, e.time);
         int duration = (int) Math.round(e.durationSec);
         return new AlertService.NewAlertFromAi(e.id, naming[0], naming[1], alertRiskCode, e.area, target,
-                duration, null, null, e.model, null, evidence);
+                duration,
+                matchedRule != null ? matchedRule.code() : null,
+                matchedRule != null ? matchedRule.version() : null,
+                e.model, null, evidence);
     }
 
     /** AI 事件类型 → Alert 四级风险 code：闯入/翻越/未戴帽为严重，滞留为预警，其余一般。 */

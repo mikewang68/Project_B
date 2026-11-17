@@ -18,6 +18,8 @@ public final class RuleStatuses {
     public static final String ACTIVE = "ACTIVE";
     public static final String MISMATCH = "MISMATCH";
     public static final String DISABLED = "DISABLED";
+    /** 兼容历史演示数据/外部写入的 EFFECTIVE 值；对外统一按 ACTIVE 处理。 */
+    public static final String EFFECTIVE_ALIAS = "EFFECTIVE";
 
     private static final Map<String, String> LABELS = Map.of(
             DRAFT, "草稿",
@@ -43,6 +45,7 @@ public final class RuleStatuses {
     }
 
     public static String label(String code) {
+        if (EFFECTIVE_ALIAS.equals(code)) return LABELS.get(ACTIVE);
         return code == null ? null : LABELS.get(code);
     }
 
@@ -55,6 +58,7 @@ public final class RuleStatuses {
         if (codeOrLabel == null || codeOrLabel.isBlank()) {
             return null;
         }
+        if (EFFECTIVE_ALIAS.equals(codeOrLabel)) return ACTIVE;
         return LABELS.containsKey(codeOrLabel) ? codeOrLabel : BY_LABEL.get(codeOrLabel);
     }
 }
