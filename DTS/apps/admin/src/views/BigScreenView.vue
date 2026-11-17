@@ -115,6 +115,7 @@ const s1DispatchUrl = crossLinks.find((c) => c.key === 'S1')?.url ?? '/productio
 const activeTheme = ref<ThemeId>('overview')
 const activeProcess = ref<ProcessKind>('bulk')
 const steelSubMode = ref<SteelSubMode>('rebar_magnet')
+const singleStepMode = ref(false)
 const activeRegion = ref<RegionCode>('SHEN_TIE')
 const vendorModalOpen = ref(false)
 const activeVideoChannel = ref<VideoChannelMeta | null>(null)
@@ -311,7 +312,37 @@ function rebuildController(kind: ProcessKind) {
     ctrl.setSubMode(steelSubMode.value)
     demoController = ctrl
   }
+  demoController.setSingleStep(singleStepMode.value)
   demoController.reset()
+}
+
+function toggleSingleStepMode() {
+  singleStepMode.value = !singleStepMode.value
+  demoController?.setSingleStep(singleStepMode.value)
+}
+
+function jumpToProcessStep(stepIndex: number) {
+  stopCarousel()
+  twin3d?.setVehicleRouteAnimation(false)
+  if (!demoController) rebuildController(activeProcess.value)
+  demoController?.setSingleStep(singleStepMode.value)
+  demoController?.jumpToStep(stepIndex, true)
+}
+
+function prevProcessStep() {
+  stopCarousel()
+  twin3d?.setVehicleRouteAnimation(false)
+  if (!demoController) rebuildController(activeProcess.value)
+  demoController?.setSingleStep(singleStepMode.value)
+  demoController?.prevStep(true)
+}
+
+function nextProcessStep() {
+  stopCarousel()
+  twin3d?.setVehicleRouteAnimation(false)
+  if (!demoController) rebuildController(activeProcess.value)
+  demoController?.setSingleStep(singleStepMode.value)
+  demoController?.nextStep(true)
 }
 
 function switchProcess(kind: ProcessKind) {
@@ -388,6 +419,7 @@ function resetDemo() {
 
 function startDemo() {
   resetDemo()
+  demoController?.setSingleStep(singleStepMode.value)
   demoController?.start()
 }
 
@@ -397,8 +429,11 @@ function pauseDemo() {
 
 function toggleDemo() {
   if (demoState.running) pauseDemo()
-  else if (demoState.completed || demoState.progress === 0) startDemo()
-  else demoController?.start()
+  else if (demoState.completed || (demoState.progress === 0 && demoState.stepIndex === 0)) startDemo()
+  else {
+    demoController?.setSingleStep(singleStepMode.value)
+    demoController?.start()
+  }
 }
 
 function applyTheme(id: ThemeId) {
@@ -673,7 +708,7 @@ void SITE_LAYOUT_V4.version
       </div>
     </header>
 
-    <!-- Slide 40: 顶部 5 步全流程可视化追踪条 -->
+    <!-- Slide 40: 顶部 5 步全流程可视化追踪条（支持点击自由选链、直达任意步骤） -->
     <section class="process-tracker" aria-label="双线工艺五步流程追踪">
       <div class="process-switch">
         <button :class="{ active: activeProcess === 'bulk' }" @click="switchProcess('bulk')">散料翻箱入仓+定量装车</button>
@@ -684,18 +719,30 @@ void SITE_LAYOUT_V4.version
         </template>
       </div>
       <div class="five-steps">
-        <div
+        <button
           v-for="(label, idx) in fivePhases"
           :key="label"
+          type="button"
           class="step-pill"
           :class="{ done: demoState.completed || idx < demoState.phaseIndex, current: !demoState.completed && idx === demoState.phaseIndex }"
+          :title="`点击直达演示：${label}`"
+          @click="jumpToProcessStep(idx)"
         >
           <span>{{ label }}</span>
-        </div>
+        </button>
       </div>
       <div class="tracker-summary">
+        <button type="button" class="tracker-nav-btn" :disabled="demoState.stepIndex <= 0" title="上一步" @click="prevProcessStep">◀</button>
+        <button type="button" class="tracker-nav-btn" :disabled="demoState.stepIndex >= 4" title="下一步" @click="nextProcessStep">▶</button>
+        <button
+          type="button"
+          class="tracker-nav-btn mode"
+          :class="{ single: singleStepMode }"
+          @click="toggleSingleStepMode"
+        >
+          {{ singleStepMode ? '单步驻留' : '连续联播' }}
+        </button>
         <b>{{ demoState.progress }}%</b>
-        <small>{{ activeProcess === 'bulk' ? '货1/货2→40筒仓' : '货3/货4→13跨库' }}</small>
       </div>
     </section>
 
@@ -867,11 +914,13 @@ void SITE_LAYOUT_V4.version
           <p>{{ demoState.narration }}</p>
           <div class="progress-track"><span :style="{ width: `${demoState.progress}%` }"></span></div>
           <div class="task-meta">
-            <span>状态：{{ activeTask?.status === 'done' ? '已完成' : demoState.running ? '执行中' : '待启动' }}</span>
+            <span>状态：{{ activeTask?.status === 'done' ? '已完成' : demoState.running ? '执行中' : '待启动/驻留' }}</span>
             <span>阶段 {{ Math.min(demoState.stepIndex + 1, demoState.stepCount) }}/{{ demoState.stepCount }}</span>
           </div>
           <div class="demo-controls">
-            <button class="primary" @click="toggleDemo">{{ demoState.running ? '暂停演示' : demoState.completed ? '重新演示' : '开始演示' }}</button>
+            <button class="primary" @click="toggleDemo">{{ demoState.running ? '暂停演示' : demoState.completed ? '重新演示' : demoState.progress > 0 ? '继续演示' : '开始演示' }}</button>
+            <button :disabled="demoState.stepIndex <= 0" @click="prevProcessStep">上一步</button>
+            <button :disabled="demoState.stepIndex >= 4" @click="nextProcessStep">下一步</button>
             <button @click="resetDemo">重置</button>
           </div>
         </section>
@@ -979,12 +1028,19 @@ h1 { margin: 0; font-size: clamp(20px, 1.45vw, 28px); letter-spacing: 0.05em; co
 .five-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .step-pill {
   padding: 5px 8px; border-radius: 4px; border: 1px solid rgba(58, 114, 146, 0.38); background: rgba(10, 28, 46, 0.72);
-  font-size: 11px; color: #7da5bc; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 11px; color: #7da5bc; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+  &:hover { border-color: #00e5ff; color: #ffffff; background: rgba(12, 66, 94, 0.72); }
   &.done { border-color: rgba(52, 211, 153, 0.55); color: #7aeab9; background: rgba(16, 66, 52, 0.45); }
   &.current { border-color: #00e5ff; color: #ffffff; background: linear-gradient(90deg, rgba(12, 108, 136, 0.72), rgba(14, 72, 108, 0.72)); font-weight: 600; box-shadow: 0 0 12px rgba(0, 229, 255, 0.25); }
 }
-.tracker-summary { text-align: right; font-size: 11px; color: #9de2f5; }
-.tracker-summary b { font-size: 15px; color: #4ff0db; margin-right: 6px; }
+.tracker-summary { display: flex; align-items: center; gap: 4px; text-align: right; font-size: 11px; color: #9de2f5; }
+.tracker-summary b { font-size: 15px; color: #4ff0db; margin-left: 4px; }
+.tracker-nav-btn {
+  padding: 4px 7px; border-radius: 4px; border: 1px solid rgba(49, 134, 170, 0.45); background: rgba(11, 35, 58, 0.85); color: #cdefff; cursor: pointer; font-size: 11px;
+  &:hover:not(:disabled) { border-color: #00e5ff; color: #ffffff; background: rgba(0, 180, 216, 0.35); }
+  &:disabled { opacity: 0.38; cursor: not-allowed; }
+  &.mode.single { border-color: #f5b84c; color: #f5b84c; background: rgba(245, 184, 76, 0.16); }
+}
 
 .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .kpi-card, .panel { border: 1px solid var(--panel-border); background: var(--panel-bg); box-shadow: inset 0 1px 0 rgba(112, 211, 255, 0.05); border-radius: 5px; }

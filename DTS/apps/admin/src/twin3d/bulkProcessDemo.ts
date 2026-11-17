@@ -253,19 +253,34 @@ export class BulkProcessDemoController implements ProcessControllerHandle {
   private lastTick = 0
   private running = false
   private completed = false
+  private singleStep = false
 
   constructor(runtime: UnifiedProcessRuntime, onChange: (state: ProcessDemoState) => void) {
     this.runtime = runtime
     this.onChange = onChange
   }
 
+  setSingleStep(enabled: boolean) {
+    this.singleStep = enabled
+  }
+
   start() {
     if (this.completed) this.reset()
     if (this.running) return
+    const currentStep = BULK_PROCESS_STEPS[this.stepIndex]
+    if (this.elapsedMs >= currentStep.durationMs) {
+      if (this.stepIndex < BULK_PROCESS_STEPS.length - 1) {
+        this.stepIndex += 1
+        this.elapsedMs = 0
+      } else {
+        this.elapsedMs = 0
+      }
+    }
     this.running = true
     this.lastTick = performance.now()
-    this.runtime.setCamera(BULK_PROCESS_STEPS[this.stepIndex].camera)
-    this.emitState(0)
+    const step = BULK_PROCESS_STEPS[this.stepIndex]
+    this.runtime.setCamera(step.camera)
+    this.emitState(Math.min(1, this.elapsedMs / step.durationMs))
     this.timer = setInterval(() => this.tick(), 80)
   }
 
@@ -273,14 +288,11 @@ export class BulkProcessDemoController implements ProcessControllerHandle {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
     this.running = false
-    this.emitState()
+    const step = BULK_PROCESS_STEPS[this.stepIndex]
+    this.emitState(step ? Math.min(1, this.elapsedMs / step.durationMs) : 0)
   }
 
-  reset() {
-    this.pause()
-    this.stepIndex = 0
-    this.elapsedMs = 0
-    this.completed = false
+  private resetSceneBaseline() {
     this.runtime.clearAlerts()
     this.runtime.setDeviceStatus('CR-BULK-01', 'standby')
     this.runtime.setDeviceStatus('TIPPER-01', 'standby')
@@ -295,8 +307,51 @@ export class BulkProcessDemoController implements ProcessControllerHandle {
     this.runtime.setVehiclePose('CONT-BULK-01', WAGON_POS, 1.65)
     this.runtime.setVehiclePose('TRUCK-TANK-01', TANKER_GATE)
     this.runtime.setProcessHighlight({ elevatorActive: false, airSlideActive: false, spoutActive: false, antiCollisionActive: false })
+  }
+
+  reset() {
+    this.pause()
+    this.stepIndex = 0
+    this.elapsedMs = 0
+    this.completed = false
+    this.resetSceneBaseline()
     this.runtime.requestRender()
     this.emitState(0)
+  }
+
+  jumpToStep(stepIndex: number, autoPlay = true) {
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
+    this.running = false
+    const target = Math.max(0, Math.min(BULK_PROCESS_STEPS.length - 1, Math.floor(stepIndex)))
+    this.stepIndex = target
+    this.elapsedMs = 0
+    this.completed = false
+    this.resetSceneBaseline()
+    const step = BULK_PROCESS_STEPS[target]
+    this.runtime.setCamera(step.camera)
+    if (autoPlay) {
+      this.apply(step, 0)
+      this.running = true
+      this.lastTick = performance.now()
+      this.emitState(0)
+      this.timer = setInterval(() => this.tick(), 80)
+    } else {
+      const previewT = 0.45
+      this.elapsedMs = Math.round(step.durationMs * previewT)
+      this.apply(step, previewT)
+      this.emitState(previewT)
+    }
+  }
+
+  prevStep(autoPlay = true) {
+    const prevIdx = Math.max(0, this.stepIndex - 1)
+    this.jumpToStep(prevIdx, autoPlay)
+  }
+
+  nextStep(autoPlay = true) {
+    const nextIdx = Math.min(BULK_PROCESS_STEPS.length - 1, this.stepIndex + 1)
+    this.jumpToStep(nextIdx, autoPlay)
   }
 
   destroy() {
@@ -316,6 +371,8 @@ export class BulkProcessDemoController implements ProcessControllerHandle {
       if (this.stepIndex === BULK_PROCESS_STEPS.length - 1) {
         this.pause()
         this.completed = true
+      } else if (this.singleStep) {
+        this.pause()
       } else {
         this.stepIndex += 1
         this.elapsedMs = 0

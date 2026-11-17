@@ -23,7 +23,8 @@ for (const [iconName, iconComponent] of Object.entries(ElementPlusIconsVue)) {
 // 说明：用户/角色/权限（IAM）已剥离为独立系统 iam-system，本工程不再内置认证与权限指令；
 // 后续在此对接独立 IAM 下发的登录态/令牌即可。当前为本地免登录运行模式。
 
-// 默认深色主题
+// 默认深色主题与 V4.2 构建版本标记（确保入口 chunk hash 更新）
 document.documentElement.setAttribute('data-theme', 'dark')
+document.documentElement.setAttribute('data-dts-build', '20261117-v4.2-stepjump')
 
 app.mount('#app')

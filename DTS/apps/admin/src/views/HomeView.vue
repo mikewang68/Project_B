@@ -69,6 +69,7 @@ const selectedInfo = reactive<SelectedInfo>({
 const animRunning = ref(false)
 const simRunning = ref(true)
 const activeProcess = ref<ProcessKind>('bulk')
+const singleStepMode = ref(false)
 const dataMode = ref<DataSourceMode>(DEFAULT_DATA_MODE)
 const feedStatus = reactive<DtsFeedStatus>({
   mode: DEFAULT_DATA_MODE,
@@ -101,7 +102,7 @@ const demoState = reactive<ProcessDemoState>({
 })
 
 const demoPrimaryLabel = computed(() =>
-  demoState.running ? '重新开始' : demoState.completed ? '重演' : demoState.progress > 0 ? '继续' : '开始演示',
+  demoState.running ? '暂停演示' : demoState.completed ? '重新演示' : demoState.progress > 0 ? '继续演示' : '开始演示',
 )
 const deviceSummaryCount = computed(() => Object.keys(deviceStore.devices).length)
 const fivePhases = computed(() => (activeProcess.value === 'bulk' ? BULK_FIVE_PHASES : STEEL_FIVE_PHASES))
@@ -299,7 +300,41 @@ function rebuildDemoController(kind: ProcessKind) {
     ctrl.setSubMode(steelSubMode.value)
     demoController = ctrl
   }
+  demoController.setSingleStep(singleStepMode.value)
   demoController.reset()
+}
+
+function toggleSingleStepMode() {
+  singleStepMode.value = !singleStepMode.value
+  demoController?.setSingleStep(singleStepMode.value)
+}
+
+function prepareManualDemo() {
+  dataService?.stop()
+  stopPhase6Simulation()
+  simRunning.value = false
+  stopAnim()
+  animRunning.value = false
+  twin3d?.setVehicleRouteAnimation(false)
+  if (!demoController) rebuildDemoController(activeProcess.value)
+}
+
+function jumpToProcessStep(stepIndex: number) {
+  prepareManualDemo()
+  demoController?.setSingleStep(singleStepMode.value)
+  demoController?.jumpToStep(stepIndex, true)
+}
+
+function prevProcessStep() {
+  prepareManualDemo()
+  demoController?.setSingleStep(singleStepMode.value)
+  demoController?.prevStep(true)
+}
+
+function nextProcessStep() {
+  prepareManualDemo()
+  demoController?.setSingleStep(singleStepMode.value)
+  demoController?.nextStep(true)
 }
 
 function switchSteelSubMode(mode: SteelSubMode) {
@@ -364,12 +399,20 @@ function resetDemo() {
 
 function startDemo() {
   resetDemo()
+  demoController?.setSingleStep(singleStepMode.value)
   demoController?.start()
 }
 
 function onDemoPrimary() {
-  if (demoState.running || demoState.completed || demoState.progress === 0) startDemo()
-  else demoController?.start()
+  if (demoState.running) {
+    pauseDemo()
+  } else if (demoState.completed || (demoState.progress === 0 && demoState.stepIndex === 0)) {
+    startDemo()
+  } else {
+    prepareManualDemo()
+    demoController?.setSingleStep(singleStepMode.value)
+    demoController?.start()
+  }
 }
 
 function pauseDemo() {
@@ -483,17 +526,72 @@ onBeforeUnmount(() => {
     <main class="scene-area">
       <CesiumViewer @viewer-ready="onViewerReady" />
 
-      <!-- Slide 40: 顶部浮动 5 步全流程追踪条 -->
+      <!-- Slide 40: 顶部浮动 5 步全流程追踪条（支持点击自由选链、切换子工艺、直达任意步骤） -->
       <div class="top-process-pill" aria-label="双线工艺流程步骤">
-        <span class="proc-badge">{{ activeProcess === 'bulk' ? '散料工艺链' : '钢材工艺链' }}</span>
-        <span
+        <div class="proc-chain-switch">
+          <button
+            type="button"
+            class="proc-badge-btn"
+            :class="{ active: activeProcess === 'bulk' }"
+            title="切换至散料工艺链（货1/货2翻箱入仓+库底定量）"
+            @click="switchProcess('bulk')"
+          >
+            散料工艺链
+          </button>
+          <button
+            type="button"
+            class="proc-badge-btn"
+            :class="{ active: activeProcess === 'steel' }"
+            title="切换至钢材工艺链（40t门吊+20t磁吸/32t C型钩室内桥吊）"
+            @click="switchProcess('steel')"
+          >
+            钢材工艺链
+          </button>
+          <template v-if="activeProcess === 'steel'">
+            <button
+              type="button"
+              class="proc-sub-btn"
+              :class="{ active: steelSubMode === 'rebar_magnet' }"
+              title="螺纹钢 20t 电磁吸盘桥吊 (07跨)"
+              @click="switchSteelSubMode('rebar_magnet')"
+            >
+              20t磁吸
+            </button>
+            <button
+              type="button"
+              class="proc-sub-btn"
+              :class="{ active: steelSubMode === 'coil_chook' }"
+              title="卷材 32t C型钩桥吊 (03跨)"
+              @click="switchSteelSubMode('coil_chook')"
+            >
+              32t C型钩
+            </button>
+          </template>
+        </div>
+        <button
           v-for="(label, idx) in fivePhases"
           :key="label"
+          type="button"
           class="proc-step"
           :class="{ done: demoState.completed || idx < demoState.phaseIndex, active: !demoState.completed && idx === demoState.phaseIndex }"
+          :title="`点击直达演示：${label}`"
+          @click="jumpToProcessStep(idx)"
         >
           {{ label }}
-        </span>
+        </button>
+        <div class="proc-step-nav">
+          <button type="button" class="nav-mini-btn" :disabled="demoState.stepIndex <= 0" title="上一步工序" @click="prevProcessStep">◀</button>
+          <button type="button" class="nav-mini-btn" :disabled="demoState.stepIndex >= 4" title="下一步工序" @click="nextProcessStep">▶</button>
+          <button
+            type="button"
+            class="nav-mini-btn mode-toggle"
+            :class="{ single: singleStepMode }"
+            :title="singleStepMode ? '当前：单步演示（演完本步自动驻留等待讲解）' : '当前：连续联播（1~5步自动衔接）'"
+            @click="toggleSingleStepMode"
+          >
+            {{ singleStepMode ? '单步' : '连播' }}
+          </button>
+        </div>
       </div>
 
       <!-- 左侧：图层管理 + 镜头预设 + 双线流程演示 -->
@@ -533,7 +631,17 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="demo-panel">
-          <div class="demo-title">工艺细化演示（.eddx）</div>
+          <div class="demo-title-row">
+            <span class="demo-title">工艺细化演示（.eddx）</span>
+            <button
+              type="button"
+              class="step-mode-chip"
+              :class="{ single: singleStepMode }"
+              @click="toggleSingleStepMode"
+            >
+              {{ singleStepMode ? '单步驻留' : '连续联播' }}
+            </button>
+          </div>
           <div class="proc-tabs">
             <button :class="{ active: activeProcess === 'bulk' }" @click="switchProcess('bulk')">散料入仓</button>
             <button :class="{ active: activeProcess === 'steel' }" @click="switchProcess('steel')">钢材联吊</button>
@@ -546,12 +654,25 @@ onBeforeUnmount(() => {
               32t C型·卷材(03跨)
             </button>
           </div>
+          <div class="step-jump-list" aria-label="自主选择演示步骤">
+            <button
+              v-for="(label, idx) in fivePhases"
+              :key="label"
+              type="button"
+              class="step-jump-btn"
+              :class="{ active: !demoState.completed && idx === demoState.phaseIndex, done: demoState.completed || idx < demoState.phaseIndex }"
+              @click="jumpToProcessStep(idx)"
+            >
+              {{ label }}
+            </button>
+          </div>
           <div class="demo-step">{{ demoState.title }}</div>
           <div class="demo-note">{{ demoState.narration }}</div>
           <div class="demo-progress"><span :style="{ width: `${demoState.progress}%` }"></span></div>
           <div class="demo-actions">
             <button class="demo-btn primary" @click="onDemoPrimary">{{ demoPrimaryLabel }}</button>
-            <button class="demo-btn" :disabled="!demoState.running" @click="pauseDemo">暂停</button>
+            <button class="demo-btn" :disabled="demoState.stepIndex <= 0" @click="prevProcessStep">上一步</button>
+            <button class="demo-btn" :disabled="demoState.stepIndex >= 4" @click="nextProcessStep">下一步</button>
             <button class="demo-btn" @click="resetDemo">重置</button>
           </div>
         </div>
@@ -771,14 +892,36 @@ onBeforeUnmount(() => {
 
     .top-process-pill {
       position: absolute; top: 10px; left: 222px; right: 342px; z-index: 9;
-      display: flex; align-items: center; gap: 6px; padding: 5px 10px;
-      background: rgba(7, 20, 40, 0.88); border: 1px solid rgba(0, 229, 255, 0.36); border-radius: 6px;
+      display: flex; align-items: center; gap: 5px; padding: 5px 8px;
+      background: rgba(7, 20, 40, 0.9); border: 1px solid rgba(0, 229, 255, 0.36); border-radius: 6px;
       overflow: hidden;
-      .proc-badge { flex: none; font-size: 11px; font-weight: 700; color: #00e5ff; padding-right: 6px; border-right: 1px solid rgba(0, 229, 255, 0.3); }
+      .proc-chain-switch {
+        display: flex; align-items: center; gap: 4px; flex: none; padding-right: 6px; border-right: 1px solid rgba(0, 229, 255, 0.3);
+      }
+      .proc-badge-btn, .proc-sub-btn {
+        border: 1px solid rgba(0, 229, 255, 0.3); background: rgba(11, 35, 58, 0.8); color: #8cb7cd;
+        border-radius: 4px; padding: 2px 6px; font-size: 10px; cursor: pointer; white-space: nowrap;
+        &:hover { border-color: #00e5ff; color: #ffffff; }
+        &.active { background: rgba(0, 180, 216, 0.42); border-color: #00e5ff; color: #00e5ff; font-weight: 700; }
+      }
+      .proc-sub-btn.active { background: rgba(52, 211, 153, 0.25); border-color: #34d399; color: #67e6b2; }
       .proc-step {
-        flex: 1; font-size: 10px; text-align: center; padding: 2px 4px; border-radius: 3px; color: #7fa6bf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        &.done { color: #67e6b2; background: rgba(16, 66, 52, 0.45); }
-        &.active { color: #ffffff; background: rgba(6, 98, 128, 0.72); font-weight: 600; border: 1px solid rgba(0, 229, 255, 0.5); }
+        flex: 1; font-size: 10px; text-align: center; padding: 3px 4px; border-radius: 3px; color: #8cb2c7;
+        border: 1px solid rgba(64, 140, 176, 0.28); background: rgba(10, 28, 48, 0.65); cursor: pointer;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: all 0.14s ease;
+        &:hover { border-color: #00e5ff; color: #ffffff; background: rgba(12, 66, 94, 0.72); }
+        &.done { color: #67e6b2; background: rgba(16, 66, 52, 0.45); border-color: rgba(52, 211, 153, 0.45); }
+        &.active { color: #ffffff; background: rgba(6, 98, 128, 0.82); font-weight: 600; border: 1px solid #00e5ff; box-shadow: 0 0 8px rgba(0, 229, 255, 0.28); }
+      }
+      .proc-step-nav {
+        display: flex; align-items: center; gap: 3px; flex: none; padding-left: 4px; border-left: 1px solid rgba(0, 229, 255, 0.28);
+        .nav-mini-btn {
+          border: 1px solid rgba(0, 229, 255, 0.35); background: rgba(10, 32, 54, 0.85); color: #cdefff;
+          border-radius: 3px; padding: 2px 5px; font-size: 10px; cursor: pointer;
+          &:hover:not(:disabled) { border-color: #00e5ff; background: rgba(0, 180, 216, 0.35); color: #ffffff; }
+          &:disabled { opacity: 0.38; cursor: not-allowed; }
+          &.mode-toggle.single { border-color: #f5b84c; color: #f5b84c; background: rgba(245, 184, 76, 0.16); }
+        }
       }
     }
 
@@ -804,12 +947,29 @@ onBeforeUnmount(() => {
 
       .demo-panel {
         margin: 8px 0; padding: 8px; border: 1px solid rgba(0, 229, 255, 0.34); border-radius: var(--radius-sm); background: var(--bg-panel-alt);
-        .demo-title { color: var(--highlight); font-size: 11px; font-weight: 600; margin-bottom: 5px; }
+        .demo-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .demo-title { color: var(--highlight); font-size: 11px; font-weight: 600; }
+        .step-mode-chip {
+          padding: 1px 6px; border: 1px solid var(--border-color); border-radius: 99px; background: var(--bg-panel);
+          color: var(--highlight); font-size: 9px; cursor: pointer;
+          &.single { border-color: #f5b84c; color: #f5b84c; }
+        }
         .proc-tabs, .submode-tabs {
-          display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px;
+          display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 5px;
           button {
             padding: 3px; border: 1px solid var(--border-color); border-radius: 3px; background: var(--bg-panel); color: var(--text-secondary); font-size: 10px; cursor: pointer;
             &.active { border-color: #00e5ff; color: #ffffff; background: var(--brand); }
+          }
+        }
+        .step-jump-list {
+          display: grid; gap: 3px; margin-bottom: 6px;
+          .step-jump-btn {
+            width: 100%; text-align: left; padding: 3px 6px; border: 1px solid var(--border-color); border-radius: 3px;
+            background: var(--bg-panel); color: var(--text-secondary); font-size: 10px; cursor: pointer;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            &:hover { border-color: #00e5ff; color: var(--text-primary); }
+            &.done { border-color: rgba(52, 211, 153, 0.45); color: #34d399; }
+            &.active { border-color: #00e5ff; background: var(--brand); color: #ffffff; font-weight: 600; }
           }
         }
         .demo-step { color: var(--text-primary); font-size: 11px; font-weight: 600; line-height: 1.3; }
@@ -818,7 +978,7 @@ onBeforeUnmount(() => {
           height: 5px; overflow: hidden; margin: 6px 0; border-radius: 999px; background: rgba(148, 163, 184, 0.24);
           span { display: block; height: 100%; background: linear-gradient(90deg, #00b4d8, #34d399); transition: width 0.12s linear; }
         }
-        .demo-actions { display: grid; grid-template-columns: 1.3fr 0.8fr 0.8fr; gap: 4px; }
+        .demo-actions { display: grid; grid-template-columns: 1.25fr 0.85fr 0.85fr 0.75fr; gap: 3px; }
         .demo-btn {
           min-width: 0; padding: 4px 2px; border: 1px solid var(--border-color); border-radius: 4px;
           background: var(--bg-panel); color: var(--text-primary); cursor: pointer; font-size: 10px;

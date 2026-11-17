@@ -63,6 +63,10 @@ export interface ProcessControllerHandle {
   start: () => void
   pause: () => void
   reset: () => void
+  jumpToStep: (stepIndex: number, autoPlay?: boolean) => void
+  prevStep: (autoPlay?: boolean) => void
+  nextStep: (autoPlay?: boolean) => void
+  setSingleStep: (enabled: boolean) => void
   destroy: () => void
 }
 

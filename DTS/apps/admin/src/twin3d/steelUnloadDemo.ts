@@ -262,11 +262,16 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
   private running = false
   private completed = false
   private subMode: SteelSubMode = 'rebar_magnet'
+  private singleStep = false
 
   constructor(runtime: UnifiedProcessRuntime, onChange: (state: ProcessDemoState) => void, subMode: SteelSubMode = 'rebar_magnet') {
     this.runtime = runtime
     this.onChange = onChange
     this.subMode = subMode
+  }
+
+  setSingleStep(enabled: boolean) {
+    this.singleStep = enabled
   }
 
   setSubMode(mode: SteelSubMode) {
@@ -282,10 +287,20 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
   start() {
     if (this.completed) this.reset()
     if (this.running) return
+    const currentStep = STEEL_UNLOAD_STEPS[this.stepIndex]
+    if (this.elapsedMs >= currentStep.durationMs) {
+      if (this.stepIndex < STEEL_UNLOAD_STEPS.length - 1) {
+        this.stepIndex += 1
+        this.elapsedMs = 0
+      } else {
+        this.elapsedMs = 0
+      }
+    }
     this.running = true
     this.lastTick = performance.now()
-    this.runtime.setCamera(STEEL_UNLOAD_STEPS[this.stepIndex].camera)
-    this.emitState(0)
+    const step = STEEL_UNLOAD_STEPS[this.stepIndex]
+    this.runtime.setCamera(step.camera)
+    this.emitState(Math.min(1, this.elapsedMs / step.durationMs))
     this.timer = setInterval(() => this.tick(), 80)
   }
 
@@ -293,14 +308,11 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
     this.running = false
-    this.emitState()
+    const step = STEEL_UNLOAD_STEPS[this.stepIndex]
+    this.emitState(step ? Math.min(1, this.elapsedMs / step.durationMs) : 0)
   }
 
-  reset() {
-    this.pause()
-    this.stepIndex = 0
-    this.elapsedMs = 0
-    this.completed = false
+  private resetSceneBaseline() {
     this.runtime.clearAlerts()
     this.runtime.setDeviceStatus('CR-01', 'standby')
     this.runtime.setDeviceStatus('CR-02', 'standby')
@@ -317,8 +329,51 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
     this.runtime.setBridgeCranePose('BC-03', BC03_HOME)
     this.runtime.setBridgeCranePose('BC-07', BC_HOME)
     this.runtime.setProcessHighlight({ antiCollisionActive: false, elevatorActive: false, airSlideActive: false, spoutActive: false })
+  }
+
+  reset() {
+    this.pause()
+    this.stepIndex = 0
+    this.elapsedMs = 0
+    this.completed = false
+    this.resetSceneBaseline()
     this.runtime.requestRender()
     this.emitState(0)
+  }
+
+  jumpToStep(stepIndex: number, autoPlay = true) {
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
+    this.running = false
+    const target = Math.max(0, Math.min(STEEL_UNLOAD_STEPS.length - 1, Math.floor(stepIndex)))
+    this.stepIndex = target
+    this.elapsedMs = 0
+    this.completed = false
+    this.resetSceneBaseline()
+    const step = STEEL_UNLOAD_STEPS[target]
+    this.runtime.setCamera(step.camera)
+    if (autoPlay) {
+      this.apply(step, 0)
+      this.running = true
+      this.lastTick = performance.now()
+      this.emitState(0)
+      this.timer = setInterval(() => this.tick(), 80)
+    } else {
+      const previewT = 0.45
+      this.elapsedMs = Math.round(step.durationMs * previewT)
+      this.apply(step, previewT)
+      this.emitState(previewT)
+    }
+  }
+
+  prevStep(autoPlay = true) {
+    const prevIdx = Math.max(0, this.stepIndex - 1)
+    this.jumpToStep(prevIdx, autoPlay)
+  }
+
+  nextStep(autoPlay = true) {
+    const nextIdx = Math.min(STEEL_UNLOAD_STEPS.length - 1, this.stepIndex + 1)
+    this.jumpToStep(nextIdx, autoPlay)
   }
 
   destroy() {
@@ -338,6 +393,8 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
       if (this.stepIndex === STEEL_UNLOAD_STEPS.length - 1) {
         this.pause()
         this.completed = true
+      } else if (this.singleStep) {
+        this.pause()
       } else {
         this.stepIndex += 1
         this.elapsedMs = 0
