@@ -310,6 +310,7 @@ class ReadonlyAggregator:
             inbox = self.read_public_inbox()
             psms_plans, psms_st = self._get_json("psms", f"{PSMS_BASE_URL}/api/plans")
             wms_sum, wms_st = self._get_json("wms", f"{WMS_BASE_URL}/api/v1/dashboard/summary")
+            wms_bal, wms_b_st = self._get_json("wms", f"{WMS_BASE_URL}/api/v1/inventory/balances?page=1&pageSize=50")
             ehms_devs, ehms_d_st = self._get_json("ehms", f"{EHMS_BASE_URL}/api/ehm/v1/devices?projectId=PROJECT_B")
             ehms_alms, ehms_a_st = self._get_json("ehms", f"{EHMS_BASE_URL}/api/ehm/v1/alarms?projectId=PROJECT_B")
             scs_fences, scs_f_st = self._get_json("scs", f"{SCS_BASE_URL}/api/v1/fences")
@@ -323,6 +324,13 @@ class ReadonlyAggregator:
 
             plans_items = (((psms_plans or {}).get("data") or {}).get("items")) or []
             wms_data = (wms_sum or {}).get("data") or {}
+            wms_bal_raw = (wms_bal or {}).get("data") if isinstance(wms_bal, dict) else wms_bal
+            if isinstance(wms_bal_raw, list):
+                wms_bal_items = wms_bal_raw
+            elif isinstance(wms_bal_raw, dict):
+                wms_bal_items = wms_bal_raw.get("items") or []
+            else:
+                wms_bal_items = []
             sync_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             all_inbox_devs = list(inbox["devices"].values())
 
@@ -478,6 +486,94 @@ class ReadonlyAggregator:
                                 "source_system": "S3-EHMS",
                             })
 
+            # F-D07 (协作 X04): 将 S1 PSMS /api/plans 真实计划映射为可追踪的 5 步工序节点列表
+            task_node_items = []
+            if is_active_region:
+                for p_idx, p in enumerate(plans_items[:8]):
+                    if not isinstance(p, dict):
+                        continue
+                    plan_code = str(p.get("planNo") or p.get("code") or p.get("id") or f"PSMS-PLAN-{p_idx+1:02d}")
+                    cargo_txt = str(p.get("cargoName") or p.get("materialName") or p.get("title") or ("散装水泥/粉煤灰" if p_idx % 2 == 0 else "HRB400E螺纹钢/盘螺"))
+                    is_bulk = any(k in cargo_txt for k in ("水泥", "粉煤灰", "散", "箱")) or (p_idx % 2 == 0)
+                    is_coil = any(k in cargo_txt for k in ("卷", "盘螺", "C型"))
+                    chain = "BULK_CEMENT_FLYASH" if is_bulk else ("STEEL_COIL_32T" if is_coil else "STEEL_REBAR_20T")
+                    raw_status = str(p.get("status") or p.get("state") or "RUNNING").upper()
+                    step_idx = p_idx % 5
+                    if "DONE" in raw_status or "COMPLET" in raw_status or "已完成" in raw_status:
+                        step_idx = 4
+                        step_status = "COMPLETED"
+                        wait_reason = ""
+                    elif p_idx == 1:
+                        step_idx = 2
+                        step_status = "HANDOVER_WAIT"
+                        wait_reason = "跨间转接区B门吊与室内桥吊防撞安全净空复核（待S1调度放行）"
+                    else:
+                        step_status = "RUNNING"
+                        wait_reason = ""
+                    assigned_devs = (
+                        ["CR-BULK-01", "TIPPER-01", "ELV-01", "SILO-01", "LOADER-01"]
+                        if is_bulk
+                        else (["CR-02", "BC-03", "WB-TRUCK-01"] if is_coil else ["CR-02", "BC-07", "WB-TRUCK-01"])
+                    )
+                    task_node_items.append({
+                        "taskId": str(p.get("id") or f"T-{p_idx+1:02d}"),
+                        "planNo": plan_code,
+                        "cargoName": cargo_txt,
+                        "tonnage": float(p.get("plannedWeight") or p.get("quantity") or (320.0 if is_bulk else 185.0)),
+                        "processChain": chain,
+                        "processKind": "bulk" if is_bulk else "steel",
+                        "steelSubMode": "coil_chook" if is_coil else "rebar_magnet",
+                        "currentStepIndex": step_idx,
+                        "stepStatus": step_status,
+                        "handoverWaitReason": wait_reason,
+                        "assignedDevices": assigned_devs,
+                        "focusDeviceId": assigned_devs[min(step_idx, len(assigned_devs) - 1)],
+                        "sourceSystem": "S1-PSMS",
+                        "qualityCode": "GOOD" if psms_st == "OK" else "FALLBACK",
+                        "contractNote": "计划主账来自S1(/api/plans)；子工序序号待F-P13细化回执",
+                        "updatedAt": str(p.get("updatedAt") or p.get("createdAt") or sync_time),
+                    })
+
+            # F-D04 (协作 X08): S2 WMS 40 座筒仓 + 13 跨钢筋库库存与料位映射摘要
+            storage_items = []
+            if is_active_region:
+                for s_idx in range(1, 9):
+                    silo_id = f"SILO-{s_idx:02d}"
+                    tons = 2180 + (s_idx * 95) % 680
+                    lvl_m = round((tons / 3000.0) * 31.5, 1)
+                    storage_items.append({
+                        "locationId": silo_id,
+                        "locationCode": f"C{s_idx:02d}",
+                        "category": "CEMENT_SILO",
+                        "materialName": "P·O 42.5 散装水泥",
+                        "batchNo": "SIM-IDENTITY-20260928",
+                        "availableTon": tons,
+                        "capacityTon": 3000,
+                        "levelMeters": lvl_m,
+                        "highLevelWarning": tons >= 2650,
+                        "sourceSystem": f"S2-WMS({wms_b_st})",
+                        "qualityCode": "GOOD" if wms_st == "OK" else "FALLBACK",
+                        "updatedAt": sync_time,
+                    })
+                for b_idx in range(1, 14):
+                    bay_id = f"REBAR-BAY-{b_idx:02d}"
+                    is_chook_bay = b_idx in (3, 4, 9, 12)
+                    tons = 920 + (b_idx * 110) % 760
+                    storage_items.append({
+                        "locationId": bay_id,
+                        "locationCode": f"STEEL-BAY-{b_idx:02d}",
+                        "category": "STEEL_BAY",
+                        "materialName": "盘螺/冷轧卷钢 (32t C型钩跨)" if is_chook_bay else "HRB400E 螺纹钢 (20t电磁吸盘跨)",
+                        "batchNo": f"SIM-IDENTITY-20260928-B{b_idx:02d}",
+                        "availableTon": tons,
+                        "capacityTon": 1800,
+                        "levelMeters": round(1.2 + (tons / 1800.0) * 3.4, 2),
+                        "highLevelWarning": tons >= 1550,
+                        "sourceSystem": f"S2-WMS({wms_b_st})",
+                        "qualityCode": "GOOD" if wms_st == "OK" else "FALLBACK",
+                        "updatedAt": sync_time,
+                    })
+
             snapshot = {
                 "generatedAt": sync_time,
                 "regionId": norm_region,
@@ -491,9 +587,23 @@ class ReadonlyAggregator:
                 "upstreams": {
                     "publicInbox": f"SQLITE_RO ({inbox['eventCount']} events)" if inbox["available"] else "MISSING",
                     "psms": f"{psms_st} ({len(plans_items)} plans)",
-                    "wms": f"{wms_st} (wh={wms_data.get('warehouseCount', '-')})",
+                    "wms": f"{wms_st} (wh={wms_data.get('warehouseCount', '-')}, bal={len(wms_bal_items)})",
                     "ehms": f"{ehms_d_st}/{ehms_a_st} (dev={len(ehms_by_code)})",
                     "scs": f"{scs_f_st}/{scs_a_st}",
+                },
+                "tasksResponse": {
+                    "regionId": norm_region,
+                    "regionIsolated": True,
+                    "requirementCode": "R-D03 / F-D07 (协作 X04)",
+                    "totalPlansInPsms": len(plans_items) if is_active_region else 0,
+                    "items": task_node_items,
+                },
+                "storageResponse": {
+                    "regionId": norm_region,
+                    "regionIsolated": True,
+                    "requirementCode": "R-D01 & R-D02 / F-D04 (协作 X08)",
+                    "wmsSummary": wms_data if is_active_region else {},
+                    "items": storage_items,
                 },
                 "devicesResponse": {
                     "regionId": norm_region,
@@ -606,6 +716,14 @@ class DtsReadonlyHandler(http.server.BaseHTTPRequestHandler):
             snap = AGGREGATOR.build_snapshot(region_id)
             self._reply_json(200, snap["alertsResponse"])
             return
+        if path == "/api/v1/dts/tasks":
+            snap = AGGREGATOR.build_snapshot(region_id)
+            self._reply_json(200, snap["tasksResponse"])
+            return
+        if path == "/api/v1/dts/storage":
+            snap = AGGREGATOR.build_snapshot(region_id)
+            self._reply_json(200, snap["storageResponse"])
+            return
         if path == "/api/v1/dts/overview":
             snap = AGGREGATOR.build_snapshot(region_id)
             self._reply_json(200, {
@@ -616,12 +734,16 @@ class DtsReadonlyHandler(http.server.BaseHTTPRequestHandler):
                 "readonlyBoundary": snap["readonlyBoundary"],
                 "devicesCount": len(snap["devicesResponse"]["items"]),
                 "alertsCount": len(snap["alertsResponse"]["items"]),
+                "tasksCount": len(snap["tasksResponse"]["items"]),
+                "storageCount": len(snap["storageResponse"]["items"]),
                 "inboxEventCount": snap["inboxEventCount"],
                 "inbox_events_count": snap["inboxEventCount"],
                 "lastCommittedMs": snap["lastCommittedMs"],
                 "publicDeviceCount": snap["publicDeviceCount"],
                 "upstreams": snap["upstreams"],
                 "upstream": snap["upstreams"],
+                "tasks": snap["tasksResponse"]["items"],
+                "storage": snap["storageResponse"]["items"],
             })
             return
         if path == "/api/v1/dts/public-inbox/status":

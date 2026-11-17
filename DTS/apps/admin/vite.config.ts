@@ -38,6 +38,9 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 4173,
     },
+    css: {
+      preprocessorMaxWorkers: 0,
+    },
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
