@@ -7,8 +7,47 @@
  */
 import { onMounted, onUnmounted, ref, shallowRef, watch, type Ref } from 'vue'
 import * as Cesium from 'cesium'
-import { createOfflineViewer, flyToYard } from './cesiumInit'
+import { applyLightingPreset, createOfflineViewer, flyToYard, type LightingPreset } from './cesiumInit'
 import { cadGeoJsonToWgs84, getYardCenterLonLat } from '@/twin3d/geo'
+import { withBase } from '@/config/runtime'
+
+const activeLighting = ref<LightingPreset>('daylight')
+const showRenderGallery = ref(false)
+const activeRenderIdx = ref(0)
+
+const SHOWCASE_RENDERS = [
+  {
+    id: 'panorama',
+    title: '① 1.27km 全站鸟瞰全景图（AutoCAD 给大连大.dwg + Blender 5.2 精模）',
+    desc: '完整还原中铁二院《给大连大.dwg》40座3000T散料筒仓、23,882m²钢筋库、6台40t/30m轨行门吊、35/10kV变电所与轮胎吊集装箱区。',
+    url: withBase('renders/render-01-panorama.png?v=20261117-v5'),
+  },
+  {
+    id: 'silos-tipper',
+    title: '② 散料区 40 座 Φ12m×33.38m 筒仓群、40m 斗提机塔架与移动翻箱机特写',
+    desc: '48段平滑法线筒仓、5道环向加劲肋、8根Φ650钢管支柱与柱间抗风撑、仓顶脉冲布袋除尘器、40m钢桁架斗提机及35°倾翻作业中的移动翻箱机。',
+    url: withBase('renders/render-02-silos-tipper.png?v=20261117-v5'),
+  },
+  {
+    id: 'rebar-warehouse',
+    title: '③ 23,882m² 钢筋仓库剖切双坡华伦式钢屋架、13 跨桥吊与库存钢材特写',
+    desc: '14轴H型钢排架柱、双坡华伦式钢屋架桁架、采光天窗、9跨成捆螺纹钢垛（带枕木垫方与橙色钢带）、4跨V型鞍座热轧钢卷及A字腿双梁门吊。',
+    url: withBase('renders/render-03-rebar-warehouse.png?v=20261117-v5'),
+  },
+  {
+    id: 'train-tanker',
+    title: '④ DF7G 调车机车牵引 35t 散料集装箱专列进站与库底散装通道特写',
+    desc: '铁路货1/货4装卸线碎石道砟路基、DF7G内燃调车机车头、NX70平车、波纹板散料集装箱（带3顶盖与ISO角件）及预留68座缓建筒仓基础环。',
+    url: withBase('renders/render-04-train-tanker.png?v=20261117-v5'),
+  },
+]
+
+function switchLighting(preset: LightingPreset) {
+  activeLighting.value = preset
+  if (viewerRef.value) {
+    applyLightingPreset(viewerRef.value, preset)
+  }
+}
 
 // 场站设备区域中心（由 给大连大.dwg CGCS2000 基准实时换算）
 const YARD_CENTER: [number, number] = getYardCenterLonLat()
@@ -131,7 +170,7 @@ onUnmounted(() => {
   }
 })
 
-/** 加载单个 GeoJSON 图层 */
+/** 加载单个 GeoJSON 图层（支持按 V5 CAD 要素分类着色） */
 async function loadGeoJsonLayer(viewer: Cesium.Viewer, layer: LayerConfig) {
   if (!layer.url) return
   try {
@@ -140,9 +179,24 @@ async function loadGeoJsonLayer(viewer: Cesium.Viewer, layer: LayerConfig) {
     const dataSource = await Cesium.GeoJsonDataSource.load(cadGeoJsonToWgs84(await response.json()), {
       stroke: Cesium.Color.fromCssColorString(layer.style?.color ?? '#00B4D8'),
       strokeWidth: layer.style?.width ?? 2,
-      fill: Cesium.Color.fromCssColorString('#F4A261').withAlpha(0.25),
+      fill: Cesium.Color.fromCssColorString('#F4A261').withAlpha(0.18),
       clampToGround: true,
     })
+    for (const ent of dataSource.entities.values) {
+      const cat = ent.properties?.category?.getValue?.()
+      if (cat === 'silo' || cat === 'silo_hopper') {
+        const matColor = ent.properties?.material?.getValue?.() === 'cement' ? '#10B981' : '#06B6D4'
+        if (ent.polyline) ent.polyline.material = new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString(matColor).withAlpha(0.9))
+      } else if (cat === 'silo_reserved') {
+        if (ent.polyline) ent.polyline.material = new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#F59E0B').withAlpha(0.55))
+      } else if (cat === 'crane_rail' || cat === 'bridge_girder') {
+        if (ent.polyline) ent.polyline.material = new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#FBBF24').withAlpha(0.92))
+      } else if (cat === 'rebar_bay') {
+        if (ent.polygon) ent.polygon.material = new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#38BDF8').withAlpha(0.12))
+      } else if (cat === 'unloading_room' || cat === 'elevator') {
+        if (ent.polygon) ent.polygon.material = new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#A78BFA').withAlpha(0.22))
+      }
+    }
     viewer.dataSources.add(dataSource)
     dataSource.show = layer.visible
     dataSourcesRef.value.set(layer.id, dataSource)
@@ -175,6 +229,89 @@ defineExpose({
 
 <template>
   <div class="cesium-viewer" ref="containerRef">
+    <!-- V5 光影模式与 Blender 1080P 工业渲染图集悬浮切换栏 -->
+    <div class="v5-visual-bar" @mousedown.stop @click.stop>
+      <span class="v5-visual-tag">V5 精模光影</span>
+      <button
+        type="button"
+        class="v5-light-btn"
+        :class="{ active: activeLighting === 'daylight' }"
+        title="高原晴昼明亮工业光（推荐汇报）"
+        @click="switchLighting('daylight')"
+      >
+        ☀ 高原晴昼
+      </button>
+      <button
+        type="button"
+        class="v5-light-btn"
+        :class="{ active: activeLighting === 'dusk' }"
+        title="暮光金辉暖阳侧逆光"
+        @click="switchLighting('dusk')"
+      >
+        🌅 暮光金辉
+      </button>
+      <button
+        type="button"
+        class="v5-light-btn"
+        :class="{ active: activeLighting === 'night' }"
+        title="深色科技夜航光效"
+        @click="switchLighting('night')"
+      >
+        🌙 科技夜航
+      </button>
+      <span class="v5-divider">|</span>
+      <button
+        type="button"
+        class="v5-gallery-btn"
+        title="查看 AutoCAD + Blender 5.2 离线渲染 1080P 工业宣传效果图"
+        @click="showRenderGallery = true"
+      >
+        🎨 1080P 渲染大图 (4)
+      </button>
+    </div>
+
+    <!-- Blender 5.2 1080P 精模渲染画廊弹窗 -->
+    <div v-if="showRenderGallery" class="v5-gallery-backdrop" @click.self="showRenderGallery = false">
+      <div class="v5-gallery-modal">
+        <div class="v5-gallery-header">
+          <div>
+            <div class="v5-gallery-title">
+              AutoCAD《给大连大.dwg》+ Blender 5.2 LTS 工业级精细化建模与 1080P 渲染图集
+            </div>
+            <div class="v5-gallery-sub">
+              405 项实测 CAD 矢量要素 · 18 组高精平滑 PBR 资产 · 40座3000T筒仓 · 23,882m²钢屋架厂房 · 6台40t门吊 · DF7G调车机车
+            </div>
+          </div>
+          <button type="button" class="v5-gallery-close" @click="showRenderGallery = false">✕ 关闭</button>
+        </div>
+
+        <div class="v5-gallery-tabs">
+          <button
+            v-for="(item, idx) in SHOWCASE_RENDERS"
+            :key="item.id"
+            type="button"
+            class="v5-gallery-tab"
+            :class="{ active: activeRenderIdx === idx }"
+            @click="activeRenderIdx = idx"
+          >
+            {{ item.title }}
+          </button>
+        </div>
+
+        <div class="v5-gallery-stage" v-if="SHOWCASE_RENDERS[activeRenderIdx]">
+          <img
+            :src="SHOWCASE_RENDERS[activeRenderIdx].url"
+            :alt="SHOWCASE_RENDERS[activeRenderIdx].title"
+            class="v5-gallery-img"
+          />
+          <div class="v5-gallery-caption">
+            <strong>{{ SHOWCASE_RENDERS[activeRenderIdx].title }}</strong>
+            <span>{{ SHOWCASE_RENDERS[activeRenderIdx].desc }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- WebGL 不可用提示 -->
     <div v-if="webglError" class="webgl-error">
       <div class="webgl-error-title">⚠ 三维场景无法渲染</div>
@@ -198,6 +335,180 @@ defineExpose({
   min-width: 320px;
   min-height: 300px;
   position: relative;
+}
+
+.v5-visual-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 16;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(8, 20, 38, 0.86);
+  border: 1px solid rgba(56, 189, 248, 0.38);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.v5-visual-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #38bdf8;
+  padding: 0 4px;
+  letter-spacing: 0.5px;
+}
+
+.v5-light-btn,
+.v5-gallery-btn {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.78);
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.v5-light-btn:hover,
+.v5-gallery-btn:hover {
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.v5-light-btn.active {
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  border-color: #7dd3fc;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.45);
+}
+
+.v5-gallery-btn {
+  background: linear-gradient(135deg, rgba(234, 88, 12, 0.88), rgba(245, 158, 11, 0.88));
+  border-color: #fbbf24;
+  color: #fff;
+}
+
+.v5-divider {
+  color: rgba(148, 163, 184, 0.4);
+  font-size: 11px;
+}
+
+.v5-gallery-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(3, 10, 24, 0.84);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.v5-gallery-modal {
+  width: min(1240px, 95vw);
+  max-height: 92vh;
+  background: #0b192e;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.72);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #f1f5f9;
+}
+
+.v5-gallery-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: rgba(15, 30, 56, 0.95);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.v5-gallery-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.v5-gallery-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 3px;
+}
+
+.v5-gallery-close {
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.55);
+  color: #fecaca;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.v5-gallery-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(8, 20, 38, 0.9);
+}
+
+.v5-gallery-tab {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 29, 52, 0.8);
+  color: #cbd5e1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.v5-gallery-tab.active {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.45), rgba(14, 165, 233, 0.25));
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.v5-gallery-stage {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+}
+
+.v5-gallery-img {
+  width: 100%;
+  max-height: 68vh;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: #0f1e36;
+}
+
+.v5-gallery-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #cbd5e1;
+  background: rgba(15, 29, 52, 0.75);
+  padding: 10px 14px;
+  border-radius: 8px;
+  border-left: 3px solid #f59e0b;
 }
 
 .webgl-error {

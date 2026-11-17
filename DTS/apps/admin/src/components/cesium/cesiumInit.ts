@@ -14,6 +14,35 @@ declare global {
 }
 window.CESIUM_BASE_URL = CESIUM_BASE_URL
 
+export type LightingPreset = 'daylight' | 'dusk' | 'night'
+
+export function applyLightingPreset(viewer: Cesium.Viewer, preset: LightingPreset): void {
+  const scene = viewer.scene
+  if (preset === 'daylight') {
+    scene.backgroundColor = Cesium.Color.fromCssColorString('#0E1E36')
+    scene.light = new Cesium.DirectionalLight({
+      direction: new Cesium.Cartesian3(-0.46, -0.38, -0.80),
+      color: Cesium.Color.fromCssColorString('#FFF8EC'),
+      intensity: 3.85,
+    })
+  } else if (preset === 'dusk') {
+    scene.backgroundColor = Cesium.Color.fromCssColorString('#171426')
+    scene.light = new Cesium.DirectionalLight({
+      direction: new Cesium.Cartesian3(-0.68, -0.45, -0.58),
+      color: Cesium.Color.fromCssColorString('#FFCC88'),
+      intensity: 3.60,
+    })
+  } else {
+    scene.backgroundColor = Cesium.Color.fromCssColorString('#040B18')
+    scene.light = new Cesium.DirectionalLight({
+      direction: new Cesium.Cartesian3(-0.42, -0.30, -0.86),
+      color: Cesium.Color.fromCssColorString('#B7D6FF'),
+      intensity: 2.95,
+    })
+  }
+  scene.requestRender()
+}
+
 /**
  * 创建 Cesium Viewer（离线配置）
  * - 不加载任何在线影像/地形（ion、Bing 等）
@@ -44,32 +73,21 @@ export function createOfflineViewer(container: HTMLElement): Cesium.Viewer {
   // 移除默认（空的）底图
   viewer.imageryLayers.removeAll()
 
-  // 深色场景风格（对齐基线：深色背景 #071228，不加载天空/太阳等装饰）
   const scene = viewer.scene
-  scene.backgroundColor = Cesium.Color.fromCssColorString('#030A17')
   if (scene.skyBox) scene.skyBox.show = false
   if (scene.skyAtmosphere) scene.skyAtmosphere.show = false
   if (scene.sun) scene.sun.show = false
   if (scene.moon) scene.moon.show = false
-  scene.light = new Cesium.DirectionalLight({
-    // Cool moonlit key light.  Warm practical lights are authored in the GLBs
-    // and added as small scene accents, which keeps the operational view legible
-    // without pretending this globe-free scene has physically accurate lighting.
-    direction: new Cesium.Cartesian3(-0.42, -0.30, -0.86),
-    color: Cesium.Color.fromCssColorString('#B7D6FF'),
-    intensity: 2.55,
-  })
+  applyLightingPreset(viewer, 'daylight')
   // 当前 CAD 只有本地米制坐标，尚未完成真实地理配准；保留地球会遮挡场站实体。
   // 后续拿到真实经纬度、地形和影像后，再由场站配置显式开启 globe。
   scene.globe.show = false
   scene.globe.enableLighting = false
   scene.globe.baseColor = Cesium.Color.fromCssColorString('#0a1628')
 
-  // ── 关闭高负载渲染特性，降低 GPU 压力（兼容 1650Ti 等中端显卡）──
-  // A modest quality baseline: enough edge definition for steel members and
-  // rails, while remaining practical for the medium-LOD station scene.
+  // V5 高精度抗锯齿与 HDR PBR 光影配置
   scene.postProcessStages.fxaa.enabled = true
-  scene.msaaSamples = 2
+  scene.msaaSamples = 4
   scene.highDynamicRange = true
   scene.useDepthPicking = false
 
