@@ -257,6 +257,27 @@ public class FenceService {
         return f;
     }
 
+    /** 重新启用：已停用 → 待发布；节点重置为待下发，必须重新发布后才会重新参与规则。 */
+    @Transactional
+    public DemoFence enable(String id) {
+        return keyedLock.execute(id, () -> doEnable(id));
+    }
+
+    private DemoFence doEnable(String id) {
+        DemoFence f = require(id);
+        if (!FenceStatuses.DISABLED.equals(f.statusCode)) {
+            throw ApiException.conflict("仅已停用围栏可重新启用（当前状态："
+                    + FenceStatuses.label(f.statusCode) + "）");
+        }
+        f.statusCode = FenceStatuses.TO_PUBLISH;
+        f.nodes = DemoFence.pendingNodes();
+        f.edgeSynced = 0;
+        f.updatedAt = OffsetDateTime.now(clock);
+        repository.save(f);
+        publish(f, "enable");
+        return f;
+    }
+
     /** 模拟 EDGE-03 版本不一致（SIMULATED）。复查-3.7：仅对已生效围栏有意义。 */
     @Transactional
     public DemoFence simulateMismatch(String id) {

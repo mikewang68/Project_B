@@ -11,6 +11,8 @@ import { draftToPayload, fenceApi } from '@/api/fences'
 import { isDomainLiveEvent, sharedLiveSocket } from '@/api/live'
 
 const fences = ref<FenceRecord[]>([])
+/** 已停用围栏默认不进入列表和地图；保留开关用于审计查看。 */
+const showDisabled = ref(false)
 const selectedId = ref('FENCE-001')
 const editing = ref(false)
 const editingId = ref<string | null>(null)
@@ -26,7 +28,11 @@ const draft = reactive<FenceDraft>({
   bufferDistance: 5.0,
 })
 let disposeLive: (() => void) | undefined
-const selectedFence = computed(() => fences.value.find((fence) => fence.id === selectedId.value))
+const visibleFences = computed(() => showDisabled.value
+  ? fences.value
+  : fences.value.filter((fence) => fence.status !== '已停用'))
+const disabledCount = computed(() => fences.value.filter((fence) => fence.status === '已停用').length)
+const selectedFence = computed(() => visibleFences.value.find((fence) => fence.id === selectedId.value))
 const isEditingExisting = computed(() => Boolean(editingId.value))
 
 function computeBufferPolygon(points: FencePoint[], bufferDist: number): FencePoint[] {
@@ -55,13 +61,24 @@ function computeBufferPolygon(points: FencePoint[], bufferDist: number): FencePo
 
 const editBufferPoints = computed(() => computeBufferPolygon(editPoints.value, draft.bufferDistance ?? 5.0))
 
+function selectFirstVisible(): void {
+  if (!visibleFences.value.some((fence) => fence.id === selectedId.value)) {
+    selectedId.value = visibleFences.value[0]?.id ?? ''
+  }
+}
+
 async function loadFences(): Promise<void> {
   try {
     fences.value = await fenceApi.list()
-    if (!selectedFence.value && fences.value.length) selectedId.value = fences.value[0]!.id
+    selectFirstVisible()
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '围栏数据加载失败')
   }
+}
+
+function toggleDisabled(): void {
+  showDisabled.value = !showDisabled.value
+  selectFirstVisible()
 }
 
 function upsert(record: FenceRecord): void {
@@ -187,9 +204,32 @@ async function disableFence(): Promise<void> {
   }
   try {
     upsert(await fenceApi.disable(fence.id))
-    ElMessage.success(`围栏 ${fence.id} 已停用`)
+    selectFirstVisible()
+    ElMessage.success(`围栏 ${fence.id} 已停用，已从围栏列表隐藏`)
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '停用失败')
+  }
+}
+
+async function enableFence(): Promise<void> {
+  const fence = selectedFence.value
+  if (!fence) return
+  try {
+    await ElMessageBox.confirm(
+      `重新启用后围栏「${fence.name}」将回到「待发布」，需重新发布到边缘节点后才会参与告警。`,
+      '重新启用围栏',
+      { type: 'info', confirmButtonText: '确认启用', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    const record = await fenceApi.enable(fence.id)
+    showDisabled.value = false
+    upsert(record)
+    ElMessage.success(`围栏 ${fence.id} 已重新启用，请发布到边缘节点`)
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '启用失败')
   }
 }
 
@@ -217,7 +257,15 @@ onBeforeUnmount(() => disposeLive?.())
   <section class="page-content fence-page">
     <header class="module-intro header-actions-only"><div class="fence-summary"><span><i></i><b>4 / 4</b>边缘节点在线</span><span>规则版本已受控</span></div></header>
     <div class="fence-workspace">
-      <FenceList :fences="fences" :selected-id="selectedId" @select="selectFence" @create="createFence" />
+      <FenceList
+        :fences="visibleFences"
+        :selected-id="selectedId"
+        :disabled-count="disabledCount"
+        :show-disabled="showDisabled"
+        @select="selectFence"
+        @create="createFence"
+        @toggle-disabled="toggleDisabled"
+      />
       <article class="dashboard-card fence-map-card">
         <header class="workspace-card-header">
           <div>
@@ -231,7 +279,7 @@ onBeforeUnmount(() => disposeLive?.())
         </header>
         <div class="fence-map-stage">
           <SafetyMapCanvas
-            :fences="fences"
+            :fences="visibleFences"
             :selected-fence-id="selectedId"
             :edit-points="editPoints"
             :edit-buffer-points="editBufferPoints"
@@ -255,11 +303,12 @@ onBeforeUnmount(() => disposeLive?.())
         @review="editing ? ensureDraft('待评审') : submitSelectedReview()"
         @publish="publishOpen = true"
         @disable="disableFence"
+        @enable="enableFence"
         @fail="simulateFail"
         @retry="retry"
       />
     </div>
-    <div class="fence-page-note"><el-icon><RefreshRight /></el-icon><span><b>演示环境</b>围栏生命周期由 Spring Boot Backend Demo 驱动（InMemory），支持隔离带预警与边缘节点下发。</span></div>
+    <div class="fence-page-note"><el-icon><RefreshRight /></el-icon><span><b>演示环境</b>围栏生命周期由 SCS 后端统一管理，支持隔离带预警与边缘节点下发。</span></div>
     <FencePublishDialog v-model="publishOpen" :fence="selectedFence" @completed="published" />
   </section>
 </template>

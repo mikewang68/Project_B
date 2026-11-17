@@ -70,6 +70,9 @@ export const fenceApi = {
   disable: async (id: string): Promise<FenceRecord> =>
     mapFence(await postJson(`/fences/${encodeURIComponent(id)}/disable`, {})),
 
+  enable: async (id: string): Promise<FenceRecord> =>
+    mapFence(await postJson(`/fences/${encodeURIComponent(id)}/enable`, {})),
+
   simulateMismatch: async (id: string): Promise<FenceRecord> =>
     mapFence(await postJson(`/fences/${encodeURIComponent(id)}/simulate-mismatch`, {})),
 }

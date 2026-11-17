@@ -40,6 +40,7 @@ class ScsRoutePermissionsTest {
     assertEquals("safety:fence:edit", ScsRoutePermissions.required("POST", "/api/v1/fences"));
     assertEquals("safety:fence:edit", ScsRoutePermissions.required("PUT", "/api/v1/fences/F-1"));
     assertEquals("safety:fence:edit", ScsRoutePermissions.required("POST", "/api/v1/fences/F-1/disable"));
+    assertEquals("safety:fence:edit", ScsRoutePermissions.required("POST", "/api/v1/fences/F-1/enable"));
     assertEquals("safety:fence:edit", ScsRoutePermissions.required("POST", "/api/v1/fences/F-1/submit-review"));
     assertEquals("safety:fence:edit", ScsRoutePermissions.required("POST", "/api/v1/fences/F-1/simulate-mismatch"));
     assertEquals("safety:fence:publish", ScsRoutePermissions.required("POST", "/api/v1/fences/F-1/publish"));

@@ -13,7 +13,7 @@ class ScsCentralScopeTest {
     var triple=new ScopeTriple("PROJECT_B","SHEN_TIE","SCS");var f=ScopeSql.build(ScopeSql.Mode.SCOPED,List.of(triple));
     return new UserContext(2,"subject","operator","subject","operator","L4_OPERATOR",readonly,"SCS",
       triple.projectId(),triple.regionId(),triple.subsystemCode(),ScopeSql.Mode.SCOPED,List.of(triple),List.of(triple),
-      Set.of("job"),Set.of("SCS:rules"),Map.of("SCS:rules",actions),Set.of(),"1",f.my_info(),f.my_project_zone_info(),f.my_info_template(),f.my_project_zone_info_template(),f.scope_params());
+      Set.of("job"),Set.of("SCS:rules","SCS:fences"),Map.of("SCS:rules",actions,"SCS:fences",actions),Set.of(),"1",f.my_info(),f.my_project_zone_info(),f.my_info_template(),f.my_project_zone_info_template(),f.scope_params());
   }
   @AfterEach void cleanup(){RequestContextHolder.resetRequestAttributes();}
   @Test void rejectsAMismatchedServiceAudienceAndUsesTheCentralTupleInRootQueries(){
@@ -35,6 +35,11 @@ class ScsCentralScopeTest {
     assertFalse(ScsCentralScope.permits(add,"POST","/api/v1/rules/one/unreviewed-action"));
     assertTrue(ScsCentralScope.permits(context(Set.of("CONFIRM"),false),"POST","/api/v1/rules/one/publish"));
     assertFalse(ScsCentralScope.permits(context(Set.of("CONFIRM"),true),"POST","/api/v1/rules/one/publish"));
+  }
+  @Test void fenceEnableUsesTheEditAction(){
+    assertTrue(ScsCentralScope.permits(context(Set.of("VIEW","EDIT"),false),"POST","/api/v1/fences/F-1/enable"));
+    assertFalse(ScsCentralScope.permits(context(Set.of("VIEW","ADD"),false),"POST","/api/v1/fences/F-1/enable"));
+    assertFalse(ScsCentralScope.permits(context(Set.of("VIEW","EDIT"),true),"POST","/api/v1/fences/F-1/enable"));
   }
   @Test void newlyPreservedDeviceResourcesCannotBypassV2ScopeThroughLegacyPermissions(){
     var c=context(Set.of("VIEW","ADD","EDIT","CONFIRM"),false);

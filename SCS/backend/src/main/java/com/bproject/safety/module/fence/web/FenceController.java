@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 电子围栏接口：列表 / 详情 / 新建 / 编辑 / 评审 / 发布 / 重下发 / 停用 / 版本异常模拟。 */
+/** 电子围栏接口：列表 / 详情 / 新建 / 编辑 / 评审 / 发布 / 重下发 / 停用 / 启用 / 版本异常模拟。 */
 @RestController
 @RequestMapping("/api/v1/fences")
 @Tag(name = "电子围栏", description = "围栏配置、评审发布与边缘节点同步（Demo）")
@@ -82,6 +82,12 @@ public class FenceController {
     @Operation(summary = "停用围栏")
     public DemoFence disable(@PathVariable String id) {
         return service.disable(id);
+    }
+
+    @PostMapping("/{id}/enable")
+    @Operation(summary = "重新启用围栏（回到待发布，需重新下发边缘节点）")
+    public DemoFence enable(@PathVariable String id) {
+        return service.enable(id);
     }
 
     @PostMapping("/{id}/simulate-mismatch")

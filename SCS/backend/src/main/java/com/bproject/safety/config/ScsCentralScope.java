@@ -72,7 +72,7 @@ public final class ScsCentralScope {
     else if(method.equals("POST")&&(path.equals("/api/v1/rules/simulate")||path.equals("/api/v1/rules/conflict-check")||path.equals("/api/v1/rules/conflict-ignore")))action="EXECUTE";
     else if(method.equals("POST")&&(path.equals("/api/v1/rules")||path.equals("/api/v1/fences")))action="ADD";
     else if(method.equals("PUT")&&path.matches("/api/v1/(rules|fences)/[^/]+")
-        ||method.equals("POST")&&path.matches("/api/v1/(rules|fences)/[^/]+/(submit|submit-review|disable)"))action="EDIT";
+        ||method.equals("POST")&&path.matches("/api/v1/(rules|fences)/[^/]+/(submit|submit-review|disable|enable)"))action="EDIT";
     else return false;
     return context.hasAction(menu,action)&&(!context.readOnly()||Set.of("VIEW","DOWNLOAD","EXPORT","AUDIT_VERIFY").contains(action));
   }

@@ -133,6 +133,33 @@ class FenceModuleIntegrationTest {
     }
 
     @Test
+    @DisplayName("重新启用：已停用 → 待发布，节点回到 pending，再发布恢复已生效")
+    void enableAfterDisable() throws Exception {
+        mvc.perform(post("/api/v1/fences/FENCE-001/disable"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("已停用")));
+
+        mvc.perform(post("/api/v1/fences/FENCE-001/enable"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("待发布")))
+                .andExpect(jsonPath("$.edgeSynced", is(0)));
+
+        mvc.perform(post("/api/v1/fences/FENCE-001/publish")
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("已生效")))
+                .andExpect(jsonPath("$.edgeSynced", is(4)));
+    }
+
+    @Test
+    @DisplayName("未停用围栏不可重新启用，返回 409")
+    void conflictEnable() throws Exception {
+        mvc.perform(post("/api/v1/fences/FENCE-001/enable"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code", is("STATE_CONFLICT")));
+    }
+
+    @Test
     @DisplayName("编辑围栏：PUT 更新名称")
     void update() throws Exception {
         String body = "{\"name\":\"改名后的禁区\",\"kind\":\"危险区域\",\"teams\":\"装卸一班\","

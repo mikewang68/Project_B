@@ -115,3 +115,14 @@
 .person-detail-track-range { display: flex; gap: 8px; grid-column: 1 / -1; }
 .person-detail-track-range select { min-height: 38px; padding: 0 8px; border: 1px solid var(--color-border); border-radius: 11px; background: #fff; font-size: 9px; color: var(--color-text-secondary); }
 .person-detail-track-range button { flex: 1; }
+
+/* 已停用围栏默认从列表/地图隐藏，底部开关用于审计查看 */
+.fence-list-empty { display: grid; place-content: center; gap: 6px; min-height: 120px; padding: 16px 8px; text-align: center; color: var(--color-text-tertiary); }
+.fence-list-empty p { margin: 0; font-size: 10px; font-weight: 650; color: var(--color-text-secondary); }
+.fence-list-empty small { font-size: 8px; }
+.fence-list-footer { padding: 8px 10px 10px; border-top: 1px solid var(--color-border); }
+.fence-list-footer button { width: 100%; min-height: 30px; border: 1px dashed var(--color-border); border-radius: 9px; color: var(--color-text-secondary); background: #fff; cursor: pointer; font-size: 8px; }
+.fence-list-footer button:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-faint); }
+.fence-detail-empty { flex: 1; display: grid; place-content: center; gap: 8px; padding: 24px; text-align: center; color: var(--color-text-tertiary); }
+.fence-detail-empty p { margin: 0; font-size: 11px; font-weight: 650; color: var(--color-text-secondary); }
+.fence-detail-empty small { max-width: 220px; font-size: 8px; line-height: 1.6; }

@@ -19,6 +19,7 @@ defineEmits<{
   review: []
   publish: []
   disable: []
+  enable: []
   fail: []
   retry: []
 }>()
@@ -154,8 +155,11 @@ defineEmits<{
       </div>
 
       <div class="fence-panel-actions">
-        <button v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT'}" type="button" @click="$emit('edit')">
+        <button v-if="fence.status !== '已停用'" v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT'}" type="button" @click="$emit('edit')">
           <el-icon><Edit /></el-icon>编辑围栏
+        </button>
+        <button v-if="fence.status === '已停用'" v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT'}" type="button" class="primary" @click="$emit('enable')">
+          <el-icon><RefreshRight /></el-icon>重新启用
         </button>
         <button v-if="['已生效','版本不一致','待发布'].includes(fence.status)" v-permission="{permission:'safety:fence:edit',menu:'SCS:fences',action:'EDIT'}" type="button" class="danger" @click="$emit('disable')">
           <el-icon><CircleClose /></el-icon>停用围栏
@@ -169,5 +173,10 @@ defineEmits<{
         </button>
       </div>
     </template>
+
+    <div v-else class="fence-detail-empty">
+      <p>暂无选中的围栏</p>
+      <small>从左侧选择围栏；已停用的围栏可通过列表底部开关查看</small>
+    </div>
   </aside>
 </template>
