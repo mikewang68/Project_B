@@ -84,11 +84,20 @@ def already(m):
   code,body=probe('http://127.0.0.1:18090/ehm/'+n+'?v='+RELEASE)
   require(code==200 and sha(body)==m['files']['web/'+n],'ACTIVE_PUBLIC_RESOURCE_CHANGED')
  print('MAINTENANCE_UX_RELEASE_ALREADY_ACTIVE_AND_VERIFIED')
+def succeeding_override(prior):
+ require(bool(prior),'NO_EXISTING_SERVICE_OVERRIDE')
+ # Do not append to the historic 240-byte name: NAME_MAX is 255 on this filesystem.
+ prefix=max(len(p.name)-len(p.name.lstrip('z')) for p in prior)+1
+ name='z'*prefix+'-ehms-maint-20261117-r2.conf'
+ require(len(name.encode())<250 and name>max(p.name for p in prior),'OVERRIDE_NAME_UNAVAILABLE')
+ result=UNITS/name
+ require(not result.exists(),'OVERRIDE_NAME_UNAVAILABLE')
+ return result
 def apply(m,payload,args,candidate,base,source_commit):
  require(os.geteuid()==0,'SUDO_REQUIRED');require(healthy(),'BASELINE_NOT_HEALTHY')
  require(not NEW_JAR.parent.exists() and not NEW_WEB.parent.exists(),'RELEASE_DIRECTORY_EXISTS_REVIEW_FIRST')
  prior=sorted(UNITS.glob('*.conf'));require(bool(prior),'NO_EXISTING_SERVICE_OVERRIDE')
- override=UNITS/(prior[-1].name+'.maintenance.conf');require(not override.exists() and len(override.name.encode())<250,'OVERRIDE_NAME_UNAVAILABLE')
+ override=succeeding_override(prior)
  protected=config_fingerprints(args);modified=False;switched=False
  NEW_JAR.parent.mkdir(mode=0o755);private=NEW_JAR.parent/'deployment-private';private.mkdir(mode=0o700)
  for f in prior:require(not f.is_symlink(),'UNIT_SYMLINK_REQUIRES_REVIEW');shutil.copyfile(f,private/f.name);(private/f.name).chmod(0o600)

@@ -35,6 +35,15 @@ class Tests(unittest.TestCase):
    with patch.object(PUB,'NEW_WEB',root/'newweb/ehms'),patch.object(PUB,'NEW_JAR',root/'newjar/service.jar'),patch.object(PUB,'UNITS',units),patch.object(PUB,'ALIAS',alias),patch.object(PUB,'swap',side_effect=swap),patch.object(PUB,'healthy',return_value=True),patch.object(PUB,'ready',side_effect=[True,True] if after_switch else [False,True]),patch.object(PUB,'config_fingerprints',return_value={}),patch.object(PUB,'baseline',return_value=None),patch.object(PUB,'command',return_value=['java','-jar',str(root/'newjar/service.jar')]),patch.object(PUB,'probe',side_effect=lambda url:(403,b'') if ':20983/' in url else (200,b'wrong public content')),patch.object(PUB,'run',side_effect=lambda *a:calls.append(a) or ''),patch.object(PUB.os,'geteuid',return_value=0,create=True),contextlib.redirect_stdout(io.StringIO()):
     with self.assertRaisesRegex(RuntimeError,'PUBLIC_RESOURCE_NOT_VERIFIED' if after_switch else 'NEW_BACKEND_NOT_READY'):PUB.apply(m,p,['java','-jar','old.jar'],b'candidate',old,'fixture')
    self.assertEqual(alias.resolve(),old);self.assertEqual(list(units.iterdir()),[prior]);self.assertEqual(prior.read_text(),'keep unit');self.assertEqual(data.read_text(),'keep data');self.assertEqual(sum(c[:2]==('systemctl','restart') for c in calls),2)
+ def test_historical_240_byte_dropin_does_not_exceed_name_max(self):
+  with tempfile.TemporaryDirectory() as d:
+   u=pathlib.Path(d);old=u/('z'*200+'-ehms-mq-20261113.conf.requirements.conf');old.write_text('keep')
+   self.assertEqual(len(old.name.encode()),240)
+   with patch.object(PUB,'UNITS',u):new=PUB.succeeding_override([old])
+   self.assertLess(len(new.name.encode()),250);self.assertGreater(new.name,old.name);self.assertEqual(old.read_text(),'keep')
+ def test_override_exhaustion_fails_before_filesystem_probe(self):
+  with patch.object(PUB,'UNITS',pathlib.Path('/unused')):
+   with self.assertRaisesRegex(RuntimeError,'OVERRIDE_NAME_UNAVAILABLE'):PUB.succeeding_override([pathlib.Path('z'*245+'.conf')])
  def test_backend_failure_restores_old_service_only(self):self.rollback(False)
  def test_public_verification_failure_restores_alias_and_service(self):self.rollback(True)
 if __name__=='__main__':unittest.main()
