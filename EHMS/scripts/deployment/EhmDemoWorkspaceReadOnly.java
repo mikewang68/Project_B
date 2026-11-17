@@ -26,7 +26,7 @@ public class EhmDemoWorkspaceReadOnly{
    boolean exported=false;String target=env("EHMS_DEMO_SNAPSHOT_PATH");
    if(!target.isBlank()){
     var output=Path.of(target).toAbsolutePath().normalize();
-    if(!output.getParent().equals(Path.of("/opt/project-b-unified/components/EHMS-integrated-demo-20261117-r1/deployment-private"))||Files.exists(output)||Files.isSymbolicLink(output))throw new IllegalArgumentException("SNAPSHOT_PATH_REJECTED");
+    if(!output.getParent().equals(Path.of("/opt/project-b-unified/components/EHMS-integrated-demo-20261117-r2/deployment-private"))||Files.exists(output)||Files.isSymbolicLink(output))throw new IllegalArgumentException("SNAPSHOT_PATH_REJECTED");
     List<Map<String,Object>> rows=new ArrayList<>();
     try(var q=db.prepareStatement("SELECT aggregate_type,aggregate_id,payload,updated_at FROM "+table+" WHERE project_id=? AND region_id=? AND subsystem_code=?")){
      q.setQueryTimeout(25);q.setString(1,"PROJECT_B");q.setString(2,"EHMS_DEMO");q.setString(3,"EHMS");

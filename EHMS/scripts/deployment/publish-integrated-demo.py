@@ -1,6 +1,6 @@
 """Exact-live EHMS workbook release. No database migration, credential or IAM changes."""
 import argparse,hashlib,io,json,os,pathlib,re,shlex,shutil,subprocess,sys,time,traceback,urllib.request,urllib.error,zipfile
-RELEASE='EHMS-integrated-demo-20261117-r1';SERVICE='project-b-unified-ehms.service'
+RELEASE='EHMS-integrated-demo-20261117-r2';SERVICE='project-b-unified-ehms.service'
 ALIAS=pathlib.Path('/var/www/project-b-unified/releases/EHMS-running-v1.9.0-r4-20261102/ehms')
 NEW_WEB=pathlib.Path('/var/www/project-b-unified/releases')/RELEASE/'ehms'
 NEW_JAR=pathlib.Path('/opt/project-b-unified/components')/RELEASE/'ehm-service.jar'
@@ -39,7 +39,7 @@ def load_bundle(bundle,digest):
    require(n.startswith(('classes/BOOT-INF/classes/com/bproject/ehm/','source/com/bproject/ehm/','web/')),'UNEXPECTED_PAYLOAD_CATEGORY')
    content=archive.read(n);require(sha(content)==d,'PAYLOAD_SHA_MISMATCH');payload[n]=content
   require({n[8:] for n in payload if n.startswith('classes/')}==set(m['patchedClasses']),'CLASS_MANIFEST_MISMATCH')
-  require(bool(m['patchedClasses']) and all(re.fullmatch(r'BOOT-INF/classes/com/bproject/ehm/(?:platform/security/EhmFeatureRoutes|samples/application/SampleTelemetryAdapter|simulation/(?:SimulationService|SimulationTelemetryRouter|DemoWorkspaceService)|maintenance/adapter/in/web/MaintenanceCalendarController)(?:\$[A-Za-z0-9_]+)?\.class',n) for n in m['patchedClasses']),'UNEXPECTED_BACKEND_CLASS')
+  require(bool(m['patchedClasses']) and all(re.fullmatch(r'BOOT-INF/classes/com/bproject/ehm/(?:platform/security/EhmFeatureRoutes|samples/application/SampleTelemetryAdapter|simulation/(?:SimulationService|SimulationTelemetryRouter|DemoWorkspaceService|SimulationBackgroundPolicy)|maintenance/adapter/in/web/MaintenanceCalendarController)(?:\$[A-Za-z0-9_]+)?\.class',n) for n in m['patchedClasses']),'UNEXPECTED_BACKEND_CLASS')
   require({n[4:] for n in payload if n.startswith('web/')}==WEB,'WEB_PAYLOAD_MISMATCH')
  return m,payload
 def verify_candidate(original,candidate,m,payload):
@@ -89,7 +89,7 @@ def succeeding_override(prior):
  require(bool(prior),'NO_EXISTING_SERVICE_OVERRIDE')
  # Do not append to the historic 240-byte name: NAME_MAX is 255 on this filesystem.
  prefix=max(len(p.name)-len(p.name.lstrip('z')) for p in prior)+1
- name='z'*prefix+'-ehms-demo-20261117-r1.conf'
+ name='z'*prefix+'-ehms-demo-20261117-r2.conf'
  require(len(name.encode())<250 and name>max(p.name for p in prior),'OVERRIDE_NAME_UNAVAILABLE')
  result=UNITS/name
  require(not result.exists(),'OVERRIDE_NAME_UNAVAILABLE')
@@ -106,10 +106,11 @@ def demo_check(snapshot=None):
  return value
 def demo_ready():
  print('WAITING_FOR_PERSISTED_DEMO_WORKSPACE; ONLY_EHMS_DEMO_INITIALIZED',flush=True)
+ started=time.monotonic()
  for _ in range(12):
   result=demo_check()
   if result.get('verified') is True:return result
-  if result.get('activity',{}).get('status')=='FAILED':
+  if result.get('activity',{}).get('status')=='FAILED' and time.monotonic()-started>=45:
    print('DEMO_WORKSPACE_DIAGNOSTIC='+json.dumps(result,sort_keys=True));raise RuntimeError('DEMO_WORKSPACE_INITIALIZATION_FAILED')
   time.sleep(5)
  raise RuntimeError('DEMO_WORKSPACE_NOT_VERIFIED')

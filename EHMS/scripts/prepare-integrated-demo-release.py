@@ -1,9 +1,9 @@
 """Prepare a narrow patch on node6, against exact active server artifacts. No runtime mutation."""
 import hashlib,importlib.util,io,json,os,pathlib,re,shlex,shutil,subprocess,zipfile
 ROOT=pathlib.Path(__file__).resolve().parents[1]
-RELEASE='EHMS-integrated-demo-20261117-r1'
+RELEASE='EHMS-integrated-demo-20261117-r2'
 OUTPUT=pathlib.Path('/home/bpoc-data/projects/Project_B/releases')/RELEASE
-SOURCES={'com/bproject/ehm/simulation/SimulationTelemetryRouter.java', 'com/bproject/ehm/samples/application/SampleTelemetryAdapter.java', 'com/bproject/ehm/simulation/SimulationService.java', 'com/bproject/ehm/simulation/DemoWorkspaceService.java', 'com/bproject/ehm/maintenance/adapter/in/web/MaintenanceCalendarController.java', 'com/bproject/ehm/platform/security/EhmFeatureRoutes.java'}
+SOURCES={'com/bproject/ehm/simulation/SimulationBackgroundPolicy.java','com/bproject/ehm/simulation/SimulationTelemetryRouter.java', 'com/bproject/ehm/samples/application/SampleTelemetryAdapter.java', 'com/bproject/ehm/simulation/SimulationService.java', 'com/bproject/ehm/simulation/DemoWorkspaceService.java', 'com/bproject/ehm/maintenance/adapter/in/web/MaintenanceCalendarController.java', 'com/bproject/ehm/platform/security/EhmFeatureRoutes.java'}
 WEB={'index.html','integrated-workspace.js','integrated-workspace.css','equipment-dossier.js','maintenance-workspace.js','central-scope.js'}
 def sha(b):return hashlib.sha256(b).hexdigest()
 def require(ok,code):

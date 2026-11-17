@@ -2,7 +2,7 @@ import contextlib,importlib.util,io,json,pathlib,tempfile,unittest,zipfile
 from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('publication',ROOT/'scripts/deployment/publish-integrated-demo.py');PUB=importlib.util.module_from_spec(spec);spec.loader.exec_module(PUB)
-WORK=pathlib.Path('/home/bpoc-data/projects/Project_B/releases/EHMS-integrated-demo-20261117-r1')
+WORK=pathlib.Path('/home/bpoc-data/projects/Project_B/releases/EHMS-integrated-demo-20261117-r2')
 class Tests(unittest.TestCase):
  def artifacts(self):
   b=WORK/'integrated-demo-patch.zip';return PUB.load_bundle(b,PUB.sha(b.read_bytes()))
@@ -12,7 +12,9 @@ class Tests(unittest.TestCase):
    with self.assertRaisesRegex(RuntimeError,'BUNDLE_SHA_MISMATCH'):PUB.load_bundle(p,'0'*64)
  def test_candidate_keeps_all_unrelated_classes_and_configuration_bytes(self):
   m,p=self.artifacts();PUB.verify_candidate((WORK/'live.jar').read_bytes(),(WORK/'candidate.jar').read_bytes(),m,p)
-  self.assertEqual(len(m['patchedClasses']),15)
+  self.assertEqual(len(m['patchedClasses']),16)
+  self.assertIn('BOOT-INF/classes/com/bproject/ehm/simulation/SimulationBackgroundPolicy.class',m['patchedClasses'])
+  self.assertIn(b'DEMO_SERVICE',p['classes/BOOT-INF/classes/com/bproject/ehm/simulation/SimulationBackgroundPolicy.class'])
   self.assertTrue(any('/DemoWorkspaceService' in n for n in m['patchedClasses']))
   self.assertFalse(any('/assistant/' in n or '/EhmSsoSessions' in n for n in m['patchedClasses']))
  def test_unrelated_static_assets_preserved_and_each_new_script_referenced_once(self):
@@ -48,8 +50,11 @@ class Tests(unittest.TestCase):
  def test_data_readiness_waits_for_persistent_marker_instead_of_only_health(self):
   with patch.object(PUB,'demo_check',side_effect=[{'verified':False},{'verified':True,'counts':{'asset':33}}]),patch.object(PUB.time,'sleep'),contextlib.redirect_stdout(io.StringIO()):
    self.assertTrue(PUB.demo_ready()['verified'])
+ def test_a_stale_failure_from_the_old_process_does_not_abort_before_first_tick(self):
+  with patch.object(PUB.time,'monotonic',side_effect=[0,1]),patch.object(PUB.time,'sleep'),patch.object(PUB,'demo_check',side_effect=[{'verified':False,'activity':{'status':'FAILED'}},{'verified':True}]),contextlib.redirect_stdout(io.StringIO()):
+   self.assertTrue(PUB.demo_ready()['verified'])
  def test_failed_data_initialization_cannot_be_reported_as_a_success(self):
-  with patch.object(PUB,'demo_check',return_value={'verified':False,'activity':{'status':'FAILED','lastError':'fixture'}}),contextlib.redirect_stdout(io.StringIO()):
+  with patch.object(PUB.time,'monotonic',side_effect=[0,60]),patch.object(PUB,'demo_check',return_value={'verified':False,'activity':{'status':'FAILED','lastError':'fixture'}}),contextlib.redirect_stdout(io.StringIO()):
    with self.assertRaisesRegex(RuntimeError,'DEMO_WORKSPACE_INITIALIZATION_FAILED'):PUB.demo_ready()
  def test_backend_failure_restores_old_service_only(self):self.rollback(False)
  def test_public_verification_failure_restores_alias_and_service(self):self.rollback(True)
