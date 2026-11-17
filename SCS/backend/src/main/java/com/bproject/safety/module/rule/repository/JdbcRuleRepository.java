@@ -96,8 +96,14 @@ public class JdbcRuleRepository implements RuleRepository, DemoClearableStore {
         }
 
         if (q.status() != null && !q.status().isBlank()) {
-            sql.append(" AND status_code = :statusCode");
-            params.addValue("statusCode", RuleStatuses.normalize(q.status()));
+            String statusCode = RuleStatuses.normalize(q.status());
+            if (RuleStatuses.ACTIVE.equals(statusCode)) {
+                // 历史演示数据使用 EFFECTIVE；对外统一按“已生效”筛选。
+                sql.append(" AND status_code IN (:statusCode,'EFFECTIVE')");
+            } else {
+                sql.append(" AND status_code = :statusCode");
+            }
+            params.addValue("statusCode", statusCode);
         }
 
         if (q.risk() != null && !q.risk().isBlank()) {
@@ -420,7 +426,8 @@ public class JdbcRuleRepository implements RuleRepository, DemoClearableStore {
         r.version = dto.activeVersion;
         r.platformVersion = dto.platformVersion != null ? dto.platformVersion : dto.activeVersion;
         r.riskCode = dto.riskLevelCode;
-        r.statusCode = dto.statusCode;
+        // 兼容历史演示数据的 EFFECTIVE；对外状态机统一使用 ACTIVE。
+        r.statusCode = "EFFECTIVE".equals(dto.statusCode) ? RuleStatuses.ACTIVE : dto.statusCode;
         r.highRisk = dto.highRisk;
         r.owner = dto.ownerName;
         r.approver = dto.approverName;

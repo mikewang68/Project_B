@@ -84,9 +84,22 @@ class ScsMachineRegistryTest {
     assertEquals(" AND 1=0 ",ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.ALERT,"o."));
     ScsCentralScope.bindDerivedMachineAuth(ScsCentralScope.Root.COLLISION,"VEH-07",ScsCentralScope.Root.ALERT);
     String alertFilter=ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.ALERT,"o.");
-    assertTrue(alertFilter.contains("o.dedup_key LIKE 'COLLISION:%'"));
+    assertTrue(alertFilter.contains("o.dedup_key LIKE 'COLLISION:VEH-07:%'"));
     assertTrue(ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.COLLISION,"o.").contains("device_code IN"));
     ScsCentralScope.clearDerivedMachineAuth();
     assertEquals(" AND 1=0 ",ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.ALERT,"o."));
+  }
+  @Test void derivedPersonnelAuthOnlyRelaxesThatPersonIntrusionAlerts()throws Exception{
+    var s=source("SIM-A",secret,"P-1");
+    s.put("objects",Map.of("PERSONNEL",List.of("P-1")));
+    write(List.of(s));
+    var binding=registry.authenticate("SIM-A",secret,"POST","/api/v1/ingest/person-position");
+    var request=new MockHttpServletRequest("POST","/api/v1/ingest/person-position");
+    ScsMachineRegistry.bind(request,binding);
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    ScsCentralScope.bindDerivedMachineAuth(ScsCentralScope.Root.PERSONNEL,"P-1",ScsCentralScope.Root.ALERT);
+    String filter=ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.ALERT,"o.");
+    assertTrue(filter.contains("o.dedup_key LIKE 'PERSON_INTRUSION:P-1:%'"));
+    assertEquals(" AND 1=0 ",ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.RULE,"o."));
   }
 }

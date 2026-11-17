@@ -4,6 +4,8 @@ import com.bproject.safety.common.realtime.DomainLivePublisher;
 import com.bproject.safety.common.realtime.LiveEventTypes;
 import com.bproject.safety.module.personnel.model.DemoPersonnel;
 import com.bproject.safety.module.personnel.repository.PersonnelRepository;
+import com.bproject.safety.module.personnel.repository.PersonnelTrackRepository;
+import com.bproject.safety.module.rule.service.RuleRuntimeService;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -12,6 +14,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -64,15 +69,32 @@ public class PersonnelPositionService {
                                String quality, String updatedAt) {
     }
 
+    private static final Logger log = LoggerFactory.getLogger(PersonnelPositionService.class);
+    /** 历史轨迹降采样间隔：1Hz 原始定位不逐点落库，按 10 秒保留低频样本。 */
+    private static final long TRACK_INTERVAL_MS = 10_000L;
+
     private final Map<String, LivePosition> positions = new ConcurrentHashMap<>();
+    private final Map<String, Long> lastTrackAt = new ConcurrentHashMap<>();
+    private final Map<String, String> lastTrackArea = new ConcurrentHashMap<>();
     private final PersonnelRepository repository;
     private final DomainLivePublisher publisher;
     private final Clock clock;
+    private final PersonnelTrackRepository trackRepository;
+    @Autowired(required = false)
+    private RuleRuntimeService ruleRuntime;
 
+    /** 测试/旧调用方兼容构造：不落轨迹。 */
     public PersonnelPositionService(PersonnelRepository repository, DomainLivePublisher publisher, Clock clock) {
+        this(repository, publisher, clock, null);
+    }
+
+    @Autowired
+    public PersonnelPositionService(PersonnelRepository repository, DomainLivePublisher publisher, Clock clock,
+                                    PersonnelTrackRepository trackRepository) {
         this.repository = repository;
         this.publisher = publisher;
         this.clock = clock;
+        this.trackRepository = trackRepository;
     }
 
     public LivePosition get(String id) {
@@ -98,14 +120,40 @@ public class PersonnelPositionService {
         }
         double px = clampPercent(x);
         double py = clampPercent(y);
+        String area = resolveArea(px, py);
         positions.put(key, new LivePosition(
                 round(px),
                 round(py),
-                resolveArea(px, py),
+                area,
                 battery == null ? null : Math.max(0, Math.min(100, battery)),
                 qualityOf(accuracy),
                 OffsetDateTime.now(clock.withZone(ZONE)).toString()));
+        appendTrackSample(key, round(px), round(py), area);
+        if (ruleRuntime != null) {
+            ruleRuntime.evaluateIntrusion(person, round(px), round(py), area);
+        }
         return true;
+    }
+
+    /**
+     * 按 10 秒/人或区域变化保留一个低频轨迹点；写入失败只记日志，不影响实时位置。
+     * 这是“历史轨迹”演示的数据来源，不代表把 1Hz 原始流写进了关系库。
+     */
+    private void appendTrackSample(String key, double x, double y, String area) {
+        if (trackRepository == null) return;
+        long now = clock.millis();
+        Long last = lastTrackAt.get(key);
+        String lastArea = lastTrackArea.get(key);
+        boolean due = last == null || now - last >= TRACK_INTERVAL_MS
+                || (area != null && !area.equals(lastArea));
+        if (!due) return;
+        try {
+            trackRepository.append(key, x, y, area, OffsetDateTime.now(clock.withZone(ZONE)));
+            lastTrackAt.put(key, now);
+            if (area != null) lastTrackArea.put(key, area);
+        } catch (RuntimeException ex) {
+            log.warn("personnel track append failed for {}: {}", key, ex.getMessage());
+        }
     }
 
     /** 一批上报应用完成后统一广播一次，避免 1~5Hz × N 人把 WS 打成事件风暴。 */

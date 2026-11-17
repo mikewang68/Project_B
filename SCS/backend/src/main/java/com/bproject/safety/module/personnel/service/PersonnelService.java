@@ -23,6 +23,7 @@ import com.bproject.safety.module.personnel.model.PersonRiskLevels;
 import com.bproject.safety.module.personnel.model.PersonStatuses;
 import com.bproject.safety.module.personnel.model.TrackPoint;
 import com.bproject.safety.module.personnel.repository.PersonnelRepository;
+import com.bproject.safety.module.personnel.repository.PersonnelTrackRepository;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -42,6 +43,7 @@ import org.springframework.stereotype.Service;
 public class PersonnelService {
 
     private static final DateTimeFormatter HM = DateTimeFormatter.ofPattern("HH:mm");
+    private static final int MAX_TRACK_POINTS = 5000;
 
     private final PersonnelRepository repository;
     private final FenceRepository fenceRepository;
@@ -51,14 +53,26 @@ public class PersonnelService {
     private final Clock clock;
     private final LiveEventGate gate;
     private final PersonnelPositionService positions;
+    private final PersonnelTrackRepository trackRepository;
 
     private volatile int refreshIntervalMs = 1000;
     private volatile double defaultBufferDistance = 5.0;
 
+    /** 测试/旧调用方兼容构造：无历史轨迹存储。 */
     public PersonnelService(PersonnelRepository repository, FenceRepository fenceRepository,
                             AlertRepository alertRepository, AlertService alertService,
                             DomainLivePublisher publisher, Clock clock, LiveEventGate gate,
                             PersonnelPositionService positions) {
+        this(repository, fenceRepository, alertRepository, alertService, publisher, clock, gate,
+                positions, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public PersonnelService(PersonnelRepository repository, FenceRepository fenceRepository,
+                            AlertRepository alertRepository, AlertService alertService,
+                            DomainLivePublisher publisher, Clock clock, LiveEventGate gate,
+                            PersonnelPositionService positions,
+                            PersonnelTrackRepository trackRepository) {
         this.repository = repository;
         this.fenceRepository = fenceRepository;
         this.alertRepository = alertRepository;
@@ -67,6 +81,7 @@ public class PersonnelService {
         this.clock = clock;
         this.gate = gate;
         this.positions = positions;
+        this.trackRepository = trackRepository;
     }
 
     public PersonnelConfig getConfig() {
@@ -142,17 +157,20 @@ public class PersonnelService {
     }
 
     public List<TrackPoint> track(String id) {
+        return track(id, 30);
+    }
+
+    /**
+     * 人员历史轨迹：查询落库的低频采样点，不再按当前位置现编固定 9 点。
+     * 没有数据时返回空列表，前端显示“暂无历史轨迹”——不把模拟样本当成真实历史。
+     */
+    public List<TrackPoint> track(String id, Integer minutes) {
         DemoPersonnel p = require(id);
-        // 固定轨迹样本：以当前位置为终点，确定性回退（不接真实定位基站）
-        double[][] rel = {{-13, 13}, {-6, 12}, {1, 10}, {9, 18}, {18, 22},
-                {23, 13}, {14, 4}, {6, 1}, {0, 0}};
+        if (trackRepository == null) return List.of();
+        int window = minutes == null ? 30 : Math.max(1, Math.min(1440, minutes));
         OffsetDateTime end = OffsetDateTime.now(clock);
-        List<TrackPoint> points = new ArrayList<>();
-        for (int i = 0; i < rel.length; i++) {
-            OffsetDateTime t = end.minusMinutes((rel.length - 1 - i) * 3L);
-            points.add(new TrackPoint(round(p.x + rel[i][0]), round(p.y + rel[i][1]), t.format(HM)));
-        }
-        return points;
+        OffsetDateTime start = end.minusMinutes(window);
+        return trackRepository.query(p.id, start, end, MAX_TRACK_POINTS);
     }
 
     public List<LivePosition> live(String area) {

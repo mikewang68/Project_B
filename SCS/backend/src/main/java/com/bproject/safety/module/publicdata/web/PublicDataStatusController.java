@@ -36,6 +36,17 @@ public class PublicDataStatusController {
         this.backfillInvoker = backfillInvoker;
     }
 
+    @GetMapping("/events/{eventId}")
+    @Operation(summary = "按 event_id 查询公共事件接收状态与业务去向")
+    public Map<String, Object> event(@org.springframework.web.bind.annotation.PathVariable String eventId) {
+        Map<String, Object> detail = inbox.detailOf(eventId);
+        if (detail == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "公共事件不存在: " + eventId);
+        }
+        return detail;
+    }
+
     @GetMapping("/status")
     @Operation(summary = "公共数据接收链路状态（收件箱计数与设备绑定覆盖）")
     public Map<String, Object> status(@RequestParam(required = false) String action) {

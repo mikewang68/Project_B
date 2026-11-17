@@ -34,8 +34,8 @@ export const personnelApi = {
   detail: async (id: string): Promise<PersonnelRecord> =>
     mapPerson(await apiRequest(`/personnel/${encodeURIComponent(id)}`)),
 
-  track: async (id: string): Promise<TrackPoint[]> =>
-    mapTrack(await apiRequest(`/personnel/${encodeURIComponent(id)}/track`)),
+  track: async (id: string, minutes = 30): Promise<TrackPoint[]> =>
+    mapTrack(await apiRequest(`/personnel/${encodeURIComponent(id)}/track${qs({ minutes })}`)),
 
   live: async (area?: string): Promise<LivePosition[]> =>
     mapLivePositions(await apiRequest(`/personnel/live${qs({ area })}`)),

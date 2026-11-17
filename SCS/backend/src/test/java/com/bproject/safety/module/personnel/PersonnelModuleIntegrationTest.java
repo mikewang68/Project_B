@@ -19,6 +19,7 @@ import com.bproject.safety.module.fence.repository.FenceRepository;
 import com.bproject.safety.module.fence.repository.InMemoryFenceRepository;
 import com.bproject.safety.module.personnel.repository.InMemoryPersonnelRepository;
 import com.bproject.safety.module.personnel.repository.PersonnelRepository;
+import com.bproject.safety.module.personnel.repository.PersonnelTrackRepository;
 import java.time.Clock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -52,6 +53,8 @@ class PersonnelModuleIntegrationTest {
     private Clock clock;
     @Autowired
     private com.bproject.safety.module.personnel.service.PersonnelService personnelService;
+    @Autowired
+    private PersonnelTrackRepository trackRepository;
 
     @BeforeEach
     void reset() {
@@ -62,6 +65,7 @@ class PersonnelModuleIntegrationTest {
         ((InMemoryFenceRepository) fenceRepository).resetDemoData();
         ((InMemoryCollisionRepository) collisionRepository).resetDemoData();
         collisionService.resetAllPairs();
+        trackRepository.clear();
     }
 
     @Test
@@ -76,7 +80,7 @@ class PersonnelModuleIntegrationTest {
     }
 
     @Test
-    @DisplayName("人员详情与轨迹：赵磊详情 + 9 个轨迹点")
+    @DisplayName("人员详情与轨迹：没有落库历史时返回空轨迹，不再现编固定样本")
     void detailAndTrack() throws Exception {
         mvc.perform(get("/api/v1/personnel/P-ZHAO"))
                 .andExpect(status().isOk())
@@ -84,7 +88,7 @@ class PersonnelModuleIntegrationTest {
                 .andExpect(jsonPath("$.braceletId", is("WB-018")));
         mvc.perform(get("/api/v1/personnel/P-ZHAO/track"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.points", hasSize(9)));
+                .andExpect(jsonPath("$.points", hasSize(0)));
     }
 
     @Test

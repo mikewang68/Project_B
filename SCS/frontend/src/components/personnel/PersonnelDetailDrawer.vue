@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Close, Location, Message, VideoPlay } from '@element-plus/icons-vue'
 import { ElDrawer } from 'element-plus/es'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
@@ -8,10 +9,11 @@ defineProps<{ modelValue: boolean; person: PersonnelRecord | undefined }>()
 defineEmits<{
   'update:modelValue': [value: boolean]
   locate: []
-  playback: []
+  playback: [minutes: number]
   remind: []
   alerts: []
 }>()
+const trackMinutes = ref(30)
 </script>
 
 <template>
@@ -33,7 +35,14 @@ defineEmits<{
       </dl>
       <div class="person-detail-actions">
         <button type="button" @click="$emit('locate')"><el-icon><Location /></el-icon>定位人员</button>
-        <button type="button" class="primary" @click="$emit('playback')"><el-icon><VideoPlay /></el-icon>轨迹回放</button>
+        <div class="person-detail-track-range">
+          <select v-model.number="trackMinutes" aria-label="轨迹时间范围">
+            <option :value="30">近 30 分钟</option>
+            <option :value="120">近 2 小时</option>
+            <option :value="1440">近 24 小时</option>
+          </select>
+          <button type="button" class="primary" @click="$emit('playback', trackMinutes)"><el-icon><VideoPlay /></el-icon>轨迹回放</button>
+        </div>
         <button v-permission="{permission:'safety:person:detail:execute',menu:'SCS:people',action:'CONFIRM'}" type="button" @click="$emit('remind')"><el-icon><Message /></el-icon>发送提醒</button>
         <button type="button" @click="$emit('alerts')">查看相关告警</button>
       </div>

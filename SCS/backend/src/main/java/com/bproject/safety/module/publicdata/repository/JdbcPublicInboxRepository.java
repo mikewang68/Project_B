@@ -51,6 +51,18 @@ public class JdbcPublicInboxRepository implements PublicInboxRepository {
     }
 
     @Override
+    public Map<String, Object> detailOf(String eventId) {
+        if (eventId == null || eventId.isBlank()) return null;
+        var rows = jdbc.queryForList(
+                "SELECT event_id, status, committed_ms, wire_sha256, received_at, processed_at, last_error, "
+                        + "payload->>'deviceId' AS device_id, payload->>'eventType' AS event_type "
+                        + "FROM safety.public_device_inbox WHERE event_id=:eventId",
+                Map.of("eventId", eventId.trim()));
+        if (rows.isEmpty()) return null;
+        return new java.util.LinkedHashMap<>(rows.get(0));
+    }
+
+    @Override
     public long countByStatus(String status) {
         Long c = jdbc.queryForObject("SELECT count(*) FROM safety.public_device_inbox WHERE status=:status",
                 Map.of("status", status), Long.class);

@@ -7,6 +7,9 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /** 派生告警授权只挂在当前请求上；不依赖 POSIX 文件权限，Windows 开发机也执行。 */
 class ScsDerivedAuthTest {
@@ -59,5 +62,34 @@ class ScsDerivedAuthTest {
                 ScsCentralScope.Root.ALERT, "ALM-1", foreign));
         assertTrue(ScsCentralScope.machineMayWrite(null, ScsCentralScope.Root.ALERT,
                 ScsCentralScope.Root.ALERT, "ALM-1", null));
+
+        org.mockito.Mockito.when(binding.owns(ScsCentralScope.Root.PERSONNEL, "P-1001")).thenReturn(true);
+        var personnelDerived = new ScsCentralScope.DerivedAuth(
+                ScsCentralScope.Root.PERSONNEL, "P-1001", java.util.Set.of(ScsCentralScope.Root.ALERT));
+        assertTrue(ScsCentralScope.machineMayWrite(binding, ScsCentralScope.Root.ALERT,
+                ScsCentralScope.Root.ALERT, "ALM-INTRUSION", personnelDerived));
+    }
+
+    @Test
+    void derivedAlertFilterIsScopedToTheOwningDeviceOrPerson() {
+        var binding = mock(ScsMachineRegistry.Binding.class);
+        doNothing().when(binding).revalidate();
+        when(binding.owns(ScsCentralScope.Root.COLLISION, "VEH-07")).thenReturn(true);
+        when(binding.owns(ScsCentralScope.Root.PERSONNEL, "P-1001")).thenReturn(true);
+        var request = new MockHttpServletRequest();
+        ScsMachineRegistry.bind(request, binding);
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        ScsCentralScope.bindDerivedMachineAuth(
+                ScsCentralScope.Root.COLLISION, "VEH-07", ScsCentralScope.Root.ALERT);
+        assertTrue(ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.ALERT, "o.")
+                .contains("o.dedup_key LIKE 'COLLISION:VEH-07:%'"));
+
+        ScsCentralScope.bindDerivedMachineAuth(
+                ScsCentralScope.Root.PERSONNEL, "P-1001", ScsCentralScope.Root.ALERT);
+        assertTrue(ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.ALERT, "o.")
+                .contains("o.dedup_key LIKE 'PERSON_INTRUSION:P-1001:%'"));
+        assertFalse(ScsMachineRegistry.sqlObjectFilter(ScsCentralScope.Root.ALERT, "o.")
+                .contains("COLLISION:VEH-07"));
     }
 }

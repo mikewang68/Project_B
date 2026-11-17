@@ -136,12 +136,16 @@ function scheduleReload(): void {
 
 function selectPerson(person: PersonnelPoint): void { selectedId.value = person.id; drawerOpen.value = true }
 function setPlaying(value: boolean): void { playing.value = value }
-async function startPlayback(): Promise<void> {
+async function startPlayback(minutes = 30): Promise<void> {
   drawerOpen.value = false
   try {
-    track.value = await personnelApi.track(selectedId.value)
+    track.value = await personnelApi.track(selectedId.value, minutes)
   } catch {
     track.value = []
+  }
+  if (!track.value.length) {
+    ElMessage.info('暂无历史轨迹：请等待定位数据积累后重试')
+    return
   }
   trackOpen.value = true
   trackIndex.value = 0
