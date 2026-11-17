@@ -151,54 +151,37 @@ const V4_TO_EHMS_ASSET_CODE: Record<string, string> = {
   'LOADER-04': 'EQ-VALVE-04',
 }
 
-function isPrivateOrGatewayHost(): boolean {
-  if (typeof window === 'undefined') return false
-  const h = window.location.hostname
-  return (
-    h === 'localhost' ||
-    h === '127.0.0.1' ||
-    h.startsWith('100.') ||
-    h.startsWith('192.168.') ||
-    h.startsWith('10.')
-  )
-}
-
 export function getPortalUrl(): string {
   const envPortal = import.meta.env.VITE_URL_PORTAL
   if (envPortal) return String(envPortal)
-  if (isPrivateOrGatewayHost()) {
-    return `${window.location.origin}/portal/`
-  }
   return 'https://bproject.de5.net/portal/'
 }
 
 export function getCrossSystemLinks(): CrossSystemLink[] {
   const env = import.meta.env
-  const isPrivate = isPrivateOrGatewayHost()
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bproject.de5.net'
   return [
     {
       key: 'S1',
       name: 'S1 装卸工艺管理系统',
-      url: isPrivate ? `${origin}/production-dispatch/` : String(env.VITE_URL_S1 || 'https://psms.bproject.de5.net/production-dispatch/'),
+      url: String(env.VITE_URL_S1 || 'https://psms.bproject.de5.net/production-dispatch/'),
       badge: '工艺调度',
     },
     {
       key: 'S2',
       name: 'S2 装卸区仓储管理系统 (WMS)',
-      url: isPrivate ? `${origin}/wms/` : String(env.VITE_URL_S2 || 'https://wms.bproject.de5.net/'),
+      url: String(env.VITE_URL_S2 || 'https://wms.bproject.de5.net/'),
       badge: '仓位台账',
     },
     {
       key: 'S3',
       name: 'S3 设备健康与维护系统 (EHMS)',
-      url: isPrivate ? `${origin}/ehm/` : String(env.VITE_URL_S3 || 'https://ehms.bproject.de5.net/ehm/'),
+      url: String(env.VITE_URL_S3 || 'https://ehms.bproject.de5.net/ehm/'),
       badge: 'BOM健康',
     },
     {
       key: 'S4',
       name: 'S4 安全监控与联锁系统 (SCS)',
-      url: isPrivate ? `${origin}/scs/` : String(env.VITE_URL_S4 || 'https://scs.bproject.de5.net/'),
+      url: String(env.VITE_URL_S4 || 'https://scs.bproject.de5.net/'),
       badge: '防撞联锁',
     },
   ]
