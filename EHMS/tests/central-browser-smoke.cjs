@@ -46,6 +46,7 @@ test('central UI restores charts and real feature renderers without probing glob
     }return send(repairRecord);
    }
    if(/^work-orders\/[^/]+\/status$/.test(r)&&req.method==='PATCH'){let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw);savedOrders[0].status=body.status;return send(savedOrders[0]);}
+   if(r==='maintenance-calendar')return send({assetCode:url.searchParams.get('assetCode'),events:[{id:'FIXTURE-EXEC',kind:'EXECUTION',assetCode:url.searchParams.get('assetCode'),title:'合成维修日历记录',recordId:'FIXTURE-EXEC',orderNo:savedOrders[0]?.orderNo||null,at:now,status:'已记录',actor:'fixture',detail:'合成界面测试，非生产记录',synthetic:true}],truncated:false,totalMatched:1,workOrdersIncluded:true,repairDetailsIncluded:true});
    if(r==='alarms'||r==='system/audit-logs')return send([]);
    if(r==='data-quality/summary')return send({enabledPoints:1,goodPoints:1,missingPoints:0,invalidPoints:0,availabilityPercent:100,healthAssessmentAllowed:true,assessmentMessage:'虚拟测试'});
    if(r==='data-quality/points')return send({content:[point],totalElements:1,totalPages:1});
@@ -89,6 +90,12 @@ test('central UI restores charts and real feature renderers without probing glob
   await page.locator('#menuFinder').fill('校准');await page.waitForSelector('.nav-search-results [data-page="sensor-cal"]');
   await page.locator('.nav-search-results [data-page="sensor-cal"]').click();await page.waitForTimeout(120);
   assert.equal(await page.evaluate(()=>state.page),'sensor-cal');assert.equal(await page.locator('#navigation').isVisible(),true);
+  await page.evaluate(()=>setPage('maintenance-plan'));await page.waitForSelector('.calendar-grid button');
+  await page.waitForFunction(()=>document.querySelector('.calendar-panel').textContent.includes('合成维修日历记录'));
+  assert.ok(await page.locator('.calendar-grid button').count()>=28);
+  await page.selectOption('#calendarKind','EXECUTION');assert.match(await page.locator('.calendar-panel').innerText(),/合成维修日历记录/);
+  await page.selectOption('#calendarKind','RETEST');assert.match(await page.locator('.calendar-panel').innerText(),/没有记录/);
+  await page.selectOption('#calendarKind','');
   // Full list -> detail -> return, refresh/deep link and failure -> retry workflows.
   fixtureDevices=Array.from({length:34},(_,i)=>({...device,code:'SAMPLE-UI-'+String(i).padStart(2,'0'),name:'[虚拟]验收设备 '+i}));
   await page.evaluate(()=>setPage('fleet'));await page.waitForSelector('#deviceNext:not([disabled])');
@@ -131,7 +138,7 @@ test('central UI restores charts and real feature renderers without probing glob
   assert.equal(savedOrders.length,1);assert.equal(orderPosts,2);
   // Actual next-step commands collect reasons and preserve phase-specific permissions.
   for(const [expected,label] of [['待执行','审批通过'],['执行中','开始维修']]){
-    await page.locator('[data-action="advanceWork"]').click();await page.locator('#mwTransitionReason').fill('合成测试：'+label+'的实际依据');
+    await page.locator('[data-action="advanceWork"][data-status="'+expected+'"]').click();await page.locator('#mwTransitionReason').fill('合成测试：'+label+'的实际依据');
     await page.locator('#modalConfirm').click();await page.waitForSelector('#modal[aria-hidden="true"]',{state:'attached'});
     assert.equal(savedOrders[0].status,expected);
   }
@@ -147,7 +154,7 @@ test('central UI restores charts and real feature renderers without probing glob
   await page.locator('[data-action="repairExecution"]').click();assert.equal(await page.locator('#rwAction').inputValue(),'');
   await page.locator('#rwAction').fill('合成测试：核验安装');await page.locator('#rwResult').fill('合成测试：处置完成');await page.locator('#rwSafety').fill('合成测试：核对许可');await page.locator('#rwParts').fill('合成测试：未用备件');await page.locator('#modalConfirm').click();
   await page.waitForSelector('#modal[aria-hidden="true"]',{state:'attached'});assert.equal(repairRecord.executions.length,1);
-  await page.locator('#drawerClose').click();await page.locator('[data-action="advanceWork"]').click();await page.locator('#mwTransitionReason').fill('合成测试：实际维修已记录，申请复测');await page.locator('#modalConfirm').click();await page.waitForSelector('#modal[aria-hidden="true"]',{state:'attached'});assert.equal(savedOrders[0].status,'待复测');await page.locator('[data-action="openOrderRepair"]').click();
+  await page.locator('#drawerClose').click();await page.locator('[data-action="advanceWork"][data-status="待复测"]').click();await page.locator('#mwTransitionReason').fill('合成测试：实际维修已记录，申请复测');await page.locator('#modalConfirm').click();await page.waitForSelector('#modal[aria-hidden="true"]',{state:'attached'});assert.equal(savedOrders[0].status,'待复测');await page.locator('[data-action="openOrderRepair"]').click();
   await page.locator('[data-action="repairRetest"]').click();assert.equal(await page.locator('#rwBefore').inputValue(),'');assert.equal(await page.locator('#rwAfter').inputValue(),'');
   await page.locator('#rwBefore').fill('8.5');await page.locator('#rwAfter').fill('3.5');await page.locator('#rwCriterion').fill('合成测试：按已确认工况与标准');await page.selectOption('#rwPass','true');await page.locator('#modalConfirm').click();
   await page.waitForSelector('.ux-submit-error');assert.equal(await page.locator('#rwBefore').inputValue(),'8.5');assert.equal(repairRecord.retests.length,0);
@@ -155,6 +162,10 @@ test('central UI restores charts and real feature renderers without probing glob
   await page.locator('[data-action="repairClose"]').click();await page.selectOption('#rwDecision','RESTRICTED');await page.locator('#rwRecovery').fill('合成测试：限制使用，待调度确认');await page.locator('#rwConclusion').fill('合成测试：本轮复测合格');await page.locator('#modalConfirm').click();
   await page.waitForSelector('#modal[aria-hidden="true"]',{state:'attached'});assert.equal(repairRecord.recoveryDecision,'RESTRICTED');assert.equal(savedOrders[0].status,'已关闭');
   assert.match(await page.locator('#drawerBody').innerText(),/verified-fixture/);assert.match(await page.locator('#drawerBody').innerText(),/8.5 → 3.5 ℃/);assert.match(await page.locator('#drawerBody').innerText(),/限制使用/);await page.screenshot({path:path.join(screen,'requirements-repair-history.png'),fullPage:true});await page.locator('#drawerClose').click();
+  await page.evaluate(()=>setPage('maintenance-plan'));await page.waitForSelector('.calendar-panel [data-action="openOrderRepair"]');
+  await page.waitForTimeout(400);await page.locator('.calendar-panel').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(screen,'integrated-maintenance-calendar.png'),fullPage:true});
+  await page.locator('.calendar-panel [data-action="openOrderRepair"]').click();await page.waitForSelector('#drawerBody .workflow-measurement');
+  assert.match(await page.locator('#drawerBody').innerText(),/8.5 → 3.5 ℃/);assert.match(await page.locator('#drawerBody').innerText(),/已结束/);await page.locator('#drawerClose').click();
   // Authoritative scope switches invalidate return context and never submit globally.
   currentScope={mode:'GLOBAL',source:'IAM_VERIFIED_CONTEXT',active:[]};
   await page.evaluate(async()=>{await EhmAuth.refresh();setPage('fleet');});await page.waitForSelector('#deviceKeyword');await page.waitForTimeout(150);

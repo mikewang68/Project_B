@@ -1,0 +1,6 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const m=require('../web/integrated-workspace.js'),w=require('../web/maintenance-workspace.js');
+test('calendar windows are local calendar months and invalid month is rejected',()=>{const r=m.monthWindow('2026-11');assert.equal(new Date(r.from).getDate(),1);assert.equal(new Date(r.to).getMonth(),11);assert.throws(()=>m.monthWindow('2026-13'));});
+test('calendar filters same saved events without changing original records',()=>{const rows=[{id:'A',kind:'EXECUTION',at:new Date(2026,10,17,12).toISOString()},{id:'B',kind:'RETEST',at:new Date(2026,10,18,12).toISOString()}];assert.equal(m.visible(rows,'2026-11-17','EXECUTION')[0].id,'A');assert.equal(m.visible(rows,'2026-11-17','RETEST').length,0);assert.equal(rows.length,2);});
+test('failed verification exposes a return to execution rather than a dead end',()=>{assert.ok(w.transitions({status:'WAITING_VERIFY'}).some(t=>t[0]==='执行中'));assert.ok(w.transitions({status:'ON_HOLD'}).some(t=>t[0]==='执行中'));assert.deepEqual(w.transitions({status:'CLOSED'}),[]);});
+test('submitted order keeps explicit approve and reject steps',()=>{assert.deepEqual(w.transitions({status:'SUBMITTED'}).map(t=>t[0]),['待执行','已驳回']);});

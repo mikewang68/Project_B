@@ -220,7 +220,7 @@
     const devicePages=new Set(['fleet','asset-tree','asset-profile','asset-detail','realtime','diagnosis','data-quality','bom','measurement','health','baseline','degradation','rul','maintenance-advice','strategy','maintenance-plan','inspection','workorders','evidence','rootcause','repair-retest','sensor-cal','config-change']);
     if(devicePages.has(page)&&['fleet','asset-tree','asset-profile'].some(p=>policy.page(auth,p)))requests.push(['devices',list('/devices')]);
     if(['alarm-center','evidence','rootcause','repair-retest','asset-detail'].includes(page)&&policy.page(auth,'alarm-center'))requests.push(['alarms',list('/alarms')]);
-    if(['workorders','repair-retest','spares','asset-detail'].includes(page)&&policy.page(auth,'workorders'))requests.push(['orders',list('/work-orders')]);
+    if(['workorders','repair-retest','spares','asset-detail','maintenance-plan'].includes(page)&&policy.page(auth,'workorders'))requests.push(['orders',list('/work-orders')]);
     if(page==='dashboard'&&policy.page(auth,'dashboard')){
       requests.push(['summary',request('/dashboard/summary')]);
       requests.push(['overview',request('/analytics/overview?days=30')]);

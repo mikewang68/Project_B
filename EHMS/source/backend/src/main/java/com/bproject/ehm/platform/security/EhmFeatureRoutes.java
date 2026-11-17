@@ -80,6 +80,7 @@ public final class EhmFeatureRoutes {
             return rule("maintenance-advice","CONFIRM","ehealth:health:suggest:execute");
         if(p.matches("health-assessments/[^/]+/work-order")&&method.equals("POST"))
             return rule("maintenance-advice","ADD","ehealth:maint:order:execute");
+        if(p.equals("maintenance-calendar")&&read)return rule("maintenance-plan,repair-retest","VIEW","ehealth:maint:plan:view");
         if(p.equals("maintenance-plans")&&read)return rule("strategy,maintenance-plan,inspection","VIEW","ehealth:maint:plan:view");
         if(p.equals("maintenance-plans")&&method.equals("POST"))return rule("strategy","ADD","ehealth:maint:strategy:add");
         if(p.matches("maintenance-plans/[^/]+/inspection-tasks")&&method.equals("POST"))return rule("maintenance-plan","ADD","ehealth:maint:check:execute");

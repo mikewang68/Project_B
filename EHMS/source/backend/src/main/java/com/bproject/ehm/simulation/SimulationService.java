@@ -85,6 +85,12 @@ public class SimulationService {
         }else if(!mode.equals("isolated")||!project.startsWith("SIM_")||!samples||!adapter.equals("sample")||!auditEndpoint.isBlank()||ai)
             throw new IllegalStateException("模拟运行仅允许SIM_隔离项目、sample时序、禁用外部日志投递与AI；拒绝连接现场/公共链");
     }
+    /** Independent demo worker; retains the original legacy instance and its configuration. */
+    public SimulationService regionalDemo(ObjectMapper mapper){
+        var result=new SimulationService(store,tx,quality,health,audit,mapper,"PROJECT_B","PROJECT_B",false,"openGemini","",false,"shared-synthetic",true,"openGauss");
+        result.backgroundAuthMode="DEMO_SERVICE";result.backgroundRegion=SimulationRunScope.REGION;
+        result.backgroundSubject=SimulationRunScope.SUBJECT;result.backgroundSession="";return result;
+    }
     @PostConstruct void initializeController(){
         validateBackgroundExecution();
         scoped(()->{tx.executeWithoutResult(s->store.insertIfAbsent("simulation-control","control",
@@ -192,7 +198,7 @@ public class SimulationService {
             if(old.isPresent())return Map.of("replayed",true,"round",old.get());
             var c=control();
             if(!c.initialized())throw new IllegalStateException("请先初始化场景");
-            if(c.ticks()>=8640)throw new IllegalStateException("本地演练已达8640轮容量保护上限，请导出验收资料后人工安排新场景");
+            if(c.ticks()>=8640&&!"DEMO_SERVICE".equals(backgroundAuthMode))throw new IllegalStateException("本地演练已达8640轮容量保护上限，请导出验收资料后人工安排新场景");
             Instant now=Instant.now();
             if(scheduled&&(!c.running()||c.nextTickAt()==null||now.isBefore(c.nextTickAt())))return Map.of("skipped",true);
             Round round=advance(c,now);
@@ -325,6 +331,8 @@ public class SimulationService {
     }
     private void dailyRecords(SimulationCatalog.Entry e,long day,Instant now){
         String code=e.assetCode(),id=code+"-DAY"+day;var plan=store.find("maintenance-plan",code+"-PLAN",MaintenancePlan.class).orElseThrow();
+        if("DEMO_SERVICE".equals(backgroundAuthMode)&&store.findAll("inspection-task",InspectionTask.class).stream().anyMatch(t->t.planId().equals(plan.planId())
+                &&Set.of(InspectionTaskStatus.PLANNED,InspectionTaskStatus.IN_PROGRESS).contains(t.status())))return;
         var task=InspectionTask.create(id,plan,now,"虚拟巡检班",now);
         write("inspection-task",id,task,"CREATE","虚拟第"+day+"运行日点检任务");
         if(day%7==0&&e.scopeCode().equals("EQ-IMG-01")){

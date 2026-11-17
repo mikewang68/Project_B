@@ -10,7 +10,7 @@
     if(EhmAuth.menuOperations!=null)return action==='VIEW'?EhmCentralPolicy.page(EhmAuth,'asset-profile'):EhmCentralPolicy.action(EhmAuth,action==='DELETE'?'archiveAsset':'editAsset');
     return action==='VIEW'?true:EhmAuth.canWrite();
   }
-  function chosen(){if(!EQUIPMENT.some(e=>e.code===d.code))d.code=EQUIPMENT.find(e=>e.code===state.asset)?.code||EQUIPMENT[0]?.code||'';return EQUIPMENT.find(e=>e.code===d.code);}
+  function chosen(){if(!EQUIPMENT.some(e=>e.code===d.code)){d.code=EQUIPMENT.find(e=>e.code===state.asset)?.code||EQUIPMENT[0]?.code||'';d.seq++;d.value=null;d.due=null;d.error='';d.loading=false;}return EQUIPMENT.find(e=>e.code===d.code);}
   function path(suffix=''){return '/devices/'+encodeURIComponent(d.code)+'/dossier'+suffix;}
   function btn(label,action,primary=false,disabled=false){return `<button type="button" class="button${primary?' primary':''}" data-dossier-action="${action}" ${disabled?'disabled':''}>${label}</button>`;}
   function facts(){const v=d.value;return `<section class="panel dossier-section"><div class="panel-head"><div><h2>设备身份与现场映射</h2><p>未知信息保留为空，不从其他设备复制厂家参数。</p></div>${may('EDIT')?btn('编辑档案','edit',true):'<span class="muted">当前为只读权限</span>'}</div><dl class="dossier-facts">${[['制造厂家',v.manufacturer],['规格型号',v.model],['序列号',v.serialNumber],['投运日期',v.commissionedOn],['工艺位置',v.processPosition],['厂家设备编号',v.externalCode]].map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v||'待提供')}</dd></div>`).join('')}</dl><p class="dossier-note">${esc(v.notes||'尚无补充说明。设备运行状态以厂家反馈和有效测点为准，档案不执行设备控制。')}</p></section>`;}

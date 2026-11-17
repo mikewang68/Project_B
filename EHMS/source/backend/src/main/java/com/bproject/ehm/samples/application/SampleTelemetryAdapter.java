@@ -22,7 +22,7 @@ public class SampleTelemetryAdapter implements TelemetrySeriesPort {
         if(!sample.pointCode().startsWith("SAMPLE-")||!sample.assetCode().startsWith("SAMPLE-"))
             throw new IllegalArgumentException("Synthetic adapter only accepts SAMPLE- points and assets");
         var marked=new TelemetrySample(sample.pointCode(),sample.assetCode(),sample.metric(),sample.unit(),sample.value(),
-                "SYNTHETIC_"+sample.quality().replace("SYNTHETIC_",""),sample.sourceTimestamp(),sample.receivedAt());
+                "SYNTHETIC_"+sample.quality().replace("SYNTHETIC_",""),sample.sourceTimestamp(),sample.receivedAt(),sample.eventId(),true,sample.observationRef());
         store.save("sample-telemetry",sample.pointCode()+":"+sample.sourceTimestamp(),marked);
     }
     public List<TelemetrySample> history(String code,Instant from,Instant to,int limit){

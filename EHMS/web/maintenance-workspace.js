@@ -3,6 +3,7 @@
   const labels={DRAFT:'草稿',SUBMITTED:'待审批',APPROVED:'待执行',IN_PROGRESS:'执行中',WAITING_VERIFY:'待复测',CLOSED:'已关闭',REJECTED:'已驳回',ON_HOLD:'已暂停',CANCELLED:'已取消'};
   const status=w=>labels[w.status]||w.status||'未知状态';
   function nextStep(w){return ({'草稿':['待审批','提交审批'],'待审批':['待执行','审批通过'],'待执行':['执行中','开始维修'],'执行中':['待复测','提交复测'],'待复测':['已关闭','复核与关闭']})[status(w)]||null;}
+  function transitions(w){const next=nextStep(w);return [...(next?[next]:[]),...(({'待审批':[['已驳回','驳回']], '待执行':[['已暂停','暂停安排']], '执行中':[['已暂停','暂停执行']], '待复测':[['执行中','返修 / 补充执行']], '已暂停':[['执行中','恢复执行']], '已驳回':[['草稿','退回草稿']]})[status(w)]||[])];}
   function filtered(orders,query={}){const key=String(query.keyword||'').trim().toLowerCase();return orders.filter(w=>(!query.status||status(w)===query.status)&&(!key||[w.orderNo,w.deviceCode,w.deviceName,w.title,w.assignee,w.source].some(v=>String(v||'').toLowerCase().includes(key))));}
   const requirements=[
     {id:'R-E01',title:'设备台账与资料',roles:'设备管理员维护，运维人员查询',input:'统一设备编码、部件/测点编码、单位、本设备厂家资料及版本',page:'asset-profile',purpose:'找到正确设备的部件、测点含义和资料来源',trigger:'查设备或新增接入',steps:'选设备→核对基础档案→查部件和测点→核对资料版本与来源',rules:'编码唯一；未知厂家参数保持缺项；不替换为相似设备',failure:'未绑定或缺资料时明确提示，不生成假的厂家参数',boundary:'工程模拟采集组不等于厂家BOM，真实编码和参数需业务方提供',expected:'同一设备的编码、部件、测点单位和资料来源一致；查错设备不能跳到另一台'},
@@ -24,7 +25,7 @@
   }
   const featureMap={'R-E01':'F-E01','R-E02':'F-E08 / F-E02 / F-E19','R-E03':'F-E22 / F-E03 / F-E20','R-E04':'F-E04 / F-E21','R-E05':'F-E05 / F-E14 / F-E15 / F-E13','R-E06':'F-E10 / F-E02 / F-E11 / F-E12 / F-E13','R-E07':'F-E02 / F-E16 / F-E17 / F-E18','R-E08':'F-E09；DTS协作 F-D03 / F-D05'};
   for(const r of requirements)r.features=featureMap[r.id];
-  const api={status,nextStep,filtered,requirements,repairGate};
+  const api={status,nextStep,transitions,filtered,requirements,repairGate};
   if(typeof module==='object'&&module.exports){module.exports=api;return;}
   const auth=root.EhmAuth,policy=root.EhmCentralPolicy;
   const pageState={keyword:'',status:'',page:1};
@@ -35,9 +36,7 @@
     const project=encodeURIComponent(auth.projectId||'PROJECT_B');
     return '<section class="maintenance-scope '+(r.allowed?'ready':'blocked')+'" role="status"><div><strong>'+esc(r.allowed?'当前可写区域：'+active.map(t=>t.regionId).join('、'):'当前为查看范围，暂不能审批或提交')+'</strong><p>'+esc(r.allowed?'按钮仍按当前账号的审批、执行和复核权限分别核验。':r.message)+'</p>'+(!r.allowed?'<p>在统一门户的“当前范围”选择一个完整的 <b>项目 / 区域 / EHMS</b>，点击“应用范围”；返回后点“刷新操作范围”。仅选择项目或全局查看不够。切换后数量变化是区域筛选，不是删除数据。</p>':'')+'</div><div class="inline-actions"><a class="button" href="https://bproject.de5.net/portal/?projectId='+project+'" target="_blank" rel="noopener">到统一门户选择区域</a><button class="button" id="mwRefreshScope" type="button">刷新操作范围</button></div></section>';
   }
-  function actionButtons(w){const next=nextStep(w),r=readiness(),native=next&&policy.action(auth,'advanceWork',next[0],'workorders');
-    return '<button class="table-action" data-action="openOrderRepair" data-id="'+esc(w.orderNo)+'">维修 / 复测 / 履历</button>'+(next?'<button class="button small" data-action="advanceWork" data-id="'+esc(w.orderNo)+'" data-status="'+esc(next[0])+'" '+(!r.allowed||!native?'disabled':'')+' title="'+esc(!r.allowed?r.message:!native?'当前账号未获此审批或执行动作':'')+'">'+esc(next[1])+'</button>':'');
-  }
+  function actionButtons(w){const r=readiness();return '<button class="table-action" data-action="openOrderRepair" data-id="'+esc(w.orderNo)+'">维修 / 复测 / 履历</button>'+transitions(w).map(([target,label])=>{const allowed=policy.action(auth,'advanceWork',target,'workorders');return '<button class="button small" data-action="advanceWork" data-id="'+esc(w.orderNo)+'" data-status="'+esc(target)+'" '+(!r.allowed||!allowed?'disabled':'')+' title="'+esc(!r.allowed?r.message:!allowed?'当前账号未获此动作授权':'')+'">'+esc(label)+'</button>';}).join('');}
   const oldMaintenance=renderMaintenanceLive;
   renderMaintenanceLive=function(){if(state.page!=='workorders')return oldMaintenance();const rows=filtered(WORK_ORDERS,pageState),pages=Math.max(1,Math.ceil(rows.length/20));pageState.page=Math.min(pageState.page,pages);
     const visible=rows.slice((pageState.page-1)*20,pageState.page*20);
@@ -51,8 +50,8 @@
   const oldAdvance=advanceWorkOrder;
   advanceWorkOrder=function(no,target){const r=readiness();if(!r.allowed){toast(r.message);return;}if(['已关闭','CLOSED'].includes(target))return oldAdvance(no,target);
     const w=WORK_ORDERS.find(w=>w.orderNo===no);if(!w)return toast('工单已不在当前列表，请刷新');
-    const step=nextStep(w);if(!step||step[0]!==target)return toast('状态已变化，请刷新核对');
-    openModal('工单状态流转',step[1]+' · '+no,'<p>设备：'+esc(w.deviceCode)+' · 责任班组：'+esc(w.assignee)+'</p><p>当前：'+esc(status(w))+' → '+esc(target)+'</p><div class="field"><label for="mwTransitionReason">本次审批或流转的实际依据</label><textarea id="mwTransitionReason" required></textarea></div><p class="muted">签名由服务器绑定真实登录账号；审批不会自动执行设备控制。</p>','确认'+step[1],async()=>{const current=readiness();if(!current.allowed)throw Error(current.message);await apiRequest('/work-orders/'+encodeURIComponent(no)+'/status',{method:'PATCH',body:JSON.stringify({status:target,reason:value('mwTransitionReason')})});await loadBackendData();toast('工单已'+step[1]+'，可继续下一步');return true;});
+    const step=transitions(w).find(t=>t[0]===target);if(!step)return toast('状态已变化，请刷新核对');
+    openModal('工单状态流转',step[1]+' · '+no,'<p>设备：'+esc(w.deviceCode)+' · 责任班组：'+esc(w.assignee)+'</p><p>当前：'+esc(status(w))+' → '+esc(target)+'</p><div class="field"><label for="mwTransitionReason">本次审批或流转的实际依据</label><textarea id="mwTransitionReason" required></textarea></div><p class="muted">签名由服务器绑定真实登录账号；审批不会自动执行设备控制。</p>','确认'+step[1],async()=>{const current=readiness();if(!current.allowed)throw Error(current.message);if(!value('mwTransitionReason'))throw Error('请填写本次操作的实际依据');await apiRequest('/work-orders/'+encodeURIComponent(no)+'/status',{method:'PATCH',body:JSON.stringify({status:target,reason:value('mwTransitionReason')})});await loadBackendData();toast('工单已'+step[1]+'，可继续下一步');return true;});
   };
   function guide(){const scope=auth.dataScope,scopeLabel=scope?.mode==='GLOBAL'?'全局查看，业务写入须先选单一区域':scope?.active?.filter(t=>t.projectId===auth.projectId&&t.subsystemCode==='EHMS').map(t=>t.regionId).join('、')||'区域待核验';
     openDrawer('需求工作簿验收','R-E01 至 R-E08：按业务流程核对','<p>当前范围：'+esc(scopeLabel)+'</p><p>下列是验收用例，不是系统自动签收。应在隔离演示区进行带标识的操作，并以重新查询到的后端记录作为证据；不能只看按钮或示例文案。</p>'+requirements.map(r=>'<details class="acceptance-case" '+(r.id==='R-E05'?'open':'')+'><summary><strong>'+r.id+' · '+r.title+'</strong><span>'+esc(r.features)+' · 待按实际结果验证</span></summary><dl class="workflow-facts">'+[['业务目的',r.purpose],['使用人员',r.roles],['触发条件',r.trigger],['输入信息',r.input],['正常流程',r.steps],['业务规则',r.rules],['异常处理',r.failure],['系统边界',r.boundary],['完成判据',r.expected]].map(([k,v])=>'<dt>'+k+'</dt><dd>'+esc(v)+'</dd>').join('')+'</dl>'+gotoButton('进入对应功能',r.page)+'</details>').join(''));
