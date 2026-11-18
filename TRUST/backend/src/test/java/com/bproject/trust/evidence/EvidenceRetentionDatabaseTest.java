@@ -34,6 +34,60 @@ class EvidenceRetentionDatabaseTest {
     return new EvidenceService(jdbc, mock(EvidenceStorage.class), root.toString());
   }
 
+  @Test
+  @Timeout(90)
+  void concurrentDiskBackedBoundaryUploadsKeepOriginalsAndRegisterOnce() throws Exception {
+    Path input = root.resolve("boundary.pdf");
+    try (var disk = new java.io.RandomAccessFile(input.toFile(), "rw")) {
+      disk.write("%PDF-1.4\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+      disk.setLength(20L * 1024 * 1024);
+    }
+    var file = mock(org.springframework.web.multipart.MultipartFile.class);
+    when(file.getSize()).thenReturn(Files.size(input));
+    when(file.getOriginalFilename()).thenReturn("boundary.pdf");
+    when(file.getBytes()).thenAnswer(invocation -> {
+      try (var stream = new java.io.FileInputStream(input.toFile())) {
+        return stream.readAllBytes();
+      }
+    });
+    String expectedSha = com.bproject.trust.shared.json.Json.sha(Files.readAllBytes(input));
+    var receiver = service(db);
+    var pool = java.util.concurrent.Executors.newFixedThreadPool(16);
+    var start = new java.util.concurrent.CountDownLatch(1);
+    var jobs = new ArrayList<java.util.concurrent.Future<Map<String, Object>>>();
+    try {
+      for (int i = 0; i < 16; i++) jobs.add(pool.submit(() -> {
+        start.await();
+        return receiver.upload(file, "RETENTION", "receiver");
+      }));
+      start.countDown();
+      var ids = new HashSet<String>();
+      for (var job : jobs) {
+        var receipt = job.get(60, java.util.concurrent.TimeUnit.SECONDS);
+        String id = (String) receipt.get("id");
+        assertTrue(ids.add(id));
+        assertEquals(20L * 1024 * 1024, ((Number) receipt.get("size_bytes")).longValue());
+        assertEquals(expectedSha, receipt.get("sha256"));
+        assertEquals(expectedSha, com.bproject.trust.shared.json.Json.sha(
+            Files.readAllBytes(root.resolve("runtime/staging").resolve(id))));
+        assertEquals(1, db.queryForObject(
+            "SELECT count(*) FROM evidence WHERE id=?", Integer.class, id));
+      }
+      assertEquals(16, ids.size());
+      assertTrue(receiver.reconcile(false).stream()
+          .allMatch(receipt -> "REGISTERED".equals(receipt.get("status"))));
+      var oversized = mock(org.springframework.web.multipart.MultipartFile.class);
+      when(oversized.getSize()).thenReturn(20L * 1024 * 1024 + 1);
+      assertThrows(com.bproject.trust.shared.web.ApiError.class,
+          () -> receiver.upload(oversized, "RETENTION", "receiver"));
+      verify(oversized, never()).getBytes();
+    } finally {
+      start.countDown();
+      pool.shutdownNow();
+      assertTrue(pool.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS));
+    }
+  }
+
   String receivedId() throws Exception {
     try (var files = Files.list(root.resolve("runtime/staging"))) {
       return files

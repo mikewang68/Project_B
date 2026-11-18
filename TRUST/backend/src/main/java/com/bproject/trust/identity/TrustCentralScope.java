@@ -10,6 +10,11 @@ import java.util.*;
 public final class TrustCentralScope {
     private TrustCentralScope(){}
     private static final ThreadLocal<UserContext> CURRENT=new ThreadLocal<>();
+    private static final ThreadLocal<ScopeTriple> SOURCE=new ThreadLocal<>();
+    public static AutoCloseable bindSource(ScopeTriple scope){
+        var old=SOURCE.get();if(scope==null)SOURCE.remove();else SOURCE.set(scope);
+        return ()->{if(old==null)SOURCE.remove();else SOURCE.set(old);};
+    }
     public static UserContext current(){return CURRENT.get();}
     public static AutoCloseable bind(UserContext context){var old=CURRENT.get();if(context==null)CURRENT.remove();else CURRENT.set(context);return ()->{if(old==null)CURRENT.remove();else CURRENT.set(old);};}
     public static UserContext validate(JsonNode assertion,String subject){
@@ -21,11 +26,14 @@ public final class TrustCentralScope {
     }
     public enum Root {EVENT("events"),EVIDENCE("evidence");final String table;Root(String table){this.table=table;}}
     public static String predicate(Root root,String outer){
-        var c=current();if(c==null)return "";
+        var c=current();var source=SOURCE.get();if(c==null&&source==null)return "";
         if(!Set.of("events_read","evidence_read","e","v").contains(outer))throw new IllegalArgumentException("Unregistered SQL alias");
+        if(source!=null)return " AND EXISTS(SELECT 1 FROM "+root.table+" o WHERE o.id="+outer+".id"
+            +ScopeSql.build(ScopeSql.Mode.SCOPED,List.of(source),ScopeSql.Columns.ORDER).my_info()+") ";
         return " AND EXISTS(SELECT 1 FROM "+root.table+" o WHERE o.id="+outer+".id"+ScopeSql.build(c.scopeMode(),c.activeScope(),ScopeSql.Columns.ORDER).my_info()+") ";
     }
     public static ScopeTriple writeTuple(){
+        if(SOURCE.get()!=null)return SOURCE.get();
         var c=current();if(c==null)return null;
         if(c.readOnly()||c.scopeMode()!=ScopeSql.Mode.SCOPED||c.activeScope().size()!=1)throw new ApiError(403,"写入须选择唯一授权范围");
         return c.activeScope().get(0);

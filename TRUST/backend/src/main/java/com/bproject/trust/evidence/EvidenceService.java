@@ -39,69 +39,71 @@ public class EvidenceService {
   public Map<String, Object> upload(MultipartFile file, String org, String actor) throws Exception {
     if (file.isEmpty() || file.getSize() > 20L * 1024 * 1024)
       throw new ApiError(413, "文件为空或超过 20 MiB");
-    byte[] bytes = file.getBytes();
-    if (bytes.length > 20L * 1024 * 1024) throw new ApiError(413, "文件超过 20 MiB");
-    String mime = detect(bytes);
-    String filename =
-        Objects.requireNonNullElse(file.getOriginalFilename(), "evidence").replace('\\', '/');
-    filename = filename.substring(filename.lastIndexOf('/') + 1).replaceAll("[\\p{Cntrl}]", "_");
-    if (filename.isBlank() || filename.length() > 240) throw new ApiError(400, "文件名无效");
     long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(30);
     if (!uploadLock.tryLock(30, java.util.concurrent.TimeUnit.SECONDS))
       throw new ApiError(503, "接收队列繁忙，请稍后重试");
-    try (var mutex =
-        com.bproject.trust.shared.DatabaseMutex.acquire(db, "staging:primary", deadline)) {
-      long retained =
-          db.queryForObject("SELECT COALESCE(SUM(size_bytes),0) FROM evidence", Long.class);
-      var registered =
-          new java.util.HashSet<>(db.queryForList("SELECT id FROM evidence", String.class));
-      try (var paths = Files.newDirectoryStream(staging)) {
-        for (var path : paths) {
-          String name = path.getFileName().toString();
-          if ((name.matches("[a-f0-9-]{36}") && !registered.contains(name))
-              || name.endsWith(".part")) {
-            if (Files.isSymbolicLink(path)) throw new ApiError(503, "暂存目录需要人工核查");
-            retained = Math.addExact(retained, Files.size(path));
+    try {
+      byte[] bytes = file.getBytes();
+      if (bytes.length > 20L * 1024 * 1024) throw new ApiError(413, "文件超过 20 MiB");
+      String mime = detect(bytes);
+      String filename =
+          Objects.requireNonNullElse(file.getOriginalFilename(), "evidence").replace('\\', '/');
+      filename = filename.substring(filename.lastIndexOf('/') + 1).replaceAll("[\\p{Cntrl}]", "_");
+      if (filename.isBlank() || filename.length() > 240) throw new ApiError(400, "文件名无效");
+      try (var mutex =
+          com.bproject.trust.shared.DatabaseMutex.acquire(db, "staging:primary", deadline)) {
+        long retained =
+            db.queryForObject("SELECT COALESCE(SUM(size_bytes),0) FROM evidence", Long.class);
+        var registered =
+            new java.util.HashSet<>(db.queryForList("SELECT id FROM evidence", String.class));
+        try (var paths = Files.newDirectoryStream(staging)) {
+          for (var path : paths) {
+            String name = path.getFileName().toString();
+            if ((name.matches("[a-f0-9-]{36}") && !registered.contains(name))
+                || name.endsWith(".part")) {
+              if (Files.isSymbolicLink(path)) throw new ApiError(503, "暂存目录需要人工核查");
+              retained = Math.addExact(retained, Files.size(path));
+            }
           }
         }
-      }
-      if (retained + bytes.length > 10L * 1024 * 1024 * 1024
-          || Files.getFileStore(staging).getUsableSpace() < bytes.length + 512L * 1024 * 1024)
-        throw new ApiError(503, "证据暂存容量不足，文件未确认接收");
-      String id = UUID.randomUUID().toString();
-      var receipt = new java.util.LinkedHashMap<String, Object>();
-      receipt.put("id", id);
-      receipt.put("org_id", org);
-      receipt.put("uploaded_by", actor);
-      receipt.put("filename", filename);
-      receipt.put("mime", mime);
-      receipt.put("size_bytes", bytes.length);
-      receipt.put("sha256", Json.sha(bytes));
-      receipt.put("created_at", java.time.Instant.now().toString());
-      Path temp = staging.resolve(id + ".part"), dest = staging.resolve(id);
-      Path manifestTemp = staging.resolve(id + ".receipt.part"),
-          manifest = staging.resolve(id + ".receipt.json");
-      try {
-        durableWrite(
-            manifestTemp, Json.write(receipt).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        Files.move(manifestTemp, manifest, StandardCopyOption.ATOMIC_MOVE);
-        syncDirectory();
-        durableWrite(temp, bytes);
-        Files.move(temp, dest, StandardCopyOption.ATOMIC_MOVE);
-        syncDirectory();
-        register(receipt);
-        receipt.put("cid", null);
-        receipt.put("storage_state", "PENDING");
-        return receipt;
-      } catch (Exception e) {
-        // A final file may already be committed or its DB outcome may be unknown. Never remove it.
+        if (retained + bytes.length > 10L * 1024 * 1024 * 1024
+            || Files.getFileStore(staging).getUsableSpace() < bytes.length + 512L * 1024 * 1024)
+          throw new ApiError(503, "证据暂存容量不足，文件未确认接收");
+        String id = UUID.randomUUID().toString();
+        var receipt = new java.util.LinkedHashMap<String, Object>();
+        receipt.put("id", id);
+        receipt.put("org_id", org);
+        receipt.put("uploaded_by", actor);
+        receipt.put("filename", filename);
+        receipt.put("mime", mime);
+        receipt.put("size_bytes", bytes.length);
+        receipt.put("sha256", Json.sha(bytes));
+        receipt.put("created_at", java.time.Instant.now().toString());
+        Path temp = staging.resolve(id + ".part"), dest = staging.resolve(id);
+        Path manifestTemp = staging.resolve(id + ".receipt.part"),
+            manifest = staging.resolve(id + ".receipt.json");
         try {
-          Files.deleteIfExists(temp);
-          Files.deleteIfExists(manifestTemp);
-        } catch (Exception cleanup) {
-          e.addSuppressed(cleanup);
+          durableWrite(
+              manifestTemp, Json.write(receipt).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+          Files.move(manifestTemp, manifest, StandardCopyOption.ATOMIC_MOVE);
+          syncDirectory();
+          durableWrite(temp, bytes);
+          Files.move(temp, dest, StandardCopyOption.ATOMIC_MOVE);
+          syncDirectory();
+          register(receipt);
+          receipt.put("cid", null);
+          receipt.put("storage_state", "PENDING");
+          return receipt;
+        } catch (Exception e) {
+          // A final file may already be committed or its DB outcome may be unknown. Never remove it.
+          try {
+            Files.deleteIfExists(temp);
+            Files.deleteIfExists(manifestTemp);
+          } catch (Exception cleanup) {
+            e.addSuppressed(cleanup);
+          }
+          throw e;
         }
-        throw e;
       }
     } finally {
       uploadLock.unlock();
@@ -112,7 +114,12 @@ public class EvidenceService {
     try (var channel =
         FileChannel.open(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
       var buffer = ByteBuffer.wrap(bytes);
-      while (buffer.hasRemaining()) channel.write(buffer);
+      // FileChannel caches a temporary direct buffer per request thread. Bound each write
+      // so serialized uploads cannot leave one whole-file native buffer on every thread.
+      while (buffer.position() < bytes.length) {
+        buffer.limit(Math.min(bytes.length, buffer.position() + 64 * 1024));
+        while (buffer.hasRemaining()) channel.write(buffer);
+      }
       channel.force(true);
     }
   }
