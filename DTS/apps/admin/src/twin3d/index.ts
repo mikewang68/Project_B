@@ -14,6 +14,7 @@ import {
 import { GltfModelProvider, type StaticSiteAsset } from './models/gltfModelProvider'
 import { VehicleRouteAnimator, type VehiclePose } from './vehicleAnimator'
 import { VEHICLE_ROUTES } from './vehicleRoutes'
+import type { ProcessHighlightState } from './processTypes'
 
 export interface SelectedInfo {
   id: string
@@ -40,14 +41,31 @@ export class Twin3dController {
   private vehicleAnimator: VehicleRouteAnimator | null = null
   private gltfProvider: GltfModelProvider | null = null
 
-  // Dynamic process visualizers (bulk air-slide stream, silo spout stream, safety gap line)
+  // Dynamic process visualizers (bulk air-slide stream, silo spout stream, laser safety beam, electronic fences, weighbridge & bay alerts)
   private elevFlowEntity: Cesium.Entity | null = null
   private slideFlowEntity: Cesium.Entity | null = null
   private spoutStreamEntity: Cesium.Entity | null = null
   private gapIndicatorEntity: Cesium.Entity | null = null
+  private laserBeamEntity: Cesium.Entity | null = null
+  private loadingFenceEntity: Cesium.Entity | null = null
+  private underSiloFenceEntity: Cesium.Entity | null = null
+  private wbInHighlightEntity: Cesium.Entity | null = null
+  private wbOutHighlightEntity: Cesium.Entity | null = null
+  private bayWarningEntity: Cesium.Entity | null = null
   private siloHighlightEntity: Cesium.Entity | null = null
+  private renderPumpRaf: number | null = null
+  private renderPumpTimers: Array<ReturnType<typeof setTimeout>> = []
+  private lastLabelTexts = {
+    gap: '',
+    gapColor: '',
+    fence: '',
+    underFence: '',
+    wbIn: '',
+    wbOut: '',
+    bayWarn: '',
+  }
   private selectedSiloPos = { cadX: SITE_LAYOUT_V4.ash.silos[0].cadX, cadY: SITE_LAYOUT_V4.ash.silos[0].cadY }
-  private processHighlight = {
+  private processHighlight: ProcessHighlightState = {
     elevatorActive: false,
     airSlideActive: false,
     spoutActive: false,
@@ -56,6 +74,18 @@ export class Twin3dController {
     antiCollisionActive: false,
     gapLabelPos: { cadX: 3800, cadY: 1525 },
     gapDistanceM: 28.5,
+    laserFromPos: null,
+    laserTargetPos: null,
+    fenceActive: false,
+    fencePos: { cadX: SITE_LAYOUT_V4.rebar.bays[6].cadX, cadY: SITE_LAYOUT_V4.rebar.truckLoadingY },
+    fenceLabel: '',
+    underSiloFenceActive: false,
+    underSiloFencePos: { cadX: SITE_LAYOUT_V4.ash.silos[0].cadX, cadY: SITE_LAYOUT_V4.ash.silos[0].cadY },
+    underSiloFenceText: '',
+    wbInText: '',
+    wbOutText: '',
+    bayWarningPos: null,
+    bayWarningText: '',
   }
 
   constructor(viewer: Cesium.Viewer, options: Twin3dControllerOptions = {}) {
@@ -132,18 +162,18 @@ export class Twin3dController {
       },
     })
 
-    // 2. Under-Silo Spout Powder Discharge Stream
+    // 2. Under-Silo Spout Powder Discharge Stream (aligned with telescoping dust skirt 5.0m -> tank dome 3.65m)
     this.spoutStreamEntity = this.dataSource.entities.add({
       id: 'BULK-FLOW-SPOUT',
       show: false,
       polyline: {
         positions: new Cesium.CallbackProperty(() => [
-          cadToCartesian3(this.processHighlight.spoutX, this.processHighlight.spoutY, 5.4),
-          cadToCartesian3(this.processHighlight.spoutX, this.processHighlight.spoutY, 3.1),
+          cadToCartesian3(this.processHighlight.spoutX, this.processHighlight.spoutY, 5.1),
+          cadToCartesian3(this.processHighlight.spoutX, this.processHighlight.spoutY, 3.65),
         ], false),
-        width: 10,
+        width: 12,
         material: new Cesium.PolylineGlowMaterialProperty({
-          glowPower: 0.55,
+          glowPower: 0.65,
           color: Cesium.Color.fromCssColorString('#F5B84C'),
         }),
       },
@@ -158,25 +188,241 @@ export class Twin3dController {
         false,
       ) as unknown as Cesium.PositionProperty,
       label: {
-        text: new Cesium.CallbackProperty(
-          () => `防碰撞测距 ${this.processHighlight.gapDistanceM.toFixed(1)} m (${
-            this.processHighlight.gapDistanceM <= 6 ? '联锁停机' : this.processHighlight.gapDistanceM <= 15 ? '预警减速' : '安全'
-          })`,
-          false,
-        ),
+        text: '防碰撞测距 28.5 m (安全)',
         font: '600 12px Microsoft YaHei',
-        fillColor: new Cesium.CallbackProperty(() =>
-          Cesium.Color.fromCssColorString(
-            this.processHighlight.gapDistanceM <= 6 ? '#EF4444' : this.processHighlight.gapDistanceM <= 15 ? '#F5B84C' : '#34D399',
-          ),
-          false,
-        ),
+        fillColor: Cesium.Color.fromCssColorString('#34D399'),
+        outlineColor: Cesium.Color.fromCssColorString('#020A17'),
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
         backgroundColor: Cesium.Color.fromCssColorString('#051424').withAlpha(0.88),
         showBackground: true,
         backgroundPadding: new Cesium.Cartesian2(8, 4),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
     })
+
+    // 3b. Dynamic 3D SCS Anti-Collision Laser Scan Beam
+    this.laserBeamEntity = this.dataSource.entities.add({
+      id: 'SCS-LASER-BEAM',
+      show: false,
+      polyline: {
+        positions: new Cesium.CallbackProperty(() => {
+          const from = this.processHighlight.laserFromPos
+          const to = this.processHighlight.laserTargetPos
+          if (!from || !to) return []
+          return [
+            cadToCartesian3(from.cadX, from.cadY, from.cadZ ?? 12.0),
+            cadToCartesian3(to.cadX, to.cadY, to.cadZ ?? 3.5),
+          ]
+        }, false),
+        width: 7,
+        material: new Cesium.PolylineGlowMaterialProperty({
+          glowPower: 0.65,
+          color: new Cesium.CallbackProperty(
+            () =>
+              Cesium.Color.fromCssColorString(
+                this.processHighlight.gapDistanceM <= 6
+                  ? '#EF4444'
+                  : this.processHighlight.gapDistanceM <= 15
+                    ? '#F5B84C'
+                    : '#34D399',
+              ),
+            false,
+          ),
+        }),
+      },
+    })
+
+    // 3c. Loading Bay Electronic Fence Perimeter
+    this.loadingFenceEntity = this.dataSource.entities.add({
+      id: 'SCS-LOADING-FENCE',
+      show: false,
+      position: new Cesium.CallbackPositionProperty(
+        () => cadToCartesian3(this.processHighlight.fencePos.cadX, this.processHighlight.fencePos.cadY, 1.5),
+        false,
+      ) as unknown as Cesium.PositionProperty,
+      box: {
+        dimensions: new Cesium.Cartesian3(19.0, 6.2, 3.0),
+        material: new Cesium.ColorMaterialProperty(
+          new Cesium.CallbackProperty(
+            () =>
+              Cesium.Color.fromCssColorString(
+                this.processHighlight.gapDistanceM <= 15 ? '#F5B84C' : '#00E5FF',
+              ).withAlpha(0.18),
+            false,
+          ) as unknown as Cesium.Color,
+        ),
+        outline: true,
+        outlineColor: new Cesium.CallbackProperty(
+          () =>
+            Cesium.Color.fromCssColorString(
+              this.processHighlight.gapDistanceM <= 15 ? '#FBBF24' : '#38BDF8',
+            ),
+          false,
+        ),
+      },
+      label: {
+        text: '装车电子围栏闭锁 · 司机离车确认',
+        font: '700 12px Microsoft YaHei',
+        fillColor: Cesium.Color.fromCssColorString('#FDE68A'),
+        outlineColor: Cesium.Color.fromCssColorString('#020A17'),
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        backgroundColor: Cesium.Color.fromCssColorString('#051424').withAlpha(0.9),
+        showBackground: true,
+        backgroundPadding: new Cesium.Cartesian2(8, 4),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -36),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    })
+
+    // 3d. Under-Silo Electronic Fence & Grounding Indicator
+    this.underSiloFenceEntity = this.dataSource.entities.add({
+      id: 'SILO-UNDER-FENCE',
+      show: false,
+      position: new Cesium.CallbackPositionProperty(
+        () => cadToCartesian3(this.processHighlight.underSiloFencePos.cadX, this.processHighlight.underSiloFencePos.cadY, 1.7),
+        false,
+      ) as unknown as Cesium.PositionProperty,
+      box: {
+        dimensions: new Cesium.Cartesian3(17.5, 5.2, 3.4),
+        material: new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#10B981').withAlpha(0.20)),
+        outline: true,
+        outlineColor: Cesium.Color.fromCssColorString('#34D399'),
+      },
+      label: {
+        text: '库底电子围栏闭锁 · 静电接地 < 4Ω',
+        font: '700 12px Microsoft YaHei',
+        fillColor: Cesium.Color.fromCssColorString('#6EE7B7'),
+        outlineColor: Cesium.Color.fromCssColorString('#020A17'),
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        backgroundColor: Cesium.Color.fromCssColorString('#051424').withAlpha(0.92),
+        showBackground: true,
+        backgroundPadding: new Cesium.Cartesian2(8, 4),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -42),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    })
+
+    // 3e. Weighbridge Scale Highlights (WB-TRUCK-02 Inbound & WB-TRUCK-01 Outbound)
+    const wbOut = SITE_LAYOUT_V4.weighbridges[0]
+    const wbIn = SITE_LAYOUT_V4.weighbridges[1]
+    this.wbInHighlightEntity = this.dataSource.entities.add({
+      id: 'WB-IN-HIGHLIGHT',
+      show: false,
+      position: cadToCartesian3(wbIn.cadX, wbIn.cadY, 0.75),
+      box: {
+        dimensions: new Cesium.Cartesian3(19.5, 5.8, 1.5),
+        material: new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#00E5FF').withAlpha(0.24)),
+        outline: true,
+        outlineColor: Cesium.Color.fromCssColorString('#38BDF8'),
+      },
+      label: {
+        text: 'WB-TRUCK-02 初磅过磅中',
+        font: '700 13px Microsoft YaHei',
+        fillColor: Cesium.Color.fromCssColorString('#7DD3FC'),
+        outlineColor: Cesium.Color.fromCssColorString('#020A17'),
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        backgroundColor: Cesium.Color.fromCssColorString('#051424').withAlpha(0.92),
+        showBackground: true,
+        backgroundPadding: new Cesium.Cartesian2(10, 5),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -90),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    })
+
+    this.wbOutHighlightEntity = this.dataSource.entities.add({
+      id: 'WB-OUT-HIGHLIGHT',
+      show: false,
+      position: cadToCartesian3(wbOut.cadX, wbOut.cadY, 0.75),
+      box: {
+        dimensions: new Cesium.Cartesian3(19.5, 5.8, 1.5),
+        material: new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#10B981').withAlpha(0.26)),
+        outline: true,
+        outlineColor: Cesium.Color.fromCssColorString('#34D399'),
+      },
+      label: {
+        text: 'WB-TRUCK-01 复磅计量中',
+        font: '700 13px Microsoft YaHei',
+        fillColor: Cesium.Color.fromCssColorString('#6EE7B7'),
+        outlineColor: Cesium.Color.fromCssColorString('#020A17'),
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        backgroundColor: Cesium.Color.fromCssColorString('#051424').withAlpha(0.92),
+        showBackground: true,
+        backgroundPadding: new Cesium.Cartesian2(10, 5),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -90),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    })
+
+    // 3f. Active Rebar Bay High-Inventory Warning Volume (3D Pulsing Highlight)
+    this.bayWarningEntity = this.dataSource.entities.add({
+      id: 'REBAR-BAY-WARNING',
+      show: false,
+      position: new Cesium.CallbackPositionProperty(
+        () => {
+          const p = this.processHighlight.bayWarningPos ?? SITE_LAYOUT_V4.rebar.bays[6]
+          return cadToCartesian3(p.cadX, p.cadY, 5.0)
+        },
+        false,
+      ) as unknown as Cesium.PositionProperty,
+      box: {
+        dimensions: new Cesium.Cartesian3(27.5, 52.0, 9.6),
+        material: new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#EF4444').withAlpha(0.24)),
+        outline: true,
+        outlineColor: Cesium.Color.fromCssColorString('#FCA5A5'),
+      },
+      label: {
+        text: '库位高库存预警 (≥80%)',
+        font: '700 13px Microsoft YaHei',
+        fillColor: Cesium.Color.fromCssColorString('#FECACA'),
+        outlineColor: Cesium.Color.fromCssColorString('#240505'),
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        backgroundColor: Cesium.Color.fromCssColorString('#450A0A').withAlpha(0.92),
+        showBackground: true,
+        backgroundPadding: new Cesium.Cartesian2(10, 5),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(58, 36),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    })
+
+    // 3g. Pre-warm Cesium SDF Glyph TextureAtlas at startup so dynamic process labels never drop glyphs on Frame 1 under requestRenderMode
+    const prewarmGlyphChars = [
+      ...new Set(
+        '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ·./:-%<>Ω✓…()（），, ' +
+          '防碰撞测距安全预警减速联锁停机装车电子围栏闭锁司机离车确认门吊慢速落钩库底静电接地对位检测中' +
+          '伸缩散装头下落密封定量停料溜管回升复位完成初磅皮重过磅罐车满车复磅计量净重净装高库存余量待机运行吊具下吨',
+      ),
+    ].join('')
+    const prewarmPos = cadToCartesian3(SITE_LAYOUT_V4.siteShellCenter.cadX, 1625, 2.0)
+    for (const weight of ['700', '600'] as const) {
+      this.dataSource.entities.add({
+        id: `PREWARM-GLYPHS-${weight}`,
+        show: true,
+        position: prewarmPos,
+        label: {
+          text: prewarmGlyphChars,
+          font: `${weight} 12px Microsoft YaHei`,
+          fillColor: new Cesium.Color(1, 1, 1, 0.004),
+          style: Cesium.LabelStyle.FILL,
+          showBackground: false,
+          scale: 0.01,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      })
+    }
+    this.scheduleRenderPump()
 
     // 4. Individual Silo Selection Highlight Ring (for 40 Silos SILO-01..40)
     this.siloHighlightEntity = this.dataSource.entities.add({
@@ -405,16 +651,31 @@ export class Twin3dController {
     }
 
     if (targetX !== null && targetY !== null) {
-      const [lon, lat] = cadToLonLat(targetX, targetY - viewDistY)
-      this.viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(lon, lat, viewHeight + targetZ * 0.4),
-        orientation: {
-          heading: Cesium.Math.toRadians(0),
-          pitch: Cesium.Math.toRadians(pitchDeg),
-          roll: 0,
-        },
-        duration: 1.05,
-      })
+      if (eq?.def.type === 'silo_loader') {
+        this.viewer.camera.cancelFlight()
+        this.viewer.camera.flyToBoundingSphere(
+          new Cesium.BoundingSphere(cadToCartesian3(targetX - 1, targetY, 4.0), 18),
+          {
+            duration: 1.05,
+            offset: new Cesium.HeadingPitchRange(
+              Cesium.Math.toRadians(110),
+              Cesium.Math.toRadians(-12),
+              64,
+            ),
+          },
+        )
+      } else {
+        const [lon, lat] = cadToLonLat(targetX, targetY - viewDistY)
+        this.viewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(lon, lat, viewHeight + targetZ * 0.4),
+          orientation: {
+            heading: Cesium.Math.toRadians(0),
+            pitch: Cesium.Math.toRadians(pitchDeg),
+            roll: 0,
+          },
+          duration: 1.05,
+        })
+      }
     }
     return this.selectEquipment(id)
   }
@@ -500,13 +761,115 @@ export class Twin3dController {
     this.gltfProvider?.setStaticVisible(id, visible)
   }
 
-  setProcessHighlight(patch: Partial<typeof this.processHighlight>) {
+  private scheduleRenderPump() {
+    this.viewer.scene.requestRender()
+    if (this.renderPumpRaf === null) {
+      this.renderPumpRaf = requestAnimationFrame(() => {
+        this.renderPumpRaf = null
+        this.viewer.scene.requestRender()
+      })
+    }
+    for (const timer of this.renderPumpTimers) clearTimeout(timer)
+    this.renderPumpTimers = [45, 110, 220].map((delay) =>
+      setTimeout(() => {
+        this.viewer.scene.requestRender()
+      }, delay),
+    )
+  }
+
+  setProcessHighlight(patch: Partial<ProcessHighlightState>) {
     Object.assign(this.processHighlight, patch)
+    let labelUpdated = false
+
     if (this.elevFlowEntity) this.elevFlowEntity.show = this.processHighlight.elevatorActive
     if (this.slideFlowEntity) this.slideFlowEntity.show = this.processHighlight.airSlideActive
     if (this.spoutStreamEntity) this.spoutStreamEntity.show = this.processHighlight.spoutActive
-    if (this.gapIndicatorEntity) this.gapIndicatorEntity.show = this.processHighlight.antiCollisionActive
-    this.viewer.scene.requestRender()
+    if (this.gapIndicatorEntity) {
+      const nextShow = this.processHighlight.antiCollisionActive
+      if (this.gapIndicatorEntity.show !== nextShow) labelUpdated = true
+      this.gapIndicatorEntity.show = nextShow
+      const gapText = `防碰撞测距 ${this.processHighlight.gapDistanceM.toFixed(1)} m (${
+        this.processHighlight.gapDistanceM <= 6 ? '联锁停机' : this.processHighlight.gapDistanceM <= 15 ? '预警减速' : '安全'
+      })`
+      const gapColorCss =
+        this.processHighlight.gapDistanceM <= 6 ? '#EF4444' : this.processHighlight.gapDistanceM <= 15 ? '#F5B84C' : '#34D399'
+      if (gapText !== this.lastLabelTexts.gap && this.gapIndicatorEntity.label) {
+        this.lastLabelTexts.gap = gapText
+        this.gapIndicatorEntity.label.text = new Cesium.ConstantProperty(gapText)
+        labelUpdated = true
+      }
+      if (gapColorCss !== this.lastLabelTexts.gapColor && this.gapIndicatorEntity.label) {
+        this.lastLabelTexts.gapColor = gapColorCss
+        this.gapIndicatorEntity.label.fillColor = new Cesium.ConstantProperty(Cesium.Color.fromCssColorString(gapColorCss))
+        labelUpdated = true
+      }
+    }
+    if (this.laserBeamEntity) {
+      this.laserBeamEntity.show =
+        this.processHighlight.antiCollisionActive &&
+        Boolean(this.processHighlight.laserFromPos) &&
+        Boolean(this.processHighlight.laserTargetPos)
+    }
+    if (this.loadingFenceEntity) {
+      const nextShow = Boolean(this.processHighlight.fenceActive)
+      if (this.loadingFenceEntity.show !== nextShow) labelUpdated = true
+      this.loadingFenceEntity.show = nextShow
+      const fenceText = this.processHighlight.fenceLabel || '装车电子围栏闭锁 · 司机离车确认'
+      if (fenceText !== this.lastLabelTexts.fence && this.loadingFenceEntity.label) {
+        this.lastLabelTexts.fence = fenceText
+        this.loadingFenceEntity.label.text = new Cesium.ConstantProperty(fenceText)
+        labelUpdated = true
+      }
+    }
+    if (this.underSiloFenceEntity) {
+      const nextShow = Boolean(this.processHighlight.underSiloFenceActive)
+      if (this.underSiloFenceEntity.show !== nextShow) labelUpdated = true
+      this.underSiloFenceEntity.show = nextShow
+      const underText = this.processHighlight.underSiloFenceText || '库底电子围栏闭锁 · 静电接地 < 4Ω'
+      if (underText !== this.lastLabelTexts.underFence && this.underSiloFenceEntity.label) {
+        this.lastLabelTexts.underFence = underText
+        this.underSiloFenceEntity.label.text = new Cesium.ConstantProperty(underText)
+        labelUpdated = true
+      }
+    }
+    if (this.wbInHighlightEntity) {
+      const nextShow = Boolean(this.processHighlight.wbInText)
+      if (this.wbInHighlightEntity.show !== nextShow) labelUpdated = true
+      this.wbInHighlightEntity.show = nextShow
+      const wbInText = this.processHighlight.wbInText || 'WB-TRUCK-02 初磅过磅中'
+      if (wbInText !== this.lastLabelTexts.wbIn && this.wbInHighlightEntity.label) {
+        this.lastLabelTexts.wbIn = wbInText
+        this.wbInHighlightEntity.label.text = new Cesium.ConstantProperty(wbInText)
+        labelUpdated = true
+      }
+    }
+    if (this.wbOutHighlightEntity) {
+      const nextShow = Boolean(this.processHighlight.wbOutText)
+      if (this.wbOutHighlightEntity.show !== nextShow) labelUpdated = true
+      this.wbOutHighlightEntity.show = nextShow
+      const wbOutText = this.processHighlight.wbOutText || 'WB-TRUCK-01 复磅计量中'
+      if (wbOutText !== this.lastLabelTexts.wbOut && this.wbOutHighlightEntity.label) {
+        this.lastLabelTexts.wbOut = wbOutText
+        this.wbOutHighlightEntity.label.text = new Cesium.ConstantProperty(wbOutText)
+        labelUpdated = true
+      }
+    }
+    if (this.bayWarningEntity) {
+      const nextShow = Boolean(this.processHighlight.bayWarningPos)
+      if (this.bayWarningEntity.show !== nextShow) labelUpdated = true
+      this.bayWarningEntity.show = nextShow
+      const bayWarnText = this.processHighlight.bayWarningText || '库位高库存预警 (≥80%)'
+      if (bayWarnText !== this.lastLabelTexts.bayWarn && this.bayWarningEntity.label) {
+        this.lastLabelTexts.bayWarn = bayWarnText
+        this.bayWarningEntity.label.text = new Cesium.ConstantProperty(bayWarnText)
+        labelUpdated = true
+      }
+    }
+    if (labelUpdated) {
+      this.scheduleRenderPump()
+    } else {
+      this.viewer.scene.requestRender()
+    }
   }
 
   setVehicleRouteAnimation(enabled: boolean) {
@@ -544,6 +907,9 @@ export class Twin3dController {
 
   destroy() {
     this.stopMockSimulation()
+    if (this.renderPumpRaf !== null) cancelAnimationFrame(this.renderPumpRaf)
+    for (const timer of this.renderPumpTimers) clearTimeout(timer)
+    this.renderPumpTimers = []
     this.vehicleAnimator?.stop()
     this.viewer.dataSources.remove(this.dataSource)
   }

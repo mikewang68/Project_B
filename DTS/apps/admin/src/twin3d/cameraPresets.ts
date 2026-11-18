@@ -17,10 +17,23 @@ export type CameraPresetId =
 interface CameraPreset {
   cadX: number
   cadY: number
+  cadZ?: number
   radius: number
   headingDeg: number
   pitchDeg: number
   range: number
+}
+
+export interface CameraFocusTarget {
+  cadX: number
+  cadY: number
+  cadZ?: number
+  radius?: number
+  headingDeg?: number
+  pitchDeg?: number
+  range?: number
+  durationSec?: number
+  tag?: string
 }
 
 const CAMERA_PRESETS: Record<CameraPresetId, CameraPreset> = {
@@ -93,23 +106,25 @@ const CAMERA_PRESETS: Record<CameraPresetId, CameraPreset> = {
     pitchDeg: -28,
     range: 155,
   },
-  // Close-up: Under-silo quantitative tanker truck loading & telescopic spout (aligned with SILO-01 / LOADER-01)
+  // Close-up: Under-silo quantitative tanker truck loading & telescopic spout (viewed from WNW open apron into Row-A drive-through tunnel)
   loader: {
-    cadX: SITE_LAYOUT_V4.ash.silos[0].cadX,
+    cadX: SITE_LAYOUT_V4.ash.silos[0].cadX - 1,
     cadY: SITE_LAYOUT_V4.ash.silos[0].cadY,
-    radius: 32,
-    headingDeg: 28,
-    pitchDeg: -24,
-    range: 140,
+    cadZ: 4.0,
+    radius: 18,
+    headingDeg: 110,
+    pitchDeg: -12,
+    range: 64,
   },
   // East gate: 2 x 100t truck weighbridges, freight office, electromechanical warehouse
   weighbridge: {
-    cadX: 4480,
-    cadY: 1600,
-    radius: 95,
-    headingDeg: -35,
-    pitchDeg: -40,
-    range: 290,
+    cadX: 4545,
+    cadY: 1608,
+    cadZ: 2.0,
+    radius: 36,
+    headingDeg: -38,
+    pitchDeg: -32,
+    range: 155,
   },
 }
 
@@ -117,13 +132,29 @@ export function flyToCameraPreset(viewer: Cesium.Viewer, id: CameraPresetId, dur
   const preset = CAMERA_PRESETS[id]
   viewer.camera.cancelFlight()
   viewer.camera.flyToBoundingSphere(
-    new Cesium.BoundingSphere(cadToCartesian3(preset.cadX, preset.cadY), preset.radius),
+    new Cesium.BoundingSphere(cadToCartesian3(preset.cadX, preset.cadY, preset.cadZ ?? 0), preset.radius),
     {
       duration,
       offset: new Cesium.HeadingPitchRange(
         Cesium.Math.toRadians(preset.headingDeg),
         Cesium.Math.toRadians(preset.pitchDeg),
         preset.range,
+      ),
+    },
+  )
+  viewer.scene.requestRender()
+}
+
+export function focusCadPoint(viewer: Cesium.Viewer, target: CameraFocusTarget): void {
+  viewer.camera.cancelFlight()
+  viewer.camera.flyToBoundingSphere(
+    new Cesium.BoundingSphere(cadToCartesian3(target.cadX, target.cadY, target.cadZ ?? 4), target.radius ?? 22),
+    {
+      duration: target.durationSec ?? 0.9,
+      offset: new Cesium.HeadingPitchRange(
+        Cesium.Math.toRadians(target.headingDeg ?? -34),
+        Cesium.Math.toRadians(target.pitchDeg ?? -24),
+        target.range ?? 118,
       ),
     },
   )

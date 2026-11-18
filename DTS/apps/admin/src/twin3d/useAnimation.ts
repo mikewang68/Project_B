@@ -58,10 +58,10 @@ export function useAnimation(steps: AnimStep[], options: UseAnimationOptions = {
       const s = actorState.value
       if (finished.el === 'gantry' && Array.isArray(finished.to)) {
         s.gantry = [finished.to[0], finished.to[1]]
-      } else if (finished.el === 'trolley' && typeof finished.to === 'number') {
-        s.trolleyOffset = finished.to
-      } else if (finished.el === 'hoist' && typeof finished.to === 'number') {
-        s.hoistHeight = finished.to
+      } else if (finished.el === 'trolley' && Array.isArray(finished.to)) {
+        s.trolleyOffset = finished.to[0]
+      } else if (finished.el === 'hoist' && Array.isArray(finished.to)) {
+        s.hoistHeight = finished.to[2]
       }
     }
     stepElapsed = 0
