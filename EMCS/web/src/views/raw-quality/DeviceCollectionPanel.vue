@@ -2,7 +2,7 @@
   <el-card class="device-collection">
     <template #header>
       <div class="collection-heading"><b>设备采集事件</b><span>六类设备 · 原始点号与质量留痕</span>
-        <el-switch v-model="automatic" active-text="每 5 秒刷新" /><el-button :loading="loading" @click="load">刷新</el-button>
+        <el-switch v-model="automatic" active-text="每 5 秒刷新" /><el-button :loading="loading" @click="load()">刷新</el-button>
       </div>
     </template>
     <el-alert v-if="error" :title="error" type="error" :closable="false" />
@@ -18,7 +18,7 @@
         <el-table-column prop="point_count" label="点数" width="80" />
         <el-table-column label="操作" width="100"><template #default="{row}"><el-button link @click="show(row.event_id)">查看原始点</el-button></template></el-table-column>
       </el-table>
-      <el-pagination v-model:current-page="page" :page-size="20" :total="total" layout="prev, pager, next, total" @current-change="load" />
+      <el-pagination v-model:current-page="page" :page-size="20" :total="total" layout="prev, pager, next, total" @current-change="load()" />
     </template>
     <el-dialog v-model="visible" title="采集事件与点位" width="85%" append-to-body>
       <el-alert v-if="detailError" :title="detailError" type="error" :closable="false" />
@@ -40,14 +40,20 @@ import request from '@/utils/request'
 import { displayReading } from './collectionDisplay'
 const rows=ref([]), total=ref(0), page=ref(1), enabled=ref(false), loading=ref(false), error=ref('')
 const devices=ref({}), points=ref({}), detail=ref(null), detailError=ref(''), visible=ref(false), automatic=ref(false)
-let timer, active=true, listSequence=0, detailSequence=0
-async function load() {
+let timer, active=true, listSequence=0, detailSequence=0, silentBusy=false
+// silent=true 用于每 5 秒自动刷新：不置 loading，避免表格周期性闪加载遮罩。
+async function load(silent=false) {
+  if (silent && silentBusy) return
+  if (silent) silentBusy = true
   const sequence=++listSequence
-  loading.value=true;error.value=''
+  if (!silent) { loading.value=true;error.value='' }
   try { const response=await request({url:'/collection/events',params:{pageNum:page.value,pageSize:20}})
-    if(sequence===listSequence){enabled.value=response.data.enabled;rows.value=response.data.rows;total.value=response.data.total}
+    if(sequence===listSequence){enabled.value=response.data.enabled;rows.value=response.data.rows;total.value=response.data.total;error.value=''}
   } catch {if(sequence===listSequence)error.value='设备事件查询失败或当前身份未获授权，请联系管理员核对采集查询权限。'}
-  finally {if(sequence===listSequence)loading.value=false}
+  finally {
+    if (silent) silentBusy = false
+    if(sequence===listSequence && !silent)loading.value=false
+  }
 }
 async function show(id) {
   const sequence=++detailSequence
@@ -57,7 +63,7 @@ async function show(id) {
 }
 onMounted(async()=>{
   try {const response=await request({url:'/collection/catalog'});devices.value=Object.fromEntries(response.data.devices.map(d=>[d.equipmentCode,d.name]));points.value=Object.fromEntries(response.data.points.map(p=>[p.pointCode,p]))} catch { /* event rows still retain source identifiers */ }
-  await load();timer=setInterval(()=>{if(active&&automatic.value&&!loading.value)load()},5000)
+  await load();timer=setInterval(()=>{if(active&&automatic.value&&!loading.value)load(true)},5000)
 })
 onActivated(()=>{active=true});onDeactivated(()=>{active=false});onBeforeUnmount(()=>{active=false;listSequence++;detailSequence++;clearInterval(timer)})
 </script>

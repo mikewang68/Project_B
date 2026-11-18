@@ -28,9 +28,12 @@ function createFeedback() {
   function clearResults() {
     pendingResults.value = [];
   }
-  async function run(fn: () => Promise<void>) {
+  async function run(
+    fn: () => Promise<void>,
+    options: { silent?: boolean } = {},
+  ) {
     if (busy.value) return;
-    busy.value = true;
+    if (!options.silent) busy.value = true;
     error.value = "";
     notice.value = "";
     try {
@@ -38,7 +41,7 @@ function createFeedback() {
     } catch (e) {
       error.value = (e as Error).message;
     } finally {
-      busy.value = false;
+      if (!options.silent) busy.value = false;
     }
   }
   return {
