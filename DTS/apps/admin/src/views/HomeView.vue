@@ -32,7 +32,7 @@ import { buildDefaultDeviceSnapshot, useDeviceStore } from '@/stores/device'
 import { Twin3dController, type SelectedInfo } from '@/twin3d'
 import { CRANE_UNLOAD_SEQUENCE } from '@/twin3d/animation'
 import { BulkProcessDemoController } from '@/twin3d/bulkProcessDemo'
-import { flyToCameraPreset, type CameraPresetId } from '@/twin3d/cameraPresets'
+import { flyToCameraPreset, focusCadPoint, type CameraFocusTarget, type CameraPresetId } from '@/twin3d/cameraPresets'
 import { cadGeoJsonToWgs84, cadToLonLat } from '@/twin3d/geo'
 import { MOCK_EQUIPMENT } from '@/twin3d/mock/mockData'
 import { MOCK_CARGO, MOCK_OPERATIONS, MOCK_PERSONNEL, Phase6LayerController } from '@/twin3d/phase6'
@@ -62,6 +62,9 @@ let dataService: DtsDataService | null = null
 let demoController: ProcessControllerHandle | null = null
 let phase6Timer: ReturnType<typeof setInterval> | null = null
 let diagTimer: ReturnType<typeof setInterval> | null = null
+let lastFocusTag = ''
+let userCameraHold = false
+let removeCanvasInteractionListeners: (() => void) | null = null
 
 const layers = ref({ track: true, area: true, cargo: false, personnel: false, planned: true })
 const detailVisible = ref(false)
@@ -249,9 +252,33 @@ function applyUrlDeepLinkParams() {
 function onViewerReady(v: Cesium.Viewer) {
   viewer = v
   setupCameraInteraction(v)
+  removeCanvasInteractionListeners?.()
+  const canvas = v.scene.canvas
+  const markManualCamera = () => {
+    userCameraHold = true
+    v.camera.cancelFlight()
+  }
+  canvas.addEventListener('pointerdown', markManualCamera, { passive: true })
+  canvas.addEventListener('wheel', markManualCamera, { passive: true })
+  removeCanvasInteractionListeners = () => {
+    canvas.removeEventListener('pointerdown', markManualCamera)
+    canvas.removeEventListener('wheel', markManualCamera)
+  }
+
   diag.viewer = true
   diag.globeShow = v.scene.globe.show
   diag.cadStatus = '加载 CAD 底图中'
+
+  const sp = new URL(window.location.href).searchParams
+  const hasDeepLinkFocus = Boolean(
+    sp.get('step') ||
+      sp.get('deviceId') ||
+      sp.get('siloId') ||
+      sp.get('locationCode') ||
+      sp.get('taskId') ||
+      sp.get('planNo') ||
+      sp.get('fn'),
+  )
 
   fetch(CAD_GEOJSON_URL)
     .then((response) => {
@@ -274,7 +301,9 @@ function onViewerReady(v: Cesium.Viewer) {
       setCategoryVisible('track', layers.value.track)
       setCategoryVisible('area', layers.value.area)
       diag.cadStatus = `已加载 ${diag.cadEntities} 个 CAD 实体`
-      focusCadExtent(v)
+      if (!hasDeepLinkFocus && !demoState.running && demoState.progress === 0) {
+        focusCadExtent(v)
+      }
     })
     .catch((err) => {
       diag.cadStatus = `加载失败: ${err instanceof Error ? err.message : String(err)}`
@@ -339,7 +368,15 @@ function seedDemoDevices() {
 function createRuntime(): UnifiedProcessRuntime {
   return {
     setCamera: (id) => {
+      lastFocusTag = ''
+      userCameraHold = false
       if (viewer) flyToCameraPreset(viewer, id)
+    },
+    focusPoint: (target: CameraFocusTarget) => {
+      if (!viewer || userCameraHold) return
+      if (target.tag && target.tag === lastFocusTag) return
+      lastFocusTag = target.tag ?? ''
+      focusCadPoint(viewer, target)
     },
     setDeviceStatus: (id, status) => deviceStore.updateDevice(id, status),
     setEquipmentLabel: (id, text) => twin3d?.setEquipmentLabel(id, text),
@@ -580,10 +617,14 @@ function toggleLayer(category: 'track' | 'area' | 'cargo' | 'personnel' | 'plann
 }
 
 function onResetView() {
+  lastFocusTag = ''
+  userCameraHold = false
   if (viewer) flyToCameraPreset(viewer, 'overview')
 }
 
 function onCameraPreset(id: CameraPresetId) {
+  lastFocusTag = ''
+  userCameraHold = false
   if (viewer) flyToCameraPreset(viewer, id)
 }
 
@@ -614,6 +655,8 @@ function closeDetail() {
 
 onBeforeUnmount(() => {
   if (diagTimer) clearInterval(diagTimer)
+  removeCanvasInteractionListeners?.()
+  removeCanvasInteractionListeners = null
   stopAnim()
   dataService?.stop()
   stopPhase6Simulation()

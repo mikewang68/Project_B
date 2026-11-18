@@ -182,8 +182,8 @@ def verify_static_bundle(root_dir: Path) -> list[dict]:
         geo_obj = json.loads(yards_geojson.read_text(encoding="utf-8"))
         geo_features = len(geo_obj.get("features") or [])
     checks.append({
-        "name": "dist/data/yards.geojson contains 287 CAD V4 features",
-        "passed": geo_features == 287,
+        "name": "dist/data/yards.geojson contains V4/V5 CAD features (287 or 405)",
+        "passed": geo_features in (287, 405),
         "detail": f"features={geo_features}",
     })
 
