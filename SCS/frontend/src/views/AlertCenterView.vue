@@ -77,26 +77,29 @@ const listGuard = createLatestGuard()
 const metricsGuard = createLatestGuard()
 const detailGuard = createLatestGuard()
 
-async function loadMetrics(): Promise<void> {
+async function loadMetrics(silent = false): Promise<void> {
   const token = metricsGuard.next()
-  metricsLoading.value = true
+  if (!silent) metricsLoading.value = true
   try {
     const dto = await alertApi.getAlertMetrics()
     if (!metricsGuard.isLatest(token)) return
     metrics.value = mapAlertMetricsDto(dto)
   } catch (cause) {
     if (!metricsGuard.isLatest(token)) return
+    if (silent) return
     metrics.value = { ...EMPTY_METRICS }
     ElMessage.error(errorMessage(cause, '告警指标加载失败'))
   } finally {
-    metricsLoading.value = false
+    if (!silent) metricsLoading.value = false
   }
 }
 
-async function loadList(): Promise<void> {
+async function loadList(silent = false): Promise<void> {
   const token = listGuard.next()
-  listLoading.value = true
-  listError.value = ''
+  if (!silent) {
+    listLoading.value = true
+    listError.value = ''
+  }
   try {
     const result = mapAlertPage(await alertApi.getAlerts(buildListParams()))
     if (!listGuard.isLatest(token)) return
@@ -104,13 +107,16 @@ async function loadList(): Promise<void> {
     total.value = result.total
     page.value = result.page
     pageSize.value = result.pageSize
+    listError.value = ''
   } catch (cause) {
     if (!listGuard.isLatest(token)) return
+    // 静默刷新失败时保留已有数据，避免后台抖动把表格清空或弹错。
+    if (silent) return
     alerts.value = []
     total.value = 0
     listError.value = errorMessage(cause, '告警列表加载失败')
   } finally {
-    listLoading.value = false
+    if (!silent) listLoading.value = false
   }
 }
 
@@ -145,17 +151,18 @@ async function openDetail(row: AlertEvent): Promise<void> {
 }
 
 /** 统一刷新：写操作成功后只通过重新请求同步状态，绝不本地改状态 / 本地 push 时间线 */
-async function refreshAlertContext(flags: { metrics?: boolean; list?: boolean; detail?: boolean } = {}): Promise<void> {
+async function refreshAlertContext(flags: { metrics?: boolean; list?: boolean; detail?: boolean; silent?: boolean } = {}): Promise<void> {
   const tasks: Promise<unknown>[] = []
-  if (flags.metrics !== false) tasks.push(loadMetrics())
-  if (flags.list !== false) tasks.push(loadList())
+  if (flags.metrics !== false) tasks.push(loadMetrics(flags.silent === true))
+  if (flags.list !== false) tasks.push(loadList(flags.silent === true))
   if (flags.detail && current.value?.id) {
     const id = current.value.id
-    const token = detailGuard.next()
     tasks.push(
       alertApi.getAlertDetail(id).then((dto) => {
-        // 刷新期间用户可能已切到另一条；只在仍停留在同一事件时回写
-        if (!detailGuard.isLatest(token) || current.value?.id !== id) return
+        // 刷新期间用户可能已切到另一条；只在仍停留在同一事件时回写。
+        // 这里不得推进 detailGuard：否则会作废 openDetail 的 token，使其
+        // finally 无法清除 detailLoading，抽屉会永久显示 loading 遮罩。
+        if (current.value?.id !== id) return
         current.value = mapAlertEvent(dto)
       }),
     )
@@ -348,15 +355,18 @@ onMounted(() => {
   void loadMetrics()
   void loadList()
   void loadOptions()
-  // 其他终端（移动端 / 大屏）引起的变更经 WS 通知后自动刷新，无需 F5
-  unsubscribeLive = liveStore.onAlertEvent(() => {
+  // 其他终端（移动端 / 大屏）引起的变更经 WS 通知后自动刷新，无需 F5。
+  // 共享 WS 会把所有领域事件都分发过来（含 1Hz 的 person.moved）；告警中心只关心
+  // alert.*，否则 UWB 人员定位上报会让列表/指标无休止重拉并一直显示 loading。
+  unsubscribeLive = liveStore.onAlertEvent((event) => {
+    if (!event.type.startsWith('alert.')) return
     window.clearTimeout(liveTimer)
     liveTimer = window.setTimeout(() => {
-      void refreshAlertContext({ metrics: true, list: true, detail: true })
+      void refreshAlertContext({ metrics: true, list: true, detail: true, silent: true })
     }, 300)
   })
   unsubscribeReconnect = liveStore.onReconnected(() => {
-    return refreshAlertContext({ metrics: true, list: true, detail: true })
+    return refreshAlertContext({ metrics: true, list: true, detail: true, silent: true })
   })
 })
 
