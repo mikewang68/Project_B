@@ -73,7 +73,7 @@ const trendPoints = computed(() => {
 
     <!-- AI 事件：复用 AIDetectionImage -->
     <template v-else-if="evidence.kind === 'ai'">
-      <AIDetectionImage :scene="evidence.scene" :boxes="evidence.boxes" :camera="evidence.camera" :time="evidence.time" health="正常" />
+      <AIDetectionImage :scene="evidence.scene" :boxes="evidence.boxes" :camera="evidence.camera" :time="evidence.time" :snapshot-url="evidence.snapshotUrl" health="正常" />
       <div class="evidence-grid">
         <div><small>置信度</small><b>{{ evidence.confidence.toFixed(1) }}%</b></div>
         <div><small>模型版本</small><b>{{ evidence.model }}</b></div>

@@ -301,13 +301,16 @@ public class AiModelService {
             }
         }
         String timeStr = OffsetDateTime.now(clock).format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+        String imageSource = req.imageSource() != null && !req.imageSource().isBlank()
+                ? req.imageSource() : "/demo-evidence/worker-no-helmet-vest.jpg";
         AlertEvidence evidence = AlertEvidence.AiEvidence.of(
-                req.imageSource() != null ? req.imageSource() : "/demo-evidence/worker-no-helmet-vest.jpg",
+                sceneOfScenario(req.scenario()),
                 evidenceBoxes,
                 0.95,
                 req.modelName() != null ? req.modelName() : "YOLOv8-SafetyHelmet-v2.3",
                 area + "高清球机 CAM-01",
-                timeStr
+                timeStr,
+                imageSource
         );
 
         String dedupKey = "AI-CASE-ESCALATE:" + (req.inferenceId() != null ? req.inferenceId() : UUID.randomUUID().toString());
@@ -418,6 +421,15 @@ public class AiModelService {
             case "fall_detected" -> "装卸高台通道作业人员打滑跌倒";
             case "crane_sway" -> "门式起重机吊钩集装箱剧烈偏摆防碰撞";
             default -> "工业现场安全视觉目标检测";
+        };
+    }
+
+    /** 案例场景 → 前端 AiSceneKind（抓拍图缺失时的兜底示意图使用）。 */
+    private static String sceneOfScenario(String scenario) {
+        return switch (scenario == null ? "" : scenario.toLowerCase()) {
+            case "ppe_violation", "no_helmet" -> "helmet";
+            case "danger_intrusion", "intrusion" -> "intrusion";
+            default -> "camera";
         };
     }
 

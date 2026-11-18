@@ -9,13 +9,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.bproject.safety.module.ai.dto.AiRequests.AiIngestRequest;
+import com.bproject.safety.module.ai.model.AiBox;
 import com.bproject.safety.module.ai.repository.AiEventRepository;
 import com.bproject.safety.module.ai.repository.InMemoryAiEventRepository;
 import com.bproject.safety.module.ai.seed.AiDemoSeeder;
 import com.bproject.safety.module.alert.repository.AlertRepository;
 import com.bproject.safety.module.alert.repository.InMemoryAlertRepository;
 import com.bproject.safety.module.alert.seed.AlertDemoSeeder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
+import java.time.OffsetDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,6 +50,8 @@ class AiModuleIntegrationTest {
     private AiDemoSeeder aiSeeder;
     @Autowired
     private Clock clock;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void resetSeeds() {
@@ -204,6 +211,37 @@ class AiModuleIntegrationTest {
                 .andExpect(jsonPath("$.type", is("摄像头异常")));
 
         mvc.perform(get("/api/v1/ai-events")).andExpect(jsonPath("$.total", is(13)));
+    }
+
+    @Test
+    @DisplayName("确认 AI 事件时把边缘抓拍图 URL 带入告警证据")
+    void confirmCarriesSnapshotUrlIntoAlertEvidence() throws Exception {
+        String snapshot = "/api/v1/ai-events/snapshots/snap_confirmed.jpg";
+        AiIngestRequest request = new AiIngestRequest(
+                "未佩戴安全帽", "CAM-01", "装卸区 1 号枪机", "装卸区 A",
+                96.8, 80.0, 1.5, "YOLOv8-PPE-v1.0", "HIGH", "helmet", "RULE-PPE-01",
+                "连续 1.5 秒未检测到安全帽，置信度 96.8%", snapshot,
+                List.of(new AiBox("box-1", "PERSON", 98.2, 35.0, 40.0, 20.0, 45.0, "person")),
+                "现场作业人员 A", "CAM-01", OffsetDateTime.now());
+        MvcResult created = mvc.perform(post("/api/v1/ai-events/ingest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn();
+        String eventId = com.jayway.jsonpath.JsonPath.read(
+                created.getResponse().getContentAsString(), "$.id");
+        MvcResult confirmed = mvc.perform(post("/api/v1/ai-events/" + eventId + "/confirm")
+                        .header("Idempotency-Key", "idem-ai-confirm-snapshot")
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.linkedAlertId", notNullValue()))
+                .andReturn();
+        String linkedId = com.jayway.jsonpath.JsonPath.read(
+                confirmed.getResponse().getContentAsString(), "$.linkedAlertId");
+        mvc.perform(get("/api/v1/alerts/" + linkedId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evidence.kind", is("ai")))
+                .andExpect(jsonPath("$.evidence.snapshotUrl", is(snapshot)));
     }
 
     @Test

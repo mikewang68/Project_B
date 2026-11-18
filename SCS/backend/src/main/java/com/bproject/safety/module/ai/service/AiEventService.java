@@ -635,7 +635,8 @@ public class AiEventService implements com.bproject.safety.module.alert.service.
                 .map(b -> new DetectionBox(b.id(), b.label(), b.score() == null ? 0.0 : b.score(),
                         (int) b.x(), (int) b.y(), (int) b.w(), (int) b.h(), b.tone()))
                 .toList();
-        AiEvidence evidence = AiEvidence.of(e.scene, boxes, e.confidence, e.model, e.camera, e.time);
+        AiEvidence evidence = AiEvidence.of(e.scene, boxes, e.confidence, e.model, e.camera, e.time,
+                e.snapshotUrl);
         int duration = (int) Math.round(e.durationSec);
         return new AlertService.NewAlertFromAi(e.id, naming[0], naming[1], alertRiskCode, e.area, target,
                 duration,

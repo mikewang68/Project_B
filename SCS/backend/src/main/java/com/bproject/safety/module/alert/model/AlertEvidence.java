@@ -42,12 +42,19 @@ public sealed interface AlertEvidence
         }
     }
 
-    /** AI 违规证据。 */
+    /** AI 违规证据；snapshotUrl 为边缘抓拍图（可为空，不伪造）。 */
     record AiEvidence(String kind, String scene, List<DetectionBox> boxes, double confidence,
-                      String model, String camera, String time) implements AlertEvidence {
+                      String model, String camera, String time,
+                      String snapshotUrl) implements AlertEvidence {
+        /** 兼容无抓拍图的旧调用方。 */
         public static AiEvidence of(String scene, List<DetectionBox> boxes, double confidence,
                                     String model, String camera, String time) {
-            return new AiEvidence("ai", scene, boxes, confidence, model, camera, time);
+            return of(scene, boxes, confidence, model, camera, time, null);
+        }
+
+        public static AiEvidence of(String scene, List<DetectionBox> boxes, double confidence,
+                                    String model, String camera, String time, String snapshotUrl) {
+            return new AiEvidence("ai", scene, boxes, confidence, model, camera, time, snapshotUrl);
         }
     }
 

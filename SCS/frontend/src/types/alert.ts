@@ -54,6 +54,8 @@ export interface AiEvidence {
   model: string
   camera: string
   time: string
+  /** 边缘 AI 抓拍图 URL；缺失时明确显示“现场截图不可用”，不伪造 */
+  snapshotUrl?: string | undefined
 }
 
 /** 设备异常 / 系统异常证据 */
