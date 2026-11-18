@@ -16,6 +16,51 @@ import type { CameraPresetId } from './cameraPresets'
 
 export type { ProcessDemoState as DemoViewState }
 
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(1, v))
+}
+
+function easeInOut(u: number): number {
+  const c = clamp01(u)
+  return c * c * (3 - 2 * c)
+}
+
+function followPolyline(points: Array<[number, number]>, u: number, fallbackHeading = 0): VehiclePose {
+  if (points.length === 0) return { cadX: 0, cadY: 0, headingDeg: fallbackHeading }
+  if (points.length === 1) return { cadX: points[0][0], cadY: points[0][1], headingDeg: fallbackHeading }
+  const t = clamp01(u)
+  const lengths: number[] = []
+  let total = 0
+  for (let i = 0; i < points.length - 1; i++) {
+    const d = Math.hypot(points[i + 1][0] - points[i][0], points[i + 1][1] - points[i][1])
+    lengths.push(d)
+    total += d
+  }
+  if (total < 1e-4) {
+    const last = points[points.length - 1]
+    return { cadX: last[0], cadY: last[1], headingDeg: fallbackHeading }
+  }
+  let targetDist = t * total
+  for (let i = 0; i < lengths.length; i++) {
+    const segLen = lengths[i]
+    if (targetDist <= segLen || i === lengths.length - 1) {
+      const localU = segLen > 1e-4 ? clamp01(targetDist / segLen) : 1
+      const [ax, ay] = points[i]
+      const [bx, by] = points[i + 1]
+      const dx = bx - ax
+      const dy = by - ay
+      return {
+        cadX: lerp(ax, bx, localU),
+        cadY: lerp(ay, by, localU),
+        headingDeg: Math.hypot(dx, dy) > 0.05 ? (Math.atan2(-dy, dx) * 180) / Math.PI : fallbackHeading,
+      }
+    }
+    targetDist -= segLen
+  }
+  const last = points[points.length - 1]
+  return { cadX: last[0], cadY: last[1], headingDeg: fallbackHeading }
+}
+
 interface SteelStep {
   id: string
   phaseIndex: number
@@ -82,9 +127,10 @@ const BC_STACK_Y = BAY07.cadY + 8.0
 
 const WAGON_START: VehiclePose = { cadX: 3660, cadY: TRACK_H4_Y, headingDeg: 0 }
 const WAGON_SPOTTED: VehiclePose = { cadX: BAY07.cadX, cadY: TRACK_H4_Y, headingDeg: 0 }
-const TRUCK_GATE: VehiclePose = { cadX: WB_IN.cadX - 180, cadY: TRUCK_LOAD_Y, headingDeg: 180 }
-const TRUCK_LOAD_POS: VehiclePose = { cadX: BAY07.cadX, cadY: TRUCK_LOAD_Y, headingDeg: 180 }
-const TRUCK_CORRIDOR_EAST: VehiclePose = { cadX: 4385.0, cadY: TRUCK_LOAD_Y, headingDeg: 0 }
+const TRUCK_GATE: VehiclePose = { cadX: WB_IN.cadX + 20, cadY: WB_IN.cadY, headingDeg: 180 }
+const TRUCK_STANDBY_STAGING: VehiclePose = { cadX: 3860.0, cadY: TRUCK_LOAD_Y, headingDeg: 180 }
+const TANKER_STANDBY_STAGING: VehiclePose = { cadX: 4085.0, cadY: 1587.0, headingDeg: 180 }
+const TRUCK_LOAD_POS: VehiclePose = { cadX: BAY07.cadX + 1.9, cadY: TRUCK_LOAD_Y, headingDeg: 0 }
 const TRUCK_EXIT_POS: VehiclePose = { cadX: WB_OUT.cadX, cadY: WB_OUT.cadY, headingDeg: 0 }
 
 export const STEEL_UNLOAD_STEPS: SteelStep[] = [
@@ -181,18 +227,18 @@ export const STEEL_UNLOAD_STEPS: SteelStep[] = [
   {
     id: 'steel-truck-load',
     phaseIndex: 3,
-    title: '4. 公路货车过磅与交接等待→防碰撞拣货装车',
-    narration: '公路平板车经 100t 汽车衡初磅驶入装车工位完成交接确认，开启电子围栏防碰撞监测，门吊协同拣选装车（实时测距预警阈值 15m）。',
-    durationMs: 4600,
-    camera: 'gantry',
+    title: '4. 汽车衡初磅/电子围栏防碰撞装车',
+    narration: '平板挂车先上 WB-TRUCK-02 完成 16.4t 皮重初磅，沿主干道驶入装车位并开启电子围栏与红外防碰撞激光监测，CR-02 慢速稳钩装车。',
+    durationMs: 12000,
+    camera: 'weighbridge',
     craneStatus: 'ok',
     bridgeStatus: 'ok',
-    opProgress: [74, 96],
+    opProgress: [74, 94],
     opStatus: 'running',
     bayTons: [14950, 14950],
     crane: {
       from: CR_HOME,
-      to: { gantryX: BAY07.cadX, gantryY: CR02.cadY, trolleyOffset: TRUCK_LOAD_Y - CR02.cadY, hoistHeight: 5.0, payloadTons: 22.0 },
+      to: { gantryX: BAY07.cadX, gantryY: CR02.cadY, trolleyOffset: TRUCK_LOAD_Y - CR02.cadY, hoistHeight: 4.1, payloadTons: 22.0 },
     },
     bridge: {
       from: { cadX: BAY07.cadX, bridgeY: BC_STACK_Y, trolleyOffsetX: 2.0, hoistHeight: 8.5, payloadTons: 0 },
@@ -201,47 +247,47 @@ export const STEEL_UNLOAD_STEPS: SteelStep[] = [
     wagon: { from: WAGON_SPOTTED, to: WAGON_SPOTTED },
     truck: { from: TRUCK_GATE, to: TRUCK_LOAD_POS },
     cargoMode: 'crane',
-    safetyDistanceM: [18.5, 11.4],
+    safetyDistanceM: [22.0, 11.4],
     antiCollisionActive: true,
     interlocks: [
-      { label: 'WB-TRUCK-02 皮重初检：16.4 t', passed: true },
-      { label: '装车交接等待核验 + 电子围栏司机离车确认', passed: true },
-      { label: '装车防碰撞距离 11.4m（<15m降速保护）', passed: true },
+      { label: 'WB-TRUCK-02 皮重初磅：16.4 t（已核验放行）', passed: true },
+      { label: '装车电子围栏闭锁 + 司机离车交接确认', passed: true },
+      { label: 'SCS 激光防碰撞 11.4m（<15m 降速稳钩保护）', passed: true },
     ],
   },
   {
     id: 'steel-weigh-verify',
     phaseIndex: 4,
-    title: '5. 满车沿北侧通道复磅出厂与防撞/库位联锁告警',
-    narration: '平板挂车载钢材沿北侧通道绕开股道驶向 WB-TRUCK-01 完成 100t 复磅；跨间交接防撞测距 11.4m 暨 07 跨高库存触发 S4/S1 联锁告警。',
-    durationMs: 4400,
-    camera: 'steel',
+    title: '5. 满车沿安全通道复磅出厂与高库存预警',
+    narration: 'CR-02 抬钩退避后平板挂车载钢材沿北侧通道驶上 WB-TRUCK-01 完成 38.4t 复磅出厂，同步回焦 07 跨高库存预警（82.5%）与跨间防撞联锁。',
+    durationMs: 14000,
+    camera: 'gantry',
     craneStatus: 'standby',
     bridgeStatus: 'standby',
-    opProgress: [96, 100],
+    opProgress: [94, 100],
     opStatus: 'done',
-    bayTons: [14950, 14950],
+    bayTons: [14950, 16500],
     crane: {
-      from: { gantryX: BAY07.cadX, gantryY: CR02.cadY, trolleyOffset: TRUCK_LOAD_Y - CR02.cadY, hoistHeight: 16.0, payloadTons: 0 },
+      from: { gantryX: BAY07.cadX, gantryY: CR02.cadY, trolleyOffset: TRUCK_LOAD_Y - CR02.cadY, hoistHeight: 4.1, payloadTons: 0 },
       to: CR_HOME,
     },
     bridge: { from: BC_HOME, to: BC_HOME },
     wagon: { from: WAGON_SPOTTED, to: WAGON_SPOTTED },
     truck: { from: TRUCK_LOAD_POS, to: TRUCK_EXIT_POS },
     cargoMode: 'truck',
-    safetyDistanceM: [12.4, 11.4],
+    safetyDistanceM: [12.8, 11.4],
     antiCollisionActive: true,
     interlocks: [
       { label: 'WB-TRUCK-01 满车复磅：38.4 t（净重 22.0 t）', passed: true },
       { label: '跨间门吊-桥吊交接安全间距 11.4m（触发 <15m 联锁）', passed: true },
-      { label: '07 跨高库存预警（82.5%）同步 S1/S2/S4', passed: true },
+      { label: '07 跨高库存预警（82.5% · 16,500t）同步 S1/S2/S4', passed: true },
     ],
     alert: {
       id: 'DEMO-REBAR-BAY-07',
       level: 'critical',
       targetId: 'CR-02',
       targetName: '2# 40t 钢材门吊 · 07跨交接区',
-      message: '跨间联合吊装交接等待：CR-02 与室内桥吊防撞间距 11.4m（低于 15m 阈值）且 07 跨库存达 82.5%，请核查厂家 PLC 状态及关联视频后转 S1 装卸工艺管理系统处置。',
+      message: '跨间联合吊装交接等待：CR-02 与室内桥吊防撞间距 11.4m（低于 15m 阈值）且 07 跨库存达 82.5%（16,500t），请核查厂家 PLC 状态及关联视频后转 S1 装卸工艺管理系统处置。',
       interlockReceipt: {
         sourceSystem: 'S4-SCS',
         safetyDistanceM: 11.4,
@@ -296,10 +342,15 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
         this.elapsedMs = 0
       }
     }
+    const resuming = this.elapsedMs > 0
     this.running = true
     this.lastTick = performance.now()
     const step = STEEL_UNLOAD_STEPS[this.stepIndex]
-    this.runtime.setCamera(step.camera)
+    if (!resuming) {
+      this.runtime.setCamera(step.camera)
+    } else {
+      this.apply(step, Math.min(1, this.elapsedMs / step.durationMs))
+    }
     this.emitState(Math.min(1, this.elapsedMs / step.durationMs))
     this.timer = setInterval(() => this.tick(), 80)
   }
@@ -323,12 +374,26 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
     this.runtime.setOperationState('OP-240801', 0, 'queued')
     const bayX = this.subMode === 'coil_chook' ? BAY03.cadX : BAY07.cadX
     this.runtime.setVehiclePose('WAGON-FLAT-01', WAGON_START)
-    this.runtime.setVehiclePose('TRUCK-FLAT-01', TRUCK_GATE)
+    this.runtime.setVehiclePose('TRUCK-FLAT-01', TRUCK_STANDBY_STAGING)
+    this.runtime.setVehiclePose('TRUCK-TANK-01', TANKER_STANDBY_STAGING)
     this.runtime.setVehiclePose('CARGO-STEEL-ACTIVE', { cadX: WAGON_START.cadX, cadY: WAGON_START.cadY, headingDeg: 0 }, 2.1)
     this.runtime.setCranePose('CR-02', { ...CR_HOME, gantryX: bayX })
     this.runtime.setBridgeCranePose('BC-03', BC03_HOME)
     this.runtime.setBridgeCranePose('BC-07', BC_HOME)
-    this.runtime.setProcessHighlight({ antiCollisionActive: false, elevatorActive: false, airSlideActive: false, spoutActive: false })
+    this.runtime.setProcessHighlight({
+      antiCollisionActive: false,
+      elevatorActive: false,
+      airSlideActive: false,
+      spoutActive: false,
+      laserFromPos: null,
+      laserTargetPos: null,
+      fenceActive: false,
+      underSiloFenceActive: false,
+      wbInText: '',
+      wbOutText: '',
+      bayWarningPos: null,
+      bayWarningText: '',
+    })
   }
 
   reset() {
@@ -359,7 +424,7 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
       this.emitState(0)
       this.timer = setInterval(() => this.tick(), 80)
     } else {
-      const previewT = 0.45
+      const previewT = step.id === 'steel-truck-load' ? 0.72 : step.id === 'steel-weigh-verify' ? 0.85 : 0.45
       this.elapsedMs = Math.round(step.durationMs * previewT)
       this.apply(step, previewT)
       this.emitState(previewT)
@@ -382,7 +447,7 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
 
   private tick() {
     const now = performance.now()
-    this.elapsedMs += Math.min(now - this.lastTick, 160)
+    this.elapsedMs += Math.min(now - this.lastTick, 360)
     this.lastTick = now
     const step = STEEL_UNLOAD_STEPS[this.stepIndex]
     const t = Math.min(this.elapsedMs / step.durationMs, 1)
@@ -409,19 +474,96 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
     const activeBcId = this.subMode === 'coil_chook' ? 'BC-03' : 'BC-07'
     const inactiveBcId = this.subMode === 'coil_chook' ? 'BC-07' : 'BC-03'
     const bayDeltaX = activeBay.cadX - BAY07.cadX
+    const activePayload = this.subMode === 'coil_chook' ? 31.2 : 22.0
 
     this.runtime.setDeviceStatus('CR-02', step.craneStatus)
     this.runtime.setDeviceStatus(activeBcId, step.bridgeStatus)
     this.runtime.setDeviceStatus(inactiveBcId, 'standby')
     this.runtime.setStockyardQuantity('CARGO-01', Math.round(lerp(step.bayTons[0], step.bayTons[1], t)))
-    this.runtime.setOperationState('OP-240801', Math.round(lerp(step.opProgress[0], step.opProgress[1], t)), step.opStatus)
+    this.runtime.setOperationState('OP-240801', Math.round(lerp(step.opProgress[0], step.opProgress[1], t)), t >= 1 ? step.opStatus : 'running')
 
-    const crPose: CranePose = {
-      gantryX: lerp(step.crane.from.gantryX, step.crane.to.gantryX, t) + bayDeltaX,
-      gantryY: lerp(step.crane.from.gantryY, step.crane.to.gantryY, t),
-      trolleyOffset: lerp(step.crane.from.trolleyOffset, step.crane.to.trolleyOffset, t),
-      hoistHeight: lerp(step.crane.from.hoistHeight, step.crane.to.hoistHeight, t),
-      payloadTons: this.subMode === 'coil_chook' && (step.crane.to.payloadTons ?? 0) > 0 ? 31.2 : step.crane.to.payloadTons,
+    let crPose: CranePose
+    if (step.id === 'steel-truck-load') {
+      // Staged Step 4 CR-02 kinematics:
+      // 0.00..0.24: move empty to apron & lower to hook steel bundle
+      // 0.24..0.44: hoist bundle at apron
+      // 0.44..0.63: hold at apron waiting for truck fence lock
+      // 0.63..0.85: slow trolley traverse APRON_TARGET_Y -> TRUCK_LOAD_Y (~5 m/s) with SCS laser active
+      // 0.85..1.00: slow hoist down 13.8m -> 4.1m onto truck flatbed
+      if (t < 0.24) {
+        const u = easeInOut(t / 0.24)
+        crPose = {
+          gantryX: activeBay.cadX,
+          gantryY: CR02.cadY,
+          trolleyOffset: lerp(0, CR_TROLLEY_APRON_OFFSET, Math.min(1, u * 1.25)),
+          hoistHeight: lerp(16.0, 4.6, u),
+          payloadTons: 0,
+        }
+      } else if (t < 0.44) {
+        const u = easeInOut((t - 0.24) / 0.20)
+        crPose = {
+          gantryX: activeBay.cadX,
+          gantryY: CR02.cadY,
+          trolleyOffset: CR_TROLLEY_APRON_OFFSET,
+          hoistHeight: lerp(4.6, 13.8, u),
+          payloadTons: activePayload,
+        }
+      } else if (t < 0.63) {
+        crPose = {
+          gantryX: activeBay.cadX,
+          gantryY: CR02.cadY,
+          trolleyOffset: CR_TROLLEY_APRON_OFFSET,
+          hoistHeight: 13.8,
+          payloadTons: activePayload,
+        }
+      } else if (t < 0.85) {
+        const u = easeInOut((t - 0.63) / 0.22)
+        crPose = {
+          gantryX: activeBay.cadX,
+          gantryY: CR02.cadY,
+          trolleyOffset: lerp(CR_TROLLEY_APRON_OFFSET, TRUCK_LOAD_Y - CR02.cadY, u),
+          hoistHeight: 13.8,
+          payloadTons: activePayload,
+        }
+      } else {
+        const u = easeInOut((t - 0.85) / 0.15)
+        crPose = {
+          gantryX: activeBay.cadX,
+          gantryY: CR02.cadY,
+          trolleyOffset: TRUCK_LOAD_Y - CR02.cadY,
+          hoistHeight: lerp(13.8, 4.1, u),
+          payloadTons: t > 0.97 ? 0 : activePayload,
+        }
+      }
+    } else if (step.id === 'steel-weigh-verify') {
+      // Staged Step 5 CR-02 kinematics: 0..0.16 lift hook clear above loaded truck, 0.16..0.38 retract trolley slowly to CR_HOME
+      if (t < 0.16) {
+        const u = easeInOut(t / 0.16)
+        crPose = {
+          gantryX: activeBay.cadX,
+          gantryY: CR02.cadY,
+          trolleyOffset: TRUCK_LOAD_Y - CR02.cadY,
+          hoistHeight: lerp(4.1, 15.8, u),
+          payloadTons: 0,
+        }
+      } else {
+        const u = easeInOut((t - 0.16) / 0.26)
+        crPose = {
+          gantryX: activeBay.cadX,
+          gantryY: CR02.cadY,
+          trolleyOffset: lerp(TRUCK_LOAD_Y - CR02.cadY, 0, u),
+          hoistHeight: lerp(15.8, 16.0, u),
+          payloadTons: 0,
+        }
+      }
+    } else {
+      crPose = {
+        gantryX: lerp(step.crane.from.gantryX, step.crane.to.gantryX, t) + bayDeltaX,
+        gantryY: lerp(step.crane.from.gantryY, step.crane.to.gantryY, t),
+        trolleyOffset: lerp(step.crane.from.trolleyOffset, step.crane.to.trolleyOffset, t),
+        hoistHeight: lerp(step.crane.from.hoistHeight, step.crane.to.hoistHeight, t),
+        payloadTons: this.subMode === 'coil_chook' && (step.crane.to.payloadTons ?? 0) > 0 ? 31.2 : step.crane.to.payloadTons,
+      }
     }
     this.runtime.setCranePose('CR-02', crPose)
 
@@ -438,25 +580,117 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
     const wagonTo: VehiclePose = { ...step.wagon.to, cadX: step.wagon.to.cadX + bayDeltaX }
     const wagonPose = lerpVehicle(wagonFrom, wagonTo, t)
 
-    // Route flatbed truck along North loading road (cadY = 1655.0) before turning to exit weighbridge, avoiding rail tracks & gantry legs
+    // Route flatbed truck along safe paved roads (WB-TRUCK-02 <-> Y=1616.5 <-> X=4120 <-> Y=1655 loading lane <-> WB-TRUCK-01)
     let truckPose: VehiclePose
-    if (step.id === 'steel-weigh-verify') {
-      const startLoadPos: VehiclePose = { ...TRUCK_LOAD_POS, cadX: activeBay.cadX, headingDeg: 0 }
-      if (t < 0.72) {
-        truckPose = lerpVehicle(startLoadPos, TRUCK_CORRIDOR_EAST, t / 0.72)
+    if (step.id === 'steel-truck-load') {
+      if (t < 0.10) {
+        truckPose = followPolyline([[TRUCK_GATE.cadX, TRUCK_GATE.cadY], [WB_IN.cadX, WB_IN.cadY]], easeInOut(t / 0.10), 180)
+      } else if (t < 0.28) {
+        truckPose = { cadX: WB_IN.cadX, cadY: WB_IN.cadY, headingDeg: 180 }
+      } else if (t < 0.49) {
+        truckPose = followPolyline(
+          [
+            [WB_IN.cadX, WB_IN.cadY],
+            [4525.0, WB_IN.cadY],
+            [4525.0, 1616.5],
+            [4120.0, 1616.5],
+            [4120.0, TRUCK_LOAD_Y],
+            [activeBay.cadX + 46, TRUCK_LOAD_Y],
+          ],
+          easeInOut((t - 0.28) / 0.21),
+          180,
+        )
+      } else if (t < 0.63) {
+        // Gentle forward U-loop in loading apron so truck finishes aligned East (heading 0) with flatbed centered at activeBay.cadX
+        truckPose = followPolyline(
+          [
+            [activeBay.cadX + 46, TRUCK_LOAD_Y],
+            [activeBay.cadX + 20, 1651.0],
+            [activeBay.cadX - 10, 1651.0],
+            [activeBay.cadX - 12, 1654.0],
+            [activeBay.cadX - 5, TRUCK_LOAD_Y],
+            [activeBay.cadX + 1.9, TRUCK_LOAD_Y],
+          ],
+          easeInOut((t - 0.49) / 0.14),
+          0,
+        )
       } else {
-        truckPose = lerpVehicle(TRUCK_CORRIDOR_EAST, TRUCK_EXIT_POS, (t - 0.72) / 0.28)
+        truckPose = { cadX: activeBay.cadX + 1.9, cadY: TRUCK_LOAD_Y, headingDeg: 0 }
+      }
+    } else if (step.id === 'steel-weigh-verify') {
+      if (t < 0.14) {
+        truckPose = { cadX: activeBay.cadX + 1.9, cadY: TRUCK_LOAD_Y, headingDeg: 0 }
+      } else if (t < 0.24) {
+        truckPose = followPolyline(
+          [
+            [activeBay.cadX + 1.9, TRUCK_LOAD_Y],
+            [activeBay.cadX + 44, TRUCK_LOAD_Y],
+          ],
+          easeInOut((t - 0.14) / 0.10),
+          0,
+        )
+      } else if (t < 0.40) {
+        truckPose = followPolyline(
+          [
+            [activeBay.cadX + 44, TRUCK_LOAD_Y],
+            [4120.0, TRUCK_LOAD_Y],
+            [4120.0, 1616.5],
+            [4516.0, 1616.5],
+          ],
+          easeInOut((t - 0.24) / 0.16),
+          0,
+        )
+      } else if (t < 0.50) {
+        truckPose = followPolyline(
+          [
+            [4516.0, 1616.5],
+            [4525.0, 1616.5],
+            [4525.0, WB_OUT.cadY],
+            [WB_OUT.cadX, WB_OUT.cadY],
+          ],
+          easeInOut((t - 0.40) / 0.10),
+          0,
+        )
+      } else if (t < 0.74) {
+        truckPose = { cadX: WB_OUT.cadX, cadY: WB_OUT.cadY, headingDeg: 0 }
+      } else {
+        truckPose = followPolyline(
+          [
+            [WB_OUT.cadX, WB_OUT.cadY],
+            [WB_OUT.cadX + 18, WB_OUT.cadY],
+          ],
+          easeInOut((t - 0.74) / 0.26),
+          0,
+        )
       }
     } else {
-      const truckTo: VehiclePose =
-        step.truck.to.cadX === TRUCK_LOAD_POS.cadX ? { ...step.truck.to, cadX: activeBay.cadX } : step.truck.to
-      truckPose = lerpVehicle(step.truck.from, truckTo, t)
+      truckPose = TRUCK_STANDBY_STAGING
     }
     this.runtime.setVehiclePose('WAGON-FLAT-01', wagonPose)
     this.runtime.setVehiclePose('TRUCK-FLAT-01', truckPose)
+    this.runtime.setVehiclePose('TRUCK-TANK-01', TANKER_STANDBY_STAGING)
 
-    // Move detached active steel bundle/coil cleanly across handoff chain (no teleportation back to bay on step 5)
-    if (step.cargoMode === 'wagon') {
+    // Move detached active steel bundle/coil cleanly across handoff chain with heading-aware flatbed offset (-1.9m)
+    const truckRad = (truckPose.headingDeg * Math.PI) / 180
+    const flatbedCargoPose: VehiclePose = {
+      cadX: truckPose.cadX - 1.9 * Math.cos(truckRad),
+      cadY: truckPose.cadY + 1.9 * Math.sin(truckRad),
+      headingDeg: truckPose.headingDeg,
+    }
+
+    if (step.id === 'steel-truck-load') {
+      if (t < 0.22) {
+        this.runtime.setVehiclePose('CARGO-STEEL-ACTIVE', { cadX: activeBay.cadX, cadY: APRON_TARGET_Y, headingDeg: 0 }, 1.5)
+      } else if (t < 0.97) {
+        this.runtime.setVehiclePose(
+          'CARGO-STEEL-ACTIVE',
+          { cadX: crPose.gantryX, cadY: crPose.gantryY + crPose.trolleyOffset, headingDeg: 0 },
+          crPose.hoistHeight - 1.1,
+        )
+      } else {
+        this.runtime.setVehiclePose('CARGO-STEEL-ACTIVE', flatbedCargoPose, 1.88)
+      }
+    } else if (step.cargoMode === 'wagon') {
       this.runtime.setVehiclePose('CARGO-STEEL-ACTIVE', { cadX: wagonPose.cadX, cadY: wagonPose.cadY, headingDeg: 0 }, 2.1)
     } else if (step.cargoMode === 'crane') {
       this.runtime.setVehiclePose(
@@ -473,21 +707,141 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
         bcPose.hoistHeight - 1.0,
       )
     } else if (step.cargoMode === 'truck') {
-      this.runtime.setVehiclePose(
-        'CARGO-STEEL-ACTIVE',
-        { cadX: truckPose.cadX, cadY: truckPose.cadY, headingDeg: truckPose.headingDeg },
-        1.85,
-      )
+      this.runtime.setVehiclePose('CARGO-STEEL-ACTIVE', flatbedCargoPose, 1.88)
     } else {
       this.runtime.setVehiclePose('CARGO-STEEL-ACTIVE', { cadX: activeBay.cadX, cadY: BC_STACK_Y, headingDeg: 0 }, 1.6)
     }
 
+    // Dynamic sub-phase camera focus tracking & rich 3D visual highlights for Steps 4 & 5
     const gapDist = lerp(step.safetyDistanceM[0], step.safetyDistanceM[1], t)
-    this.runtime.setProcessHighlight({
-      antiCollisionActive: step.antiCollisionActive,
-      gapLabelPos: { cadX: activeBay.cadX + 12, cadY: APRON_TARGET_Y },
-      gapDistanceM: gapDist,
-    })
+    if (step.id === 'steel-truck-load') {
+      if (t < 0.34) {
+        this.runtime.focusPoint?.({
+          tag: 'steel-4a-wb-in',
+          cadX: WB_IN.cadX,
+          cadY: WB_IN.cadY,
+          cadZ: 2.2,
+          radius: 18,
+          headingDeg: -38,
+          pitchDeg: -22,
+          range: 92,
+          durationSec: 0.65,
+        })
+      } else if (t < 0.63) {
+        this.runtime.focusPoint?.({
+          tag: 'steel-4b-dock',
+          cadX: activeBay.cadX + 16,
+          cadY: 1656,
+          cadZ: 5.5,
+          radius: 26,
+          headingDeg: -34,
+          pitchDeg: -24,
+          range: 132,
+          durationSec: 1.15,
+        })
+      } else {
+        this.runtime.focusPoint?.({
+          tag: 'steel-4c-load',
+          cadX: activeBay.cadX + 4,
+          cadY: 1658,
+          cadZ: 5.0,
+          radius: 18,
+          headingDeg: -38,
+          pitchDeg: -22,
+          range: 96,
+          durationSec: 0.85,
+        })
+      }
+
+      const fenceReady = t >= 0.56
+      const laserActive = t >= 0.62
+      this.runtime.setProcessHighlight({
+        antiCollisionActive: laserActive,
+        gapLabelPos: { cadX: activeBay.cadX + 10, cadY: TRUCK_LOAD_Y + 4 },
+        gapDistanceM: gapDist,
+        laserFromPos: laserActive
+          ? { cadX: crPose.gantryX, cadY: crPose.gantryY + crPose.trolleyOffset, cadZ: crPose.hoistHeight }
+          : null,
+        laserTargetPos: laserActive ? { cadX: truckPose.cadX, cadY: truckPose.cadY, cadZ: 3.2 } : null,
+        fenceActive: fenceReady,
+        fencePos: { cadX: activeBay.cadX, cadY: TRUCK_LOAD_Y },
+        fenceLabel: t >= 0.82 ? '电子围栏闭锁 · 门吊慢速落钩装车' : '装车电子围栏闭锁 · 司机离车确认',
+        underSiloFenceActive: false,
+        wbInText: t <= 0.32 ? (t >= 0.10 ? 'WB-TRUCK-02 初磅皮重 16.4 t ✓' : 'WB-TRUCK-02 初磅过磅中…') : '',
+        wbOutText: '',
+        bayWarningPos: null,
+        bayWarningText: '',
+      })
+    } else if (step.id === 'steel-weigh-verify') {
+      if (t < 0.24) {
+        this.runtime.focusPoint?.({
+          tag: 'steel-5a-depart',
+          cadX: activeBay.cadX + 14,
+          cadY: 1656,
+          cadZ: 4.5,
+          radius: 22,
+          headingDeg: -32,
+          pitchDeg: -22,
+          range: 112,
+          durationSec: 0.7,
+        })
+      } else if (t < 0.75) {
+        this.runtime.focusPoint?.({
+          tag: 'steel-5b-wb-out',
+          cadX: WB_OUT.cadX - 4,
+          cadY: WB_OUT.cadY + 2,
+          cadZ: 2.5,
+          radius: 20,
+          headingDeg: -30,
+          pitchDeg: -24,
+          range: 105,
+          durationSec: 1.15,
+        })
+      } else {
+        this.runtime.focusPoint?.({
+          tag: 'steel-5c-warning',
+          cadX: activeBay.cadX,
+          cadY: 1684,
+          cadZ: 8.0,
+          radius: 34,
+          headingDeg: -38,
+          pitchDeg: -27,
+          range: 148,
+          durationSec: 1.0,
+        })
+      }
+
+      const showBayWarn = t >= 0.75
+      this.runtime.setProcessHighlight({
+        antiCollisionActive: true,
+        gapLabelPos: { cadX: activeBay.cadX + 12, cadY: APRON_TARGET_Y },
+        gapDistanceM: gapDist,
+        laserFromPos: { cadX: crPose.gantryX, cadY: crPose.gantryY + crPose.trolleyOffset, cadZ: crPose.hoistHeight },
+        laserTargetPos: { cadX: bcPose.cadX, cadY: bcPose.bridgeY, cadZ: 12.0 },
+        fenceActive: false,
+        underSiloFenceActive: false,
+        wbInText: '',
+        wbOutText: t >= 0.46 && t < 0.75 ? (t >= 0.56 ? 'WB-TRUCK-01 复磅 38.4 t · 净重 22.0 t ✓' : 'WB-TRUCK-01 满车复磅中…') : '',
+        bayWarningPos: showBayWarn ? { cadX: activeBay.cadX, cadY: activeBay.cadY } : null,
+        bayWarningText: showBayWarn ? `${activeBay.id} 高库存预警 82.5% (16,500t) · 防撞联锁 11.4m` : '',
+      })
+    } else {
+      this.runtime.setProcessHighlight({
+        antiCollisionActive: step.antiCollisionActive,
+        gapLabelPos: { cadX: activeBay.cadX + 12, cadY: APRON_TARGET_Y },
+        gapDistanceM: gapDist,
+        laserFromPos: step.antiCollisionActive
+          ? { cadX: crPose.gantryX, cadY: crPose.gantryY + crPose.trolleyOffset, cadZ: crPose.hoistHeight }
+          : null,
+        laserTargetPos: step.antiCollisionActive ? { cadX: bcPose.cadX, cadY: bcPose.bridgeY, cadZ: 11.0 } : null,
+        fenceActive: false,
+        underSiloFenceActive: false,
+        wbInText: '',
+        wbOutText: '',
+        bayWarningPos: null,
+        bayWarningText: '',
+      })
+    }
     this.runtime.requestRender()
   }
 

@@ -32,7 +32,7 @@ import { useAlertStore, type AlertItem } from '@/stores/alert'
 import { buildDefaultDeviceSnapshot, useDeviceStore } from '@/stores/device'
 import { Twin3dController, type SelectedInfo } from '@/twin3d'
 import { BulkProcessDemoController } from '@/twin3d/bulkProcessDemo'
-import { flyToCameraPreset, type CameraPresetId } from '@/twin3d/cameraPresets'
+import { flyToCameraPreset, focusCadPoint, type CameraFocusTarget, type CameraPresetId } from '@/twin3d/cameraPresets'
 import { cadGeoJsonToWgs84 } from '@/twin3d/geo'
 import { MOCK_EQUIPMENT } from '@/twin3d/mock/mockData'
 import { MOCK_CARGO, MOCK_OPERATIONS, MOCK_PERSONNEL, Phase6LayerController } from '@/twin3d/phase6'
@@ -184,6 +184,9 @@ let chartResizeObserver: ResizeObserver | null = null
 let carouselTimer: ReturnType<typeof setInterval> | null = null
 let carouselResumeTimer: ReturnType<typeof setTimeout> | null = null
 let alertShrinkTimer: ReturnType<typeof setTimeout> | null = null
+let lastFocusTag = ''
+let userCameraHold = false
+let removeCanvasInteractionListeners: (() => void) | null = null
 
 const alertOverlay = ref(false)
 const alertMinimized = ref(false)
@@ -296,6 +299,8 @@ function seedDevices() {
 }
 
 function setCamera(preset: CameraPresetId) {
+  lastFocusTag = ''
+  userCameraHold = false
   if (viewer) flyToCameraPreset(viewer, preset)
 }
 
@@ -313,6 +318,12 @@ function syncOperationalLayers() {
 function createRuntime(): UnifiedProcessRuntime {
   return {
     setCamera,
+    focusPoint: (target: CameraFocusTarget) => {
+      if (!viewer || userCameraHold) return
+      if (target.tag && target.tag === lastFocusTag) return
+      lastFocusTag = target.tag ?? ''
+      focusCadPoint(viewer, target)
+    },
     setDeviceStatus: (id, status) => deviceStore.updateDevice(id, status),
     setEquipmentLabel: (id, text) => twin3d?.setEquipmentLabel(id, text),
     setStockyardQuantity: (cargoId, quantity) => {
@@ -551,6 +562,10 @@ function toggleDataMode() {
 function resetDemo() {
   seedDevices()
   alertStore.clear()
+  lastPromptedAlertId = ''
+  activeModalAlert.value = null
+  alertOverlay.value = false
+  alertMinimized.value = false
   cargoItems.value = structuredClone(MOCK_CARGO)
   personnelItems.value = structuredClone(MOCK_PERSONNEL)
   operationTasks.value = structuredClone(MOCK_OPERATIONS)
@@ -726,6 +741,18 @@ function initChart() {
 function onViewerReady(nextViewer: Cesium.Viewer) {
   viewer = nextViewer
   setupCameraInteraction(nextViewer)
+  removeCanvasInteractionListeners?.()
+  const canvas = nextViewer.scene.canvas
+  const markManualCamera = () => {
+    userCameraHold = true
+    nextViewer.camera.cancelFlight()
+  }
+  canvas.addEventListener('pointerdown', markManualCamera, { passive: true })
+  canvas.addEventListener('wheel', markManualCamera, { passive: true })
+  removeCanvasInteractionListeners = () => {
+    canvas.removeEventListener('pointerdown', markManualCamera)
+    canvas.removeEventListener('wheel', markManualCamera)
+  }
   sceneStatus.value = 'loading'
   nextViewer.scene.requestRender()
 
@@ -763,6 +790,10 @@ function onViewerReady(nextViewer: Cesium.Viewer) {
       dataService = new DtsDataService(deviceStore, alertStore, (s) => Object.assign(feedStatus, s), activeRegion.value)
       activeRegion.value = dataService.getRegionId()
       dataService.start(dataMode.value, 5000)
+      const win = window as unknown as Record<string, unknown>
+      win.__dt_viewer = nextViewer
+      win.__dt_twin3d = twin3d
+      win.__Cesium = Cesium
       applyUrlDeepLinkParams()
       sceneStatus.value = sceneError.value ? 'error' : 'ready'
       nextViewer.scene.requestRender()
@@ -788,7 +819,9 @@ watch(
     stopCarousel()
     alertOverlay.value = true
     alertMinimized.value = false
-    focusCriticalAlert(latestAlert)
+    if (!latestAlert.id.startsWith('DEMO-')) {
+      focusCriticalAlert(latestAlert)
+    }
     if (alertShrinkTimer) clearTimeout(alertShrinkTimer)
     alertShrinkTimer = setTimeout(() => {
       alertMinimized.value = true
@@ -810,6 +843,8 @@ onBeforeUnmount(() => {
   stopCarousel()
   if (carouselResumeTimer) clearTimeout(carouselResumeTimer)
   if (alertShrinkTimer) clearTimeout(alertShrinkTimer)
+  removeCanvasInteractionListeners?.()
+  removeCanvasInteractionListeners = null
   chartResizeObserver?.disconnect()
   chartResizeObserver = null
   chart?.dispose()

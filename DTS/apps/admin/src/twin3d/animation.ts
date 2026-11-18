@@ -16,16 +16,16 @@ const TRACK_H4_OFFSET = SITE_LAYOUT_V4.rebar.tracks[0].cadY - CR02_Y
 const APRON_OFFSET = SITE_LAYOUT_V4.rebar.transferApronY[1] - CR02_Y - 1.5
 
 export const CRANE_UNLOAD_SEQUENCE: AnimStep[] = [
-  { el: 'gantry', type: 'move', from: [CR02_X, CR02_Y, 0], to: [CR02_X, CR02_Y, 0], time: 1200 },
-  { el: 'trolley', type: 'trolley', from: [0, 0, 0], to: [TRACK_H4_OFFSET, 0, 0], time: 1800 },
-  { el: 'hoist', type: 'hoist', from: [0, 0, 16], to: [0, 0, 4.5], time: 1800 },
-  { el: 'hoist', type: 'hoist', from: [0, 0, 4.5], to: [0, 0, 16], time: 1800 },
-  { el: 'trolley', type: 'trolley', from: [TRACK_H4_OFFSET, 0, 0], to: [APRON_OFFSET, 0, 0], time: 2600 },
-  { el: 'gantry', type: 'move', from: [CR02_X, CR02_Y, 0], to: [BAY07_X, CR02_Y, 0], time: 1600 },
-  { el: 'hoist', type: 'hoist', from: [0, 0, 16], to: [0, 0, 4.8], time: 1800 },
-  { el: 'hoist', type: 'hoist', from: [0, 0, 4.8], to: [0, 0, 16], time: 1500 },
-  { el: 'gantry', type: 'move', from: [BAY07_X, CR02_Y, 0], to: [CR02_X, CR02_Y, 0], time: 1600 },
-  { el: 'trolley', type: 'trolley', from: [APRON_OFFSET, 0, 0], to: [0, 0, 0], time: 1800 },
+  { el: 'gantry', type: 'move', from: [CR02_X, CR02_Y, 0], to: [CR02_X, CR02_Y, 0], time: 2600 },
+  { el: 'trolley', type: 'trolley', from: [0, 0, 0], to: [TRACK_H4_OFFSET, 0, 0], time: 4200 },
+  { el: 'hoist', type: 'hoist', from: [0, 0, 16], to: [0, 0, 4.5], time: 3800 },
+  { el: 'hoist', type: 'hoist', from: [0, 0, 4.5], to: [0, 0, 16], time: 3800 },
+  { el: 'trolley', type: 'trolley', from: [TRACK_H4_OFFSET, 0, 0], to: [APRON_OFFSET, 0, 0], time: 5800 },
+  { el: 'gantry', type: 'move', from: [CR02_X, CR02_Y, 0], to: [BAY07_X, CR02_Y, 0], time: 3600 },
+  { el: 'hoist', type: 'hoist', from: [0, 0, 16], to: [0, 0, 4.8], time: 3800 },
+  { el: 'hoist', type: 'hoist', from: [0, 0, 4.8], to: [0, 0, 16], time: 3400 },
+  { el: 'gantry', type: 'move', from: [BAY07_X, CR02_Y, 0], to: [CR02_X, CR02_Y, 0], time: 3600 },
+  { el: 'trolley', type: 'trolley', from: [APRON_OFFSET, 0, 0], to: [0, 0, 0], time: 4200 },
 ]
 
 export interface ActorState {

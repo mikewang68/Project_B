@@ -1,6 +1,6 @@
 import type { AlertItem } from '@/stores/alert'
 import type { EquipmentDef } from './constants'
-import type { CameraPresetId } from './cameraPresets'
+import type { CameraFocusTarget, CameraPresetId } from './cameraPresets'
 import type { OperationStatus } from './phase6'
 import type { VehiclePose } from './vehicleAnimator'
 import type { BridgeCranePose, CranePose, SiloLoaderPose, TipperPose } from './models/buildEquipment'
@@ -10,6 +10,29 @@ export type ProcessKind = 'steel' | 'bulk'
 export interface InterlockChecklistItem {
   label: string
   passed: boolean
+}
+
+export interface ProcessHighlightState {
+  elevatorActive: boolean
+  airSlideActive: boolean
+  spoutActive: boolean
+  spoutX: number
+  spoutY: number
+  antiCollisionActive: boolean
+  gapLabelPos: { cadX: number; cadY: number }
+  gapDistanceM: number
+  laserFromPos: { cadX: number; cadY: number; cadZ?: number } | null
+  laserTargetPos: { cadX: number; cadY: number; cadZ?: number } | null
+  fenceActive: boolean
+  fencePos: { cadX: number; cadY: number }
+  fenceLabel: string
+  underSiloFenceActive: boolean
+  underSiloFencePos: { cadX: number; cadY: number }
+  underSiloFenceText: string
+  wbInText: string
+  wbOutText: string
+  bayWarningPos: { cadX: number; cadY: number } | null
+  bayWarningText: string
 }
 
 export interface ProcessDemoState {
@@ -33,6 +56,7 @@ export interface ProcessDemoState {
 
 export interface UnifiedProcessRuntime {
   setCamera: (id: CameraPresetId) => void
+  focusPoint?: (target: CameraFocusTarget) => void
   setDeviceStatus: (id: string, status: EquipmentDef['status']) => void
   setEquipmentLabel: (id: string, text: string) => void
   setStockyardQuantity: (cargoId: string, quantity: number) => void
@@ -43,16 +67,7 @@ export interface UnifiedProcessRuntime {
   setBridgeCranePose: (id: string, pose: BridgeCranePose) => void
   setTipperPose: (id: string, pose: TipperPose) => void
   setLoaderPose: (id: string, pose: SiloLoaderPose) => void
-  setProcessHighlight: (patch: {
-    elevatorActive?: boolean
-    airSlideActive?: boolean
-    spoutActive?: boolean
-    spoutX?: number
-    spoutY?: number
-    antiCollisionActive?: boolean
-    gapLabelPos?: { cadX: number; cadY: number }
-    gapDistanceM?: number
-  }) => void
+  setProcessHighlight: (patch: Partial<ProcessHighlightState>) => void
   addAlert: (alert: Omit<AlertItem, 'time' | 'handled'>) => void
   clearAlerts: () => void
   requestRender: () => void

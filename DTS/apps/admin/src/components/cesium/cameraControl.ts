@@ -15,8 +15,8 @@ export function setupCameraInteraction(viewer: Cesium.Viewer): void {
     Cesium.CameraEventType.WHEEL,
     Cesium.CameraEventType.PINCH,
   ]
-  // 限制缩放范围：最小 150m（防止缩到 0m 进入地底下导致渲染崩溃）
-  scene.screenSpaceCameraController.minimumZoomDistance = 150
+  // 允许库底装车与汽车衡近景特写缩放到 18m（同时防止穿入地面导致渲染异常）
+  scene.screenSpaceCameraController.minimumZoomDistance = 18
   scene.screenSpaceCameraController.maximumZoomDistance = 20000
 }
 
