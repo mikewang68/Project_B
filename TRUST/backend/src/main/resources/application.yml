@@ -23,6 +23,7 @@ spring:
     default-schema: trust_data
   servlet:
     multipart:
+      file-size-threshold: 0B
       max-file-size: 20MB
       max-request-size: 21MB
   jackson:
