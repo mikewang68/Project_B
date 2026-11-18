@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { isDomainLiveEvent, isLiveEvent, sharedLiveSocket } from './live'
+import { isAlertEvent, isDomainLiveEvent, isLiveEvent, sharedLiveSocket } from './live'
 
 class MockWebSocket {
   static instances: MockWebSocket[] = []
@@ -32,6 +32,14 @@ describe('live event parsing', () => {
     expect(isLiveEvent({ type: 'zone.changed' })).toBe(true)
     expect(isLiveEvent({ type: 'pong' })).toBe(false)
     expect(isLiveEvent({ schemaVersion: 1 })).toBe(false)
+  })
+
+  it('isAlertEvent only matches alert domain events', () => {
+    expect(isAlertEvent({ type: 'alert.changed' })).toBe(true)
+    expect(isAlertEvent({ type: 'alert.created' })).toBe(true)
+    expect(isAlertEvent({ type: 'person.moved' })).toBe(false)
+    expect(isAlertEvent({ type: 'ai.new' })).toBe(false)
+    expect(isAlertEvent({ type: 'zone.changed' })).toBe(false)
   })
 
   it('isDomainLiveEvent matches personnel/fence/collision/rule events', () => {

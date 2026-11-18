@@ -10,6 +10,7 @@ import AlertAssignDialog from '@/components/alerts/AlertAssignDialog.vue'
 import TreatmentDialog from '@/components/alerts/TreatmentDialog.vue'
 import AlertReviewDialog from '@/components/alerts/AlertReviewDialog.vue'
 import { alertApi, type AssignPayload, type TreatmentPayload } from '@/api/alerts'
+import { isAlertEvent } from '@/api/live'
 import { createLatestGuard } from '@/composables/useLatestGuard'
 import { mapAlertMetricsDto, mapAlertPage, mapAlertEvent, nextRiskLevel } from '@/adapters/alert'
 import { useLiveStore } from '@/stores/live'
@@ -359,7 +360,7 @@ onMounted(() => {
   // 共享 WS 会把所有领域事件都分发过来（含 1Hz 的 person.moved）；告警中心只关心
   // alert.*，否则 UWB 人员定位上报会让列表/指标无休止重拉并一直显示 loading。
   unsubscribeLive = liveStore.onAlertEvent((event) => {
-    if (!event.type.startsWith('alert.')) return
+    if (!isAlertEvent(event)) return
     window.clearTimeout(liveTimer)
     liveTimer = window.setTimeout(() => {
       void refreshAlertContext({ metrics: true, list: true, detail: true, silent: true })

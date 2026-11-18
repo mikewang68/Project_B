@@ -10,6 +10,7 @@ import BigScreenDeviceHealth from '@/components/screen/BigScreenDeviceHealth.vue
 import CriticalAlertPopup from '@/components/screen/CriticalAlertPopup.vue'
 import { useIncidentStore } from '@/stores/incident'
 import { useLiveStore } from '@/stores/live'
+import { isAlertEvent } from '@/api/live'
 import type { MobileIncident } from '@/types/incident'
 
 const store = useIncidentStore()
@@ -28,8 +29,11 @@ onMounted(() => {
   fit()
   window.addEventListener('resize', fit)
   void store.loadAll()
-  // 告警变更（含移动端处置、管理端操作）经 WS 自动刷新大屏
-  unsubscribeLive = liveStore.onAlertEvent(() => store.scheduleRefresh())
+  // 告警变更（含移动端处置、管理端操作）经 WS 自动刷新大屏。
+  // 共享 WS 同时分发人员位置等事件，告警投影不应被 1Hz person.moved 触发重拉。
+  unsubscribeLive = liveStore.onAlertEvent((event) => {
+    if (isAlertEvent(event)) store.scheduleRefresh()
+  })
   unsubscribeReconnect = liveStore.onReconnected(() => store.loadAll())
 })
 onBeforeUnmount(() => {

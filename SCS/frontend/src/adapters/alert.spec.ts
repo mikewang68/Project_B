@@ -33,6 +33,14 @@ describe('alert adapters', () => {
     expect(mapAlertEvidence(null)).toBeUndefined()
   })
 
+  it('normalizes AI snapshot URLs and drops unserved demo placeholders', () => {
+    const ai = (snapshotUrl: string) =>
+      mapAlertEvidence({ kind: 'ai', snapshotUrl }) as { snapshotUrl?: string }
+    expect(ai('/snapshots/a.jpg').snapshotUrl).toBe('/api/v1/ai-events/snapshots/a.jpg')
+    expect(ai('/api/v1/ai-events/snapshots/a.jpg').snapshotUrl).toBe('/api/v1/ai-events/snapshots/a.jpg')
+    expect(ai('/demo-evidence/a.jpg').snapshotUrl).toBeUndefined()
+  })
+
   it('computes remaining seconds from absolute deadline', () => {
     const now = new Date('2026-09-05T00:00:00+08:00')
     expect(remainingSecByDeadline('2026-09-05T00:05:00+08:00', now)).toBe(300)

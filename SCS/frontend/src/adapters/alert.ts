@@ -8,6 +8,7 @@ import type {
   LinkageStep,
   TimelineNode,
 } from '@/types/alert'
+import { normalizeSnapshotUrl } from './snapshot'
 
 /**
  * 告警前后端适配层（唯一允许做字段/枚举兼容的地方，组件内禁止再写 if/switch 猜字段）。
@@ -34,6 +35,12 @@ export function mapAlertEvidence(value: unknown): AlertEvent['evidence'] | undef
   if (!value || typeof value !== 'object') return undefined
   const kind = (value as { kind?: unknown }).kind
   if (typeof kind !== 'string' || !(EVIDENCE_KINDS as readonly string[]).includes(kind)) return undefined
+  if (kind === 'ai') {
+    return {
+      ...value,
+      snapshotUrl: normalizeSnapshotUrl((value as { snapshotUrl?: unknown }).snapshotUrl),
+    } as AlertEvidence
+  }
   return value as AlertEvidence
 }
 

@@ -77,4 +77,15 @@ describe('ai event adapter', () => {
     })
     expect(event.snapshotUrl).toBe('/api/v1/ai-events/snapshots/snap_test.jpg')
   })
+
+  it('normalizes /snapshots/ and drops unserved demo placeholders', () => {
+    const prefixed = mapAiEvent({
+      id: 'AI-E-20261007-002', type: '未佩戴安全帽', snapshotUrl: '/snapshots/snap_test.jpg',
+    })
+    expect(prefixed.snapshotUrl).toBe('/api/v1/ai-events/snapshots/snap_test.jpg')
+    const demo = mapAiEvent({
+      id: 'AI-E-20261007-003', type: '未佩戴安全帽', snapshotUrl: '/demo-evidence/worker.jpg',
+    })
+    expect(demo.snapshotUrl).toBeUndefined()
+  })
 })

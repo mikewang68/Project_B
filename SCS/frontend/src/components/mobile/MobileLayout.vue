@@ -4,6 +4,7 @@ import { RouterView, useRoute } from 'vue-router'
 import { Bell, Back, Connection, House, Loading } from '@element-plus/icons-vue'
 import { useIncidentStore } from '@/stores/incident'
 import { useLiveStore } from '@/stores/live'
+import { isAlertEvent } from '@/api/live'
 
 const store = useIncidentStore()
 const liveStore = useLiveStore()
@@ -21,7 +22,10 @@ onMounted(() => {
   tick()
   timer = window.setInterval(tick, 1000 * 20)
   void store.loadAll()
-  unsubscribeLive = liveStore.onAlertEvent(() => store.scheduleRefresh())
+  // 共享 WS 会分发人员位置等全部事件；移动端只投影告警，非 alert.* 不触发重拉。
+  unsubscribeLive = liveStore.onAlertEvent((event) => {
+    if (isAlertEvent(event)) store.scheduleRefresh()
+  })
   unsubscribeReconnect = liveStore.onReconnected(() => { void store.loadAll() })
 })
 onBeforeUnmount(() => {

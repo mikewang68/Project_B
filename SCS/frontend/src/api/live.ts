@@ -146,6 +146,15 @@ export function isAiLiveEvent(raw: unknown): raw is LiveEvent {
   return !!raw && typeof raw === 'object' && String((raw as { type?: unknown }).type ?? '').startsWith('ai.')
 }
 
+/**
+ * 判断是否为告警域实时事件。
+ * 共享 WS 会分发人员位置等全部领域事件；只投影告警的页面必须用它过滤，
+ * 否则 1Hz 的 person.moved 会把列表/指标刷成常亮 loading。
+ */
+export function isAlertEvent(event: Pick<LiveEvent, 'type'>): boolean {
+  return event.type.startsWith('alert.')
+}
+
 /** 判断是否为感知域（人员/围栏/防碰撞）实时事件 */
 export function isDomainLiveEvent(raw: unknown): raw is LiveEvent {
   if (!raw || typeof raw !== 'object' || typeof (raw as { type?: unknown }).type !== 'string') return false

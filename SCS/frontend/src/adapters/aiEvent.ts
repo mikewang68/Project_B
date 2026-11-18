@@ -1,4 +1,5 @@
 import type { AiEvent, CameraHealth, DetectionBox, ReviewStatus, RiskLevel, AiSceneKind, AiEventType } from '@/types/ai'
+import { normalizeSnapshotUrl } from './snapshot'
 
 /**
  * AI 事件前后端适配层（唯一允许做字段/枚举兼容的地方，组件内禁止再写 if/switch 猜字段）。
@@ -95,9 +96,9 @@ export function mapAiEvent(input: unknown): AiEvent {
       ;(event as unknown as Record<string, unknown>)[key] = dto[key]
     }
   })
-  if (typeof event.snapshotUrl === 'string' && event.snapshotUrl.startsWith('/snapshots/')) {
-    event.snapshotUrl = '/api/v1/ai-events' + event.snapshotUrl
-  }
+  const snapshotUrl = normalizeSnapshotUrl(event.snapshotUrl)
+  if (snapshotUrl) event.snapshotUrl = snapshotUrl
+  else delete event.snapshotUrl
   return event
 }
 
