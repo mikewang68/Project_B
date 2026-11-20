@@ -3,6 +3,7 @@ import { STATUS_COLORS, STATUS_NAMES, type EquipmentDef } from './constants'
 import { cadToCartesian3, cadToLonLat, cartesian3ToCad } from './geo'
 import { MOCK_EQUIPMENT } from './mock/mockData'
 import { SITE_LAYOUT_V4 } from './siteLayoutV4'
+import cadBuildingsV54 from './cadBuildingsV54.json'
 import {
   buildEquipment,
   type BridgeCranePose,
@@ -41,7 +42,11 @@ export class Twin3dController {
   private vehicleAnimator: VehicleRouteAnimator | null = null
   private gltfProvider: GltfModelProvider | null = null
 
-  // Dynamic process visualizers (bulk air-slide stream, silo spout stream, laser safety beam, electronic fences, weighbridge & bay alerts)
+  // Dynamic process visualizers (overhead suction duct, workroom belt conveyor, elevator, air-slide stream, silo spout stream, laser safety beam, electronic fences, weighbridge, active vehicle beacon & bay alerts)
+  private suctionFlowEntity: Cesium.Entity | null = null
+  private suctionPulseEntity: Cesium.Entity | null = null
+  private beltFlowEntity: Cesium.Entity | null = null
+  private beltPulseEntity: Cesium.Entity | null = null
   private elevFlowEntity: Cesium.Entity | null = null
   private slideFlowEntity: Cesium.Entity | null = null
   private spoutStreamEntity: Cesium.Entity | null = null
@@ -52,6 +57,7 @@ export class Twin3dController {
   private wbInHighlightEntity: Cesium.Entity | null = null
   private wbOutHighlightEntity: Cesium.Entity | null = null
   private bayWarningEntity: Cesium.Entity | null = null
+  private activeVehicleBadgeEntity: Cesium.Entity | null = null
   private siloHighlightEntity: Cesium.Entity | null = null
   private renderPumpRaf: number | null = null
   private renderPumpTimers: Array<ReturnType<typeof setTimeout>> = []
@@ -63,9 +69,12 @@ export class Twin3dController {
     wbIn: '',
     wbOut: '',
     bayWarn: '',
+    vehicleBadge: '',
   }
   private selectedSiloPos = { cadX: SITE_LAYOUT_V4.ash.silos[0].cadX, cadY: SITE_LAYOUT_V4.ash.silos[0].cadY }
   private processHighlight: ProcessHighlightState = {
+    suctionPipeActive: false,
+    beltConveyorActive: false,
     elevatorActive: false,
     airSlideActive: false,
     spoutActive: false,
@@ -86,6 +95,7 @@ export class Twin3dController {
     wbOutText: '',
     bayWarningPos: null,
     bayWarningText: '',
+    activeVehicleBadge: null,
   }
 
   constructor(viewer: Cesium.Viewer, options: Twin3dControllerOptions = {}) {
@@ -126,6 +136,120 @@ export class Twin3dController {
   private initProcessVisualizers() {
     const complex1 = SITE_LAYOUT_V4.ash.unloadingComplexes[0]
     const silo1 = SITE_LAYOUT_V4.ash.silos[0]
+    const unloadX = complex1.tipperUnloadX ?? 3787.89
+    const suctionX = unloadX - 0.33
+    const southY = complex1.tipperSouthY ?? 1523.85
+    const workroomX = complex1.workroomX ?? complex1.elevatorCadX ?? 3781.04
+
+    // Stage 1: Overhead Negative-Pressure Top Extraction Pipe (Tilter Top Bellows -> Overhead Duct -> West Workroom Cyclone/Hopper)
+    const suctionPoints: Array<[number, number, number]> = [
+      [suctionX, southY, 6.45],
+      [suctionX, southY, 9.05],
+      [workroomX, southY, 8.65],
+      [workroomX, southY, 2.05],
+    ]
+
+    this.suctionFlowEntity = this.dataSource.entities.add({
+      id: 'BULK-FLOW-SUCTION',
+      show: false,
+      polyline: {
+        positions: suctionPoints.map(([x, y, z]) => cadToCartesian3(x, y, z)),
+        width: 9,
+        material: new Cesium.PolylineGlowMaterialProperty({
+          glowPower: 0.58,
+          color: Cesium.Color.fromCssColorString('#38BDF8'),
+        }),
+      },
+    })
+
+    this.suctionPulseEntity = this.dataSource.entities.add({
+      id: 'BULK-FLOW-SUCTION-PULSE',
+      show: false,
+      position: new Cesium.CallbackPositionProperty(() => {
+        const phase = ((performance.now() * 0.00072) % 1) * (suctionPoints.length - 1)
+        const seg = Math.min(suctionPoints.length - 2, Math.floor(phase))
+        const frac = phase - seg
+        const a = suctionPoints[seg]
+        const b = suctionPoints[seg + 1]
+        return cadToCartesian3(a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac, a[2] + (b[2] - a[2]) * frac + 0.25)
+      }, false) as unknown as Cesium.PositionProperty,
+      point: {
+        pixelSize: 12,
+        color: Cesium.Color.fromCssColorString('#BAE6FD'),
+        outlineColor: Cesium.Color.fromCssColorString('#0284C7'),
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+      label: {
+        text: '顶部负压抽灰 → 送入后方工作室',
+        font: '700 11px Microsoft YaHei',
+        fillColor: Cesium.Color.fromCssColorString('#E0F2FE'),
+        outlineColor: Cesium.Color.fromCssColorString('#020A17'),
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        backgroundColor: Cesium.Color.fromCssColorString('#082F49').withAlpha(0.90),
+        showBackground: true,
+        backgroundPadding: new Cesium.Cartesian2(6, 3),
+        pixelOffset: new Cesium.Cartesian2(0, -18),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    })
+
+    // Stage 2: Workroom Internal Belt Conveyor -> Under-Rail Culvert -> Enclosed Inclined Gallery -> ELV-01 Boot
+    const beltPoints: Array<[number, number, number]> = [
+      [workroomX, southY, 1.85],
+      [workroomX, 1532.4, 1.85],
+      [workroomX, 1536.29, 0.85],
+      [workroomX, 1543.5, 3.85],
+      [workroomX, complex1.elevatorCadY, 4.18],
+    ]
+
+    this.beltFlowEntity = this.dataSource.entities.add({
+      id: 'BULK-FLOW-BELT',
+      show: false,
+      polyline: {
+        positions: beltPoints.map(([x, y, z]) => cadToCartesian3(x, y, z)),
+        width: 9,
+        material: new Cesium.PolylineGlowMaterialProperty({
+          glowPower: 0.55,
+          color: Cesium.Color.fromCssColorString('#F59E0B'),
+        }),
+      },
+    })
+
+    // Animated material packet pulse traveling along the workroom internal belt conveyor
+    this.beltPulseEntity = this.dataSource.entities.add({
+      id: 'BULK-FLOW-BELT-PULSE',
+      show: false,
+      position: new Cesium.CallbackPositionProperty(() => {
+        const phase = ((performance.now() * 0.00055) % 1) * (beltPoints.length - 1)
+        const seg = Math.min(beltPoints.length - 2, Math.floor(phase))
+        const frac = phase - seg
+        const a = beltPoints[seg]
+        const b = beltPoints[seg + 1]
+        return cadToCartesian3(a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac, a[2] + (b[2] - a[2]) * frac + 0.35)
+      }, false) as unknown as Cesium.PositionProperty,
+      point: {
+        pixelSize: 13,
+        color: Cesium.Color.fromCssColorString('#FDE047'),
+        outlineColor: Cesium.Color.fromCssColorString('#EA580C'),
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+      label: {
+        text: '工作室内皮带输送 → 斗式提升机',
+        font: '700 11px Microsoft YaHei',
+        fillColor: Cesium.Color.fromCssColorString('#FEF08A'),
+        outlineColor: Cesium.Color.fromCssColorString('#020A17'),
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        backgroundColor: Cesium.Color.fromCssColorString('#422006').withAlpha(0.88),
+        showBackground: true,
+        backgroundPadding: new Cesium.Cartesian2(6, 3),
+        pixelOffset: new Cesium.Cartesian2(0, -18),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    })
 
     // 1. Vertical Elevator & Air-Slide Material Flow Pulse
     this.elevFlowEntity = this.dataSource.entities.add({
@@ -133,8 +257,7 @@ export class Twin3dController {
       show: false,
       polyline: {
         positions: [
-          cadToCartesian3(complex1.cadX, complex1.cadY, 2.5),
-          cadToCartesian3(complex1.elevatorCadX, complex1.elevatorCadY, 6.5),
+          cadToCartesian3(complex1.elevatorCadX, complex1.elevatorCadY, 4.18),
           cadToCartesian3(complex1.elevatorCadX, complex1.elevatorCadY, 38.5),
         ],
         width: 8,
@@ -308,15 +431,21 @@ export class Twin3dController {
       },
     })
 
-    // 3e. Weighbridge Scale Highlights (WB-TRUCK-02 Inbound & WB-TRUCK-01 Outbound)
+    // 3e. Weighbridge Scale Highlights (WB-TRUCK-02 Inbound & WB-TRUCK-01 Outbound, aligned to real CAD angles)
     const wbOut = SITE_LAYOUT_V4.weighbridges[0]
     const wbIn = SITE_LAYOUT_V4.weighbridges[1]
+    const wbInPos = cadToCartesian3(wbIn.cadX, wbIn.cadY, 0.72)
+    const wbOutPos = cadToCartesian3(wbOut.cadX, wbOut.cadY, 0.72)
     this.wbInHighlightEntity = this.dataSource.entities.add({
       id: 'WB-IN-HIGHLIGHT',
       show: false,
-      position: cadToCartesian3(wbIn.cadX, wbIn.cadY, 0.75),
+      position: wbInPos,
+      orientation: Cesium.Transforms.headingPitchRollQuaternion(
+        wbInPos,
+        new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(-(wbIn.angleDeg ?? 0)), 0, 0),
+      ),
       box: {
-        dimensions: new Cesium.Cartesian3(19.5, 5.8, 1.5),
+        dimensions: new Cesium.Cartesian3(wbIn.lengthM ?? 20.0, (wbIn.widthM ?? 5.0) + 0.8, 1.5),
         material: new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#00E5FF').withAlpha(0.24)),
         outline: true,
         outlineColor: Cesium.Color.fromCssColorString('#38BDF8'),
@@ -332,7 +461,7 @@ export class Twin3dController {
         showBackground: true,
         backgroundPadding: new Cesium.Cartesian2(10, 5),
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-        pixelOffset: new Cesium.Cartesian2(0, -90),
+        pixelOffset: new Cesium.Cartesian2(0, -86),
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
     })
@@ -340,9 +469,13 @@ export class Twin3dController {
     this.wbOutHighlightEntity = this.dataSource.entities.add({
       id: 'WB-OUT-HIGHLIGHT',
       show: false,
-      position: cadToCartesian3(wbOut.cadX, wbOut.cadY, 0.75),
+      position: wbOutPos,
+      orientation: Cesium.Transforms.headingPitchRollQuaternion(
+        wbOutPos,
+        new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(-(wbOut.angleDeg ?? 0)), 0, 0),
+      ),
       box: {
-        dimensions: new Cesium.Cartesian3(19.5, 5.8, 1.5),
+        dimensions: new Cesium.Cartesian3(wbOut.lengthM ?? 20.0, (wbOut.widthM ?? 5.0) + 0.8, 1.5),
         material: new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#10B981').withAlpha(0.26)),
         outline: true,
         outlineColor: Cesium.Color.fromCssColorString('#34D399'),
@@ -358,7 +491,7 @@ export class Twin3dController {
         showBackground: true,
         backgroundPadding: new Cesium.Cartesian2(10, 5),
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-        pixelOffset: new Cesium.Cartesian2(0, -90),
+        pixelOffset: new Cesium.Cartesian2(0, -86),
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
     })
@@ -396,12 +529,51 @@ export class Twin3dController {
       },
     })
 
+    // 3f-2. Floating Active Vehicle Tracker Badge (keeps tracked tanker/flatbed unmistakably visible in wide-angle views)
+    this.activeVehicleBadgeEntity = this.dataSource.entities.add({
+      id: 'ACTIVE-VEHICLE-BADGE',
+      show: false,
+      position: new Cesium.CallbackPositionProperty(() => {
+        const b = this.processHighlight.activeVehicleBadge
+        if (!b) return cadToCartesian3(SITE_LAYOUT_V4.siteShellCenter.cadX, 1616.5, 6.0)
+        return cadToCartesian3(b.cadX, b.cadY, (b.cadZ ?? 0) + 5.6)
+      }, false) as unknown as Cesium.PositionProperty,
+      point: {
+        pixelSize: 11,
+        color: Cesium.Color.fromCssColorString('#38BDF8'),
+        outlineColor: Cesium.Color.fromCssColorString('#FDE047'),
+        outlineWidth: 3,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+      label: {
+        text: '聚焦跟拍车辆',
+        font: '700 13px Microsoft YaHei',
+        fillColor: Cesium.Color.fromCssColorString('#F8FAFC'),
+        outlineColor: Cesium.Color.fromCssColorString('#020A17'),
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        backgroundColor: Cesium.Color.fromCssColorString('#0B3B5E').withAlpha(0.92),
+        showBackground: true,
+        backgroundPadding: new Cesium.Cartesian2(10, 5),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -18),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    })
+
     // 3g. Pre-warm Cesium SDF Glyph TextureAtlas at startup so dynamic process labels never drop glyphs on Frame 1 under requestRenderMode
     const prewarmGlyphChars = [
       ...new Set(
-        '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ·./:-%<>Ω✓…()（），, ' +
+        '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ·./:-%<>Ω✓…()（），,+→①②③# ' +
           '防碰撞测距安全预警减速联锁停机装车电子围栏闭锁司机离车确认门吊慢速落钩库底静电接地对位检测中' +
-          '伸缩散装头下落密封定量停料溜管回升复位完成初磅皮重过磅罐车满车复磅计量净重净装高库存余量待机运行吊具下吨',
+          '伸缩散装头下落密封定量停料溜管回升复位完成初磅皮重过磅罐车满车复磅计量净重净装高库存余量待机运行吊具下吨' +
+          '皮带输送机输灰中斗式提升机并列翻料前轨回轨空箱吊离翻回震动清仓广角跟拍缓速磁吸桥吊精细装车一端直出' +
+          '电磁吸盘激合锁定抓钢材垛库位跨汽车鞍座东门缓落释抬退让停稳毛核验防摇稳钩归备准发运载货罐交接区移入自绑定' +
+          '顶部负压抽灰送入后方工作室西出绕圈专用空位露天板车平行东西轨聚焦青藏斜道主干环道离场平板车' +
+          '采集除尘收卸阀关趋纯心平穿驶往北服通放行沿向端等待轨位架垂直提横避让建压抬头竖立掀开插销微缝排气' +
+          '抱臂蓝爪早严禁波纹旋风料斗接力退回平车单闭完毕复原重型满载前往一外弯' +
+          '变电所沉淀池给水场坪堆放维修箱加工司机之家轮胎起重公共卫生间机电停车货运综合楼单身宿舍污水处汽车衡制卫雨棚规划缓建' +
+          '最高净空让外伸横梁月台缓缓稳脱钩先升切室接顺越垛推拉远筒务路支重出厂验通过',
       ),
     ].join('')
     const prewarmPos = cadToCartesian3(SITE_LAYOUT_V4.siteShellCenter.cadX, 1625, 2.0)
@@ -457,18 +629,34 @@ export class Twin3dController {
           this.selectEquipment(id)
           return
         }
-        // When clicking baked environment meshes, resolve individual 3000T Silos (SILO-01..40) or Indoor Steel Bays (REBAR-BAY-01..13)
-        if (position && (id === 'ENV-ASH-LINE-01' || id === 'ENV-REBAR-LINE-01' || id === 'ENV-SITE-SHELL-01')) {
-          const { cadX, cadY } = cartesian3ToCad(position)
-          const siloId = this.findClickedSilo(cadX, cadY)
-          if (siloId) {
-            this.selectSilo(siloId)
+        if (this.selectSiteBuildingById(id)) {
+          return
+        }
+        // When clicking baked environment meshes, resolve individual 3000T Silos (SILO-01..40), Indoor Steel Bays (REBAR-BAY-01..13) or CAD Site Buildings
+        if (id === 'ENV-ASH-LINE-01' || id === 'ENV-REBAR-LINE-01' || id === 'ENV-SITE-SHELL-01') {
+          if (position) {
+            const { cadX, cadY } = cartesian3ToCad(position)
+            const siloId = this.findClickedSilo(cadX, cadY)
+            if (siloId) {
+              this.selectSilo(siloId)
+              return
+            }
+            const bayId = this.findClickedRebarBay(cadX, cadY)
+            if (bayId) {
+              this.selectRebarBay(bayId)
+              return
+            }
+          }
+          const rayBldgId = this.findClickedSiteBuildingByRay(click.position)
+          if (rayBldgId && this.selectSiteBuildingById(rayBldgId)) {
             return
           }
-          const bayId = this.findClickedRebarBay(cadX, cadY)
-          if (bayId) {
-            this.selectRebarBay(bayId)
-            return
+          if (position) {
+            const { cadX, cadY } = cartesian3ToCad(position)
+            const bldgId = this.findClickedSiteBuilding(cadX, cadY)
+            if (bldgId && this.selectSiteBuildingById(bldgId)) {
+              return
+            }
           }
         }
         if (this.staticAssetMap.has(id)) {
@@ -510,6 +698,123 @@ export class Twin3dController {
       if (cadX >= bay.minX && cadX <= bay.maxX) return bay.id
     }
     return null
+  }
+
+  private findClickedSiteBuildingByRay(screenPos: Cesium.Cartesian2): string | null {
+    const ray = this.viewer.camera.getPickRay(screenPos)
+    if (!ray) return null
+    const p0 = cartesian3ToCad(ray.origin)
+    const p1 = cartesian3ToCad(
+      Cesium.Cartesian3.add(
+        ray.origin,
+        Cesium.Cartesian3.multiplyByScalar(ray.direction, 100, new Cesium.Cartesian3()),
+        new Cesium.Cartesian3(),
+      ),
+    )
+    const ox = p0.cadX
+    const oy = p0.cadY
+    const oz = p0.height
+    const dx = (p1.cadX - ox) / 100
+    const dy = (p1.cadY - oy) / 100
+    const dz = (p1.height - oz) / 100
+
+    const buildings = (cadBuildingsV54.buildings ?? []) as Array<{
+      id: string
+      heightM: number
+      bounds: number[]
+    }>
+    let bestId: string | null = null
+    let bestT = Number.POSITIVE_INFINITY
+    for (const b of buildings) {
+      const [x0, y0, x1, y1] = b.bounds
+      const z0 = -0.5
+      const z1 = Math.max(2.5, (b.heightM ?? 5.0) + 1.2)
+      let tmin = 0
+      let tmax = Number.POSITIVE_INFINITY
+      const axes: Array<[number, number, number, number]> = [
+        [ox, dx, x0 - 1.5, x1 + 1.5],
+        [oy, dy, y0 - 1.5, y1 + 1.5],
+        [oz, dz, z0, z1],
+      ]
+      let hit = true
+      for (const [o, d, bmin, bmax] of axes) {
+        if (Math.abs(d) < 1e-8) {
+          if (o < bmin || o > bmax) {
+            hit = false
+            break
+          }
+        } else {
+          let t1 = (bmin - o) / d
+          let t2 = (bmax - o) / d
+          if (t1 > t2) [t1, t2] = [t2, t1]
+          tmin = Math.max(tmin, t1)
+          tmax = Math.min(tmax, t2)
+          if (tmin > tmax) {
+            hit = false
+            break
+          }
+        }
+      }
+      if (hit && tmin < bestT) {
+        bestT = tmin
+        bestId = b.id
+      }
+    }
+    return bestId
+  }
+
+  private findClickedSiteBuilding(cadX: number, cadY: number): string | null {
+    const buildings = (cadBuildingsV54.buildings ?? []) as Array<{
+      id: string
+      bounds: number[]
+    }>
+    let bestId: string | null = null
+    let bestArea = Number.POSITIVE_INFINITY
+    for (const b of buildings) {
+      const [x0, y0, x1, y1] = b.bounds
+      if (cadX >= x0 - 2 && cadX <= x1 + 2 && cadY >= y0 - 2 && cadY <= y1 + 2) {
+        const area = (x1 - x0) * (y1 - y0)
+        if (area < bestArea) {
+          bestArea = area
+          bestId = b.id
+        }
+      }
+    }
+    return bestId
+  }
+
+  private selectSiteBuildingById(rawId: string): boolean {
+    const cleanId = rawId.replace(/^BLDG-LABEL-/, '')
+    const buildings = (cadBuildingsV54.buildings ?? []) as Array<{
+      id: string
+      name: string
+      category: string
+      state: string
+      heightM: number
+      cadX: number
+      cadY: number
+      bounds: number[]
+      notes: string
+    }>
+    const b = buildings.find((item) => item.id === cleanId)
+    if (!b) return false
+    if (this.siloHighlightEntity) this.siloHighlightEntity.show = false
+    const w = (b.bounds[2] - b.bounds[0]).toFixed(1)
+    const d = (b.bounds[3] - b.bounds[1]).toFixed(1)
+    this.options.onSelect?.({
+      id: b.id,
+      name: b.name,
+      type: b.category,
+      statusName: b.state === 'planned' ? '规划缓建' : '规划建构筑物',
+      params: {
+        坐标基准: '给大连大.dwg CGCS2000',
+        平面尺寸: `${w} m × ${d} m（建筑高约 ${b.heightM.toFixed(1)} m）`,
+        CAD中心: `(${b.cadX.toFixed(1)}, ${b.cadY.toFixed(1)})`,
+        功能说明: b.notes,
+      },
+    })
+    this.viewer.scene.requestRender()
+    return true
   }
 
   private findNearbyEquipment(position: Cesium.Cartesian3, thresholdM = 40): string | null {
@@ -781,6 +1086,18 @@ export class Twin3dController {
     Object.assign(this.processHighlight, patch)
     let labelUpdated = false
 
+    if (this.suctionFlowEntity) this.suctionFlowEntity.show = this.processHighlight.suctionPipeActive
+    if (this.suctionPulseEntity) {
+      const nextSuction = this.processHighlight.suctionPipeActive
+      if (this.suctionPulseEntity.show !== nextSuction) labelUpdated = true
+      this.suctionPulseEntity.show = nextSuction
+    }
+    if (this.beltFlowEntity) this.beltFlowEntity.show = this.processHighlight.beltConveyorActive
+    if (this.beltPulseEntity) {
+      const nextBelt = this.processHighlight.beltConveyorActive
+      if (this.beltPulseEntity.show !== nextBelt) labelUpdated = true
+      this.beltPulseEntity.show = nextBelt
+    }
     if (this.elevFlowEntity) this.elevFlowEntity.show = this.processHighlight.elevatorActive
     if (this.slideFlowEntity) this.slideFlowEntity.show = this.processHighlight.airSlideActive
     if (this.spoutStreamEntity) this.spoutStreamEntity.show = this.processHighlight.spoutActive
@@ -862,6 +1179,18 @@ export class Twin3dController {
       if (bayWarnText !== this.lastLabelTexts.bayWarn && this.bayWarningEntity.label) {
         this.lastLabelTexts.bayWarn = bayWarnText
         this.bayWarningEntity.label.text = new Cesium.ConstantProperty(bayWarnText)
+        labelUpdated = true
+      }
+    }
+    if (this.activeVehicleBadgeEntity) {
+      const badge = this.processHighlight.activeVehicleBadge
+      const nextShow = Boolean(badge && badge.text)
+      if (this.activeVehicleBadgeEntity.show !== nextShow) labelUpdated = true
+      this.activeVehicleBadgeEntity.show = nextShow
+      const badgeText = badge?.text || ''
+      if (badgeText && badgeText !== this.lastLabelTexts.vehicleBadge && this.activeVehicleBadgeEntity.label) {
+        this.lastLabelTexts.vehicleBadge = badgeText
+        this.activeVehicleBadgeEntity.label.text = new Cesium.ConstantProperty(badgeText)
         labelUpdated = true
       }
     }

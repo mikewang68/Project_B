@@ -274,20 +274,36 @@ const BRIDGE_CRANES: AssetPlacement[] = SITE_LAYOUT_V4.rebar.bays.map((b) => ({
   notes: `钢筋库第 ${b.bayIndex} 跨室内桥吊（编号 ${b.cadEquipmentCode}），轨顶 ${b.railHeightM}m`,
 }))
 
-const MOBILE_TIPPERS: AssetPlacement[] = SITE_LAYOUT_V4.ash.unloadingComplexes.map((u, idx) => ({
-  id: u.tipperId,
-  name: `${idx + 1}# 移动式翻箱机`,
-  type: 'mobile_tipper',
-  zone: 'ash_corridor',
-  state: 'existing',
-  cadX: u.tipperParkX,
-  cadY: u.tipperRailY,
-  headingDeg: 0,
-  height: 0,
-  source: 'surveyed-cad-dxf',
-  confidence: 'confirmed',
-  notes: `对接 ${u.id} 半封闭卸料室（42m³料斗），支持 0~135° 翻转与振动卸料`,
-}))
+const MOBILE_TIPPERS: AssetPlacement[] = [
+  ...SITE_LAYOUT_V4.ash.unloadingComplexes.map((u, idx): AssetPlacement => ({
+    id: u.tipperId,
+    name: `${idx + 1}# 组南轨移动翻箱机（${u.tipperId}）`,
+    type: 'mobile_tipper',
+    zone: 'ash_corridor',
+    state: 'existing',
+    cadX: u.tipperWaitX ?? u.tipperParkX,
+    cadY: u.tipperSouthY ?? u.tipperRailY ?? 1523.85,
+    headingDeg: 0,
+    height: 0,
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: `第 ${idx + 1} 组南侧东西向平行轨道（Y=1523.85，平行铁路货1/货2）移动翻箱机，东侧露天位接箱后沿东西向铁轨西行至后方工作室前翻转抽灰`,
+  })),
+  ...SITE_LAYOUT_V4.ash.unloadingComplexes.map((u, idx): AssetPlacement => ({
+    id: `TIPPER-0${idx + 5}`,
+    name: `${idx + 1}# 组北轨移动翻箱机（TIPPER-0${idx + 5}）`,
+    type: 'mobile_tipper',
+    zone: 'ash_corridor',
+    state: 'existing',
+    cadX: u.tipperWaitX ?? u.tipperParkX,
+    cadY: u.tipperNorthY ?? u.tipperNorthRailY ?? 1529.55,
+    headingDeg: 0,
+    height: 0,
+    source: 'surveyed-cad-dxf',
+    confidence: 'confirmed',
+    notes: `第 ${idx + 1} 组北侧东西向平行轨道（Y=1529.55，与 ${u.tipperId} 构成每组 4 条平行于铁路轨道的东西向翻箱轨，全场 4 组共 8 台）`,
+  })),
+]
 
 const MECH_BRIDGE_CRANES: AssetPlacement[] = [
   {
@@ -372,10 +388,10 @@ export const CORE_PLACEMENTS: AssetPlacement[] = [
     cadX: SITE_LAYOUT_V4.siteShellCenter.cadX,
     cadY: SITE_LAYOUT_V4.siteShellCenter.cadY,
     headingDeg: 0,
-    height: -0.04,
+    height: 0.0,
     source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    notes: '含围墙、站场道路、机电仓库(2×50t)、综合楼、宿舍、变电所、地磅基础、预留缓建区',
+    notes: '含围墙、CAD 1:1 真实站场道路网、斜向双汽车衡、机电仓库(2×50t)、综合楼、宿舍、变电所、预留缓建区',
   },
   {
     id: 'ENV-REBAR-LINE-01',
@@ -389,7 +405,7 @@ export const CORE_PLACEMENTS: AssetPlacement[] = [
     height: 0.0,
     source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    notes: '货3/货4 双轨、门吊轨道、钢筋仓库厂房钢架及 1~13 跨地面库位',
+    notes: '货3/货4 双轨、门吊轨道、钢筋仓库厂房钢架、X向整齐钢垛、07跨专用演示空位及 Y=1725.0 贯通车道',
   },
   {
     id: 'ENV-ASH-LINE-01',
@@ -400,10 +416,10 @@ export const CORE_PLACEMENTS: AssetPlacement[] = [
     cadX: SITE_LAYOUT_V4.ash.originPoint.cadX,
     cadY: SITE_LAYOUT_V4.ash.originPoint.cadY,
     headingDeg: 0,
-    height: -0.02,
+    height: 0.0,
     source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    notes: '货1/货2 双轨、4座卸料室(42m³料斗)、4座40m提升机塔、空气斜槽及 40 座 Φ12m×33.38m 筒仓',
+    notes: '货1/货2 双轨、4组东西向平行翻箱轨、顶部负压抽灰管道、后方透明工作室与工作室内皮带输送机、40m提升机及40座3000T筒仓',
   },
   ...REBAR_GANTRIES,
   ...BULK_GANTRIES,
@@ -412,22 +428,23 @@ export const CORE_PLACEMENTS: AssetPlacement[] = [
   ...MOBILE_TIPPERS,
   ...BUCKET_ELEVATORS,
   ...SILO_LOADERS,
-  // Rail flatcars on Steel track 货4
+  // Coupled 3-car open steel flatcar train on 货4 (center car uses clean flatbed 'wagon-empty' carrying dynamic CARGO-STEEL-ACTIVE)
   ...SITE_LAYOUT_V4.rebar.wagonXs.map((cadX, index): AssetPlacement => ({
     id: `WAGON-FLAT-0${index + 1}`,
-    name: `钢材铁路敞车 ${index + 1}`,
+    name: `钢材露天铁路平车 ${index + 1}`,
     type: 'wagon',
     zone: 'rebar_corridor',
     state: 'existing',
     cadX,
     cadY: SITE_LAYOUT_V4.rebar.tracks[0].cadY,
     headingDeg: 0,
+    modelKey: index === 1 ? 'wagon-empty' : 'wagon',
     source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    notes: '停靠货4股道的钢材铁路平车',
+    notes: index === 1 ? '停靠货4股道的钢材主卸车露天平车（承载活动演示钢材，无集装箱）' : '停靠货4股道的钢材露天铁路平车编组',
   })),
-  // Rail container flatcars on Bulk track 货2
-  ...[3755.0, 3772.0, 3789.0].map((cadX, index): AssetPlacement => ({
+  // Coupled 3-car bulk container flatcars on Bulk track 货2 (centered at COMPLEX1.tipperWaitX = 3799.2, clean open flatcars without rebar!)
+  ...[3782.2, 3799.2, 3816.2].map((cadX, index): AssetPlacement => ({
     id: `WAGON-BULK-0${index + 1}`,
     name: `散料集装箱平车 ${index + 1}`,
     type: 'wagon',
@@ -436,24 +453,25 @@ export const CORE_PLACEMENTS: AssetPlacement[] = [
     cadX,
     cadY: SITE_LAYOUT_V4.ash.tracks[1].cadY,
     headingDeg: 0,
+    modelKey: 'wagon-empty',
     source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    notes: '停靠货2股道的 35t 散装物料集装箱平车',
+    notes: '停靠货2股道的 20 英尺标准散货集装箱平车',
   })),
   // Active dynamic actors for dual-process simulation
   {
     id: 'CONT-BULK-01',
-    name: '35t 散装粉料集装箱 #01',
+    name: '中国铁路20英尺散货集装箱 #01',
     type: 'bulk_container',
     zone: 'ash_corridor',
     state: 'existing',
-    cadX: 3772.0,
+    cadX: 3799.2,
     cadY: SITE_LAYOUT_V4.ash.tracks[1].cadY,
     headingDeg: 0,
-    height: 1.65,
+    height: 1.56,
     source: 'simulation-route',
     confidence: 'confirmed',
-    notes: '随门吊起吊与移动翻箱机翻转的 35t 散料箱体',
+    notes: '中国铁路20英尺标准散货箱（底面14道横向槽钢加强筋 + 窄端面双扇对开门），随门吊无转向落箱与移动式翻箱机90°垂直翻转',
   },
   {
     id: 'TRUCK-TANK-01',
@@ -466,7 +484,7 @@ export const CORE_PLACEMENTS: AssetPlacement[] = [
     headingDeg: 180,
     source: 'simulation-route',
     confidence: 'confirmed',
-    notes: '过 100t 地磅后进入筒仓库底接受定量散装的公路罐车',
+    notes: '过 100t 地磅后沿 CAD 真实道路进入筒仓库底接受定量散装的公路罐车',
   },
   {
     id: 'TRUCK-FLAT-01',
@@ -474,12 +492,12 @@ export const CORE_PLACEMENTS: AssetPlacement[] = [
     type: 'road_truck',
     zone: 'rebar_corridor',
     state: 'existing',
-    cadX: 3737.0,
+    cadX: 3756.3,
     cadY: SITE_LAYOUT_V4.rebar.truckLoadingY,
     headingDeg: 180,
     source: 'simulation-route',
     confidence: 'confirmed',
-    notes: '钢筋库南侧装车工位等待桥吊拣货装车的公路货车',
+    notes: '沿 CAD 真实道路从东大门直入钢筋库北侧内部车道装货、西出绕行一圈的公路平板挂车',
   },
 ]
 
@@ -492,7 +510,7 @@ export const STATION_PLACEMENTS: AssetPlacement[] = [
     state: 'existing',
     cadX: w.cadX,
     cadY: w.cadY,
-    headingDeg: 0,
+    headingDeg: -(w.angleDeg ?? 0),
     source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
     notes: `${w.capacityT}t 计量秤（自动采集毛重/皮重/净重）`,
@@ -506,9 +524,10 @@ export const STATION_PLACEMENTS: AssetPlacement[] = [
     cadX: 3649.285,
     cadY: 1780.55,
     headingDeg: 0,
+    modelKey: 'planned-rebar-wh',
     source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    notes: '预留规划仓库（蓝色线框示意）',
+    notes: '规划预留双坡钢结构备用钢筋仓库（3D 厂房实体，支持缓建图层一键显隐）',
   },
   {
     id: 'ZONE-RSV-WH-PLANNED',
@@ -519,9 +538,10 @@ export const STATION_PLACEMENTS: AssetPlacement[] = [
     cadX: 3769.285,
     cadY: 1780.545,
     headingDeg: 0,
+    modelKey: 'planned-reserve-wh',
     source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    notes: '预留规划仓库（蓝色线框示意）',
+    notes: '规划预留双坡钢结构备用仓库（3D 厂房实体，支持缓建图层一键显隐）',
   },
 ]
 

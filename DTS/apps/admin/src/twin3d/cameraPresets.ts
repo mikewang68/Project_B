@@ -36,6 +36,17 @@ export interface CameraFocusTarget {
   tag?: string
 }
 
+export interface CameraTrackTarget {
+  cadX: number
+  cadY: number
+  cadZ?: number
+  headingDeg: number
+  pitchDeg: number
+  range: number
+  smoothing?: number
+  tag?: string
+}
+
 const CAMERA_PRESETS: Record<CameraPresetId, CameraPreset> = {
   // Whole-station overview calibrated from 给大连大.dwg (local X:3310..4584, Y:1487..1873)
   overview: {
@@ -97,14 +108,15 @@ const CAMERA_PRESETS: Record<CameraPresetId, CameraPreset> = {
     pitchDeg: -46,
     range: 420,
   },
-  // Close-up: Bulk gantry -> Mobile tipper FX-01 -> Semi-enclosed unloading room (42m3 hopper) -> Bucket elevator
+  // Close-up: East-West parallel Mobile Container Tilters (TIPPER-01 & TIPPER-05) + Overhead Suction Duct + West Workroom & Belt Gallery
   tipper: {
-    cadX: SITE_LAYOUT_V4.ash.unloadingComplexes[0].cadX + 18,
-    cadY: 1528,
-    radius: 36,
-    headingDeg: -38,
-    pitchDeg: -28,
-    range: 155,
+    cadX: 3785.5,
+    cadY: 1526.2,
+    cadZ: 4.8,
+    radius: 18,
+    headingDeg: 24,
+    pitchDeg: -22,
+    range: 44,
   },
   // Close-up: Under-silo quantitative tanker truck loading & telescopic spout (viewed from WNW open apron into Row-A drive-through tunnel)
   loader: {
@@ -114,22 +126,43 @@ const CAMERA_PRESETS: Record<CameraPresetId, CameraPreset> = {
     radius: 18,
     headingDeg: 110,
     pitchDeg: -12,
-    range: 64,
+    range: 56,
   },
-  // East gate: 2 x 100t truck weighbridges, freight office, electromechanical warehouse
+  // East gate: 2 x 100t CAD-angled truck weighbridges, freight office, electromechanical warehouse
   weighbridge: {
-    cadX: 4545,
-    cadY: 1608,
+    cadX: 4554,
+    cadY: 1612,
     cadZ: 2.0,
     radius: 36,
-    headingDeg: -38,
-    pitchDeg: -32,
-    range: 155,
+    headingDeg: -48,
+    pitchDeg: -28,
+    range: 120,
   },
+}
+
+export function releaseCameraTrack(viewer: Cesium.Viewer): void {
+  if (!Cesium.Matrix4.equals(viewer.camera.transform, Cesium.Matrix4.IDENTITY)) {
+    viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
+  }
+}
+
+export function trackCadPoint(viewer: Cesium.Viewer, target: CameraTrackTarget): void {
+  viewer.camera.cancelFlight()
+  const center = cadToCartesian3(target.cadX, target.cadY, target.cadZ ?? 2.2)
+  viewer.camera.lookAt(
+    center,
+    new Cesium.HeadingPitchRange(
+      Cesium.Math.toRadians(target.headingDeg),
+      Cesium.Math.toRadians(target.pitchDeg),
+      target.range,
+    ),
+  )
+  viewer.scene.requestRender()
 }
 
 export function flyToCameraPreset(viewer: Cesium.Viewer, id: CameraPresetId, duration = 0): void {
   const preset = CAMERA_PRESETS[id]
+  releaseCameraTrack(viewer)
   viewer.camera.cancelFlight()
   viewer.camera.flyToBoundingSphere(
     new Cesium.BoundingSphere(cadToCartesian3(preset.cadX, preset.cadY, preset.cadZ ?? 0), preset.radius),
@@ -146,6 +179,7 @@ export function flyToCameraPreset(viewer: Cesium.Viewer, id: CameraPresetId, dur
 }
 
 export function focusCadPoint(viewer: Cesium.Viewer, target: CameraFocusTarget): void {
+  releaseCameraTrack(viewer)
   viewer.camera.cancelFlight()
   viewer.camera.flyToBoundingSphere(
     new Cesium.BoundingSphere(cadToCartesian3(target.cadX, target.cadY, target.cadZ ?? 4), target.radius ?? 22),

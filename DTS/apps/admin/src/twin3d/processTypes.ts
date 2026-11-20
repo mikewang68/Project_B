@@ -1,6 +1,6 @@
 import type { AlertItem } from '@/stores/alert'
 import type { EquipmentDef } from './constants'
-import type { CameraFocusTarget, CameraPresetId } from './cameraPresets'
+import type { CameraFocusTarget, CameraPresetId, CameraTrackTarget } from './cameraPresets'
 import type { OperationStatus } from './phase6'
 import type { VehiclePose } from './vehicleAnimator'
 import type { BridgeCranePose, CranePose, SiloLoaderPose, TipperPose } from './models/buildEquipment'
@@ -13,6 +13,8 @@ export interface InterlockChecklistItem {
 }
 
 export interface ProcessHighlightState {
+  suctionPipeActive: boolean
+  beltConveyorActive: boolean
   elevatorActive: boolean
   airSlideActive: boolean
   spoutActive: boolean
@@ -33,6 +35,7 @@ export interface ProcessHighlightState {
   wbOutText: string
   bayWarningPos: { cadX: number; cadY: number } | null
   bayWarningText: string
+  activeVehicleBadge: { cadX: number; cadY: number; cadZ?: number; text: string } | null
 }
 
 export interface ProcessDemoState {
@@ -57,6 +60,8 @@ export interface ProcessDemoState {
 export interface UnifiedProcessRuntime {
   setCamera: (id: CameraPresetId) => void
   focusPoint?: (target: CameraFocusTarget) => void
+  trackPoint?: (target: CameraTrackTarget | null) => void
+  resetUserCameraHold?: () => void
   setDeviceStatus: (id: string, status: EquipmentDef['status']) => void
   setEquipmentLabel: (id: string, text: string) => void
   setStockyardQuantity: (cargoId: string, quantity: number) => void
@@ -102,17 +107,20 @@ export function lerpVehicle(from: VehiclePose, to: VehiclePose, t: number): Vehi
 }
 
 export const STEEL_FIVE_PHASES = [
-  '1. 列车到达/RFID核验',
-  '2. 40t门吊卸至转接区',
-  '3. 20t桥吊接力入库',
-  '4. 汽车过磅/防碰撞装车',
-  '5. 复磅出厂与库位预警',
+  '1. 露天板车专列进线/门吊直抓对位',
+  '2. 门吊一维低空横移/交接区落位停顿',
+  '3. 20t磁吸桥吊接驳/精准落入专用空位',
+  '4. 聚焦跟拍过初磅/沿CAD道路直入东门',
+  '5. 桥吊精细装车/西出绕一圈复磅离场',
 ] as const
 
 export const BULK_FIVE_PHASES = [
-  '1. 重车入线/门吊取箱',
-  '2. 翻箱机移位/安全联锁',
-  '3. 135°倾卸/提升入筒仓',
-  '4. 罐车初磅/库底围栏对位',
-  '5. 定量散装/满车复磅',
+  '1. 列车进线/落箱至平行东西轨翻箱机',
+  '2. 翻箱机沿东西轨西行入工位/顶门拔销',
+  '3. 90°翻转顶部抽灰→工作室→皮带入仓',
+  '4. 关门翻回0°/沿东西轨东退/吊回平车',
+  '5. 聚焦广角跟拍罐车过初磅/驶入筒仓底',
+  '6. 仓底定量接灰(32t)/聚焦跟拍复磅出厂',
 ] as const
+
+export const BULK_SIX_PHASES = BULK_FIVE_PHASES

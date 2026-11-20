@@ -32,7 +32,15 @@ import { buildDefaultDeviceSnapshot, useDeviceStore } from '@/stores/device'
 import { Twin3dController, type SelectedInfo } from '@/twin3d'
 import { CRANE_UNLOAD_SEQUENCE } from '@/twin3d/animation'
 import { BulkProcessDemoController } from '@/twin3d/bulkProcessDemo'
-import { flyToCameraPreset, focusCadPoint, type CameraFocusTarget, type CameraPresetId } from '@/twin3d/cameraPresets'
+import {
+  flyToCameraPreset,
+  focusCadPoint,
+  releaseCameraTrack,
+  trackCadPoint,
+  type CameraFocusTarget,
+  type CameraPresetId,
+  type CameraTrackTarget,
+} from '@/twin3d/cameraPresets'
 import { cadGeoJsonToWgs84, cadToLonLat } from '@/twin3d/geo'
 import { MOCK_EQUIPMENT } from '@/twin3d/mock/mockData'
 import { MOCK_CARGO, MOCK_OPERATIONS, MOCK_PERSONNEL, Phase6LayerController } from '@/twin3d/phase6'
@@ -64,6 +72,9 @@ let phase6Timer: ReturnType<typeof setInterval> | null = null
 let diagTimer: ReturnType<typeof setInterval> | null = null
 let lastFocusTag = ''
 let userCameraHold = false
+let smoothedTrackState: (Required<Pick<CameraTrackTarget, 'cadX' | 'cadY' | 'cadZ' | 'headingDeg' | 'pitchDeg' | 'range'>> & {
+  tag: string
+}) | null = null
 let removeCanvasInteractionListeners: (() => void) | null = null
 
 const layers = ref({ track: true, area: true, cargo: false, personnel: false, planned: true })
@@ -87,6 +98,19 @@ const animRunning = ref(false)
 const simRunning = ref(true)
 const activeProcess = ref<ProcessKind>('bulk')
 const singleStepMode = ref(false)
+const panelOpen = reactive({
+  left: false,
+  device: false,
+  stock: false,
+  topBar: true,
+})
+const anySidePanelOpen = computed(() => panelOpen.left || panelOpen.device || panelOpen.stock)
+function toggleAllPanels() {
+  const next = !anySidePanelOpen.value
+  panelOpen.left = next
+  panelOpen.device = next
+  panelOpen.stock = next
+}
 const dataMode = ref<DataSourceMode>(DEFAULT_DATA_MODE)
 const feedStatus = reactive<DtsFeedStatus>({
   mode: DEFAULT_DATA_MODE,
@@ -230,7 +254,8 @@ function applyUrlDeepLinkParams() {
     rebuildDemoController(activeProcess.value)
   }
   if (stepParam) {
-    const idx = Math.max(0, Math.min(4, (Number.parseInt(stepParam, 10) || 1) - 1))
+    const maxIdx = Math.max(0, demoState.stepCount - 1)
+    const idx = Math.max(0, Math.min(maxIdx, (Number.parseInt(stepParam, 10) || 1) - 1))
     singleStepMode.value = true
     jumpToProcessStep(idx)
   }
@@ -256,6 +281,8 @@ function onViewerReady(v: Cesium.Viewer) {
   const canvas = v.scene.canvas
   const markManualCamera = () => {
     userCameraHold = true
+    smoothedTrackState = null
+    releaseCameraTrack(v)
     v.camera.cancelFlight()
   }
   canvas.addEventListener('pointerdown', markManualCamera, { passive: true })
@@ -370,13 +397,53 @@ function createRuntime(): UnifiedProcessRuntime {
     setCamera: (id) => {
       lastFocusTag = ''
       userCameraHold = false
+      smoothedTrackState = null
       if (viewer) flyToCameraPreset(viewer, id)
     },
     focusPoint: (target: CameraFocusTarget) => {
       if (!viewer || userCameraHold) return
       if (target.tag && target.tag === lastFocusTag) return
       lastFocusTag = target.tag ?? ''
+      smoothedTrackState = null
       focusCadPoint(viewer, target)
+    },
+    trackPoint: (target: CameraTrackTarget | null) => {
+      if (!viewer) return
+      if (!target) {
+        smoothedTrackState = null
+        releaseCameraTrack(viewer)
+        return
+      }
+      if (userCameraHold) return
+      const nextTag = target.tag ?? ''
+      lastFocusTag = ''
+      if (!smoothedTrackState || smoothedTrackState.tag !== nextTag) {
+        smoothedTrackState = {
+          cadX: target.cadX,
+          cadY: target.cadY,
+          cadZ: target.cadZ ?? 2.2,
+          headingDeg: target.headingDeg,
+          pitchDeg: target.pitchDeg,
+          range: target.range,
+          tag: nextTag,
+        }
+      } else {
+        const alpha = target.smoothing ?? 0.24
+        smoothedTrackState.cadX += (target.cadX - smoothedTrackState.cadX) * alpha
+        smoothedTrackState.cadY += (target.cadY - smoothedTrackState.cadY) * alpha
+        smoothedTrackState.cadZ += ((target.cadZ ?? 2.2) - smoothedTrackState.cadZ) * alpha
+        const dh = ((target.headingDeg - smoothedTrackState.headingDeg + 540) % 360) - 180
+        smoothedTrackState.headingDeg += dh * alpha
+        smoothedTrackState.pitchDeg += (target.pitchDeg - smoothedTrackState.pitchDeg) * alpha
+        smoothedTrackState.range += (target.range - smoothedTrackState.range) * alpha
+      }
+      trackCadPoint(viewer, smoothedTrackState)
+    },
+    resetUserCameraHold: () => {
+      userCameraHold = false
+      lastFocusTag = ''
+      smoothedTrackState = null
+      if (viewer) releaseCameraTrack(viewer)
     },
     setDeviceStatus: (id, status) => deviceStore.updateDevice(id, status),
     setEquipmentLabel: (id, text) => twin3d?.setEquipmentLabel(id, text),
@@ -495,18 +562,30 @@ function prepareManualDemo() {
 }
 
 function jumpToProcessStep(stepIndex: number) {
+  userCameraHold = false
+  lastFocusTag = ''
+  smoothedTrackState = null
+  if (viewer) releaseCameraTrack(viewer)
   prepareManualDemo()
   demoController?.setSingleStep(singleStepMode.value)
   demoController?.jumpToStep(stepIndex, true)
 }
 
 function prevProcessStep() {
+  userCameraHold = false
+  lastFocusTag = ''
+  smoothedTrackState = null
+  if (viewer) releaseCameraTrack(viewer)
   prepareManualDemo()
   demoController?.setSingleStep(singleStepMode.value)
   demoController?.prevStep(true)
 }
 
 function nextProcessStep() {
+  userCameraHold = false
+  lastFocusTag = ''
+  smoothedTrackState = null
+  if (viewer) releaseCameraTrack(viewer)
   prepareManualDemo()
   demoController?.setSingleStep(singleStepMode.value)
   demoController?.nextStep(true)
@@ -573,6 +652,10 @@ function resetDemo() {
 }
 
 function startDemo() {
+  userCameraHold = false
+  lastFocusTag = ''
+  smoothedTrackState = null
+  if (viewer) releaseCameraTrack(viewer)
   processTrackMode.value = 'f_d06_sim'
   resetDemo()
   demoController?.setSingleStep(singleStepMode.value)
@@ -585,6 +668,10 @@ function onDemoPrimary() {
   } else if (demoState.completed || (demoState.progress === 0 && demoState.stepIndex === 0)) {
     startDemo()
   } else {
+    userCameraHold = false
+    lastFocusTag = ''
+    smoothedTrackState = null
+    if (viewer) releaseCameraTrack(viewer)
     prepareManualDemo()
     demoController?.setSingleStep(singleStepMode.value)
     demoController?.start()
@@ -683,6 +770,15 @@ onBeforeUnmount(() => {
           数据源: {{ dataMode === 'offline_sim' ? '离线仿真' : '只读库联调' }}
           <b :class="feedStatus.quality.toLowerCase()">{{ feedStatus.quality }}</b>
         </button>
+        <button
+          type="button"
+          class="mode-pill panel-master-btn"
+          :class="{ clean: !anySidePanelOpen }"
+          :title="anySidePanelOpen ? '一键收起左右全部任务浮窗，享受无遮挡全景 3D 视野' : '一键展开全部任务监控面板'"
+          @click="toggleAllPanels"
+        >
+          {{ anySidePanelOpen ? '👁 收起全部面板' : '🗂 展开全部面板' }}
+        </button>
         <button class="mode-pill req-btn" @click="reqMatrixOpen = !reqMatrixOpen">
           需求与跨系统矩阵 (F-D01~08)
         </button>
@@ -712,8 +808,13 @@ onBeforeUnmount(() => {
     <main class="scene-area">
       <CesiumViewer @viewer-ready="onViewerReady" />
 
-      <!-- Slide 40 & R-D03: 顶部浮动 5 步全流程追踪条（支持 F-D06 模拟推演 / F-D07 真实节点切换、自由跳步） -->
-      <div class="top-process-pill" aria-label="双线工艺流程步骤">
+      <!-- Slide 40 & R-D03: 顶部浮动全流程追踪条（随左右面板收起自适应满宽，亦可折叠为居中精简胶囊） -->
+      <div
+        v-if="panelOpen.topBar"
+        class="top-process-pill"
+        :class="{ 'left-open': panelOpen.left, 'right-open': panelOpen.device }"
+        aria-label="双线工艺流程步骤"
+      >
         <div class="proc-chain-switch">
           <button
             type="button"
@@ -784,8 +885,16 @@ onBeforeUnmount(() => {
           {{ label }}
         </button>
         <div class="proc-step-nav">
+          <button
+            type="button"
+            class="nav-mini-btn play-btn"
+            :title="demoPrimaryLabel"
+            @click="onDemoPrimary"
+          >
+            {{ demoState.running ? '⏸' : '▶' }}
+          </button>
           <button type="button" class="nav-mini-btn" :disabled="demoState.stepIndex <= 0" title="上一步工序" @click="prevProcessStep">◀</button>
-          <button type="button" class="nav-mini-btn" :disabled="demoState.stepIndex >= 4" title="下一步工序" @click="nextProcessStep">▶</button>
+          <button type="button" class="nav-mini-btn" :disabled="demoState.stepIndex >= demoState.stepCount - 1" title="下一步工序" @click="nextProcessStep">▶</button>
           <button
             type="button"
             class="nav-mini-btn mode-toggle"
@@ -795,12 +904,46 @@ onBeforeUnmount(() => {
           >
             {{ singleStepMode ? '单步' : '连播' }}
           </button>
+          <button
+            type="button"
+            class="nav-mini-btn"
+            title="收起顶部演示控制条"
+            @click="panelOpen.topBar = false"
+          >
+            ▴
+          </button>
         </div>
       </div>
+      <button
+        v-else
+        type="button"
+        class="dock-pill dock-top"
+        title="展开顶部双线工艺演示控制条"
+        @click="panelOpen.topBar = true"
+      >
+        ▾ {{ activeProcess === 'bulk' ? '散料链' : '钢材链' }} · 工艺演示条 ({{ demoState.progress }}%)
+      </button>
 
-      <!-- 左侧：图层管理 + 镜头预设 + R-D03 双轨流程控制 -->
-      <div class="layer-panel">
-        <div class="panel-title">F-D01 图层与视角控制</div>
+      <!-- 左侧边缘收起态触发胶囊 -->
+      <button
+        v-if="!panelOpen.left"
+        type="button"
+        class="dock-pill dock-left"
+        title="展开 F-D01 图层管理、镜头预设与 R-D03 任务追踪栏"
+        @click="panelOpen.left = true"
+      >
+        <span class="dock-dot" :class="{ active: demoState.running }"></span>
+        <span>图层与控制</span>
+        <span class="dock-arrow">▸</span>
+      </button>
+
+      <!-- 左侧：图层管理 + 镜头预设 + R-D03 双轨流程控制（可收起抽屉） -->
+      <transition name="slide-left">
+      <div v-if="panelOpen.left" class="layer-panel">
+        <div class="panel-header-row">
+          <span class="panel-title">F-D01 图层与视角控制</span>
+          <button type="button" class="collapse-chip" title="收起左侧控制栏" @click="panelOpen.left = false">« 收起</button>
+        </div>
         <label class="layer-item">
           <input type="checkbox" :checked="layers.track" @change="toggleLayer('track')" />
           <span class="dot" style="background: #00b4d8"></span> 股道 CAD
@@ -887,7 +1030,7 @@ onBeforeUnmount(() => {
             <div class="demo-actions">
               <button class="demo-btn primary" @click="onDemoPrimary">{{ demoPrimaryLabel }}</button>
               <button class="demo-btn" :disabled="demoState.stepIndex <= 0" @click="prevProcessStep">上一步</button>
-              <button class="demo-btn" :disabled="demoState.stepIndex >= 4" @click="nextProcessStep">下一步</button>
+              <button class="demo-btn" :disabled="demoState.stepIndex >= demoState.stepCount - 1" @click="nextProcessStep">下一步</button>
               <button class="demo-btn" @click="resetDemo">重置</button>
             </div>
           </template>
@@ -930,9 +1073,10 @@ onBeforeUnmount(() => {
           车流/数据仿真 {{ simRunning ? '开' : '关' }}
         </button>
       </div>
+      </transition>
 
       <!-- Slide 41: 设备运行参数 + F-D03(EHMS) + F-D04(WMS库位) + F-D05(四系统联查) HUD 浮窗 -->
-      <div v-if="detailVisible" class="detail-card">
+      <div v-if="detailVisible" class="detail-card" :class="{ 'left-open': panelOpen.left }">
         <div class="detail-header">
           <div>
             <span class="detail-title">{{ selectedInfo.name }}</span>
@@ -986,7 +1130,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 组长工作簿对齐：R-D01~R-D05 ↔ F-D01~F-D08 与跨系统协作 (X03~X11) 核验抽屉 -->
-      <div v-if="reqMatrixOpen" class="req-matrix-drawer" role="dialog" aria-label="S5需求功能与跨系统协作核验矩阵">
+      <div v-if="reqMatrixOpen" class="req-matrix-drawer" :class="{ 'left-open': panelOpen.left, 'right-open': panelOpen.device }" role="dialog" aria-label="S5需求功能与跨系统协作核验矩阵">
         <div class="vendor-header">
           <div>
             <b>S5 数字孪生需求功能（R-D01~D05 ↔ F-D01~D08）与跨系统协作（X03~X11）实时核验矩阵</b>
@@ -1033,7 +1177,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 1+5+2 底层控制系统只读监控抽屉（2套外购厂家系统 + 1套合研移动翻箱机系统） -->
-      <div v-if="vendorDrawerOpen" class="vendor-drawer">
+      <div v-if="vendorDrawerOpen" class="vendor-drawer" :class="{ 'left-open': panelOpen.left, 'right-open': panelOpen.device }">
         <div class="vendor-header">
           <div>
             <b>1+5+2 底层控制系统只读监控（协作 X09 / X10 · S5 只监不控）</b>
@@ -1065,20 +1209,39 @@ onBeforeUnmount(() => {
         <div class="diag-row">相机: {{ diag.camera }}</div>
       </div>
 
-      <!-- 右侧实时数据 + EHMS 上屏 -->
-      <div class="data-panel">
+      <!-- 右上边缘收起态触发胶囊（含未处理告警实时角标） -->
+      <button
+        v-if="!panelOpen.device"
+        type="button"
+        class="dock-pill dock-right-top"
+        title="展开 F-D03 装备状态与健康监测栏"
+        @click="panelOpen.device = true"
+      >
+        <span class="dock-arrow">◂</span>
+        <span>装备状态 ({{ deviceSummaryCount }}台)</span>
+        <span v-if="alertStore.alerts.length > 0" class="dock-badge" :class="alertStore.alerts[0]?.level">
+          {{ alertStore.alerts.length }}
+        </span>
+      </button>
+
+      <!-- 右侧实时数据 + EHMS 上屏（可收起抽屉） -->
+      <transition name="slide-right">
+      <div v-if="panelOpen.device" class="data-panel">
         <div class="data-title">
           <span>F-D03 装备状态与健康 ({{ deviceSummaryCount }}台)</span>
-          <select
-            class="silo-quick-select"
-            :value="quickSiloId"
-            title="F-D04：快速检视40座筒仓单仓台账(协作X08)"
-            @change="quickSiloId = ($event.target as HTMLSelectElement).value; selectDeviceFromList(quickSiloId)"
-          >
-            <option v-for="s in SITE_LAYOUT_V4.ash.silos" :key="s.id" :value="s.id">
-              {{ s.id }} ({{ s.code }} {{ s.material === 'cement' ? '水泥' : '粉煤灰' }})
-            </option>
-          </select>
+          <div class="data-title-right">
+            <select
+              class="silo-quick-select"
+              :value="quickSiloId"
+              title="F-D04：快速检视40座筒仓单仓台账(协作X08)"
+              @change="quickSiloId = ($event.target as HTMLSelectElement).value; selectDeviceFromList(quickSiloId)"
+            >
+              <option v-for="s in SITE_LAYOUT_V4.ash.silos" :key="s.id" :value="s.id">
+                {{ s.id }} ({{ s.code }} {{ s.material === 'cement' ? '水泥' : '粉煤灰' }})
+              </option>
+            </select>
+            <button type="button" class="collapse-chip" title="收起装备状态栏" @click="panelOpen.device = false">收起 »</button>
+          </div>
         </div>
         <div class="device-list">
           <div
@@ -1107,10 +1270,28 @@ onBeforeUnmount(() => {
           <div v-if="alertStore.alerts.length === 0" class="alert-empty">SCS 联锁正常 · 间距 {{ demoState.safetyDistanceM.toFixed(1) }}m</div>
         </div>
       </div>
+      </transition>
 
-      <section class="phase6-panel" aria-label="双线库容与联锁监控">
+      <!-- 右下边缘收起态触发胶囊（显示实时作业完成度） -->
+      <button
+        v-if="!panelOpen.stock"
+        type="button"
+        class="dock-pill dock-right-bottom"
+        title="展开 F-D04 仓容态势与 F-D06/F-D07 作业进度联锁栏"
+        @click="panelOpen.stock = true"
+      >
+        <span class="dock-arrow">◂</span>
+        <span>仓容与进度</span>
+        <span class="dock-pct">{{ demoState.progress }}%</span>
+      </button>
+
+      <transition name="slide-right">
+      <section v-if="panelOpen.stock" class="phase6-panel" aria-label="双线库容与联锁监控">
         <div class="phase6-section">
-          <div class="data-title">F-D04 仓容与库存态势（协作 X08 · S2）</div>
+          <div class="panel-header-row">
+            <span class="data-title">F-D04 仓容与库存态势（协作 X08 · S2）</span>
+            <button type="button" class="collapse-chip" title="收起仓容与进度栏" @click="panelOpen.stock = false">收起 »</button>
+          </div>
           <div v-for="cargo in cargoItems" :key="cargo.id" class="phase6-row">
             <span class="commodity-dot" :class="cargo.kind"></span>
             <span class="phase6-name">{{ cargo.name }}</span>
@@ -1130,17 +1311,14 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </section>
-
-      <div class="status-bar">
-        <span class="status-item">R-D01~R-D05 · F-D01~F-D08 全量对齐</span>
-        <span class="status-item">设备：{{ deviceStore.getSummary().total }} | 告警：{{ alertStore.unhandledCount }}</span>
-        <span class="status-item">防撞测距：{{ demoState.safetyDistanceM.toFixed(1) }} m</span>
-        <span class="status-item">当前轨迹：{{ processTrackMode === 'f_d06_sim' ? 'F-D06 模拟推演(SIM)' : 'F-D07 真实任务节点(X04)' }}</span>
-      </div>
+      </transition>
     </main>
 
     <footer class="home-footer">
-      B项目 S5 数字孪生可视化系统 · {{ feedStatus.sourceLabel }} · {{ feedStatus.lastSyncAt }} · 当前主题: {{ appStore.theme }}
+      <span>B项目 S5 数字孪生可视化系统 · {{ feedStatus.sourceLabel }} · {{ feedStatus.lastSyncAt }} · 主题: {{ appStore.theme }}</span>
+      <span class="footer-metrics">
+        R-D01~R-D05 · 设备 {{ deviceStore.getSummary().total }} · 告警 {{ alertStore.unhandledCount }} · 防撞测距 {{ demoState.safetyDistanceM.toFixed(1) }} m · {{ processTrackMode === 'f_d06_sim' ? 'F-D06 模拟推演(SIM)' : 'F-D07 真实节点(X04)' }}
+      </span>
     </footer>
   </div>
 </template>
@@ -1182,6 +1360,12 @@ onBeforeUnmount(() => {
         b { font-size: 10px; &.sim { color: #00e5ff; } &.good { color: #34d399; } &.fallback { color: #f5b84c; } }
         &.vendor-btn { border-color: rgba(0, 229, 255, 0.45); color: var(--highlight); font-weight: 600; }
         &.req-btn { border-color: rgba(52, 211, 153, 0.55); color: #34d399; font-weight: 600; }
+        &.panel-master-btn {
+          border-color: rgba(56, 189, 248, 0.65); color: #7dd3fc; font-weight: 600;
+          background: rgba(14, 116, 144, 0.24);
+          &:hover { background: rgba(14, 116, 144, 0.45); color: #ffffff; }
+          &.clean { border-color: rgba(52, 211, 153, 0.65); color: #6ee7b7; background: rgba(16, 185, 129, 0.16); }
+        }
       }
       .module-tag { font-size: 11px; color: var(--text-secondary); }
       .sys-jump {
@@ -1205,10 +1389,14 @@ onBeforeUnmount(() => {
     overflow: hidden;
 
     .top-process-pill {
-      position: absolute; top: 10px; left: 222px; right: 334px; z-index: 9;
+      position: absolute; top: 10px; left: 12px; right: 12px; z-index: 9;
       display: flex; align-items: center; gap: 4px; padding: 5px 8px;
-      background: rgba(7, 20, 40, 0.9); border: 1px solid rgba(0, 229, 255, 0.36); border-radius: 6px;
+      background: rgba(7, 20, 40, 0.88); backdrop-filter: blur(8px);
+      border: 1px solid rgba(0, 229, 255, 0.36); border-radius: 6px;
       overflow: hidden;
+      transition: left 0.24s cubic-bezier(0.22, 1, 0.36, 1), right 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+      &.left-open { left: 222px; }
+      &.right-open { right: 334px; }
       .proc-chain-switch {
         display: flex; align-items: center; gap: 3px; flex: none; padding-right: 5px; border-right: 1px solid rgba(0, 229, 255, 0.3);
       }
@@ -1235,10 +1423,63 @@ onBeforeUnmount(() => {
           border-radius: 3px; padding: 2px 5px; font-size: 10px; cursor: pointer;
           &:hover:not(:disabled) { border-color: #00e5ff; background: rgba(0, 180, 216, 0.35); color: #ffffff; }
           &:disabled { opacity: 0.38; cursor: not-allowed; }
+          &.play-btn { border-color: rgba(52, 211, 153, 0.6); color: #6ee7b7; background: rgba(16, 185, 129, 0.22); }
           &.mode-toggle.single { border-color: #f5b84c; color: #f5b84c; background: rgba(245, 184, 76, 0.16); }
         }
       }
     }
+
+    /* 边缘毛玻璃触发胶囊按钮（默认收起态，点击按需呼出各任务浮窗） */
+    .dock-pill {
+      position: absolute; z-index: 10; display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 11px; border-radius: 999px;
+      background: rgba(7, 22, 42, 0.82); backdrop-filter: blur(8px);
+      border: 1px solid rgba(0, 229, 255, 0.42); color: #d8f3ff;
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.38);
+      transition: all 0.18s ease;
+      &:hover {
+        background: rgba(12, 48, 78, 0.94); border-color: #00e5ff; color: #ffffff;
+        box-shadow: 0 0 12px rgba(0, 229, 255, 0.35); transform: translateY(-1px);
+      }
+      .dock-arrow { color: #38bdf8; font-size: 12px; line-height: 1; }
+      .dock-dot {
+        width: 7px; height: 7px; border-radius: 50%; background: #38bdf8;
+        &.active { background: #34d399; box-shadow: 0 0 6px #34d399; }
+      }
+      .dock-badge {
+        padding: 0 5px; border-radius: 99px; font-size: 10px; font-weight: 700;
+        background: #f5b84c; color: #091526;
+        &.critical { background: #ef4444; color: #ffffff; }
+      }
+      .dock-pct {
+        padding: 1px 6px; border-radius: 99px; font-size: 10px;
+        background: rgba(52, 211, 153, 0.22); color: #6ee7b7; border: 1px solid rgba(52, 211, 153, 0.45);
+      }
+      &.dock-left { top: 52px; left: 12px; }
+      &.dock-right-top { top: 52px; right: 12px; }
+      &.dock-right-bottom { bottom: 14px; right: 12px; }
+      &.dock-top { top: 10px; left: 50%; transform: translateX(-50%); &:hover { transform: translateX(-50%) translateY(-1px); } }
+    }
+
+    .panel-header-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px;
+      .panel-title, .data-title { margin-bottom: 0; }
+    }
+    .collapse-chip {
+      flex: none; padding: 1px 7px; border-radius: 4px;
+      border: 1px solid rgba(0, 229, 255, 0.34); background: rgba(10, 32, 54, 0.72);
+      color: #8fd3ef; font-size: 10px; font-weight: 600; cursor: pointer; white-space: nowrap;
+      transition: all 0.14s ease;
+      &:hover { border-color: #00e5ff; background: rgba(0, 180, 216, 0.32); color: #ffffff; }
+    }
+
+    .slide-left-enter-active, .slide-left-leave-active,
+    .slide-right-enter-active, .slide-right-leave-active {
+      transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+    }
+    .slide-left-enter-from, .slide-left-leave-to { transform: translateX(-24px); opacity: 0; }
+    .slide-right-enter-from, .slide-right-leave-to { transform: translateX(24px); opacity: 0; }
 
     .layer-panel {
       position: absolute; top: 10px; left: 12px; width: 204px; max-height: calc(100% - 20px); overflow-y: auto; padding: 10px;
@@ -1326,8 +1567,10 @@ onBeforeUnmount(() => {
     }
 
     .detail-card {
-      position: absolute; top: 54px; left: 226px; width: 336px; background: var(--bg-panel);
+      position: absolute; top: 54px; left: 16px; width: 336px; background: var(--bg-panel);
       border: 1px solid rgba(0, 229, 255, 0.55); border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); z-index: 11;
+      transition: left 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+      &.left-open { left: 226px; }
       .detail-header {
         display: flex; justify-content: space-between; align-items: start; padding: 10px 12px; border-bottom: 1px solid var(--border-color);
         .detail-title { display: block; font-size: 14px; font-weight: 600; color: var(--highlight); }
@@ -1369,9 +1612,12 @@ onBeforeUnmount(() => {
     }
 
     .req-matrix-drawer, .vendor-drawer {
-      position: absolute; top: 52px; left: 226px; right: 334px; z-index: 15;
+      position: absolute; top: 52px; left: 16px; right: 16px; z-index: 15;
       background: var(--bg-panel); border: 1px solid rgba(0, 229, 255, 0.55); border-radius: 8px;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6); padding: 12px 14px;
+      transition: left 0.24s cubic-bezier(0.22, 1, 0.36, 1), right 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+      &.left-open { left: 226px; }
+      &.right-open { right: 334px; }
       .vendor-header {
         display: flex; justify-content: space-between; align-items: start; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);
         b { display: block; font-size: 13px; color: var(--highlight); }
@@ -1411,12 +1657,13 @@ onBeforeUnmount(() => {
 
     .data-panel {
       position: absolute; top: 10px; right: 12px; width: 316px; background: var(--bg-panel);
-      border: 1px solid var(--border-color); border-radius: var(--radius-md); z-index: 9;
+      border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); z-index: 9;
       .data-title {
         display: flex; justify-content: space-between; align-items: center; gap: 6px;
         font-size: 12px; font-weight: 600; color: var(--highlight); padding: 7px 10px; border-bottom: 1px solid var(--border-color);
+        .data-title-right { display: flex; align-items: center; gap: 5px; flex: none; }
         .silo-quick-select {
-          max-width: 118px; padding: 2px 4px; font-size: 10px; border: 1px solid var(--border-color);
+          max-width: 100px; padding: 2px 4px; font-size: 10px; border: 1px solid var(--border-color);
           border-radius: 4px; background: var(--bg-panel-alt); color: var(--text-primary); cursor: pointer;
         }
       }
@@ -1441,8 +1688,8 @@ onBeforeUnmount(() => {
     }
 
     .phase6-panel {
-      position: absolute; right: 12px; bottom: 48px; width: 312px; background: var(--bg-panel);
-      border: 1px solid var(--border-color); border-radius: var(--radius-md); z-index: 9;
+      position: absolute; right: 12px; bottom: 14px; width: 312px; background: var(--bg-panel);
+      border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); z-index: 9;
       .phase6-section { padding: 8px 10px; border-bottom: 1px solid var(--border-color); &:last-child { border-bottom: 0; } }
       .data-title { color: var(--highlight); font-size: 12px; font-weight: 600; margin-bottom: 5px; }
       .phase6-row { display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 2px 0; .commodity-dot { width: 7px; height: 7px; border-radius: 50%; background: #60a5fa; &.fly_ash { background: var(--status-warn); } &.cement { background: #34d399; } } .phase6-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .phase6-value { color: var(--text-secondary); &.warning { color: var(--status-error); } } }
@@ -1451,14 +1698,13 @@ onBeforeUnmount(() => {
     }
 
     .diag-panel { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); background: rgba(7, 18, 40, 0.9); padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; z-index: 12; font-size: 11px; }
-
-    .status-bar {
-      position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
-      display: flex; gap: 16px; padding: 6px 14px; background: var(--bg-panel);
-      border: 1px solid var(--border-color); border-radius: var(--radius-md); z-index: 10; font-size: 11px; color: var(--text-secondary);
-    }
   }
 
-  .home-footer { padding: 6px 18px; font-size: 11px; color: var(--text-secondary); background: var(--bg-panel); border-top: 1px solid var(--border-color); }
+  .home-footer {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 5px 18px; font-size: 11px; color: var(--text-secondary);
+    background: var(--bg-panel); border-top: 1px solid var(--border-color);
+    .footer-metrics { color: var(--highlight); opacity: 0.88; font-size: 11px; }
+  }
 }
 </style>
