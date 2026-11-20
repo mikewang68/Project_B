@@ -32,7 +32,15 @@ import { useAlertStore, type AlertItem } from '@/stores/alert'
 import { buildDefaultDeviceSnapshot, useDeviceStore } from '@/stores/device'
 import { Twin3dController, type SelectedInfo } from '@/twin3d'
 import { BulkProcessDemoController } from '@/twin3d/bulkProcessDemo'
-import { flyToCameraPreset, focusCadPoint, type CameraFocusTarget, type CameraPresetId } from '@/twin3d/cameraPresets'
+import {
+  flyToCameraPreset,
+  focusCadPoint,
+  releaseCameraTrack,
+  trackCadPoint,
+  type CameraFocusTarget,
+  type CameraPresetId,
+  type CameraTrackTarget,
+} from '@/twin3d/cameraPresets'
 import { cadGeoJsonToWgs84 } from '@/twin3d/geo'
 import { MOCK_EQUIPMENT } from '@/twin3d/mock/mockData'
 import { MOCK_CARGO, MOCK_OPERATIONS, MOCK_PERSONNEL, Phase6LayerController } from '@/twin3d/phase6'
@@ -60,7 +68,7 @@ interface ThemeMeta {
 
 const THEMES: ThemeMeta[] = [
   { id: 'overview', label: '全站总览', title: '中沙坝转运站数字孪生综合指挥大屏', note: '给大连大.dwg V4 实测基准 · 40座3000T筒仓 + 13跨钢筋库双线协同', camera: 'overview', chartTitle: '全站装卸吞吐小时趋势（吨/小时）' },
-  { id: 'bulk', label: '散料入仓与定量装车', title: '水泥/粉煤灰翻箱入仓与库底定量装车态势', note: '货1/货2 → 集装箱门吊 → 移动翻箱机(135°) → 40m提升机 → 空气斜槽 → 40筒仓', camera: 'tipper', chartTitle: '散料入仓与定量装车小时流量（t/h）' },
+  { id: 'bulk', label: '散料入仓与定量装车', title: '水泥/粉煤灰翻箱入仓与库底定量装车态势', note: '货1/货2 → 集装箱门吊 → 平行东西轨移动翻箱机(90°) → 顶部抽灰→工作室皮带 → 40m提升机 → 40筒仓', camera: 'tipper', chartTitle: '散料入仓与定量装车小时流量（t/h）' },
   { id: 'steel', label: '钢材联合吊装', title: '钢材 40t 门吊 + 13 跨室内桥吊联合吊装态势', note: '货3/货4 → CR-01~03 40t门吊 → 转接区B → 9×20t磁吸 + 4×32t C型桥吊', camera: 'gantry', chartTitle: '钢材入库与货车装车作业效率（%）' },
   { id: 'safety', label: '安全防撞 (SCS)', title: '安全防碰撞监测与四步联锁监控态势（S4）', note: '门吊/翻箱机动态测距预警(15m)/停机(6m) + 库底电子围栏 + 静电接地联锁', camera: 'loader', chartTitle: '防碰撞预警与联锁处置响应分布' },
   { id: 'ehms', label: '设备健康 (EHMS)', title: '核心装卸装备 EHMS 健康评分与 BOM 风险（S3）', note: 'CR-01~03 / TIPPER-01~04 / BC-01~13 / ELV-01~04 机构级预测性维护上屏', camera: 'steel', chartTitle: '核心装卸装备群组健康指数（EHMS 分值）' },
@@ -186,6 +194,9 @@ let carouselResumeTimer: ReturnType<typeof setTimeout> | null = null
 let alertShrinkTimer: ReturnType<typeof setTimeout> | null = null
 let lastFocusTag = ''
 let userCameraHold = false
+let smoothedTrackState: (Required<Pick<CameraTrackTarget, 'cadX' | 'cadY' | 'cadZ' | 'headingDeg' | 'pitchDeg' | 'range'>> & {
+  tag: string
+}) | null = null
 let removeCanvasInteractionListeners: (() => void) | null = null
 
 const alertOverlay = ref(false)
@@ -255,8 +266,8 @@ const activeTask = computed(() =>
 
 const materialFlowNodes = computed(() =>
   activeProcess.value === 'bulk'
-    ? ['货1/货2 列车', '40t集装箱门吊', '移动翻箱机(135°)', '42m³料斗/卸料室', '40m斗式提升机', '仓顶空气斜槽', '40×3000T筒仓', '库底散装→100t磅']
-    : ['货3/货4 钢材专列', 'CR-01~03 门吊(40t)', '库外交接转接区 B', '20t磁吸 / 32t C型桥吊', '1~13 跨智能库位', '电子围栏防碰撞拣选', '公路挂车装车', '100t 汽车衡复磅'],
+    ? ['货1/货2 列车', '40t集装箱门吊', '东西轨翻箱机(90°)', '顶部抽灰→工作室', '工作室内皮带输送', '40m斗式提升机', '40×3000T筒仓', '库底散装→100t磅']
+    : ['货3/货4 露天板车', 'CR-01~03 门吊(40t)', '库外交接转接区 B', '20t磁吸 / 32t C型桥吊', '07跨专用空位对齐', 'CAD东斜道直入东门', '库内桥吊装车', '西出绕圈→100t复磅'],
 )
 
 const kpis = computed(() => [
@@ -301,6 +312,7 @@ function seedDevices() {
 function setCamera(preset: CameraPresetId) {
   lastFocusTag = ''
   userCameraHold = false
+  smoothedTrackState = null
   if (viewer) flyToCameraPreset(viewer, preset)
 }
 
@@ -322,7 +334,46 @@ function createRuntime(): UnifiedProcessRuntime {
       if (!viewer || userCameraHold) return
       if (target.tag && target.tag === lastFocusTag) return
       lastFocusTag = target.tag ?? ''
+      smoothedTrackState = null
       focusCadPoint(viewer, target)
+    },
+    trackPoint: (target: CameraTrackTarget | null) => {
+      if (!viewer) return
+      if (!target) {
+        smoothedTrackState = null
+        releaseCameraTrack(viewer)
+        return
+      }
+      if (userCameraHold) return
+      const nextTag = target.tag ?? ''
+      lastFocusTag = ''
+      if (!smoothedTrackState || smoothedTrackState.tag !== nextTag) {
+        smoothedTrackState = {
+          cadX: target.cadX,
+          cadY: target.cadY,
+          cadZ: target.cadZ ?? 2.2,
+          headingDeg: target.headingDeg,
+          pitchDeg: target.pitchDeg,
+          range: target.range,
+          tag: nextTag,
+        }
+      } else {
+        const alpha = target.smoothing ?? 0.24
+        smoothedTrackState.cadX += (target.cadX - smoothedTrackState.cadX) * alpha
+        smoothedTrackState.cadY += (target.cadY - smoothedTrackState.cadY) * alpha
+        smoothedTrackState.cadZ += ((target.cadZ ?? 2.2) - smoothedTrackState.cadZ) * alpha
+        const dh = ((target.headingDeg - smoothedTrackState.headingDeg + 540) % 360) - 180
+        smoothedTrackState.headingDeg += dh * alpha
+        smoothedTrackState.pitchDeg += (target.pitchDeg - smoothedTrackState.pitchDeg) * alpha
+        smoothedTrackState.range += (target.range - smoothedTrackState.range) * alpha
+      }
+      trackCadPoint(viewer, smoothedTrackState)
+    },
+    resetUserCameraHold: () => {
+      userCameraHold = false
+      lastFocusTag = ''
+      smoothedTrackState = null
+      if (viewer) releaseCameraTrack(viewer)
     },
     setDeviceStatus: (id, status) => deviceStore.updateDevice(id, status),
     setEquipmentLabel: (id, text) => twin3d?.setEquipmentLabel(id, text),
@@ -444,7 +495,8 @@ function applyUrlDeepLinkParams() {
     rebuildController(activeProcess.value)
   }
   if (stepParam) {
-    const idx = Math.max(0, Math.min(4, (Number.parseInt(stepParam, 10) || 1) - 1))
+    const maxIdx = Math.max(0, demoState.stepCount - 1)
+    const idx = Math.max(0, Math.min(maxIdx, (Number.parseInt(stepParam, 10) || 1) - 1))
     singleStepMode.value = true
     jumpToProcessStep(idx)
   }
@@ -472,6 +524,10 @@ function toggleSingleStepMode() {
 }
 
 function jumpToProcessStep(stepIndex: number) {
+  userCameraHold = false
+  lastFocusTag = ''
+  smoothedTrackState = null
+  if (viewer) releaseCameraTrack(viewer)
   processTrackMode.value = 'f_d06_sim'
   stopCarousel()
   twin3d?.setVehicleRouteAnimation(false)
@@ -481,6 +537,10 @@ function jumpToProcessStep(stepIndex: number) {
 }
 
 function prevProcessStep() {
+  userCameraHold = false
+  lastFocusTag = ''
+  smoothedTrackState = null
+  if (viewer) releaseCameraTrack(viewer)
   processTrackMode.value = 'f_d06_sim'
   stopCarousel()
   twin3d?.setVehicleRouteAnimation(false)
@@ -490,6 +550,10 @@ function prevProcessStep() {
 }
 
 function nextProcessStep() {
+  userCameraHold = false
+  lastFocusTag = ''
+  smoothedTrackState = null
+  if (viewer) releaseCameraTrack(viewer)
   processTrackMode.value = 'f_d06_sim'
   stopCarousel()
   twin3d?.setVehicleRouteAnimation(false)
@@ -575,6 +639,10 @@ function resetDemo() {
 }
 
 function startDemo() {
+  userCameraHold = false
+  lastFocusTag = ''
+  smoothedTrackState = null
+  if (viewer) releaseCameraTrack(viewer)
   processTrackMode.value = 'f_d06_sim'
   resetDemo()
   demoController?.setSingleStep(singleStepMode.value)
@@ -589,6 +657,10 @@ function toggleDemo() {
   if (demoState.running) pauseDemo()
   else if (demoState.completed || (demoState.progress === 0 && demoState.stepIndex === 0)) startDemo()
   else {
+    userCameraHold = false
+    lastFocusTag = ''
+    smoothedTrackState = null
+    if (viewer) releaseCameraTrack(viewer)
     processTrackMode.value = 'f_d06_sim'
     demoController?.setSingleStep(singleStepMode.value)
     demoController?.start()
@@ -745,6 +817,8 @@ function onViewerReady(nextViewer: Cesium.Viewer) {
   const canvas = nextViewer.scene.canvas
   const markManualCamera = () => {
     userCameraHold = true
+    smoothedTrackState = null
+    releaseCameraTrack(nextViewer)
     nextViewer.camera.cancelFlight()
   }
   canvas.addEventListener('pointerdown', markManualCamera, { passive: true })
@@ -932,7 +1006,7 @@ void SITE_LAYOUT_V4.version
       </div>
       <div class="tracker-summary">
         <button type="button" class="tracker-nav-btn" :disabled="demoState.stepIndex <= 0" title="上一步" @click="prevProcessStep">◀</button>
-        <button type="button" class="tracker-nav-btn" :disabled="demoState.stepIndex >= 4" title="下一步" @click="nextProcessStep">▶</button>
+        <button type="button" class="tracker-nav-btn" :disabled="demoState.stepIndex >= demoState.stepCount - 1" title="下一步" @click="nextProcessStep">▶</button>
         <button
           type="button"
           class="tracker-nav-btn mode"
@@ -1191,7 +1265,7 @@ void SITE_LAYOUT_V4.version
             <div class="demo-controls">
               <button class="primary" @click="toggleDemo">{{ demoState.running ? '暂停演示' : demoState.completed ? '重新演示' : demoState.progress > 0 ? '继续演示' : '开始演示' }}</button>
               <button :disabled="demoState.stepIndex <= 0" @click="prevProcessStep">上一步</button>
-              <button :disabled="demoState.stepIndex >= 4" @click="nextProcessStep">下一步</button>
+              <button :disabled="demoState.stepIndex >= demoState.stepCount - 1" @click="nextProcessStep">下一步</button>
               <button @click="resetDemo">重置</button>
             </div>
           </template>
@@ -1323,7 +1397,7 @@ h1 { margin: 0; font-size: clamp(20px, 1.45vw, 28px); letter-spacing: 0.05em; co
   &.active { border-color: #00e5ff; background: rgba(10, 94, 122, 0.55); color: #e8fcff; font-weight: 600; }
   &.live-track-btn.active { border-color: #34d399; background: rgba(16, 185, 129, 0.32); color: #6ee7b7; }
 }
-.five-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.five-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 5px; }
 .step-pill {
   padding: 5px 8px; border-radius: 4px; border: 1px solid rgba(58, 114, 146, 0.38); background: rgba(10, 28, 46, 0.72);
   font-size: 11px; color: #7da5bc; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;

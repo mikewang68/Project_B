@@ -34,14 +34,25 @@ export interface BridgeCranePose {
   payloadTons?: number
 }
 
-/** 移动式翻箱机双轴姿态（X轨行 + 0~135° 翻转） */
+/** 移动式翻箱机多部件铰接姿态（X轨行 + 压门拔销 + 0°->3°->90°垂直翻转 + 顶部双扇端门掀开 + 波纹溜管下降对接 + 高频震动清仓） */
 export interface TipperPose {
   cadX: number
   cadY: number
-  /** 翻转角度（0 = 水平装箱位，135 = 倾卸完料） */
+  /** 绕后上铰接轴(Z=3.2m)翻转角度（0° = 水平悬空1.8m，3° = 液压建压抬头，90° = 完全垂直竖立） */
   tiltDeg: number
+  /** 顶部工程蓝液压压门爪压紧状态（0°->90°翻转全程必须为 true 防止散料受重力冲开） */
+  clampLocked?: boolean
+  /** 竖向门锁插销拔出状态 */
+  pinExtracted?: boolean
+  /** 左扇窄端门绕左侧铰链开启角度（0° -> 92°） */
+  leftDoorDeg?: number
+  /** 右扇窄端门绕右侧铰链开启角度（阶段1预开 6° 微缝，90°竖立锁定后掀开至 92°） */
+  rightDoorDeg?: number
+  /** 顶部灰白色波纹伸缩溜管沿 -Z 垂直下降行程（0m -> 1.2m 插入顶部敞口） */
+  bellowsDropM?: number
   vibrating?: boolean
   payloadTons?: number
+  stageLabel?: string
 }
 
 /** 库底定量散装机伸缩溜管姿态 */

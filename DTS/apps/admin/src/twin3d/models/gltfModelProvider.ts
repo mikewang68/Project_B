@@ -1,6 +1,8 @@
 import * as Cesium from 'cesium'
 import { STATUS_COLORS, STATUS_NAMES, type DeviceStatusCode, type EquipmentDef } from '../constants'
 import { cadToCartesian3 } from '../geo'
+import { SITE_LAYOUT_V4 } from '../siteLayoutV4'
+import cadBuildingsV54 from '../cadBuildingsV54.json'
 import {
   CORE_PLACEMENTS,
   STATION_PLACEMENTS,
@@ -113,6 +115,7 @@ const MODEL_KEY_BY_TYPE: Partial<Record<PlacementType, string>> = {
 export class GltfModelProvider {
   private readonly dataSource: Cesium.CustomDataSource
   private readonly staticAssets = new Map<string, StaticSiteAsset>()
+  private activeContainerDoors = { leftDoorDeg: 0, rightDoorDeg: 0 }
 
   constructor(dataSource: Cesium.CustomDataSource) {
     this.dataSource = dataSource
@@ -137,11 +140,31 @@ export class GltfModelProvider {
         item.type === 'tank_truck' ||
         item.type === 'road_truck',
     )) {
-      const modelKey = MODEL_KEY_BY_TYPE[placement.type]
+      const modelKey = placement.modelKey ?? MODEL_KEY_BY_TYPE[placement.type]
       if (modelKey) result.push(this.registerStatic(placement, modelKey))
     }
 
-    // Dynamic detached steel cargo actor (used by gantry -> transfer -> bridge crane handoff)
+    // Build the paired North-rail mobile container tilters (TIPPER-05..08) so all 4 groups × 4 East-West rails = 8 tilters render in 3D
+    for (const northTipper of CORE_PLACEMENTS.filter(
+      (item) => item.type === 'mobile_tipper' && item.id.startsWith('TIPPER-0') && Number(item.id.slice(-2)) >= 5,
+    )) {
+      const built = this.buildMobileTipper(
+        {
+          id: northTipper.id,
+          name: northTipper.name,
+          type: 'mobile_tipper',
+          cadX: northTipper.cadX,
+          cadY: northTipper.cadY,
+          status: 'standby',
+          height: 5.5,
+          params: { tiltAngle: '0°', cycleRate: '30 t/h' },
+        },
+        northTipper,
+      )
+      result.push({ placement: northTipper, entities: built.entities })
+    }
+
+    // Dynamic detached steel cargo actor (open flatbed railcar -> handover apron -> Bay 07 empty slot -> road truck)
     result.push(
       this.registerStatic(
         {
@@ -150,21 +173,26 @@ export class GltfModelProvider {
           type: 'bulk_container',
           zone: 'rebar_corridor',
           state: 'existing',
-          cadX: 3737.06,
-          cadY: 1641.546,
-          height: 2.0,
+          cadX: SITE_LAYOUT_V4.rebar.bays[6].cadX,
+          cadY: SITE_LAYOUT_V4.rebar.tracks[0].cadY,
+          height: 2.02,
           headingDeg: 0,
           source: 'simulation-route',
           confidence: 'confirmed',
-          notes: '双级联合吊装活动钢材货捆',
+          notes: '双级联合吊装活动钢材货捆（直接露天板车装运，无集装箱）',
         },
         'steel-cargo',
       ),
     )
 
     this.addNightSceneAccents()
+    this.addSiteBuildingLabels()
     for (const planned of STATION_PLACEMENTS.filter((item) => item.state === 'planned')) {
-      const entities = this.addPlannedOverlay(planned)
+      const entities: Cesium.Entity[] = []
+      if (planned.modelKey) {
+        entities.push(modelEntity(this.dataSource, planned.id, planned.modelKey, planned, 0, planned.id))
+      }
+      entities.push(...this.addPlannedOverlay(planned))
       const asset = { placement: planned, entities }
       this.staticAssets.set(planned.id, asset)
       result.push(asset)
@@ -188,6 +216,56 @@ export class GltfModelProvider {
     const asset = this.staticAssets.get(id)
     if (!asset) return
     updateEntityPosition(asset.entities[0], asset.placement, cadX, cadY, height, headingDeg, pitchDeg, rollDeg)
+    if (asset.entities.length >= 3 && (id === 'CONT-BULK-01' || id === 'CONT-STEEL-BUFFER-01')) {
+      const isBulkActive = id === 'CONT-BULK-01'
+      const leftDeg = isBulkActive ? this.activeContainerDoors.leftDoorDeg : 0
+      const rightDeg = isBulkActive ? this.activeContainerDoors.rightDoorDeg : 0
+      this.updateArticulatedContainerDoors(
+        asset.entities[1],
+        asset.entities[2],
+        cadX,
+        cadY,
+        height,
+        headingDeg,
+        pitchDeg,
+        rollDeg,
+        leftDeg,
+        rightDeg,
+      )
+    }
+  }
+
+  private updateArticulatedContainerDoors(
+    doorLeft: Cesium.Entity,
+    doorRight: Cesium.Entity,
+    cadX: number,
+    cadY: number,
+    height: number,
+    headingDeg: number,
+    pitchDeg: number,
+    rollDeg: number,
+    leftDoorDeg: number,
+    rightDoorDeg: number,
+  ) {
+    const rollRad = Cesium.Math.toRadians(rollDeg)
+    const headRad = Cesium.Math.toRadians(headingDeg)
+    const dxLocal = 3.029 * Math.cos(rollRad)
+    const dzLocal = 3.029 * Math.sin(rollRad)
+
+    const placeDoor = (doorEntity: Cesium.Entity, hingeYLocal: number, swingDeg: number) => {
+      const hx = cadX + dxLocal * Math.cos(headRad) + hingeYLocal * Math.sin(headRad)
+      const hy = cadY - dxLocal * Math.sin(headRad) + hingeYLocal * Math.cos(headRad)
+      const hz = height + dzLocal
+      const pos = cadToCartesian3(hx, hy, hz)
+      const qBase = orientation(pos, headingDeg, pitchDeg, rollDeg)
+      const qSwing = Cesium.Quaternion.fromAxisAngle(Cesium.Cartesian3.UNIT_Z, Cesium.Math.toRadians(swingDeg))
+      const qFinal = Cesium.Quaternion.multiply(qBase, qSwing, new Cesium.Quaternion())
+      doorEntity.position = new Cesium.ConstantPositionProperty(pos)
+      doorEntity.orientation = new Cesium.ConstantProperty(qFinal)
+    }
+
+    placeDoor(doorLeft, -1.219, -leftDoorDeg)
+    placeDoor(doorRight, 1.219, rightDoorDeg)
   }
 
   setStaticVisible(id: string, visible: boolean) {
@@ -239,23 +317,34 @@ export class GltfModelProvider {
       () => cadToCartesian3(pose.gantryX, pose.gantryY + pose.trolleyOffset * 0.4, trolleyZ + 6.5),
     )
 
-    const cable = this.dataSource.entities.add({
-      id: `${def.id}-cable`,
-      polyline: {
-        positions: new Cesium.CallbackProperty(() => {
-          const upper = cadToCartesian3(pose.gantryX, pose.gantryY + pose.trolleyOffset, trolleyZ + 0.5)
-          const lower = cadToCartesian3(pose.gantryX, pose.gantryY + pose.trolleyOffset, pose.hoistHeight)
-          return [upper, lower]
-        }, false),
-        width: 2.6,
-        material: new Cesium.PolylineOutlineMaterialProperty({
-          color: Cesium.Color.fromCssColorString('#38BDF8'),
-          outlineColor: Cesium.Color.fromCssColorString('#0F172A'),
-          outlineWidth: 1,
-        }),
-      },
-      properties: { parent: def.id, type: def.type },
-    })
+    const cableOffsets: Array<[number, number]> = [
+      [-2.6, -0.24],
+      [-2.6, 0.24],
+      [2.6, -0.24],
+      [2.6, 0.24],
+    ]
+    const cables = cableOffsets.map(([dx, dy], idx) =>
+      this.dataSource.entities.add({
+        id: `${def.id}-cable-${idx}`,
+        polyline: {
+          positions: new Cesium.CallbackProperty(() => {
+            const topZ = trolleyZ + 0.55
+            const botZ = Math.min(topZ - 0.35, pose.hoistHeight + 0.52)
+            return [
+              cadToCartesian3(pose.gantryX + dx, pose.gantryY + pose.trolleyOffset + dy, topZ),
+              cadToCartesian3(pose.gantryX + dx, pose.gantryY + pose.trolleyOffset + dy, botZ),
+            ]
+          }, false),
+          width: 2.2,
+          material: new Cesium.PolylineOutlineMaterialProperty({
+            color: Cesium.Color.fromCssColorString('#CBD5E1'),
+            outlineColor: Cesium.Color.fromCssColorString('#0F172A'),
+            outlineWidth: 1,
+          }),
+        },
+        properties: { parent: def.id, type: def.type },
+      }),
+    )
 
     const updatePose = (nextPose: CranePose) => {
       pose = nextPose
@@ -267,7 +356,7 @@ export class GltfModelProvider {
 
     return {
       def,
-      entities: [frame, trolley, hoist, cable, beacon, billboard.entity],
+      entities: [frame, trolley, hoist, ...cables, beacon, billboard.entity],
       setStatus: (status) => {
         def.status = status
         beacon.ellipsoid!.material = new Cesium.ColorMaterialProperty(statusColor(status))
@@ -305,19 +394,40 @@ export class GltfModelProvider {
       showTag ? 420 : 180,
     )
 
-    const cable = this.dataSource.entities.add({
-      id: `${def.id}-cable`,
-      polyline: {
-        positions: new Cesium.CallbackProperty(() => {
-          const upper = cadToCartesian3(pose.cadX + pose.trolleyOffsetX, pose.bridgeY, railZ + 2.2)
-          const lower = cadToCartesian3(pose.cadX + pose.trolleyOffsetX, pose.bridgeY, pose.hoistHeight)
-          return [upper, lower]
-        }, false),
-        width: 2.0,
-        material: new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#F59E0B')),
-      },
-      properties: { parent: def.id, type: def.type },
-    })
+    const bcCableOffsets: Array<[number, number]> =
+      placement.modelKey === 'bridge-crane-chook'
+        ? [
+            [-0.35, -0.22],
+            [0.35, 0.22],
+          ]
+        : [
+            [-2.1, -0.18],
+            [-2.1, 0.18],
+            [2.1, -0.18],
+            [2.1, 0.18],
+          ]
+    const cables = bcCableOffsets.map(([dx, dy], idx) =>
+      this.dataSource.entities.add({
+        id: `${def.id}-cable-${idx}`,
+        polyline: {
+          positions: new Cesium.CallbackProperty(() => {
+            const topZ = railZ + 2.55
+            const botZ = Math.min(topZ - 0.3, pose.hoistHeight + 0.5)
+            return [
+              cadToCartesian3(pose.cadX + pose.trolleyOffsetX + dx, pose.bridgeY + dy, topZ),
+              cadToCartesian3(pose.cadX + pose.trolleyOffsetX + dx, pose.bridgeY + dy, botZ),
+            ]
+          }, false),
+          width: 1.9,
+          material: new Cesium.PolylineOutlineMaterialProperty({
+            color: Cesium.Color.fromCssColorString('#CBD5E1'),
+            outlineColor: Cesium.Color.fromCssColorString('#0F172A'),
+            outlineWidth: 1,
+          }),
+        },
+        properties: { parent: def.id, type: def.type },
+      }),
+    )
 
     const updateBridgePose = (nextPose: BridgeCranePose) => {
       pose = nextPose
@@ -329,7 +439,7 @@ export class GltfModelProvider {
 
     return {
       def,
-      entities: [frame, trolley, hoist, cable, beacon, billboard.entity],
+      entities: [frame, trolley, hoist, ...cables, beacon, billboard.entity],
       setStatus: (status) => {
         def.status = status
         beacon.ellipsoid!.material = new Cesium.ColorMaterialProperty(statusColor(status))
@@ -341,46 +451,122 @@ export class GltfModelProvider {
 
   private buildMobileTipper(def: EquipmentDef, placement: AssetPlacement): BuiltEquipment {
     const frame = modelEntity(this.dataSource, `${def.id}-frame`, 'tipper-frame', placement, 0, def.id)
-    const pivotY = placement.cadY + 1.85
-    const pivotZ = 3.2
+    const pivotX = placement.cadX - 0.43
+    const pivotY = placement.cadY
+    const pivotZ = 3.20
     const cradle = this.dataSource.entities.add({
       id: `${def.id}-cradle`,
-      position: cadToCartesian3(placement.cadX, pivotY, pivotZ),
-      orientation: orientation(cadToCartesian3(placement.cadX, pivotY, pivotZ), placement.headingDeg),
+      position: cadToCartesian3(pivotX, pivotY, pivotZ),
+      orientation: orientation(cadToCartesian3(pivotX, pivotY, pivotZ), placement.headingDeg),
       model: {
         uri: getModel('tipper-cradle').modelUrl,
         scale: 1,
         minimumPixelSize: 18,
         maximumScale: 1,
+        imageBasedLightingFactor: DEFAULT_IBL_FACTOR,
+        lightColor: DEFAULT_MODEL_LIGHT_COLOR,
       },
       properties: { parent: def.id, type: def.type, name: def.name },
     })
-    const beacon = this.addStatusBeacon(def, placement, 5.2)
+    const claws = this.dataSource.entities.add({
+      id: `${def.id}-claws`,
+      position: cadToCartesian3(pivotX, pivotY, pivotZ),
+      orientation: orientation(cadToCartesian3(pivotX, pivotY, pivotZ), placement.headingDeg),
+      model: {
+        uri: getModel('tipper-claws').modelUrl,
+        scale: 1,
+        minimumPixelSize: 14,
+        maximumScale: 1,
+        imageBasedLightingFactor: DEFAULT_IBL_FACTOR,
+        lightColor: DEFAULT_MODEL_LIGHT_COLOR,
+      },
+      properties: { parent: def.id, type: def.type, name: `${def.name}·顶门压爪与开门机构` },
+    })
+    const groupIdx = Math.max(0, (Number(def.id.slice(-2)) - 1) % SITE_LAYOUT_V4.ash.unloadingComplexes.length)
+    const complex = SITE_LAYOUT_V4.ash.unloadingComplexes[groupIdx]
+    const unloadStationX = complex?.tipperUnloadX ?? 3787.89
+    const bellows = this.dataSource.entities.add({
+      id: `${def.id}-bellows`,
+      position: cadToCartesian3(unloadStationX - 0.33, placement.cadY, 7.35),
+      orientation: orientation(cadToCartesian3(unloadStationX - 0.33, placement.cadY, 7.35), placement.headingDeg),
+      model: {
+        uri: getModel('tipper-bellows-chute').modelUrl,
+        scale: 1,
+        minimumPixelSize: 12,
+        maximumScale: 1,
+        imageBasedLightingFactor: DEFAULT_IBL_FACTOR,
+        lightColor: DEFAULT_MODEL_LIGHT_COLOR,
+      },
+      properties: { parent: def.id, type: def.type, name: `${def.name}·顶部波纹伸缩吸料管` },
+    })
+    const beacon = this.addStatusBeacon(def, placement, 5.6)
 
-    let pose: TipperPose = { cadX: placement.cadX, cadY: placement.cadY, tiltDeg: 0 }
+    let pose: TipperPose = {
+      cadX: placement.cadX,
+      cadY: placement.cadY,
+      tiltDeg: 0,
+      clampLocked: true,
+      pinExtracted: false,
+      leftDoorDeg: 0,
+      rightDoorDeg: 0,
+      bellowsDropM: 0,
+    }
+    const isPrimaryTipper = Number(def.id.slice(-2)) <= 4
     const billboard = this.addStatusBillboard(
       def,
       placement,
-      8.2,
-      () =>
-        `${def.id} · ${STATUS_NAMES[def.status] ?? def.status}${
-          pose.tiltDeg > 1 ? `\n翻转 ${Math.round(pose.tiltDeg)}°${pose.vibrating ? ' · 振动卸料' : ''}` : ''
-        }`,
-      () => cadToCartesian3(pose.cadX, pose.cadY - 3.0, 8.2),
-      460,
+      8.6,
+      () => {
+        if (pose.stageLabel) return `${def.id} · ${pose.stageLabel}`
+        const tiltInfo =
+          pose.tiltDeg > 0.5
+            ? `\n翻转 ${Math.round(pose.tiltDeg)}°${
+                (pose.leftDoorDeg ?? 0) > 20
+                  ? ' · 顶门全开'
+                  : pose.clampLocked !== false
+                    ? ' · 蓝爪压门锁死'
+                    : ''
+              }${
+                (pose.bellowsDropM ?? 0) > 0.2 ? ` · 波纹管下放 ${(pose.bellowsDropM ?? 0).toFixed(1)}m` : ''
+              }${pose.vibrating ? ' · 高频震动清仓' : ''}`
+            : ''
+        return `${def.id} · ${STATUS_NAMES[def.status] ?? def.status}${tiltInfo}`
+      },
+      () => cadToCartesian3(pose.cadX, pose.cadY - 2.6, 8.6),
+      isPrimaryTipper ? 480 : 180,
     )
 
     const updateTipperPose = (nextPose: TipperPose) => {
       pose = nextPose
+      const vibDeg = pose.vibrating ? Math.sin(performance.now() * 0.06) * 0.75 : 0
+      const effTilt = pose.tiltDeg + vibDeg
+      const rad = Cesium.Math.toRadians(effTilt)
       updateEntityPosition(frame, placement, pose.cadX, pose.cadY, 0)
-      // Cradle rotates backward/northward (-roll around CAD +X axis toward unloading hopper)
-      updateEntityPosition(cradle, placement, pose.cadX, pose.cadY + 1.85, pivotZ, placement.headingDeg, 0, -pose.tiltDeg)
-      updateEntityPosition(beacon, placement, pose.cadX - 5, pose.cadY, 5.2)
+      // Cradle rotates around rear-upper Y-axis shaft at (cadX - 0.43, cadY, 3.20) by +effTilt (0° -> 90° vertical)
+      updateEntityPosition(cradle, placement, pose.cadX - 0.43, pose.cadY, pivotZ, placement.headingDeg, 0, effTilt)
+
+      // Blue hydraulic clamp claws: retract outward along cradle +X when unlocked so crane drops/lifts container with zero clipping
+      const clawReleaseOffset = pose.clampLocked === false ? 0.24 : 0
+      const clawX = pose.cadX - 0.43 + clawReleaseOffset * Math.cos(rad)
+      const clawZ = pivotZ + clawReleaseOffset * Math.sin(rad)
+      updateEntityPosition(claws, placement, clawX, pose.cadY, clawZ, placement.headingDeg, 0, effTilt)
+
+      // Overhead corrugated telescopic suction chute stays anchored over the West Unloading Berth (unloadStationX) while tilter rides East-West rails!
+      const chuteDrop = pose.bellowsDropM ?? 0
+      updateEntityPosition(bellows, placement, unloadStationX - 0.33, placement.cadY, 7.35 - chuteDrop, placement.headingDeg, 0, 0)
+      updateEntityPosition(beacon, placement, pose.cadX - 1.45, pose.cadY - 1.75, 5.75)
+
+      if (def.id === 'TIPPER-01') {
+        this.activeContainerDoors = {
+          leftDoorDeg: pose.leftDoorDeg ?? 0,
+          rightDoorDeg: pose.rightDoorDeg ?? 0,
+        }
+      }
     }
 
     return {
       def,
-      entities: [frame, cradle, beacon, billboard.entity],
+      entities: [frame, cradle, claws, bellows, beacon, billboard.entity],
       setStatus: (status) => {
         def.status = status
         beacon.ellipsoid!.material = new Cesium.ColorMaterialProperty(statusColor(status))
@@ -432,9 +618,14 @@ export class GltfModelProvider {
     const isElevator = placement.type === 'elevator'
     const boxDims = isElevator ? new Cesium.Cartesian3(4.2, 4.2, height) : new Cesium.Cartesian3(18.0, 4.4, 1.4)
     const boxCenterZ = isElevator ? height / 2 : 0.7
+    const boxPos = cadToCartesian3(placement.cadX, placement.cadY, boxCenterZ)
     const pickVolume = this.dataSource.entities.add({
       id: `${def.id}-pickbox`,
-      position: cadToCartesian3(placement.cadX, placement.cadY, boxCenterZ),
+      position: boxPos,
+      orientation: Cesium.Transforms.headingPitchRollQuaternion(
+        boxPos,
+        new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(placement.headingDeg), 0, 0),
+      ),
       box: {
         dimensions: boxDims,
         material: new Cesium.ColorMaterialProperty(statusColor(def.status).withAlpha(0.14)),
@@ -520,6 +711,37 @@ export class GltfModelProvider {
 
   private registerStatic(placement: AssetPlacement, modelKey: string): StaticSiteAsset {
     const entities = [modelEntity(this.dataSource, placement.id, modelKey, placement)]
+    if (modelKey === 'bulk-container') {
+      const doorLeft = modelEntity(
+        this.dataSource,
+        `${placement.id}-door-l`,
+        'bulk-container-door-l',
+        placement,
+        placement.height ?? 0,
+        placement.id,
+      )
+      const doorRight = modelEntity(
+        this.dataSource,
+        `${placement.id}-door-r`,
+        'bulk-container-door-r',
+        placement,
+        placement.height ?? 0,
+        placement.id,
+      )
+      entities.push(doorLeft, doorRight)
+      this.updateArticulatedContainerDoors(
+        doorLeft,
+        doorRight,
+        placement.cadX,
+        placement.cadY,
+        placement.height ?? 0,
+        placement.headingDeg,
+        0,
+        0,
+        0,
+        0,
+      )
+    }
     if (placement.state === 'planned') entities.push(...this.addPlannedOverlay(placement))
     const asset = { placement, entities }
     this.staticAssets.set(placement.id, asset)
@@ -557,6 +779,42 @@ export class GltfModelProvider {
     }
   }
 
+  private addSiteBuildingLabels(): void {
+    // Overview/mid-range 3D nameplates for all surveyed CAD buildings & facilities (auto-hide < 120m so close-up animations stay 100% uncluttered!)
+    const buildings = (cadBuildingsV54.buildings ?? []) as Array<{
+      id: string
+      name: string
+      state: string
+      heightM: number
+      cadX: number
+      cadY: number
+    }>
+    for (const b of buildings) {
+      if (b.state === 'planned') continue
+      const labelZ = Math.max(4.5, (b.heightM ?? 5.0) + 3.2)
+      this.dataSource.entities.add({
+        id: `BLDG-LABEL-${b.id}`,
+        position: cadToCartesian3(b.cadX, b.cadY, labelZ),
+        label: {
+          text: b.name,
+          font: '600 12px Microsoft YaHei',
+          fillColor: Cesium.Color.fromCssColorString('#E2F4FF'),
+          outlineColor: Cesium.Color.fromCssColorString('#04101E'),
+          outlineWidth: 2,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          backgroundColor: Cesium.Color.fromCssColorString('#06192C').withAlpha(0.76),
+          showBackground: true,
+          backgroundPadding: new Cesium.Cartesian2(6, 3),
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          scaleByDistance: new Cesium.NearFarScalar(160, 1.0, 920, 0.72),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(115, 960),
+          disableDepthTestDistance: 120,
+        },
+        properties: { parent: b.id, type: 'site_building', name: b.name },
+      })
+    }
+  }
+
   private addPlannedOverlay(placement: AssetPlacement): Cesium.Entity[] {
     const zone = getZone(placement.zone)
     const points = [...zone.polygon.points, zone.polygon.points[0]].map(([x, y]) => cadToCartesian3(x, y, 0.5))
@@ -574,16 +832,21 @@ export class GltfModelProvider {
     })
     const label = this.dataSource.entities.add({
       id: `${placement.id}-label`,
-      position: cadToCartesian3(placement.cadX, placement.cadY, 15),
+      position: cadToCartesian3(placement.cadX, placement.cadY, 17.5),
       label: {
-        text: `规划缓建\n${placement.name.split('（')[0]}`,
-        font: '13px Microsoft YaHei',
+        text: `规划缓建 · ${placement.name.split('（')[0]}`,
+        font: '600 12px Microsoft YaHei',
         fillColor: Cesium.Color.fromCssColorString('#8CE9FF'),
-        outlineColor: Cesium.Color.fromCssColorString('#071228'),
-        outlineWidth: 3,
+        outlineColor: Cesium.Color.fromCssColorString('#04101E'),
+        outlineWidth: 2,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        pixelOffset: new Cesium.Cartesian2(0, -14),
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 650),
+        backgroundColor: Cesium.Color.fromCssColorString('#061D30').withAlpha(0.84),
+        showBackground: true,
+        backgroundPadding: new Cesium.Cartesian2(7, 3),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        scaleByDistance: new Cesium.NearFarScalar(160, 1.0, 920, 0.74),
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(115, 960),
+        disableDepthTestDistance: 120,
       },
       properties: { parent: placement.id, type: placement.type, state: 'planned' },
     })

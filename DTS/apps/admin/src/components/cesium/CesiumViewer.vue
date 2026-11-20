@@ -17,28 +17,34 @@ const activeRenderIdx = ref(0)
 
 const SHOWCASE_RENDERS = [
   {
+    id: 'tilter-1to1',
+    title: '① 集装箱移动式翻箱机 1:1 实景还原特写（90°垂直翻转+14道底梁+顶门掀开+波纹管对接）',
+    desc: '严格对照现场实拍图（1.jpg / 2.jpg）与分秒级规范：工业红橙门架、右侧A字斜撑与蓝色液压站、中国铁路20英尺深墨绿散货箱（底面14道横向槽钢加强筋）、顶部黄色拱形护栏、蓝色压门爪、双扇端门向上掀开92°及上方灰白波纹伸缩溜管下放对接（每组4轨2台、全场4组8台）。',
+    url: withBase('renders/render-05-tilter-1to1.png?v=20261118-tilter-v5'),
+  },
+  {
     id: 'panorama',
-    title: '① 1.27km 全站鸟瞰全景图（AutoCAD 给大连大.dwg + Blender 5.2 精模）',
+    title: '② 1.27km 全站鸟瞰全景图（AutoCAD 给大连大.dwg + Blender 5.2 精模）',
     desc: '完整还原中铁二院《给大连大.dwg》40座3000T散料筒仓、23,882m²钢筋库、6台40t/30m轨行门吊、35/10kV变电所与轮胎吊集装箱区。',
-    url: withBase('renders/render-01-panorama.png?v=20261117-v5'),
+    url: withBase('renders/render-01-panorama.png?v=20261118-tilter-v5'),
   },
   {
     id: 'silos-tipper',
-    title: '② 散料区 40 座 Φ12m×33.38m 筒仓群、40m 斗提机塔架与移动翻箱机特写',
-    desc: '48段平滑法线筒仓、5道环向加劲肋、8根Φ650钢管支柱与柱间抗风撑、仓顶脉冲布袋除尘器、40m钢桁架斗提机及35°倾翻作业中的移动翻箱机。',
-    url: withBase('renders/render-02-silos-tipper.png?v=20261117-v5'),
+    title: '③ 散料区 40 座 Φ12m×33.38m 筒仓群、40m 斗提机塔架与 4 组 8 台移动翻箱机特写',
+    desc: '48段平滑法线筒仓、5道环向加劲肋、8根Φ650钢管支柱与柱间抗风撑、仓顶脉冲布袋除尘器、40m钢桁架斗提机及90°垂直翻转作业中的移动式翻箱机。',
+    url: withBase('renders/render-02-silos-tipper.png?v=20261118-tilter-v5'),
   },
   {
     id: 'rebar-warehouse',
-    title: '③ 23,882m² 钢筋仓库剖切双坡华伦式钢屋架、13 跨桥吊与库存钢材特写',
-    desc: '14轴H型钢排架柱、双坡华伦式钢屋架桁架、采光天窗、9跨成捆螺纹钢垛（带枕木垫方与橙色钢带）、4跨V型鞍座热轧钢卷及A字腿双梁门吊。',
-    url: withBase('renders/render-03-rebar-warehouse.png?v=20261117-v5'),
+    title: '④ 23,882m² 钢筋仓库（含北侧内部贯通式汽车装车道路、13跨桥吊与南侧跨间交接区）',
+    desc: '14轴H型钢排架柱、双坡华伦式钢屋架桁架、北侧内部贯通式汽车装车通道（Y=1728.15m）、9跨成捆螺纹钢垛、4跨V型鞍座热轧钢卷及A字腿双梁门吊。',
+    url: withBase('renders/render-03-rebar-warehouse.png?v=20261118-tilter-v5'),
   },
   {
     id: 'train-tanker',
-    title: '④ DF7G 调车机车牵引 35t 散料集装箱专列进站与库底散装通道特写',
-    desc: '铁路货1/货4装卸线碎石道砟路基、DF7G内燃调车机车头、NX70平车、波纹板散料集装箱（带3顶盖与ISO角件）及预留68座缓建筒仓基础环。',
-    url: withBase('renders/render-04-train-tanker.png?v=20261117-v5'),
+    title: '⑤ DF7G 调车机车牵引 20 英尺散货集装箱专列进站与库底散装通道特写',
+    desc: '铁路货1/货4装卸线碎石道砟路基、DF7G内燃调车机车头、NX70平车、中国铁路20英尺深墨绿散货集装箱及预留68座缓建筒仓基础环。',
+    url: withBase('renders/render-04-train-tanker.png?v=20261118-tilter-v5'),
   },
 ]
 
@@ -266,7 +272,7 @@ defineExpose({
         title="查看 AutoCAD + Blender 5.2 离线渲染 1080P 工业宣传效果图"
         @click="showRenderGallery = true"
       >
-        🎨 1080P 渲染大图 (4)
+        🎨 1080P 渲染大图 (5)
       </button>
     </div>
 

@@ -73,15 +73,15 @@
       }
     ],
     "wagonXs": [
-      3530.0,
-      3660.0,
-      3755.0
+      3736.237,
+      3751.737,
+      3767.237
     ],
     "transferApronY": [
       1663.045,
       1673.84
     ],
-    "truckLoadingY": 1655.0,
+    "truckLoadingY": 1725.0,
     "warehouse": {
       "id": "WH-REBAR-01",
       "name": "钢筋仓库 (23,882 m²)",
@@ -1070,9 +1070,10 @@
         "cadY": 1526.7,
         "roomWidthM": 13.7,
         "roomDepthM": 11.4,
-        "tipperParkX": 3781.04,
-        "tipperUnloadX": 3785.04,
-        "tipperRailY": 1521.0,
+        "tipperParkX": 3799.2,
+        "tipperUnloadX": 3787.89,
+        "tipperRailY": 1523.85,
+        "tipperNorthRailY": 1529.55,
         "hopperCapacityM3": 42,
         "compressorCadX": 3757.99,
         "compressorCadY": 1527.0,
@@ -1085,7 +1086,14 @@
         "moduleBoundsX": [
           3753.04,
           3809.04
-        ]
+        ],
+        "workroomX": 3781.04,
+        "tipperWaitX": 3799.2,
+        "tipperRailMinX": 3784.44,
+        "tipperRailMaxX": 3806.94,
+        "tipperSouthY": 1523.85,
+        "tipperNorthY": 1529.55,
+        "tipperRailGaugeM": 3.5
       },
       {
         "id": "BULK-UNLOAD-02",
@@ -1095,9 +1103,10 @@
         "cadY": 1526.7,
         "roomWidthM": 13.7,
         "roomDepthM": 11.4,
-        "tipperParkX": 3851.04,
-        "tipperUnloadX": 3855.04,
-        "tipperRailY": 1521.0,
+        "tipperParkX": 3869.2,
+        "tipperUnloadX": 3857.89,
+        "tipperRailY": 1523.85,
+        "tipperNorthRailY": 1529.55,
         "hopperCapacityM3": 42,
         "compressorCadX": 3827.99,
         "compressorCadY": 1527.0,
@@ -1110,7 +1119,14 @@
         "moduleBoundsX": [
           3809.04,
           3893.04
-        ]
+        ],
+        "workroomX": 3851.04,
+        "tipperWaitX": 3869.2,
+        "tipperRailMinX": 3854.44,
+        "tipperRailMaxX": 3876.94,
+        "tipperSouthY": 1523.85,
+        "tipperNorthY": 1529.55,
+        "tipperRailGaugeM": 3.5
       },
       {
         "id": "BULK-UNLOAD-03",
@@ -1120,9 +1136,10 @@
         "cadY": 1526.7,
         "roomWidthM": 13.7,
         "roomDepthM": 11.4,
-        "tipperParkX": 3935.04,
-        "tipperUnloadX": 3939.04,
-        "tipperRailY": 1521.0,
+        "tipperParkX": 3953.2,
+        "tipperUnloadX": 3941.89,
+        "tipperRailY": 1523.85,
+        "tipperNorthRailY": 1529.55,
         "hopperCapacityM3": 42,
         "compressorCadX": 3911.99,
         "compressorCadY": 1527.0,
@@ -1135,7 +1152,14 @@
         "moduleBoundsX": [
           3893.04,
           3963.04
-        ]
+        ],
+        "workroomX": 3935.04,
+        "tipperWaitX": 3953.2,
+        "tipperRailMinX": 3938.44,
+        "tipperRailMaxX": 3960.94,
+        "tipperSouthY": 1523.85,
+        "tipperNorthY": 1529.55,
+        "tipperRailGaugeM": 3.5
       },
       {
         "id": "BULK-UNLOAD-04",
@@ -1145,9 +1169,10 @@
         "cadY": 1526.7,
         "roomWidthM": 13.7,
         "roomDepthM": 11.4,
-        "tipperParkX": 4005.04,
-        "tipperUnloadX": 4009.04,
-        "tipperRailY": 1521.0,
+        "tipperParkX": 4023.2,
+        "tipperUnloadX": 4011.89,
+        "tipperRailY": 1523.85,
+        "tipperNorthRailY": 1529.55,
         "hopperCapacityM3": 42,
         "compressorCadX": 3981.99,
         "compressorCadY": 1527.0,
@@ -1160,7 +1185,14 @@
         "moduleBoundsX": [
           3963.04,
           4033.04
-        ]
+        ],
+        "workroomX": 4005.04,
+        "tipperWaitX": 4023.2,
+        "tipperRailMinX": 4008.44,
+        "tipperRailMaxX": 4030.94,
+        "tipperSouthY": 1523.85,
+        "tipperNorthY": 1529.55,
+        "tipperRailGaugeM": 3.5
       }
     ],
     "tankerRoadY": 1587.0,
@@ -1172,16 +1204,22 @@
       "name": "1# 100t 汽车衡（重车出口）",
       "kind": "truck_scale",
       "capacityT": 100,
-      "cadX": 4548.56,
-      "cadY": 1590.55
+      "cadX": 4549.21,
+      "cadY": 1595.41,
+      "angleDeg": 59.0,
+      "lengthM": 20.0,
+      "widthM": 5.0
     },
     {
       "id": "WB-TRUCK-02",
       "name": "2# 100t 汽车衡（空车入口）",
       "kind": "truck_scale",
       "capacityT": 100,
-      "cadX": 4554.6,
-      "cadY": 1625.29
+      "cadX": 4558.65,
+      "cadY": 1628.07,
+      "angleDeg": 10.95,
+      "lengthM": 20.0,
+      "widthM": 5.0
     },
     {
       "id": "WB-RAIL-01",
@@ -1189,7 +1227,10 @@
       "kind": "rail_scale",
       "capacityT": 100,
       "cadX": 3350.0,
-      "cadY": 1574.0
+      "cadY": 1574.0,
+      "angleDeg": 0.0,
+      "lengthM": 22.0,
+      "widthM": 4.8
     }
   ],
   "siteShell": {
@@ -1259,68 +1300,8 @@
     ],
     "zones": [
       {
-        "id": "ZONE-MECH-WH",
-        "name": "机电仓库 (5,036 m² · 2×50t桥吊)",
-        "state": "existing",
-        "bounds": [
-          4347.54,
-          1512.79,
-          4475.49,
-          1551.89
-        ],
-        "heightM": 14.5
-      },
-      {
-        "id": "ZONE-TIRE-CRANE",
-        "name": "轮胎式起重机作业区",
-        "state": "existing",
-        "bounds": [
-          4233.04,
-          1517.79,
-          4300.98,
-          1600.11
-        ],
-        "heightM": 0.5
-      },
-      {
-        "id": "ZONE-OFFICE",
-        "name": "货运综合楼 (50×40 m)",
-        "state": "existing",
-        "bounds": [
-          4395.86,
-          1630.29,
-          4445.86,
-          1670.29
-        ],
-        "heightM": 16.0
-      },
-      {
-        "id": "ZONE-DORM",
-        "name": "单身宿舍 (50×40 m)",
-        "state": "existing",
-        "bounds": [
-          4445.86,
-          1630.29,
-          4495.86,
-          1670.29
-        ],
-        "heightM": 16.0
-      },
-      {
-        "id": "ZONE-PARKING",
-        "name": "停车场",
-        "state": "existing",
-        "bounds": [
-          4330.11,
-          1562.79,
-          4510.5,
-          1592.83
-        ],
-        "heightM": 0.4
-      },
-      {
         "id": "ZONE-SUB-35KV",
-        "name": "35/10kV 变电所 (50×35 m)",
+        "name": "35/10kV变电所 (50×35m)",
         "state": "existing",
         "bounds": [
           3357.85,
@@ -1331,20 +1312,92 @@
         "heightM": 8.5
       },
       {
-        "id": "ZONE-REBAR-PROC",
-        "name": "钢筋加工区",
+        "id": "BLDG-SEDIMENT-W",
+        "name": "西侧沉淀池 (24×20m)",
         "state": "existing",
         "bounds": [
-          3598.78,
-          1812.54,
-          3799.48,
-          1840.02
+          3407.85,
+          1529.66,
+          3431.85,
+          1549.66
         ],
-        "heightM": 9.0
+        "heightM": 2.4
+      },
+      {
+        "id": "BLDG-WATER-STATION",
+        "name": "给水所 (场坪35×25) (35×25m)",
+        "state": "existing",
+        "bounds": [
+          3401.15,
+          1660.08,
+          3425.42,
+          1676.65
+        ],
+        "heightM": 5.4
+      },
+      {
+        "id": "ZONE-OPEN-STORAGE",
+        "name": "露天堆放区 (西区)",
+        "state": "existing",
+        "bounds": [
+          3424.92,
+          1646.28,
+          3485.15,
+          1708.74
+        ],
+        "heightM": 2.6
+      },
+      {
+        "id": "BLDG-MAINT-SHOP",
+        "name": "维修间 (18.4×12.4m)",
+        "state": "existing",
+        "bounds": [
+          3464.98,
+          1691.65,
+          3483.39,
+          1704.06
+        ],
+        "heightM": 6.5
+      },
+      {
+        "id": "BLDG-CRANE-SUB",
+        "name": "门吊变电所 (17.3×5.6m)",
+        "state": "existing",
+        "bounds": [
+          3496.62,
+          1673.02,
+          3513.92,
+          1678.62
+        ],
+        "heightM": 4.5
+      },
+      {
+        "id": "BLDG-BOX-SUB-01",
+        "name": "1# 箱变 (8.15×4.41m)",
+        "state": "existing",
+        "bounds": [
+          3641.45,
+          1734.54,
+          3649.6,
+          1738.95
+        ],
+        "heightM": 3.2
+      },
+      {
+        "id": "BLDG-BOX-SUB-02",
+        "name": "2# 箱变 (8.15×4.41m)",
+        "state": "existing",
+        "bounds": [
+          3821.14,
+          1734.89,
+          3829.29,
+          1739.3
+        ],
+        "heightM": 3.2
       },
       {
         "id": "ZONE-RSV-REBAR",
-        "name": "备用钢筋仓库(缓建 120×35 m)",
+        "name": "备用钢筋仓库(缓建) (120×35m)",
         "state": "planned",
         "bounds": [
           3589.28,
@@ -1352,11 +1405,11 @@
           3709.29,
           1798.05
         ],
-        "heightM": 12.0
+        "heightM": 13.5
       },
       {
         "id": "ZONE-RSV-WH",
-        "name": "备用仓库(缓建 100×35 m)",
+        "name": "备用仓库(缓建) (100×35m)",
         "state": "planned",
         "bounds": [
           3719.28,
@@ -1364,7 +1417,163 @@
           3819.29,
           1798.05
         ],
-        "heightM": 12.0
+        "heightM": 13.5
+      },
+      {
+        "id": "ZONE-REBAR-PROC",
+        "name": "钢筋加工区 (200.7×27.5m)",
+        "state": "existing",
+        "bounds": [
+          3598.78,
+          1812.54,
+          3799.48,
+          1840.02
+        ],
+        "heightM": 9.2
+      },
+      {
+        "id": "BLDG-DRIVER-HOME",
+        "name": "司机之家 (26.2×8.5m)",
+        "state": "existing",
+        "bounds": [
+          3877.28,
+          1772.99,
+          3903.49,
+          1781.5
+        ],
+        "heightM": 8.2
+      },
+      {
+        "id": "ZONE-TIRE-CRANE",
+        "name": "轮胎式起重机作业区 (68×82m)",
+        "state": "existing",
+        "bounds": [
+          4233.04,
+          1517.79,
+          4300.98,
+          1600.11
+        ],
+        "heightM": 15.5
+      },
+      {
+        "id": "BLDG-PUBLIC-RESTROOM",
+        "name": "公共卫生间 (13.5×5.7m)",
+        "state": "existing",
+        "bounds": [
+          4280.49,
+          1530.44,
+          4293.99,
+          1536.14
+        ],
+        "heightM": 4.0
+      },
+      {
+        "id": "ZONE-MECH-WH",
+        "name": "机电仓库 (128×39m)",
+        "state": "existing",
+        "bounds": [
+          4347.54,
+          1512.79,
+          4475.49,
+          1551.89
+        ],
+        "heightM": 14.5
+      },
+      {
+        "id": "ZONE-PARKING",
+        "name": "停车场 (180×30m)",
+        "state": "existing",
+        "bounds": [
+          4330.11,
+          1562.79,
+          4510.5,
+          1605.0
+        ],
+        "heightM": 3.8
+      },
+      {
+        "id": "ZONE-OFFICE",
+        "name": "货运综合楼 (47.2×17.5m)",
+        "state": "existing",
+        "bounds": [
+          4398.86,
+          1648.08,
+          4446.07,
+          1665.6
+        ],
+        "heightM": 16.5
+      },
+      {
+        "id": "ZONE-DORM",
+        "name": "单身宿舍 (35.8×12.1m)",
+        "state": "existing",
+        "bounds": [
+          4452.96,
+          1648.08,
+          4488.77,
+          1660.19
+        ],
+        "heightM": 14.5
+      },
+      {
+        "id": "BLDG-BOX-SUB-03",
+        "name": "3# 箱变 (8.15×4.41m)",
+        "state": "existing",
+        "bounds": [
+          4478.03,
+          1599.11,
+          4486.18,
+          1603.52
+        ],
+        "heightM": 3.2
+      },
+      {
+        "id": "BLDG-SEDIMENT-E",
+        "name": "东侧沉淀池 (14.8×7.0m)",
+        "state": "existing",
+        "bounds": [
+          4540.82,
+          1547.04,
+          4555.62,
+          1554.04
+        ],
+        "heightM": 2.2
+      },
+      {
+        "id": "BLDG-SEWAGE-PLANT",
+        "name": "污水处理站 (24×20m)",
+        "state": "existing",
+        "bounds": [
+          4536.53,
+          1508.53,
+          4560.53,
+          1528.53
+        ],
+        "heightM": 5.2
+      },
+      {
+        "id": "BLDG-WB-CONTROL",
+        "name": "汽车衡控制室 (12.4×5.8m)",
+        "state": "existing",
+        "bounds": [
+          4545.08,
+          1635.93,
+          4557.49,
+          1642.48
+        ],
+        "heightM": 4.2
+      },
+      {
+        "id": "BLDG-GUARDHOUSE",
+        "name": "门卫室及东大门雨棚 (9.2×4.2m)",
+        "state": "existing",
+        "bounds": [
+          4570.01,
+          1637.78,
+          4575.88,
+          1647.61
+        ],
+        "heightM": 7.6
       }
     ]
   }

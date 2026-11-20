@@ -92,9 +92,17 @@ export interface UnloadingComplexSpec {
   cadY: number
   roomWidthM: number
   roomDepthM: number
+  workroomX?: number
   tipperParkX: number
+  tipperWaitX?: number
   tipperUnloadX: number
+  tipperRailMinX?: number
+  tipperRailMaxX?: number
+  tipperSouthY?: number
+  tipperNorthY?: number
   tipperRailY: number
+  tipperNorthRailY?: number
+  tipperRailGaugeM?: number
   hopperCapacityM3: number
   compressorCadX: number
   compressorCadY: number
@@ -114,6 +122,9 @@ export interface WeighbridgeSpec {
   capacityT: number
   cadX: number
   cadY: number
+  angleDeg?: number
+  lengthM?: number
+  widthM?: number
 }
 
 export interface SiteZoneDefinition {

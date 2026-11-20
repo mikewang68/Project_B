@@ -10,15 +10,17 @@ export interface ModelDescriptor {
   lod: ModelLod
   minimumPixelSize?: number
   maximumScale?: number
-  movableComponent?: 'frame' | 'trolley' | 'hoist' | 'cradle' | 'head'
+  movableComponent?: 'frame' | 'trolley' | 'hoist' | 'cradle' | 'claws' | 'bellows' | 'door' | 'head'
 }
 
 const ROOT = MODEL_ROOT
-const ASSET_VERSION = '?layout=20261117-dalian-v5-hd'
+const ASSET_VERSION = '?layout=20261120-v55-tandem-highlift-widecam'
 const glb = (name: string) => `${ROOT}${name}.glb${ASSET_VERSION}`
 
 export const MODEL_MANIFEST: ModelDescriptor[] = [
   { key: 'site-shell', type: 'site_shell', modelUrl: glb('site-shell-v4-medium'), lod: 'medium', minimumPixelSize: 0, maximumScale: 1 },
+  { key: 'planned-rebar-wh', type: 'planned_warehouse', modelUrl: glb('planned-rebar-wh-v5-medium'), lod: 'medium', minimumPixelSize: 0, maximumScale: 1 },
+  { key: 'planned-reserve-wh', type: 'planned_warehouse', modelUrl: glb('planned-reserve-wh-v5-medium'), lod: 'medium', minimumPixelSize: 0, maximumScale: 1 },
   { key: 'core-environment', type: 'core_environment', modelUrl: glb('rebar-core-v4-medium'), lod: 'medium', minimumPixelSize: 0, maximumScale: 1 },
   { key: 'ash-environment', type: 'ash_environment', modelUrl: glb('ash-core-v4-medium'), lod: 'medium', minimumPixelSize: 0, maximumScale: 1 },
 
@@ -33,16 +35,21 @@ export const MODEL_MANIFEST: ModelDescriptor[] = [
   { key: 'bridge-hoist-magnet', type: 'bridge_crane', modelUrl: glb('bridge-crane-magnet-hoist-v4-medium'), lod: 'medium', minimumPixelSize: 10, maximumScale: 1, movableComponent: 'hoist' },
   { key: 'bridge-hoist-chook', type: 'bridge_crane', modelUrl: glb('bridge-crane-chook-hoist-v4-medium'), lod: 'medium', minimumPixelSize: 10, maximumScale: 1, movableComponent: 'hoist' },
 
-  // 移动式翻箱机（大车 + 0~135° 翻转框）
+  // 移动式翻箱机（红橙门架 + 右侧A字斜撑 + 0~90°翻转托架 + 顶部工程蓝液压压门爪 + 顶部波纹伸缩溜管）
   { key: 'tipper-frame', type: 'mobile_tipper', modelUrl: glb('mobile-tipper-frame-v4-medium'), lod: 'medium', minimumPixelSize: 22, maximumScale: 1, movableComponent: 'frame' },
   { key: 'tipper-cradle', type: 'mobile_tipper', modelUrl: glb('mobile-tipper-cradle-v4-medium'), lod: 'medium', minimumPixelSize: 18, maximumScale: 1, movableComponent: 'cradle' },
+  { key: 'tipper-claws', type: 'mobile_tipper', modelUrl: glb('mobile-tipper-claws-v5-medium'), lod: 'medium', minimumPixelSize: 14, maximumScale: 1, movableComponent: 'claws' },
+  { key: 'tipper-bellows-chute', type: 'mobile_tipper', modelUrl: glb('tipper-bellows-chute-v5-medium'), lod: 'medium', minimumPixelSize: 12, maximumScale: 1, movableComponent: 'bellows' },
 
   // 库底定量散装机（Z 轴伸缩对位溜管）
   { key: 'silo-loader-head', type: 'silo_loader', modelUrl: glb('silo-loader-head-v4-medium'), lod: 'medium', minimumPixelSize: 10, maximumScale: 1, movableComponent: 'head' },
 
-  // 铁路平车、35t 散料集装箱、钢材货捆与公路货车/罐车
+  // 铁路平车（含满载钢材车 & 中间空载活动平车）、中国铁路20英尺散货集装箱、钢材货捆与公路货车/罐车
   { key: 'wagon', type: 'wagon', modelUrl: glb('rebar-wagon-v4-medium'), lod: 'medium', minimumPixelSize: 20, maximumScale: 1 },
+  { key: 'wagon-empty', type: 'wagon', modelUrl: glb('rebar-wagon-empty-v5-medium'), lod: 'medium', minimumPixelSize: 20, maximumScale: 1 },
   { key: 'bulk-container', type: 'bulk_container', modelUrl: glb('bulk-container-v4-medium'), lod: 'medium', minimumPixelSize: 16, maximumScale: 1 },
+  { key: 'bulk-container-door-l', type: 'bulk_container', modelUrl: glb('bulk-container-door-l-v5-medium'), lod: 'medium', minimumPixelSize: 10, maximumScale: 1, movableComponent: 'door' },
+  { key: 'bulk-container-door-r', type: 'bulk_container', modelUrl: glb('bulk-container-door-r-v5-medium'), lod: 'medium', minimumPixelSize: 10, maximumScale: 1, movableComponent: 'door' },
   { key: 'tank-truck', type: 'tank_truck', modelUrl: glb('tank-truck-v4-medium'), lod: 'medium', minimumPixelSize: 18, maximumScale: 1 },
   { key: 'road-truck', type: 'road_truck', modelUrl: glb('road-truck-v4-medium'), lod: 'medium', minimumPixelSize: 18, maximumScale: 1 },
   { key: 'steel-cargo', type: 'bulk_container', modelUrl: glb('steel-cargo-v4-medium'), lod: 'medium', minimumPixelSize: 10, maximumScale: 1 },
