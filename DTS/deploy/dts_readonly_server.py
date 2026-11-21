@@ -31,15 +31,20 @@ BIND_PORT = int(_env("DTS_PORT", "20989"))
 INBOX_DB_PATH = _env("DTS_INBOX_DB", "/var/lib/project-b-unified/dts-inbox/dts-public-inbox.sqlite")
 IAM_BASE_URL = _env("IAM_BASE_URL", "http://127.0.0.1:28184")
 PORTAL_BASE_URL = _env("PORTAL_BASE_URL", "http://127.0.0.1:20995")
-PSMS_BASE_URL = _env("PSMS_BASE_URL", "http://127.0.0.1:20910")
-WMS_BASE_URL = _env("WMS_BASE_URL", "http://127.0.0.1:20984")
-EHMS_BASE_URL = _env("EHMS_BASE_URL", "http://127.0.0.1:20983")
-SCS_BASE_URL = _env("SCS_BASE_URL", "http://127.0.0.1:20986")
+PSMS_BASE_URL = _env("DTS_UPSTREAM_PSMS") or _env("PSMS_BASE_URL", "http://127.0.0.1:20910")
+WMS_BASE_URL = _env("DTS_UPSTREAM_WMS") or _env("WMS_BASE_URL", "http://127.0.0.1:20984")
+EHMS_BASE_URL = _env("DTS_UPSTREAM_EHMS") or _env("EHMS_BASE_URL", "http://127.0.0.1:20983")
+SCS_BASE_URL = _env("DTS_UPSTREAM_SCS") or _env("SCS_BASE_URL", "http://127.0.0.1:20986")
 EHMS_EDGE_PORT = int(_env("EHMS_EDGE_PORT", "21104"))
 SCS_EDGE_PORT = int(_env("SCS_EDGE_PORT", "21107"))
 READER_USERNAME = _env("DTS_READER_USERNAME", "")
 READER_PASSWORD = _env("DTS_READER_PASSWORD", "")
 CACHE_TTL_SEC = float(_env("DTS_CACHE_TTL_SEC", "15"))
+ALLOW_DIRECT_UPSTREAM = _env("DTS_ALLOW_DIRECT_UPSTREAM", "0") in ("1", "true", "TRUE", "yes")
+WMS_BALANCES_API_PATH = _env("WMS_BALANCES_API_PATH", "/api/v1/inventory/balances?page=1&pageSize=200")
+WMS_SILO_API_PATH = _env("WMS_SILO_API_PATH", "/api/v1/silos/levels")
+SCS_CAMERAS_API_PATH = _env("SCS_CAMERAS_API_PATH", "/api/v1/cameras")
+SCS_INTERLOCKS_API_PATH = _env("SCS_INTERLOCKS_API_PATH", "/api/v1/interlocks")
 
 START_TS = time.time()
 
@@ -129,6 +134,119 @@ SIM_TO_V4_DEVICES = {
     "WB-TRUCK-02": ("2# 100t 入口汽车衡", "SIM-9a897e68c068414ab3491fd3", "MQ-SIM-9A897E68C068414AB3491FD3", "ok"),
     "WB-RAIL-01": ("铁路专用线 100t 轨道衡", "SIM-9a897e68c068414ab3491fd3", "MQ-SIM-9A897E68C068414AB3491FD3", "ok"),
 }
+
+# V6 Standard S3-EHMS Official Asset Code Mapping (supports direct S3 docking by device_id OR assetCode)
+V4_TO_EHMS_ASSET_CODE = {
+    "CR-01": "EQ-CRANE-01", "CR-02": "EQ-CRANE-02", "CR-03": "EQ-CRANE-03",
+    "CR-BULK-01": "EQ-CRANE-04", "CR-BULK-02": "EQ-CRANE-05", "CR-BULK-03": "EQ-CRANE-06",
+    "TIPPER-01": "EQ-CONVEYOR-01", "TIPPER-02": "EQ-CONVEYOR-02", "TIPPER-03": "EQ-CONVEYOR-03", "TIPPER-04": "EQ-CONVEYOR-04",
+    "ELV-01": "EQ-ELEVATOR-01", "ELV-02": "EQ-ELEVATOR-02", "ELV-03": "EQ-ELEVATOR-03", "ELV-04": "EQ-ELEVATOR-04",
+    "LOADER-01": "EQ-VALVE-01", "LOADER-02": "EQ-VALVE-02", "LOADER-03": "EQ-VALVE-03", "LOADER-04": "EQ-VALVE-04",
+    **{f"BC-{i:02d}": f"EQ-BRIDGE-{i:02d}" for i in range(1, 14)},
+    "BC-MECH-01": "EQ-BRIDGE-MECH-01", "BC-MECH-02": "EQ-BRIDGE-MECH-02",
+    "WB-TRUCK-01": "EQ-SCALE-01", "WB-TRUCK-02": "EQ-SCALE-02", "WB-RAIL-01": "EQ-SCALE-RAIL-01",
+}
+
+# V6 Surveyed CAD Default Electronic Fences (from 给大连大.dwg) — automatically overridden when S4-SCS publishes live polygon/status
+DEFAULT_CAD_FENCES = [
+    {
+        "fenceId": "FENCE-REBAR-HANDOVER",
+        "name": "钢筋库 07 跨交接区防撞电子围栏",
+        "zoneCode": "REBAR_HANDOVER",
+        "areaKeywords": ("钢筋", "交接", "07", "门吊", "桥吊"),
+        "polygonCad": [[3716.0, 1656.0], [3786.0, 1656.0], [3786.0, 1676.0], [3716.0, 1676.0]],
+        "heightM": 3.8,
+        "bufferDistanceM": 15.0,
+    },
+    {
+        "fenceId": "FENCE-TIPPER-ZONE",
+        "name": "1# 移动翻箱卸料协同电子围栏",
+        "zoneCode": "TIPPER_WORKZONE",
+        "areaKeywords": ("翻箱", "卸料", "散料"),
+        "polygonCad": [[3768.0, 1518.0], [3806.0, 1518.0], [3806.0, 1539.0], [3768.0, 1539.0]],
+        "heightM": 3.6,
+        "bufferDistanceM": 12.0,
+    },
+    {
+        "fenceId": "FENCE-SILO-LOADING",
+        "name": "水泥筒仓库底定量散装安全围栏",
+        "zoneCode": "SILO_LOADING",
+        "areaKeywords": ("筒仓", "散装", "库底", "水泥"),
+        "polygonCad": [[3754.0, 1560.0], [3810.0, 1560.0], [3810.0, 1592.0], [3754.0, 1592.0]],
+        "heightM": 3.5,
+        "bufferDistanceM": 10.0,
+    },
+    {
+        "fenceId": "FENCE-EAST-GATE",
+        "name": "东大门进出厂与汽车衡防闯入围栏",
+        "zoneCode": "EAST_GATE",
+        "areaKeywords": ("东大门", "大门", "地磅", "门卫"),
+        "polygonCad": [[4495.0, 1612.0], [4578.0, 1612.0], [4578.0, 1656.0], [4495.0, 1656.0]],
+        "heightM": 3.4,
+        "bufferDistanceM": 8.0,
+    },
+]
+
+# V6 Surveyed CAD Surveillance Cameras (`CAM-01..06`, ready for S4-SCS real HLS/WebRTC/RTSP-Proxy streamUrl binding)
+DEFAULT_CAD_CAMERAS = [
+    {"cameraId": "CAM-01", "name": "东大门进出通道全景球机", "cadX": 4570.0, "cadY": 1644.0, "cadZ": 9.2, "headingDeg": 195.0, "pitchDeg": -16.0, "fovDeg": 58.0, "rangeM": 72.0, "zoneCode": "EAST_GATE"},
+    {"cameraId": "CAM-02", "name": "1# 移动翻箱卸料室 AI 监控", "cadX": 3798.0, "cadY": 1515.0, "cadZ": 10.5, "headingDeg": 128.0, "pitchDeg": -20.0, "fovDeg": 52.0, "rangeM": 48.0, "zoneCode": "TIPPER_WORKZONE"},
+    {"cameraId": "CAM-03", "name": "水泥筒仓库底散装通道枪机", "cadX": 3748.0, "cadY": 1568.0, "cadZ": 8.8, "headingDeg": 4.0, "pitchDeg": -14.0, "fovDeg": 48.0, "rangeM": 64.0, "zoneCode": "SILO_LOADING"},
+    {"cameraId": "CAM-04", "name": "钢筋库 07 跨装车通道高清监控", "cadX": 3726.0, "cadY": 1720.0, "cadZ": 11.2, "headingDeg": 22.0, "pitchDeg": -18.0, "fovDeg": 56.0, "rangeM": 58.0, "zoneCode": "REBAR_HANDOVER"},
+    {"cameraId": "CAM-05", "name": "货4线轨道衡与钢材门吊高位球机", "cadX": 3705.0, "cadY": 1624.0, "cadZ": 16.5, "headingDeg": 32.0, "pitchDeg": -20.0, "fovDeg": 60.0, "rangeM": 80.0, "zoneCode": "REBAR_HANDOVER"},
+    {"cameraId": "CAM-06", "name": "综合办公楼广场与汽车衡全景球机", "cadX": 4458.0, "cadY": 1650.0, "cadZ": 12.8, "headingDeg": -42.0, "pitchDeg": -16.0, "fovDeg": 62.0, "rangeM": 76.0, "zoneCode": "EAST_GATE"},
+]
+
+DEFAULT_INTERLOCKS = [
+    {"pairId": "ILK-CR02-BC07", "deviceA": "CR-02", "deviceB": "BC-07", "distanceM": 24.6, "warnThresholdM": 15.0, "stopThresholdM": 6.0},
+    {"pairId": "ILK-CRBULK01-TIP01", "deviceA": "CR-BULK-01", "deviceB": "TIPPER-01", "distanceM": 18.2, "warnThresholdM": 15.0, "stopThresholdM": 6.0},
+    {"pairId": "ILK-CR01-CR02", "deviceA": "CR-01", "deviceB": "CR-02", "distanceM": 42.0, "warnThresholdM": 15.0, "stopThresholdM": 6.0},
+]
+
+
+def _normalize_storage_location_id(raw_code: str) -> str:
+    """Map S2 WMS heterogeneous location codes (`A01`, `C01`, `F01`, `SILO-09`, `07跨`, `STEEL-BAY-07`) -> canonical V6 ID."""
+    txt = (raw_code or "").strip().upper()
+    if not txt:
+        return ""
+    if txt.startswith("SILO-"):
+        try:
+            n = int(txt.replace("SILO-", "").lstrip("0") or "0")
+            if 1 <= n <= 40:
+                return f"SILO-{n:02d}"
+        except ValueError:
+            pass
+    if len(txt) in (2, 3) and txt[0] in ("A", "B", "C", "D", "E") and txt[1:].isdigit():
+        row_idx = ord(txt[0]) - ord("A")
+        col_idx = int(txt[1:])
+        if 1 <= col_idx <= 8:
+            return f"SILO-{row_idx * 8 + col_idx:02d}"
+    if txt.startswith("C") and txt[1:].isdigit():
+        n = int(txt[1:])
+        if 1 <= n <= 8:
+            return f"SILO-{n:02d}"
+    if txt.startswith("F") and txt[1:].isdigit():
+        n = int(txt[1:])
+        if 1 <= n <= 32:
+            return f"SILO-{n + 8:02d}"
+    for prefix in ("REBAR-BAY-", "STEEL-BAY-", "BAY-"):
+        if txt.startswith(prefix) and txt[len(prefix):].isdigit():
+            n = int(txt[len(prefix):])
+            if 1 <= n <= 13:
+                return f"REBAR-BAY-{n:02d}"
+    if "跨" in txt:
+        digits = "".join(ch for ch in txt if ch.isdigit())
+        if digits:
+            n = int(digits)
+            if 1 <= n <= 13:
+                return f"REBAR-BAY-{n:02d}"
+    return ""
+
+
+def _silo_code_for_index(idx: int) -> str:
+    row_letter = chr(ord("A") + (idx - 1) // 8)
+    col_num = ((idx - 1) % 8) + 1
+    return f"{row_letter}{col_num:02d}"
 
 
 class ReadonlyAggregator:
@@ -281,6 +399,14 @@ class ReadonlyAggregator:
         return {}
 
     def _get_json(self, aud: str, url: str):
+        if ALLOW_DIRECT_UPSTREAM and not READER_USERNAME:
+            try:
+                st, _, _, raw = http_call(url, timeout=3.5)
+                if st == 200:
+                    return json.loads(raw), "OK"
+                return None, f"HTTP_{st}"
+            except Exception:
+                return None, "UNREACHABLE"
         jar = self._get_service_cookie(aud)
         if not jar:
             return None, "auth_unavailable"
@@ -310,17 +436,37 @@ class ReadonlyAggregator:
             inbox = self.read_public_inbox()
             psms_plans, psms_st = self._get_json("psms", f"{PSMS_BASE_URL}/api/plans")
             wms_sum, wms_st = self._get_json("wms", f"{WMS_BASE_URL}/api/v1/dashboard/summary")
-            wms_bal, wms_b_st = self._get_json("wms", f"{WMS_BASE_URL}/api/v1/inventory/balances?page=1&pageSize=50")
+            wms_bal, wms_b_st = self._get_json("wms", f"{WMS_BASE_URL}{WMS_BALANCES_API_PATH}")
+            wms_silos_ext, wms_silo_st = self._get_json("wms", f"{WMS_BASE_URL}{WMS_SILO_API_PATH}")
             ehms_devs, ehms_d_st = self._get_json("ehms", f"{EHMS_BASE_URL}/api/ehm/v1/devices?projectId=PROJECT_B")
             ehms_alms, ehms_a_st = self._get_json("ehms", f"{EHMS_BASE_URL}/api/ehm/v1/alarms?projectId=PROJECT_B")
             scs_fences, scs_f_st = self._get_json("scs", f"{SCS_BASE_URL}/api/v1/fences")
             scs_ai, scs_a_st = self._get_json("scs", f"{SCS_BASE_URL}/api/v1/ai-events")
+            scs_cams, scs_c_st = self._get_json("scs", f"{SCS_BASE_URL}{SCS_CAMERAS_API_PATH}")
+            scs_interlocks, scs_i_st = self._get_json("scs", f"{SCS_BASE_URL}{SCS_INTERLOCKS_API_PATH}")
 
+            # 3-Tier S3 EHMS lookup table: direct device_id -> assetCode (EQ-*) -> MQ-SIM-*
             ehms_by_code = {}
-            if isinstance(ehms_devs, list):
-                for row in ehms_devs:
-                    if isinstance(row, dict) and row.get("code"):
-                        ehms_by_code[str(row["code"]).upper()] = row
+            ehms_rows = ehms_devs if isinstance(ehms_devs, list) else (((ehms_devs or {}).get("data") or {}).get("items") if isinstance(ehms_devs, dict) else [])
+            if isinstance(ehms_rows, list):
+                for row in ehms_rows:
+                    if not isinstance(row, dict):
+                        continue
+                    for k_field in ("deviceId", "device_id", "v4DeviceId", "assetCode", "code"):
+                        val = row.get(k_field)
+                        if val:
+                            ehms_by_code[str(val).strip().upper()] = row
+
+            ehms_alarm_rows = ehms_alms if isinstance(ehms_alms, list) else (((ehms_alms or {}).get("data") or {}).get("items") if isinstance(ehms_alms, dict) else [])
+            ehms_alarms_by_dev = {}
+            if isinstance(ehms_alarm_rows, list):
+                for al in ehms_alarm_rows:
+                    if not isinstance(al, dict):
+                        continue
+                    for k_field in ("deviceId", "device_id", "assetCode", "deviceCode"):
+                        val = al.get(k_field)
+                        if val:
+                            ehms_alarms_by_dev.setdefault(str(val).strip().upper(), []).append(al)
 
             plans_items = (((psms_plans or {}).get("data") or {}).get("items")) or []
             wms_data = (wms_sum or {}).get("data") or {}
@@ -331,6 +477,24 @@ class ReadonlyAggregator:
                 wms_bal_items = wms_bal_raw.get("items") or []
             else:
                 wms_bal_items = []
+            wms_silo_raw = (wms_silos_ext or {}).get("data") if isinstance(wms_silos_ext, dict) else wms_silos_ext
+            if isinstance(wms_silo_raw, dict):
+                wms_silo_list = wms_silo_raw.get("items") or wms_silo_raw.get("list") or []
+            elif isinstance(wms_silo_raw, list):
+                wms_silo_list = wms_silo_raw
+            else:
+                wms_silo_list = []
+
+            # Index live S2 WMS rows by normalized V6 locationId (`SILO-01..40` / `REBAR-BAY-01..13`)
+            live_wms_by_loc = {}
+            for row in list(wms_bal_items) + list(wms_silo_list):
+                if not isinstance(row, dict):
+                    continue
+                for code_key in ("locationId", "location_id", "locationCode", "location_code", "siloId", "siloCode", "bayId", "bayCode", "binCode"):
+                    cand = _normalize_storage_location_id(str(row.get(code_key) or ""))
+                    if cand:
+                        live_wms_by_loc[cand] = row
+                        break
             sync_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             all_inbox_devs = list(inbox["devices"].values())
 
@@ -345,21 +509,29 @@ class ReadonlyAggregator:
 
             device_items = []
             for idx, (v4_id, (v4_name, sim_id, ehms_code, default_status)) in enumerate(SIM_TO_V4_DEVICES.items()):
+                ehms_asset_code = V4_TO_EHMS_ASSET_CODE.get(v4_id, v4_id)
                 if not is_active_region:
                     device_items.append({
                         "device_id": v4_id,
                         "device_name": v4_name,
+                        "ehms_asset_code": ehms_asset_code,
                         "status": "standby",
                         "health_score": 95,
+                        "health_level": "healthy",
+                        "active_alarm_count": 0,
+                        "latest_alarm_no": None,
+                        "latest_alarm_summary": None,
                         "risk_subsystem": f"{norm_region} 区域待接入实测数据",
                         "predicted_rul_days": 180,
                         "risk_reason": f"[{norm_region} 区域隔离] 严禁混用沈铁(SHEN_TIE)联调测点",
                         "source_system": f"REGION_ISOLATED_{norm_region}",
+                        "data_source": "REGION_ISOLATED",
                         "public_device_id": None,
                         "event_id": None,
                         "wire_sha256": None,
                         "simulated": False,
                         "quality_code": "ISOLATED",
+                        "sensor_metrics": {},
                         "telemetry": {
                             "loadTons": 0.0,
                             "windSpeedMps": 3.2,
@@ -377,7 +549,14 @@ class ReadonlyAggregator:
                 if not pub and all_inbox_devs:
                     pub = all_inbox_devs[idx % len(all_inbox_devs)]
                 actual_sim_id = pub["device_id"] if pub else sim_id
-                eh = ehms_by_code.get(f"MQ-{actual_sim_id.upper()}") or ehms_by_code.get(ehms_code.upper())
+                # 3-Tier S3 EHMS direct docking: exact device_id -> official assetCode -> MQ-SIM-*
+                eh = (
+                    ehms_by_code.get(v4_id.upper())
+                    or ehms_by_code.get(ehms_asset_code.upper())
+                    or ehms_by_code.get(f"MQ-{actual_sim_id.upper()}")
+                    or ehms_by_code.get(ehms_code.upper())
+                )
+                dev_alarms = ehms_alarms_by_dev.get(v4_id.upper()) or ehms_alarms_by_dev.get(ehms_asset_code.upper()) or []
 
                 status = default_status
                 instance_offset = (idx % 5) - 2
@@ -385,23 +564,40 @@ class ReadonlyAggregator:
                 risk_reason = f"公共接收箱 {actual_sim_id[:14]}… 质量 {pub['quality_summary']}" if pub else "待补充公共接收事件"
                 risk_sub = "运行平稳 · 机构BOM状态良好"
                 rul_days = 140 + idx * 3
+                sensor_metrics = {}
+                dev_data_source = "PUBLIC_INBOX_SIM" if pub else "FALLBACK_SIM"
                 if eh:
-                    rc = str(eh.get("riskClass") or "")
-                    if rc == "critical":
+                    dev_data_source = "LIVE_S3_EHMS"
+                    rc = str(eh.get("riskClass") or eh.get("healthLevel") or "").lower()
+                    if isinstance(eh.get("healthScore"), (int, float)):
+                        health_score = int(round(float(eh["healthScore"])))
+                    elif rc == "critical":
                         status = "fault" if default_status == "ok" else "standby"
                         health_score = max(62, 70 + instance_offset)
-                        rul_days = max(10, 16 + instance_offset)
-                    elif rc == "attention":
+                    elif rc in ("attention", "risk"):
                         status = default_status
                         health_score = 82 + instance_offset
-                        rul_days = 45 + idx * 2
                     elif rc == "healthy":
                         health_score = min(99, 95 + (idx % 4))
-                        rul_days = 160 + idx * 3
                     else:
                         health_score = 89 + instance_offset
-                    risk_reason = f"[S3 EHMS] {eh.get('risk') or eh.get('condition') or '公共协议模拟'}"
-                    risk_sub = str(eh.get("condition") or risk_sub)
+                    if rc == "critical" or health_score < 65:
+                        status = "fault"
+                    if isinstance(eh.get("predictedRulDays"), (int, float)):
+                        rul_days = int(round(float(eh["predictedRulDays"])))
+                    elif rc == "critical":
+                        rul_days = max(10, 16 + instance_offset)
+                    elif rc == "attention":
+                        rul_days = 45 + idx * 2
+                    elif rc == "healthy":
+                        rul_days = 160 + idx * 3
+                    if isinstance(eh.get("sensorMetrics"), dict):
+                        sensor_metrics = eh["sensorMetrics"]
+                    risk_reason = f"[S3 EHMS] {eh.get('risk') or eh.get('condition') or '实时健康监测'}"
+                    risk_sub = str(eh.get("riskSubsystem") or eh.get("condition") or risk_sub)
+
+                health_level = "critical" if health_score < 65 else ("risk" if health_score < 76 else ("attention" if health_score < 86 else "healthy"))
+                latest_al = dev_alarms[0] if dev_alarms else None
 
                 pts = (pub or {}).get("points") or []
                 num_vals = []
@@ -422,17 +618,24 @@ class ReadonlyAggregator:
                 device_items.append({
                     "device_id": v4_id,
                     "device_name": v4_name,
+                    "ehms_asset_code": ehms_asset_code,
                     "status": status,
                     "health_score": health_score,
+                    "health_level": health_level,
+                    "active_alarm_count": len(dev_alarms),
+                    "latest_alarm_no": latest_al.get("alarmNo") if isinstance(latest_al, dict) else None,
+                    "latest_alarm_summary": latest_al.get("summary") if isinstance(latest_al, dict) else None,
                     "risk_subsystem": risk_sub,
                     "predicted_rul_days": rul_days,
                     "risk_reason": risk_reason,
-                    "source_system": "PUBLIC_INBOX+EHMS" if pub else "V4_BASELINE",
+                    "source_system": "S3-EHMS" if eh else ("PUBLIC_INBOX+EHMS" if pub else "V4_BASELINE"),
+                    "data_source": dev_data_source,
                     "public_device_id": actual_sim_id,
                     "event_id": pub["event_id"] if pub else None,
                     "wire_sha256": pub["wire_sha256"] if pub else None,
-                    "simulated": True,
-                    "quality_code": pub["quality_summary"] if pub else "UNCERTAIN",
+                    "simulated": not bool(eh),
+                    "quality_code": "GOOD" if eh else (pub["quality_summary"] if pub else "UNCERTAIN"),
+                    "sensor_metrics": sensor_metrics,
                     "telemetry": {
                         "loadTons": load_tons,
                         "windSpeedMps": wind_mps,
@@ -534,45 +737,307 @@ class ReadonlyAggregator:
                         "updatedAt": str(p.get("updatedAt") or p.get("createdAt") or sync_time),
                     })
 
-            # F-D04 (协作 X08): S2 WMS 40 座筒仓 + 13 跨钢筋库库存与料位映射摘要
+            # F-D04 (协作 X08): S2 WMS 全量 53 库位（40 座 3000T 筒仓 SILO-01..40 + 13 跨钢筋库 REBAR-BAY-01..13）
             storage_items = []
-            if is_active_region:
-                for s_idx in range(1, 9):
-                    silo_id = f"SILO-{s_idx:02d}"
-                    tons = 2180 + (s_idx * 95) % 680
-                    lvl_m = round((tons / 3000.0) * 31.5, 1)
+            for s_idx in range(1, 41):
+                silo_id = f"SILO-{s_idx:02d}"
+                is_cement = s_idx <= 8
+                silo_code = _silo_code_for_index(s_idx)
+                live_row = live_wms_by_loc.get(silo_id) if is_active_region else None
+                if not is_active_region:
                     storage_items.append({
                         "locationId": silo_id,
-                        "locationCode": f"C{s_idx:02d}",
-                        "category": "CEMENT_SILO",
-                        "materialName": "P·O 42.5 散装水泥",
-                        "batchNo": "SIM-IDENTITY-20260928",
-                        "availableTon": tons,
-                        "capacityTon": 3000,
-                        "levelMeters": lvl_m,
-                        "highLevelWarning": tons >= 2650,
-                        "sourceSystem": f"S2-WMS({wms_b_st})",
-                        "qualityCode": "GOOD" if wms_st == "OK" else "FALLBACK",
+                        "locationCode": silo_code,
+                        "category": "CEMENT_SILO" if is_cement else "FLYASH_SILO",
+                        "materialName": "P·O 42.5 散装水泥" if is_cement else "Ⅰ级散装粉煤灰",
+                        "batchNo": f"{norm_region}-ISOLATED",
+                        "availableTon": 0.0,
+                        "capacityTon": 3000.0,
+                        "fillRatio": 0.0,
+                        "levelMeters": 0.0,
+                        "highLevelWarning": False,
+                        "lowLevelWarning": False,
+                        "sourceSystem": f"REGION_ISOLATED_{norm_region}",
+                        "dataSource": "REGION_ISOLATED",
+                        "qualityCode": "ISOLATED",
                         "updatedAt": sync_time,
                     })
-                for b_idx in range(1, 14):
-                    bay_id = f"REBAR-BAY-{b_idx:02d}"
-                    is_chook_bay = b_idx in (3, 4, 9, 12)
-                    tons = 920 + (b_idx * 110) % 760
+                elif live_row:
+                    cap = float(live_row.get("capacityTon") or live_row.get("capacity") or 3000.0)
+                    tons = float(
+                        live_row.get("availableTon")
+                        if live_row.get("availableTon") is not None
+                        else (live_row.get("availableQty") or live_row.get("quantity") or live_row.get("weightTons") or 0.0)
+                    )
+                    ratio = round(max(0.0, min(1.0, tons / max(1.0, cap))), 4)
+                    lvl_m = float(live_row.get("levelMeters") if live_row.get("levelMeters") is not None else round(ratio * 31.5, 1))
+                    storage_items.append({
+                        "locationId": silo_id,
+                        "locationCode": str(live_row.get("locationCode") or silo_code),
+                        "category": "CEMENT_SILO" if is_cement else "FLYASH_SILO",
+                        "materialName": str(live_row.get("materialName") or ("P·O 42.5 散装水泥" if is_cement else "Ⅰ级散装粉煤灰")),
+                        "batchNo": str(live_row.get("batchNo") or live_row.get("lotNo") or "WMS-LIVE"),
+                        "availableTon": round(tons, 1),
+                        "capacityTon": round(cap, 1),
+                        "fillRatio": ratio,
+                        "levelMeters": round(lvl_m, 2),
+                        "highLevelWarning": bool(live_row.get("highLevelWarning")) if live_row.get("highLevelWarning") is not None else (ratio >= 0.85),
+                        "lowLevelWarning": ratio <= 0.15,
+                        "sourceSystem": "S2-WMS",
+                        "dataSource": "LIVE_S2_WMS",
+                        "qualityCode": "GOOD",
+                        "updatedAt": str(live_row.get("updatedAt") or sync_time),
+                    })
+                else:
+                    tons = (2120 + (s_idx * 95) % 720) if is_cement else (1680 + (s_idx * 89) % 1080)
+                    ratio = round(tons / 3000.0, 4)
+                    storage_items.append({
+                        "locationId": silo_id,
+                        "locationCode": silo_code,
+                        "category": "CEMENT_SILO" if is_cement else "FLYASH_SILO",
+                        "materialName": "P·O 42.5 散装水泥" if is_cement else "Ⅰ级散装粉煤灰",
+                        "batchNo": f"SIM-20261120-{silo_code}",
+                        "availableTon": float(tons),
+                        "capacityTon": 3000.0,
+                        "fillRatio": ratio,
+                        "levelMeters": round(ratio * 31.5, 1),
+                        "highLevelWarning": ratio >= 0.85,
+                        "lowLevelWarning": ratio <= 0.15,
+                        "sourceSystem": f"S2-WMS({wms_b_st})",
+                        "dataSource": "FALLBACK_SIM",
+                        "qualityCode": "FALLBACK",
+                        "updatedAt": sync_time,
+                    })
+
+            for b_idx in range(1, 14):
+                bay_id = f"REBAR-BAY-{b_idx:02d}"
+                is_chook_bay = b_idx in (3, 4, 9, 12)
+                live_row = live_wms_by_loc.get(bay_id) if is_active_region else None
+                if not is_active_region:
                     storage_items.append({
                         "locationId": bay_id,
                         "locationCode": f"STEEL-BAY-{b_idx:02d}",
                         "category": "STEEL_BAY",
-                        "materialName": "盘螺/冷轧卷钢 (32t C型钩跨)" if is_chook_bay else "HRB400E 螺纹钢 (20t电磁吸盘跨)",
-                        "batchNo": f"SIM-IDENTITY-20260928-B{b_idx:02d}",
-                        "availableTon": tons,
-                        "capacityTon": 1800,
-                        "levelMeters": round(1.2 + (tons / 1800.0) * 3.4, 2),
-                        "highLevelWarning": tons >= 1550,
-                        "sourceSystem": f"S2-WMS({wms_b_st})",
-                        "qualityCode": "GOOD" if wms_st == "OK" else "FALLBACK",
+                        "materialName": "盘螺/热轧卷钢 (32t C型钩跨)" if is_chook_bay else "HRB400E 螺纹钢 (20t电磁吸盘跨)",
+                        "batchNo": f"{norm_region}-ISOLATED",
+                        "availableTon": 0.0,
+                        "capacityTon": 1800.0,
+                        "fillRatio": 0.0,
+                        "levelMeters": 0.0,
+                        "stackLayers": 0,
+                        "highLevelWarning": False,
+                        "lowLevelWarning": False,
+                        "sourceSystem": f"REGION_ISOLATED_{norm_region}",
+                        "dataSource": "REGION_ISOLATED",
+                        "qualityCode": "ISOLATED",
                         "updatedAt": sync_time,
                     })
+                elif live_row:
+                    cap = float(live_row.get("capacityTon") or live_row.get("capacity") or 1800.0)
+                    tons = float(
+                        live_row.get("availableTon")
+                        if live_row.get("availableTon") is not None
+                        else (live_row.get("availableQty") or live_row.get("quantity") or live_row.get("weightTons") or 0.0)
+                    )
+                    ratio = round(max(0.0, min(1.0, tons / max(1.0, cap))), 4)
+                    layers = int(live_row.get("stackLayers") if live_row.get("stackLayers") is not None else max(1, round(ratio * 6)))
+                    storage_items.append({
+                        "locationId": bay_id,
+                        "locationCode": str(live_row.get("locationCode") or f"STEEL-BAY-{b_idx:02d}"),
+                        "category": "STEEL_BAY",
+                        "materialName": str(live_row.get("materialName") or ("盘螺/热轧卷钢 (32t C型钩跨)" if is_chook_bay else "HRB400E 螺纹钢 (20t电磁吸盘跨)")),
+                        "batchNo": str(live_row.get("batchNo") or live_row.get("lotNo") or f"WMS-B{b_idx:02d}"),
+                        "availableTon": round(tons, 1),
+                        "capacityTon": round(cap, 1),
+                        "fillRatio": ratio,
+                        "levelMeters": round(float(live_row.get("levelMeters") if live_row.get("levelMeters") is not None else (0.8 + ratio * 3.8)), 2),
+                        "stackLayers": layers,
+                        "highLevelWarning": bool(live_row.get("highLevelWarning")) if live_row.get("highLevelWarning") is not None else (ratio >= 0.85),
+                        "lowLevelWarning": ratio <= 0.15,
+                        "sourceSystem": "S2-WMS",
+                        "dataSource": "LIVE_S2_WMS",
+                        "qualityCode": "GOOD",
+                        "updatedAt": str(live_row.get("updatedAt") or sync_time),
+                    })
+                else:
+                    tons = 920 + (b_idx * 110) % 760
+                    ratio = round(tons / 1800.0, 4)
+                    storage_items.append({
+                        "locationId": bay_id,
+                        "locationCode": f"STEEL-BAY-{b_idx:02d}",
+                        "category": "STEEL_BAY",
+                        "materialName": "盘螺/热轧卷钢 (32t C型钩跨)" if is_chook_bay else "HRB400E 螺纹钢 (20t电磁吸盘跨)",
+                        "batchNo": f"SIM-20261120-B{b_idx:02d}",
+                        "availableTon": float(tons),
+                        "capacityTon": 1800.0,
+                        "fillRatio": ratio,
+                        "levelMeters": round(1.2 + ratio * 3.4, 2),
+                        "stackLayers": max(1, round(ratio * 6)),
+                        "highLevelWarning": ratio >= 0.85,
+                        "lowLevelWarning": ratio <= 0.15,
+                        "sourceSystem": f"S2-WMS({wms_b_st})",
+                        "dataSource": "FALLBACK_SIM",
+                        "qualityCode": "FALLBACK",
+                        "updatedAt": sync_time,
+                    })
+
+            # V6 S4-SCS Standardized Safety Snapshot (`GET /api/v1/dts/safety` + `overview.safety`)
+            live_scs_fences = ((scs_fences or {}).get("list") or (scs_fences or {}).get("items") or ((scs_fences or {}).get("data") or {}).get("items") or []) if isinstance(scs_fences, dict) else (scs_fences if isinstance(scs_fences, list) else [])
+            live_scs_ai = ((scs_ai or {}).get("list") or (scs_ai or {}).get("items") or ((scs_ai or {}).get("data") or {}).get("items") or []) if isinstance(scs_ai, dict) else (scs_ai if isinstance(scs_ai, list) else [])
+            live_scs_cams = ((scs_cams or {}).get("list") or (scs_cams or {}).get("items") or ((scs_cams or {}).get("data") or {}).get("items") or []) if isinstance(scs_cams, dict) else (scs_cams if isinstance(scs_cams, list) else [])
+            live_scs_ilks = ((scs_interlocks or {}).get("list") or (scs_interlocks or {}).get("items") or ((scs_interlocks or {}).get("data") or {}).get("items") or []) if isinstance(scs_interlocks, dict) else (scs_interlocks if isinstance(scs_interlocks, list) else [])
+
+            safety_fences = []
+            for base_f in DEFAULT_CAD_FENCES:
+                matched_f = None
+                if is_active_region:
+                    for rf in live_scs_fences:
+                        if not isinstance(rf, dict):
+                            continue
+                        rf_id = str(rf.get("fenceId") or rf.get("id") or "").upper()
+                        rf_zone = str(rf.get("zoneCode") or "").upper()
+                        rf_area = str(rf.get("area") or rf.get("name") or "")
+                        if rf_id == base_f["fenceId"] or rf_zone == base_f["zoneCode"] or any(kw in rf_area for kw in base_f["areaKeywords"]):
+                            matched_f = rf
+                            break
+                if not is_active_region:
+                    safety_fences.append({
+                        "fenceId": base_f["fenceId"],
+                        "name": base_f["name"],
+                        "zoneCode": base_f["zoneCode"],
+                        "polygonCad": base_f["polygonCad"],
+                        "heightM": base_f["heightM"],
+                        "bufferDistanceM": base_f["bufferDistanceM"],
+                        "status": "ARMED",
+                        "breachTarget": None,
+                        "dataSource": "REGION_ISOLATED",
+                        "qualityCode": "ISOLATED",
+                        "updatedAt": sync_time,
+                    })
+                elif matched_f:
+                    raw_st = str(matched_f.get("status") or matched_f.get("statusCode") or "ARMED").upper()
+                    norm_st = "BREACHED" if raw_st in ("BREACHED", "ALARM", "INTRUSION", "TRIGGERED") else ("WARN" if raw_st in ("WARN", "WARNING") else ("BYPASSED" if raw_st in ("BYPASSED", "DISABLED") else "ARMED"))
+                    poly = matched_f.get("polygonCad") if isinstance(matched_f.get("polygonCad"), list) and len(matched_f["polygonCad"]) >= 3 else base_f["polygonCad"]
+                    safety_fences.append({
+                        "fenceId": base_f["fenceId"],
+                        "name": str(matched_f.get("name") or base_f["name"]),
+                        "zoneCode": base_f["zoneCode"],
+                        "polygonCad": poly,
+                        "heightM": float(matched_f.get("heightM") or base_f["heightM"]),
+                        "bufferDistanceM": float(matched_f.get("bufferDistanceM") or matched_f.get("bufferDistance") or base_f["bufferDistanceM"]),
+                        "status": norm_st,
+                        "breachTarget": matched_f.get("breachTarget") or matched_f.get("targetName"),
+                        "dataSource": "LIVE_S4_SCS",
+                        "qualityCode": "GOOD",
+                        "updatedAt": str(matched_f.get("updatedAt") or sync_time),
+                    })
+                else:
+                    safety_fences.append({
+                        "fenceId": base_f["fenceId"],
+                        "name": base_f["name"],
+                        "zoneCode": base_f["zoneCode"],
+                        "polygonCad": base_f["polygonCad"],
+                        "heightM": base_f["heightM"],
+                        "bufferDistanceM": base_f["bufferDistanceM"],
+                        "status": "WARN" if base_f["fenceId"] == "FENCE-REBAR-HANDOVER" else "ARMED",
+                        "breachTarget": None,
+                        "dataSource": "FALLBACK_SIM",
+                        "qualityCode": "FALLBACK",
+                        "updatedAt": sync_time,
+                    })
+
+            safety_cameras = []
+            cams_by_id = {}
+            for rc in live_scs_cams:
+                if isinstance(rc, dict) and (rc.get("cameraId") or rc.get("id")):
+                    cams_by_id[str(rc.get("cameraId") or rc.get("id")).upper()] = rc
+            for c_idx, base_c in enumerate(DEFAULT_CAD_CAMERAS):
+                live_c = cams_by_id.get(base_c["cameraId"]) if is_active_region else None
+                matched_ai = None
+                if is_active_region and live_scs_ai:
+                    for ev in live_scs_ai:
+                        if not isinstance(ev, dict):
+                            continue
+                        ev_cam = str(ev.get("cameraId") or ev.get("cameraName") or "")
+                        if base_c["cameraId"] in ev_cam.upper() or (c_idx < len(live_scs_ai) and ev is live_scs_ai[c_idx]):
+                            matched_ai = ev
+                            break
+                if not is_active_region:
+                    safety_cameras.append({
+                        **base_c,
+                        "status": "OFFLINE",
+                        "streamProtocol": "UNBOUND",
+                        "streamUrl": None,
+                        "latestAiEvent": None,
+                        "dataSource": "REGION_ISOLATED",
+                    })
+                else:
+                    s_url = (live_c or {}).get("streamUrl") or (live_c or {}).get("hlsUrl") or None
+                    s_proto = str((live_c or {}).get("streamProtocol") or ("HLS" if (s_url and ".m3u8" in str(s_url)) else ("MP4" if (s_url and ".mp4" in str(s_url)) else ("SNAPSHOT" if s_url else "UNBOUND")))).upper()
+                    ai_payload = None
+                    if matched_ai:
+                        ai_payload = {
+                            "eventId": str(matched_ai.get("id") or matched_ai.get("eventId") or f"AI-{c_idx+1}"),
+                            "type": str(matched_ai.get("type") or "安全行为监测"),
+                            "confidence": float(matched_ai.get("confidence") or 92.0),
+                            "riskCode": str(matched_ai.get("riskCode") or "MEDIUM").upper(),
+                            "detectedAt": str(matched_ai.get("detectedAt") or matched_ai.get("createdAt") or sync_time),
+                        }
+                    c_status = str((live_c or {}).get("status") or ("ALERT" if (ai_payload and ai_payload["riskCode"] == "HIGH") else "ONLINE")).upper()
+                    safety_cameras.append({
+                        "cameraId": base_c["cameraId"],
+                        "name": str((live_c or {}).get("name") or base_c["name"]),
+                        "cadX": float((live_c or {}).get("cadX") or base_c["cadX"]),
+                        "cadY": float((live_c or {}).get("cadY") or base_c["cadY"]),
+                        "cadZ": float((live_c or {}).get("cadZ") or base_c["cadZ"]),
+                        "headingDeg": float((live_c or {}).get("headingDeg") or base_c["headingDeg"]),
+                        "pitchDeg": float((live_c or {}).get("pitchDeg") or base_c["pitchDeg"]),
+                        "fovDeg": float((live_c or {}).get("fovDeg") or base_c["fovDeg"]),
+                        "rangeM": float((live_c or {}).get("rangeM") or base_c["rangeM"]),
+                        "zoneCode": base_c["zoneCode"],
+                        "status": c_status,
+                        "streamProtocol": s_proto,
+                        "streamUrl": s_url,
+                        "latestAiEvent": ai_payload,
+                        "dataSource": "LIVE_S4_SCS" if (live_c or matched_ai) else "FALLBACK_SIM",
+                    })
+
+            safety_interlocks = []
+            ilks_by_id = {}
+            for ri in live_scs_ilks:
+                if isinstance(ri, dict) and (ri.get("pairId") or ri.get("id")):
+                    ilks_by_id[str(ri.get("pairId") or ri.get("id")).upper()] = ri
+            for base_i in DEFAULT_INTERLOCKS:
+                live_i = ilks_by_id.get(base_i["pairId"]) if is_active_region else None
+                if not is_active_region:
+                    safety_interlocks.append({**base_i, "state": "SAFE", "dataSource": "REGION_ISOLATED"})
+                else:
+                    dist = float((live_i or {}).get("distanceM") if (live_i or {}).get("distanceM") is not None else base_i["distanceM"])
+                    warn_t = float((live_i or {}).get("warnThresholdM") or base_i["warnThresholdM"])
+                    stop_t = float((live_i or {}).get("stopThresholdM") or base_i["stopThresholdM"])
+                    st_i = "STOP" if dist <= stop_t else ("WARN" if dist <= warn_t else "SAFE")
+                    safety_interlocks.append({
+                        "pairId": base_i["pairId"],
+                        "deviceA": str((live_i or {}).get("deviceA") or base_i["deviceA"]),
+                        "deviceB": str((live_i or {}).get("deviceB") or base_i["deviceB"]),
+                        "distanceM": round(dist, 2),
+                        "warnThresholdM": warn_t,
+                        "stopThresholdM": stop_t,
+                        "state": str((live_i or {}).get("state") or st_i).upper(),
+                        "dataSource": "LIVE_S4_SCS" if live_i else "FALLBACK_SIM",
+                    })
+
+            safety_response = {
+                "regionId": norm_region,
+                "regionIsolated": True,
+                "regionNote": region_note,
+                "requirementCode": "R-D04 & R-S06 / F-D05 (协作 X05)",
+                "fences": safety_fences,
+                "cameras": safety_cameras,
+                "interlocks": safety_interlocks,
+                "source": f"S4-SCS ({scs_f_st}/{scs_a_st}/{scs_c_st}/{scs_i_st})" if is_active_region else f"区域隔离({norm_region})",
+                "updatedAt": sync_time,
+            }
 
             snapshot = {
                 "generatedAt": sync_time,
@@ -587,9 +1052,9 @@ class ReadonlyAggregator:
                 "upstreams": {
                     "publicInbox": f"SQLITE_RO ({inbox['eventCount']} events)" if inbox["available"] else "MISSING",
                     "psms": f"{psms_st} ({len(plans_items)} plans)",
-                    "wms": f"{wms_st} (wh={wms_data.get('warehouseCount', '-')}, bal={len(wms_bal_items)})",
+                    "wms": f"{wms_st} (wh={wms_data.get('warehouseCount', '-')}, bal={len(wms_bal_items)}, liveLocs={len(live_wms_by_loc)})",
                     "ehms": f"{ehms_d_st}/{ehms_a_st} (dev={len(ehms_by_code)})",
-                    "scs": f"{scs_f_st}/{scs_a_st}",
+                    "scs": f"{scs_f_st}/{scs_a_st}/{scs_c_st}/{scs_i_st}",
                 },
                 "tasksResponse": {
                     "regionId": norm_region,
@@ -603,8 +1068,10 @@ class ReadonlyAggregator:
                     "regionIsolated": True,
                     "requirementCode": "R-D01 & R-D02 / F-D04 (协作 X08)",
                     "wmsSummary": wms_data if is_active_region else {},
+                    "liveMatchedCount": sum(1 for item in storage_items if item.get("dataSource") == "LIVE_S2_WMS"),
                     "items": storage_items,
                 },
+                "safetyResponse": safety_response,
                 "devicesResponse": {
                     "regionId": norm_region,
                     "regionIsolated": True,
@@ -724,6 +1191,10 @@ class DtsReadonlyHandler(http.server.BaseHTTPRequestHandler):
             snap = AGGREGATOR.build_snapshot(region_id)
             self._reply_json(200, snap["storageResponse"])
             return
+        if path == "/api/v1/dts/safety":
+            snap = AGGREGATOR.build_snapshot(region_id)
+            self._reply_json(200, snap["safetyResponse"])
+            return
         if path == "/api/v1/dts/overview":
             snap = AGGREGATOR.build_snapshot(region_id)
             self._reply_json(200, {
@@ -736,6 +1207,8 @@ class DtsReadonlyHandler(http.server.BaseHTTPRequestHandler):
                 "alertsCount": len(snap["alertsResponse"]["items"]),
                 "tasksCount": len(snap["tasksResponse"]["items"]),
                 "storageCount": len(snap["storageResponse"]["items"]),
+                "fencesCount": len(snap["safetyResponse"]["fences"]),
+                "camerasCount": len(snap["safetyResponse"]["cameras"]),
                 "inboxEventCount": snap["inboxEventCount"],
                 "inbox_events_count": snap["inboxEventCount"],
                 "lastCommittedMs": snap["lastCommittedMs"],
@@ -744,6 +1217,7 @@ class DtsReadonlyHandler(http.server.BaseHTTPRequestHandler):
                 "upstream": snap["upstreams"],
                 "tasks": snap["tasksResponse"]["items"],
                 "storage": snap["storageResponse"]["items"],
+                "safety": snap["safetyResponse"],
             })
             return
         if path == "/api/v1/dts/public-inbox/status":

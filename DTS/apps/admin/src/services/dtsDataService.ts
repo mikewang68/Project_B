@@ -15,6 +15,15 @@ import { WS_URL } from '@/config/runtime'
 import { MOCK_EQUIPMENT } from '@/twin3d/mock/mockData'
 import { restClient } from './restClient'
 import { wsClient } from './wsClient'
+import {
+  buildDefaultSafetySnapshotV6,
+  buildDefaultStorageSnapshotV6,
+  normalizeSafetySnapshotV6,
+  normalizeStorageListV6,
+  type DataProvenance,
+  type SafetyTwinSnapshotV6,
+  type StorageLocationStateV6,
+} from './twinIntegrationContracts'
 
 export type DataSourceMode = 'offline_sim' | 'realtime_readonly'
 export type ProcessTrackMode = 'f_d06_sim' | 'f_d07_live'
@@ -49,20 +58,7 @@ export interface LiveTaskNodeItem {
   updatedAt: string
 }
 
-export interface StorageLocationSummary {
-  locationId: string
-  locationCode: string
-  category: 'CEMENT_SILO' | 'FLYASH_SILO' | 'STEEL_BAY'
-  materialName: string
-  batchNo: string
-  availableTon: number
-  capacityTon: number
-  levelMeters: number
-  highLevelWarning: boolean
-  sourceSystem: string
-  qualityCode: 'GOOD' | 'FALLBACK' | 'SIM'
-  updatedAt: string
-}
+export interface StorageLocationSummary extends StorageLocationStateV6 {}
 
 export interface RequirementFunctionItem {
   fnId: 'F-D01' | 'F-D02' | 'F-D03' | 'F-D04' | 'F-D05' | 'F-D06' | 'F-D07' | 'F-D08'
@@ -253,6 +249,7 @@ export interface DtsFeedStatus {
   inboxEventsCount?: number
   liveTasks?: LiveTaskNodeItem[]
   storageLocations?: StorageLocationSummary[]
+  safetySnapshot?: SafetyTwinSnapshotV6
 }
 
 export interface CrossSystemLink {
@@ -328,13 +325,17 @@ interface RemoteDeviceRow {
   id?: string
   device_name?: string
   name?: string
+  ehms_asset_code?: string
   status?: DeviceStatusCode
   health_score?: number
+  health_level?: 'healthy' | 'attention' | 'risk' | 'critical'
+  active_alarm_count?: number
   risk_subsystem?: string
   predicted_rul_days?: number
   risk_reason?: string
   quality_code?: string
   source_system?: string
+  data_source?: DataProvenance
   telemetry?: Partial<DeviceTelemetry>
 }
 
@@ -497,18 +498,22 @@ export function getStorageSummaryForTarget(
     const num = Number.parseInt(normalizedId.replace('SILO-', ''), 10) || 1
     const isCement = num <= 8
     const tons = isCement ? 2180 + (num * 95) % 680 : 1940 + (num * 83) % 820
+    const ratio = Number((tons / 3000).toFixed(4))
     return {
       locationId: normalizedId,
-      locationCode: isCement ? `C${String(num).padStart(2, '0')}` : `F${String(num - 8).padStart(2, '0')}`,
+      locationCode: isCement ? `A${String(num).padStart(2, '0')}` : `F${String(num - 8).padStart(2, '0')}`,
       category: isCement ? 'CEMENT_SILO' : 'FLYASH_SILO',
       materialName: isCement ? 'P·O 42.5 散装水泥' : 'Ⅰ级散装粉煤灰',
       batchNo: 'SIM-IDENTITY-20260928',
       availableTon: tons,
       capacityTon: 3000,
-      levelMeters: Number(((tons / 3000) * 31.5).toFixed(1)),
-      highLevelWarning: tons >= 2650,
+      fillRatio: ratio,
+      levelMeters: Number((ratio * 31.5).toFixed(1)),
+      highLevelWarning: ratio >= 0.85,
+      lowLevelWarning: ratio <= 0.15,
       sourceSystem: 'S2-WMS (协作X08)',
-      qualityCode: 'GOOD',
+      dataSource: 'FALLBACK_SIM',
+      qualityCode: 'SIM',
       updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
     }
   }
@@ -517,18 +522,23 @@ export function getStorageSummaryForTarget(
     const num = Number.parseInt(normalizedId.replace('REBAR-BAY-', ''), 10) || 1
     const isChook = [3, 4, 9, 12].includes(num)
     const tons = 920 + (num * 110) % 760
+    const ratio = Number((tons / 1800).toFixed(4))
     return {
       locationId: normalizedId,
       locationCode: `STEEL-BAY-${String(num).padStart(2, '0')}`,
       category: 'STEEL_BAY',
-      materialName: isChook ? '盘螺/冷轧卷钢 (32t C型钩跨)' : 'HRB400E 螺纹钢 (20t电磁吸盘跨)',
+      materialName: isChook ? '盘螺/热轧卷钢 (32t C型钩跨)' : 'HRB400E 螺纹钢 (20t电磁吸盘跨)',
       batchNo: `SIM-IDENTITY-20260928-B${String(num).padStart(2, '0')}`,
       availableTon: tons,
       capacityTon: 1800,
-      levelMeters: Number((1.2 + (tons / 1800) * 3.4).toFixed(2)),
-      highLevelWarning: tons >= 1550,
+      fillRatio: ratio,
+      levelMeters: Number((1.2 + ratio * 3.4).toFixed(2)),
+      stackLayers: Math.max(1, Math.round(ratio * 6)),
+      highLevelWarning: ratio >= 0.85,
+      lowLevelWarning: ratio <= 0.15,
       sourceSystem: 'S2-WMS (协作X08)',
-      qualityCode: 'GOOD',
+      dataSource: 'FALLBACK_SIM',
+      qualityCode: 'SIM',
       updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
     }
   }
@@ -543,7 +553,8 @@ export class DtsDataService {
   private wsRegistered = false
   private tickCount = 0
   private latestLiveTasks: LiveTaskNodeItem[] = structuredClone(DEFAULT_LIVE_TASKS)
-  private latestStorageLocations: StorageLocationSummary[] = []
+  private latestStorageLocations: StorageLocationSummary[] = buildDefaultStorageSnapshotV6('SHEN_TIE')
+  private latestSafetySnapshot: SafetyTwinSnapshotV6 = buildDefaultSafetySnapshotV6('SHEN_TIE')
 
   private readonly deviceStore: ReturnType<typeof useDeviceStore>
   private readonly alertStore: ReturnType<typeof useAlertStore>
@@ -576,6 +587,8 @@ export class DtsDataService {
     if (this.regionId === nextRegion) return
     this.regionId = nextRegion
     this.alertStore.clear()
+    this.latestStorageLocations = buildDefaultStorageSnapshotV6(nextRegion)
+    this.latestSafetySnapshot = buildDefaultSafetySnapshotV6(nextRegion)
     if (this.mode === 'realtime_readonly') {
       void this.pollReadOnlyDatabase()
     } else {
@@ -639,7 +652,7 @@ export class DtsDataService {
   private async pollReadOnlyDatabase() {
     try {
       const qs = `?regionId=${encodeURIComponent(this.regionId)}`
-      const [overviewRes, devRes, alertRes] = await Promise.all([
+      const [overviewRes, devRes, alertRes, safetyRes] = await Promise.all([
         restClient
           .get<{
             inbox_events_count?: number
@@ -647,10 +660,12 @@ export class DtsDataService {
             region_note?: string
             tasks?: LiveTaskNodeItem[]
             storage?: StorageLocationSummary[]
+            safety?: SafetyTwinSnapshotV6
           }>(`/dts/overview${qs}`, { timeout: 3500 })
           .catch(() => null),
         restClient.get<{ items?: RemoteDeviceRow[]; source?: string; region_note?: string } | RemoteDeviceRow[]>(`/dts/devices${qs}`, { timeout: 3500 }),
         restClient.get<{ items?: RemoteAlertRow[]; source?: string } | RemoteAlertRow[]>(`/dts/alerts${qs}`, { timeout: 3500 }),
+        restClient.get<SafetyTwinSnapshotV6>(`/dts/safety${qs}`, { timeout: 3500 }).catch(() => null),
       ])
       const devRows = Array.isArray(devRes) ? devRes : (devRes.items ?? [])
       const alertRows = Array.isArray(alertRes) ? alertRes : (alertRes.items ?? [])
@@ -661,9 +676,8 @@ export class DtsDataService {
       } else {
         this.latestLiveTasks = structuredClone(DEFAULT_LIVE_TASKS)
       }
-      if (overviewRes?.storage && Array.isArray(overviewRes.storage)) {
-        this.latestStorageLocations = overviewRes.storage
-      }
+      this.latestStorageLocations = normalizeStorageListV6(overviewRes?.storage, this.regionId)
+      this.latestSafetySnapshot = normalizeSafetySnapshotV6(safetyRes ?? overviewRes?.safety, this.regionId)
       if (devRows.length > 0) {
         this.deviceStore.batchUpdate(
           devRows
@@ -777,6 +791,7 @@ export class DtsDataService {
       inboxEventsCount,
       liveTasks: this.latestLiveTasks,
       storageLocations: this.latestStorageLocations,
+      safetySnapshot: this.latestSafetySnapshot,
     })
   }
 }

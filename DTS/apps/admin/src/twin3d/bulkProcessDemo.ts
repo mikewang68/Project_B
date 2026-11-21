@@ -414,6 +414,8 @@ export class BulkProcessDemoController implements ProcessControllerHandle {
     this.runtime.setVehiclePose('WAGON-BULK-01', { cadX: WAGON_STOP_POS.cadX - 17, cadY: TRACK_H2_Y, headingDeg: 0 })
     this.runtime.setVehiclePose('WAGON-BULK-02', WAGON_STOP_POS)
     this.runtime.setVehiclePose('WAGON-BULK-03', { cadX: WAGON_STOP_POS.cadX + 17, cadY: TRACK_H2_Y, headingDeg: 0 })
+    this.runtime.setVehiclePose('LOCO-BULK-01', { cadX: WAGON_STOP_POS.cadX + 33.2, cadY: TRACK_H2_Y, headingDeg: 0 }, 0.25)
+    this.runtime.setActorVisible('CARGO-COIL-ACTIVE', false)
     this.runtime.setVehiclePose('CONT-BULK-01', WAGON_STOP_POS, 1.56, 0, 0)
     this.runtime.setVehiclePose('TRUCK-TANK-01', TANKER_STANDBY_STAGING, -0.015)
     this.runtime.setVehiclePose('TRUCK-FLAT-01', FLATBED_STANDBY_STAGING, 0.06)
@@ -1274,10 +1276,11 @@ export class BulkProcessDemoController implements ProcessControllerHandle {
       targetTons: 32.0,
     })
 
-    // Sync 3-car bulk train along 货2 centered at TIPPER_WAIT_X (3799.20)
+    // Sync 3-car bulk train + front DF7G locomotive along 货2 centered at TIPPER_WAIT_X (3799.20)
     this.runtime.setVehiclePose('WAGON-BULK-01', { cadX: WAGON_STOP_POS.cadX - 17 + wagonShiftX, cadY: TRACK_H2_Y, headingDeg: 0 })
     this.runtime.setVehiclePose('WAGON-BULK-02', { cadX: WAGON_STOP_POS.cadX + wagonShiftX, cadY: TRACK_H2_Y, headingDeg: 0 })
     this.runtime.setVehiclePose('WAGON-BULK-03', { cadX: WAGON_STOP_POS.cadX + 17 + wagonShiftX, cadY: TRACK_H2_Y, headingDeg: 0 })
+    this.runtime.setVehiclePose('LOCO-BULK-01', { cadX: WAGON_STOP_POS.cadX + 33.2 + wagonShiftX, cadY: TRACK_H2_Y, headingDeg: 0 }, 0.25)
 
     // Sync tanker elevation smoothly onto CAD roads, angled weighbridge decks & silo lanes
     const tankerZ = computeTankerElevation(tankerPose.cadX, tankerPose.cadY)

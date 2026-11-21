@@ -2,10 +2,14 @@
 import json
 import math
 import shutil
+import sys
 from pathlib import Path
 import bpy
 import bmesh
 from mathutils import Matrix, Vector
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from v6_blender_utils import add_signboard, attach_pbr_textures, export_merged_draco_glb, make_sign_material
 
 PROJECT = Path(r"D:\智慧仓储项目\dt-system")
 LAYOUT = json.loads((PROJECT / "apps/admin/src/twin3d/siteLayoutV4.json").read_text(encoding="utf-8"))
@@ -113,64 +117,15 @@ def local(cad_x, cad_y):
 
 
 def export_group(objects, filename, anchor=(0.0, 0.0, 0.0)):
-    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
-    temp = bpy.data.collections.new(f"EXP-{filename}")
-    bpy.context.scene.collection.children.link(temp)
-    offset_mat = Matrix.Translation(-Vector(anchor))
-    by_mat = {}
-    for src in objects:
-        if src is None or src.type != "MESH" or not src.data:
-            continue
-        mat_slot = src.data.materials[0] if src.data.materials else None
-        key = mat_slot.name if mat_slot else "default"
-        by_mat.setdefault(key, (mat_slot, []))[1].append(src)
-    if not by_mat:
-        bpy.data.collections.remove(temp)
-        raise RuntimeError(f"Empty export group: {filename}")
-    merged_objs = []
-    for key, (mat_slot, src_list) in by_mat.items():
-        bm = bmesh.new()
-        for src in src_list:
-            if src.rotation_mode == "QUATERNION":
-                rot_mat = src.rotation_quaternion.to_matrix().to_4x4()
-            else:
-                rot_mat = src.rotation_euler.to_matrix().to_4x4()
-            scale_mat = Matrix.Diagonal((src.scale.x, src.scale.y, src.scale.z, 1.0))
-            xform = offset_mat @ Matrix.Translation(src.location) @ rot_mat @ scale_mat
-            me_tmp = src.data.copy()
-            me_tmp.transform(xform)
-            bm.from_mesh(me_tmp)
-            bpy.data.meshes.remove(me_tmp)
-        me_out = bpy.data.meshes.new(f"{filename}-{key}")
-        bm.to_mesh(me_out)
-        bm.free()
-        if mat_slot:
-            me_out.materials.append(mat_slot)
-        obj_out = bpy.data.objects.new(f"{filename}-{key}", me_out)
-        temp.objects.link(obj_out)
-        merged_objs.append(obj_out)
-    bpy.ops.object.select_all(action="DESELECT")
-    for cp in merged_objs:
-        cp.select_set(True)
-    bpy.context.view_layer.objects.active = merged_objs[0]
-    bpy.ops.export_scene.gltf(
-        filepath=str(EXPORT_DIR / filename),
-        export_format="GLB",
-        use_selection=True,
-        export_materials="EXPORT",
-        export_lights=False,
-        export_cameras=False,
-        export_apply=True,
+    export_merged_draco_glb(
+        objects,
+        EXPORT_DIR / filename,
+        anchor=anchor,
+        large_scene=("rebar-core" in filename),
     )
-    for cp in merged_objs:
-        me = cp.data
-        bpy.data.objects.remove(cp, do_unlink=True)
-        if me and me.users == 0:
-            bpy.data.meshes.remove(me)
-    bpy.data.collections.remove(temp)
 
 
-def add_rail_track(target, track_id, cad_y, x_min, x_max, rail_mat, tie_mat, ballast_mat):
+def add_rail_track(target, track_id, cad_y, x_min, x_max, rail_mat, tie_mat, ballast_mat, buffer_mat=None):
     lx0, ly = local(x_min, cad_y)
     lx1, _ = local(x_max, cad_y)
     length = lx1 - lx0
@@ -187,6 +142,13 @@ def add_rail_track(target, track_id, cad_y, x_min, x_max, rail_mat, tie_mat, bal
     for i in range(tie_count):
         tx = lx0 + i * length / (tie_count - 1)
         cube(target, f"{track_id}-tie", (0.26, 2.55, 0.16), (tx, ly, 0.16), tie_mat, 0.02)
+    # East dead-end steel buffer stop (车挡)
+    if buffer_mat is not None:
+        bx = lx1 - 1.2
+        cube(target, f"{track_id}-buffer-beam", (0.35, 2.45, 0.42), (bx, ly, 1.25), buffer_mat, 0.03)
+        for dy in (-0.72, 0.72):
+            beam(target, f"{track_id}-buffer-leg-f-{dy:.2f}", (bx - 1.35, ly + dy, 0.32), (bx, ly + dy, 1.25), 0.16, buffer_mat)
+            beam(target, f"{track_id}-buffer-leg-b-{dy:.2f}", (bx + 1.05, ly + dy, 0.32), (bx, ly + dy, 1.25), 0.16, buffer_mat)
 
 
 def add_shunting_locomotive(target, cad_x, cad_y, body_mat, yellow_mat, dark_mat, glass_mat, silver_mat):
@@ -354,6 +316,18 @@ def add_warehouse_and_bays(
         # High-clearance south bay fascia beam strictly ABOVE bridge-crane trolley envelope (Z = 16.55..17.20m) so BC-01..13 glide out onto platform rails with ZERO collision!
         cube(target, f"bay-{b['bayIndex']}-portal-header", (bx1 - bx0, 0.52, 0.65), (bcx, y0, eave_z - 0.32), cladding_mat, 0.03)
         cube(target, f"bay-{b['bayIndex']}-shutter-hood", (bx1 - bx0 - 1.6, 0.62, 0.24), (bcx, y0 - 0.18, eave_z - 0.72), amber_mat if b["bridgeType"] == "chook_32t" else cyan_glow, 0.02)
+        # V6 Crisp Physical Bay Number Fascia Signboard (`01跨`..`13跨`) mounted above the south portal
+        bay_sign_mat = make_sign_material(f"v6_sign_bay_{b['bayIndex']:02d}", f"sign_bay_{b['bayIndex']:02d}.png", emission_strength=0.42)
+        add_signboard(
+            target,
+            f"bay-{b['bayIndex']}-signboard",
+            width=5.4,
+            height=2.3,
+            loc=(bcx, y0 - 0.42, eave_z + 0.68),
+            sign_mat=bay_sign_mat,
+            facing="-Y",
+            thickness=0.14,
+        )
 
         # Consistent CAD-Y Storage Rows in ALL 13 Bays (leaving Y=1721.5..1728.5 100% clear for the CAD internal truck road!)
         # All rebar stacks are X-aligned (9.2m long along X) to match 7.2m bridge magnet beam, rail flatcars & road flatbed!
@@ -534,6 +508,21 @@ def build_gantry_40t(gantry_col, crane_orange, crane_yellow, dark_mat, silver_ma
     for tip_y in (south_tip + 0.6, north_tip - 0.6):
         objs.append(cube(gantry_col, "cr-tip-tie", (top_half_x * 2 + 1.4, 0.95, 1.25), (cx, cy + tip_y, (rail_h + top_h) / 2), crane_yellow, 0.05))
     objs.append(cube(gantry_col, "cr-festoon-beam", (0.24, g_len - 2.0, 0.32), (cx - top_half_x + 1.1, g_cy, rail_h + 0.4), cyan_mat))
+    # V6 Industrial Girder Nameplate (`40t / 30m 门式起重机 · 严禁超载`) on both outer box girders
+    gantry_sign_mat = make_sign_material("v6_sign_gantry_40t", "sign_gantry_40t.png", emission_strength=0.35)
+    for sx_sign, f_dir in ((-1, "-X"), (1, "+X")):
+        objs.append(
+            add_signboard(
+                gantry_col,
+                f"cr-girder-sign-{sx_sign}",
+                width=14.8,
+                height=1.65,
+                loc=(cx + sx_sign * (top_half_x + 0.64), cy, (rail_h + top_h) / 2),
+                sign_mat=gantry_sign_mat,
+                facing=f_dir,
+                thickness=0.10,
+            )
+        )
 
     # 3. Suspended Panoramic Operator Cabin + AC Unit + Z-Staircase
     cab_x, cab_y, cab_z = cx + top_half_x + 1.55, cy + leg_ys[0] + 2.8, rail_h - 1.65
@@ -737,7 +726,29 @@ def build_rolling_stock_and_cargo(col_rs, steel_mat, dark_mat, amber_mat, cyan_m
     for sx in (-3.0, 0.0, 3.0):
         cargo_bundle.append(cube(col_rs, f"cargo-strap-{sx}", (0.22, 1.56, 0.80), (sx, 0, 0.0), amber_mat, 0.02))
 
-    return wagon_loaded, wagon_empty, road_truck, cargo_bundle
+    # 4. V6 Dedicated 32t Hot-Rolled Steel Coil Actor (`steel-coil-v6`) for Bay 03 C-Hook (`BC-03`)!
+    #    Coil bore oriented along local X (exact match to C-hook mandrel at Z=-1.68m!).
+    #    Bottom of protective steel cradle sits at local Z = -0.38m (100% flush alignment with rebar bundle!).
+    coil_actor = []
+    coil_center_z = 0.68
+    outer_coil = cyl(col_rs, "cargo-coil-outer", 1.02, 1.88, (0, 0, coil_center_z), silver_mat, 36)
+    outer_coil.rotation_euler.y = math.radians(90)
+    coil_actor.append(outer_coil)
+    mid_ring = cyl(col_rs, "cargo-coil-midring", 0.72, 1.91, (0, 0, coil_center_z), steel_mat, 32)
+    mid_ring.rotation_euler.y = math.radians(90)
+    coil_actor.append(mid_ring)
+    bore_eye = cyl(col_rs, "cargo-coil-bore", 0.40, 1.94, (0, 0, coil_center_z), dark_mat, 24)
+    bore_eye.rotation_euler.y = math.radians(90)
+    coil_actor.append(bore_eye)
+    for band_x in (-0.64, 0.0, 0.64):
+        band = cyl(col_rs, f"cargo-coil-band-{band_x:.2f}", 1.045, 0.10, (band_x, 0, coil_center_z), amber_mat, 36)
+        band.rotation_euler.y = math.radians(90)
+        coil_actor.append(band)
+    # Protective timber/steel V-saddle chocks at bottom (Z = -0.38 .. -0.14m)
+    coil_actor.append(cube(col_rs, "cargo-coil-saddle-s", (1.96, 0.34, 0.26), (0, -0.58, -0.25), wood_mat, 0.02))
+    coil_actor.append(cube(col_rs, "cargo-coil-saddle-n", (1.96, 0.34, 0.26), (0, 0.58, -0.25), wood_mat, 0.02))
+
+    return wagon_loaded, wagon_empty, road_truck, cargo_bundle, coil_actor
 
 
 def build_all():
@@ -747,7 +758,7 @@ def build_all():
     scene.unit_settings.length_unit = "METERS"
     scene.render.engine = "BLENDER_EEVEE"
 
-    # V5.3 High-Contrast Industrial PBR Palette
+    # V6 High-Contrast Industrial PBR Palette with Procedural Textures
     apron_mat = mat("v5_rebar_apron", (0.24, 0.29, 0.36), metallic=0.06, roughness=0.78)
     ballast_mat = mat("v5_rebar_ballast", (0.28, 0.32, 0.38), metallic=0.04, roughness=0.88)
     wh_col_mat = mat("v5_wh_column", (0.26, 0.38, 0.52), metallic=0.48, roughness=0.38)
@@ -770,10 +781,16 @@ def build_all():
     rail_mat = mat("v5_steel_rail", (0.62, 0.68, 0.74), metallic=0.85, roughness=0.24)
     tie_mat = mat("v5_concrete_tie", (0.38, 0.40, 0.44), metallic=0.06, roughness=0.82)
     loco_red = mat("v5_loco_body", (0.82, 0.18, 0.14), metallic=0.36, roughness=0.34)
+    hazard_mat = mat("v6_hazard_stripe", (0.95, 0.74, 0.08), metallic=0.18, roughness=0.40)
+
+    attach_pbr_textures(apron_mat, albedo_file="concrete_albedo.png", rough_file="concrete_rough.png", uv_tile_m=14.0)
+    attach_pbr_textures(ballast_mat, albedo_file="ballast_albedo.png", uv_tile_m=5.0)
+    attach_pbr_textures(cladding_mat, albedo_file="corrugated_blue_albedo.png", rough_file="corrugated_rough.png", normal_file="corrugated_normal.png", normal_strength=0.48, uv_tile_m=6.0)
+    attach_pbr_textures(hazard_mat, albedo_file="hazard_stripe_albedo.png", uv_tile_m=2.2)
 
     env_col = col("V5-REBAR-ENV")
     for t in REBAR["tracks"]:
-        add_rail_track(env_col, t["id"], t["cadY"], REBAR["trackRangeX"][0], REBAR["trackRangeX"][1], rail_mat, tie_mat, ballast_mat)
+        add_rail_track(env_col, t["id"], t["cadY"], REBAR["trackRangeX"][0], REBAR["trackRangeX"][1], rail_mat, tie_mat, ballast_mat, buffer_mat=hazard_mat)
     # Park static DF7G shunting locomotive on adjacent track 货3 (leaving 货4 100% clear for incoming steel train!)
     add_shunting_locomotive(env_col, 3532.0, REBAR["tracks"][1]["cadY"], loco_red, crane_yellow, dark_mat, glass_mat, silver_mat)
     add_warehouse_and_bays(
@@ -804,7 +821,7 @@ def build_all():
     )
 
     rs_col = col("V5-REBAR-ROLLING")
-    wagon_loaded, wagon_empty, rtruck, cargo_bundle = build_rolling_stock_and_cargo(
+    wagon_loaded, wagon_empty, rtruck, cargo_bundle, coil_actor = build_rolling_stock_and_cargo(
         rs_col, rebar_mat, dark_mat, crane_orange, cyan_mat, silver_mat, glass_mat, wood_mat, crane_yellow, white_mat, red_glow
     )
 
@@ -821,15 +838,13 @@ def build_all():
         "rebar-wagon-empty-v5": (wagon_empty, (0.0, 0.0, 0.0)),
         "road-truck-v4": (rtruck, (0.0, 0.0, 0.0)),
         "steel-cargo-v4": (cargo_bundle, (0.0, 0.0, 0.0)),
+        "steel-coil-v6": (coil_actor, (0.0, 0.0, 0.0)),
     }
     for key, (objs, anchor) in assets.items():
-        high_name = f"{key}-high.glb"
-        export_group(objs, high_name, anchor)
-        for lod in ("medium", "low"):
-            shutil.copy2(EXPORT_DIR / high_name, EXPORT_DIR / f"{key}-{lod}.glb")
+        export_group(objs, f"{key}-medium.glb", anchor)
 
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
-    print("REBAR_V53_HIGH_DETAIL_ASSETS_EXPORTED")
+    print("REBAR_V6_DRACO_PBR_ASSETS_EXPORTED")
 
 
 if __name__ == "__main__":
