@@ -14,7 +14,7 @@ export interface ModelDescriptor {
 }
 
 const ROOT = MODEL_ROOT
-const ASSET_VERSION = '?layout=20261120-v55-tandem-highlift-widecam'
+const ASSET_VERSION = '?layout=20261121-v60-draco-pbr-twin'
 const glb = (name: string) => `${ROOT}${name}.glb${ASSET_VERSION}`
 
 export const MODEL_MANIFEST: ModelDescriptor[] = [
@@ -53,6 +53,8 @@ export const MODEL_MANIFEST: ModelDescriptor[] = [
   { key: 'tank-truck', type: 'tank_truck', modelUrl: glb('tank-truck-v4-medium'), lod: 'medium', minimumPixelSize: 18, maximumScale: 1 },
   { key: 'road-truck', type: 'road_truck', modelUrl: glb('road-truck-v4-medium'), lod: 'medium', minimumPixelSize: 18, maximumScale: 1 },
   { key: 'steel-cargo', type: 'bulk_container', modelUrl: glb('steel-cargo-v4-medium'), lod: 'medium', minimumPixelSize: 10, maximumScale: 1 },
+  { key: 'steel-coil', type: 'bulk_container', modelUrl: glb('steel-coil-v6-medium'), lod: 'medium', minimumPixelSize: 10, maximumScale: 1 },
+  { key: 'df7g-locomotive', type: 'wagon', modelUrl: glb('df7g-locomotive-v6-medium'), lod: 'medium', minimumPixelSize: 22, maximumScale: 1 },
 ]
 
 export function getModel(key: string): ModelDescriptor {

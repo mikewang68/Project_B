@@ -810,6 +810,10 @@ function initChart() {
   updateChart()
 }
 
+function onLightingChange(preset: 'daylight' | 'dusk' | 'night') {
+  twin3d?.setLightingAccentMode(preset)
+}
+
 function onViewerReady(nextViewer: Cesium.Viewer) {
   viewer = nextViewer
   setupCameraInteraction(nextViewer)
@@ -858,10 +862,20 @@ function onViewerReady(nextViewer: Cesium.Viewer) {
       seedDevices()
       twin3d = new Twin3dController(nextViewer, { onSelect: (info) => { selectedInfo.value = info } })
       twin3d.setVehicleRouteAnimation(true)
+      twin3d.setHealthOverlayVisible(true)
       phase6Layers = new Phase6LayerController(nextViewer)
       syncOperationalLayers()
       rebuildController(activeProcess.value)
-      dataService = new DtsDataService(deviceStore, alertStore, (s) => Object.assign(feedStatus, s), activeRegion.value)
+      dataService = new DtsDataService(
+        deviceStore,
+        alertStore,
+        (s) => {
+          Object.assign(feedStatus, s)
+          if (s.storageLocations) twin3d?.syncStorageOverlay(s.storageLocations)
+          if (s.safetySnapshot) twin3d?.syncSafetyOverlay(s.safetySnapshot)
+        },
+        activeRegion.value,
+      )
       activeRegion.value = dataService.getRegionId()
       dataService.start(dataMode.value, 5000)
       const win = window as unknown as Record<string, unknown>
@@ -1071,7 +1085,7 @@ void SITE_LAYOUT_V4.version
       </aside>
 
       <section class="scene-panel">
-        <CesiumViewer @viewer-ready="onViewerReady" />
+        <CesiumViewer @viewer-ready="onViewerReady" @lighting-change="onLightingChange" />
         <div v-if="sceneStatus === 'loading'" class="scene-overlay loading">正在加载《给大连大.dwg》V4 实测三维场站与 GLB 装备…</div>
         <div v-else-if="sceneStatus === 'error'" class="scene-overlay warning">CAD 底图未完整加载：{{ sceneError }}</div>
 

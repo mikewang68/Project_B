@@ -362,10 +362,18 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
   }
 
   private syncThreeCarSteelTrain(centerX: number) {
-    // Move ALL 3 coupled open flatcars together on 货4 (WAGON-FLAT-02 center car is empty deck carrying active demo cargo!) -> ZERO clipping!
+    // Move ALL 3 coupled open flatcars + front DF7G shunting locomotive together on 货4 -> ZERO clipping!
     this.runtime.setVehiclePose('WAGON-FLAT-01', { cadX: centerX - 15.5, cadY: TRACK_H4_Y, headingDeg: 0 })
     this.runtime.setVehiclePose('WAGON-FLAT-02', { cadX: centerX, cadY: TRACK_H4_Y, headingDeg: 0 })
     this.runtime.setVehiclePose('WAGON-FLAT-03', { cadX: centerX + 15.5, cadY: TRACK_H4_Y, headingDeg: 0 })
+    this.runtime.setVehiclePose('LOCO-STEEL-01', { cadX: centerX + 31.6, cadY: TRACK_H4_Y, headingDeg: 0 }, 0.25)
+  }
+
+  private syncActiveSteelCargo(pose: VehiclePose, heightZ: number) {
+    const isCoil = this.subMode === 'coil_chook'
+    this.runtime.setActorVisible('CARGO-STEEL-ACTIVE', !isCoil)
+    this.runtime.setActorVisible('CARGO-COIL-ACTIVE', isCoil)
+    this.runtime.setVehiclePose(isCoil ? 'CARGO-COIL-ACTIVE' : 'CARGO-STEEL-ACTIVE', pose, heightZ)
   }
 
   private resetSceneBaseline() {
@@ -382,7 +390,7 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
     this.syncThreeCarSteelTrain(bayX + WAGON_START_OFFSET_X)
     this.runtime.setVehiclePose('TRUCK-FLAT-01', TRUCK_STANDBY_STAGING, -0.14)
     this.runtime.setVehiclePose('TRUCK-TANK-01', TANKER_STANDBY_STAGING, -0.015)
-    this.runtime.setVehiclePose('CARGO-STEEL-ACTIVE', { cadX: bayX + WAGON_START_OFFSET_X, cadY: TRACK_H4_Y, headingDeg: 0 }, CARGO_ON_WAGON_Z)
+    this.syncActiveSteelCargo({ cadX: bayX + WAGON_START_OFFSET_X, cadY: TRACK_H4_Y, headingDeg: 0 }, CARGO_ON_WAGON_Z)
     this.runtime.setCranePose('CR-02', { ...CR_HOME, gantryX: bayX })
     this.runtime.setBridgeCranePose('BC-03', BC03_HOME)
     this.runtime.setBridgeCranePose('BC-07', BC_HOME)
@@ -1282,7 +1290,7 @@ export class SteelUnloadDemoController implements ProcessControllerHandle {
     this.syncThreeCarSteelTrain(trainCenterX)
     this.runtime.setVehiclePose('TRUCK-FLAT-01', truckPose, computeFlatbedElevation(truckPose.cadX, truckPose.cadY))
     this.runtime.setVehiclePose('TRUCK-TANK-01', TANKER_STANDBY_STAGING, -0.015)
-    this.runtime.setVehiclePose('CARGO-STEEL-ACTIVE', cargoPose, cargoZ)
+    this.syncActiveSteelCargo(cargoPose, cargoZ)
 
     this.runtime.requestRender()
   }

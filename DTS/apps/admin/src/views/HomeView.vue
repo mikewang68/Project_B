@@ -3,9 +3,17 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as Cesium from 'cesium'
 import CesiumViewer from '@/components/cesium/CesiumViewer.vue'
+import type { LightingPreset } from '@/components/cesium/cesiumInit'
 import { setupCameraInteraction } from '@/components/cesium/cameraControl'
 import { filterByCategory } from '@/components/cesium/layerManager'
 import { CAD_GEOJSON_URL } from '@/config/runtime'
+import {
+  buildDefaultSafetySnapshotV6,
+  buildDefaultStorageSnapshotV6,
+  formatProvenanceBadge,
+  type DeviceHealthOverlayItemV6,
+  type SurveillanceCameraStateV6,
+} from '@/services/twinIntegrationContracts'
 import {
   DEFAULT_DATA_MODE,
   DEFAULT_LIVE_TASKS,
@@ -77,10 +85,22 @@ let smoothedTrackState: (Required<Pick<CameraTrackTarget, 'cadX' | 'cadY' | 'cad
 }) | null = null
 let removeCanvasInteractionListeners: (() => void) | null = null
 
-const layers = ref({ track: true, area: true, cargo: false, personnel: false, planned: true })
+const layers = ref({ track: true, area: true, cargo: false, health: true, personnel: false, planned: true })
 const detailVisible = ref(false)
 const vendorDrawerOpen = ref(false)
 const reqMatrixOpen = ref(false)
+const activeCamera = ref<SurveillanceCameraStateV6 | null>(null)
+const cinemaTourRunning = ref(false)
+let cinemaTourTimer: ReturnType<typeof setInterval> | null = null
+let cinemaTourIdx = 0
+const CINEMA_TOUR_STOPS: Array<{ title: string; target: CameraFocusTarget }> = [
+  { title: '① 全站 1.27km 鸟瞰全景（给大连大.dwg V6）', target: { cadX: 3920, cadY: 1625, cadZ: 12, headingDeg: 18, pitchDeg: -30, range: 640, durationSec: 2.2 } },
+  { title: '② 东大门 40m 雨棚、货运综合楼与光伏停车场', target: { cadX: 4465, cadY: 1645, cadZ: 8, headingDeg: -34, pitchDeg: -22, range: 230, durationSec: 2.0 } },
+  { title: '③ 散料区 40 座 3000T 筒仓群与 4 组 8 台移动翻箱机', target: { cadX: 3860, cadY: 1555, cadZ: 18, headingDeg: -22, pitchDeg: -24, range: 240, durationSec: 2.0 } },
+  { title: '④ 23,882㎡ 钢筋库 01~13 跨、外伸月台轨道梁与 40t 门吊', target: { cadX: 3745, cadY: 1672, cadZ: 12, headingDeg: -18, pitchDeg: -22, range: 215, durationSec: 2.0 } },
+  { title: '⑤ DF7G 内燃调车机车牵引专列与 100t 轨道衡', target: { cadX: 3630, cadY: 1590, cadZ: 6, headingDeg: 28, pitchDeg: -20, range: 170, durationSec: 2.0 } },
+]
+const cinemaTourLabel = ref('')
 const activeRegion = ref<RegionCode>('SHEN_TIE')
 const steelSubMode = ref<SteelSubMode>('rebar_magnet')
 const processTrackMode = ref<ProcessTrackMode>('f_d06_sim')
@@ -119,8 +139,18 @@ const feedStatus = reactive<DtsFeedStatus>({
   lastSyncAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
   errorNote: '',
   liveTasks: structuredClone(DEFAULT_LIVE_TASKS),
-  storageLocations: [],
+  storageLocations: buildDefaultStorageSnapshotV6('SHEN_TIE'),
+  safetySnapshot: buildDefaultSafetySnapshotV6('SHEN_TIE'),
 })
+const allSurveillanceCameras = computed<SurveillanceCameraStateV6[]>(
+  () => feedStatus.safetySnapshot?.cameras ?? [],
+)
+const liveStorageCount = computed(
+  () => (feedStatus.storageLocations ?? []).filter((s) => s.dataSource === 'LIVE_S2_WMS').length,
+)
+const liveSafetyCount = computed(
+  () => (feedStatus.safetySnapshot?.fences ?? []).filter((f) => f.dataSource === 'LIVE_S4_SCS').length,
+)
 
 const cargoItems = ref(structuredClone(MOCK_CARGO))
 const personnelItems = ref(structuredClone(MOCK_PERSONNEL))
@@ -193,12 +223,32 @@ const diag = reactive({
   globeShow: false,
 })
 
+function syncDeviceHealthOverlay() {
+  if (!twin3d) return
+  const items: DeviceHealthOverlayItemV6[] = Object.values(deviceStore.devices).map((d) => {
+    const score = d.ehms?.healthScore ?? 92
+    const level: DeviceHealthOverlayItemV6['healthLevel'] =
+      d.status === 'fault' || score < 65 ? 'critical' : score < 76 ? 'risk' : score < 86 ? 'attention' : 'healthy'
+    return {
+      deviceId: d.id,
+      deviceName: d.name,
+      status: d.status,
+      healthScore: score,
+      healthLevel: level,
+      activeAlarmCount: alertStore.alerts.filter((a) => !a.handled && a.targetId === d.id).length,
+      dataSource: feedStatus.quality === 'GOOD' ? 'LIVE_S3_EHMS' : 'FALLBACK_SIM',
+    }
+  })
+  twin3d.syncHealthOverlay(items)
+}
+
 watch(
   () => deviceStore.devices,
   (map) => {
     for (const [id, d] of Object.entries(map)) {
       twin3d?.setStatus(id, d.status)
     }
+    syncDeviceHealthOverlay()
     if (selectedInfo.id && map[selectedInfo.id]) {
       selectedInfo.statusName = deviceStore.getStatusName(selectedInfo.id)
     }
@@ -282,6 +332,7 @@ function onViewerReady(v: Cesium.Viewer) {
   const markManualCamera = () => {
     userCameraHold = true
     smoothedTrackState = null
+    if (cinemaTourRunning.value) stopCinemaTour()
     releaseCameraTrack(v)
     v.camera.cancelFlight()
   }
@@ -351,18 +402,37 @@ function onViewerReady(v: Cesium.Viewer) {
           detailVisible.value = false
         }
       },
+      onSelectCamera: (cam) => {
+        activeCamera.value = cam
+      },
     })
     diag.deviceEntities = twin3d.getStatusSummary().total
+    twin3d.setStorageOverlayVisible(layers.value.cargo)
+    twin3d.setHealthOverlayVisible(layers.value.health)
+    twin3d.setSafetyOverlayVisible(layers.value.personnel)
+    twin3d.syncStorageOverlay(feedStatus.storageLocations ?? buildDefaultStorageSnapshotV6(activeRegion.value))
+    twin3d.syncSafetyOverlay(feedStatus.safetySnapshot ?? buildDefaultSafetySnapshotV6(activeRegion.value))
+    syncDeviceHealthOverlay()
     phase6Layers = new Phase6LayerController(v)
     phase6Layers.syncCargo(cargoItems.value)
     phase6Layers.syncPersonnel(personnelItems.value)
-    phase6Layers.setCargoVisible(layers.value.cargo)
-    phase6Layers.setPersonnelVisible(layers.value.personnel)
+    phase6Layers.setCargoVisible(false)
+    phase6Layers.setPersonnelVisible(false)
     rebuildDemoController(activeProcess.value)
   }
 
   if (!skipAnim) {
-    dataService = new DtsDataService(deviceStore, alertStore, (s) => Object.assign(feedStatus, s), activeRegion.value)
+    dataService = new DtsDataService(
+      deviceStore,
+      alertStore,
+      (s) => {
+        Object.assign(feedStatus, s)
+        if (s.storageLocations) twin3d?.syncStorageOverlay(s.storageLocations)
+        if (s.safetySnapshot) twin3d?.syncSafetyOverlay(s.safetySnapshot)
+        syncDeviceHealthOverlay()
+      },
+      activeRegion.value,
+    )
     activeRegion.value = dataService.getRegionId()
     twin3d?.setVehicleRouteAnimation(true)
     dataService.start(dataMode.value, 5000)
@@ -695,12 +765,54 @@ function startPhase6Simulation() {
   }, 4500)
 }
 
-function toggleLayer(category: 'track' | 'area' | 'cargo' | 'personnel' | 'planned') {
+function toggleLayer(category: 'track' | 'area' | 'cargo' | 'health' | 'personnel' | 'planned') {
   layers.value[category] = !layers.value[category]
-  if (category === 'cargo') phase6Layers?.setCargoVisible(layers.value.cargo)
-  else if (category === 'personnel') phase6Layers?.setPersonnelVisible(layers.value.personnel)
+  if (category === 'cargo') twin3d?.setStorageOverlayVisible(layers.value.cargo)
+  else if (category === 'health') twin3d?.setHealthOverlayVisible(layers.value.health)
+  else if (category === 'personnel') twin3d?.setSafetyOverlayVisible(layers.value.personnel)
   else if (category === 'planned') twin3d?.setPlannedZonesVisible(layers.value.planned)
   else setCategoryVisible(category, layers.value[category])
+}
+
+function onLightingChange(preset: LightingPreset) {
+  twin3d?.setLightingAccentMode(preset)
+}
+
+function stopCinemaTour() {
+  cinemaTourRunning.value = false
+  cinemaTourLabel.value = ''
+  if (cinemaTourTimer) {
+    clearInterval(cinemaTourTimer)
+    cinemaTourTimer = null
+  }
+}
+
+function runCinemaStop() {
+  if (!viewer) return
+  const stop = CINEMA_TOUR_STOPS[cinemaTourIdx % CINEMA_TOUR_STOPS.length]
+  cinemaTourIdx = (cinemaTourIdx + 1) % CINEMA_TOUR_STOPS.length
+  cinemaTourLabel.value = stop.title
+  focusCadPoint(viewer, stop.target)
+}
+
+function toggleCinemaTour() {
+  if (cinemaTourRunning.value) {
+    stopCinemaTour()
+    return
+  }
+  demoController?.pause()
+  userCameraHold = false
+  cinemaTourRunning.value = true
+  cinemaTourIdx = 0
+  runCinemaStop()
+  cinemaTourTimer = setInterval(runCinemaStop, 6500)
+}
+
+function openCameraModal(cam: SurveillanceCameraStateV6) {
+  activeCamera.value = cam
+  if (viewer) {
+    focusCadPoint(viewer, { cadX: cam.cadX, cadY: cam.cadY, cadZ: cam.cadZ, headingDeg: -cam.headingDeg + 90, pitchDeg: -24, range: 78, durationSec: 1.1 })
+  }
 }
 
 function onResetView() {
@@ -741,6 +853,7 @@ function closeDetail() {
 }
 
 onBeforeUnmount(() => {
+  stopCinemaTour()
   if (diagTimer) clearInterval(diagTimer)
   removeCanvasInteractionListeners?.()
   removeCanvasInteractionListeners = null
@@ -760,7 +873,7 @@ onBeforeUnmount(() => {
     <header class="home-header">
       <div class="title-group">
         <span class="home-title">数字孪生可视化系统（S5）</span>
-        <span class="cad-badge">中沙坝转运站 · 给大连大.dwg V4 实测基准</span>
+        <span class="cad-badge">中沙坝转运站 · 给大连大.dwg V6 Draco/PBR 实测基准</span>
       </div>
       <div class="home-actions">
         <select class="region-select" :value="activeRegion" @change="onRegionChange(($event.target as HTMLSelectElement).value as RegionCode)">
@@ -769,6 +882,15 @@ onBeforeUnmount(() => {
         <button class="mode-pill" @click="toggleDataMode">
           数据源: {{ dataMode === 'offline_sim' ? '离线仿真' : '只读库联调' }}
           <b :class="feedStatus.quality.toLowerCase()">{{ feedStatus.quality }}</b>
+        </button>
+        <button
+          type="button"
+          class="mode-pill tour-btn"
+          :class="{ active: cinemaTourRunning }"
+          title="一键自动巡游全站五大核心汇报视点，鼠标拖拽/滚轮可随时自由接管"
+          @click="toggleCinemaTour"
+        >
+          {{ cinemaTourRunning ? '⏹ 停止巡游' : '🎬 汇报巡游' }}
         </button>
         <button
           type="button"
@@ -806,7 +928,12 @@ onBeforeUnmount(() => {
     </header>
 
     <main class="scene-area">
-      <CesiumViewer @viewer-ready="onViewerReady" />
+      <CesiumViewer @viewer-ready="onViewerReady" @lighting-change="onLightingChange" />
+      <div v-if="cinemaTourRunning && cinemaTourLabel" class="cinema-tour-banner">
+        <span class="tour-dot"></span>
+        <span>自动汇报巡游中 · {{ cinemaTourLabel }}</span>
+        <button type="button" class="tour-stop-chip" @click="stopCinemaTour">退出巡游</button>
+      </div>
 
       <!-- Slide 40 & R-D03: 顶部浮动全流程追踪条（随左右面板收起自适应满宽，亦可折叠为居中精简胶囊） -->
       <div
@@ -954,16 +1081,26 @@ onBeforeUnmount(() => {
         </label>
         <label class="layer-item">
           <input type="checkbox" :checked="layers.cargo" @change="toggleLayer('cargo')" />
-          <span class="dot" style="background: #60a5fa"></span> 库存柱状体 (F-D04)
+          <span class="dot" style="background: #60a5fa"></span> 筒仓料位剖视 & 钢筋跨库存体 (S2·X08)
+        </label>
+        <label class="layer-item">
+          <input type="checkbox" :checked="layers.health" @change="toggleLayer('health')" />
+          <span class="dot" style="background: #10b981"></span> 设备健康态势光环 (S3·X03)
         </label>
         <label class="layer-item">
           <input type="checkbox" :checked="layers.personnel" @change="toggleLayer('personnel')" />
-          <span class="dot" style="background: #34d399"></span> S4 电子围栏联锁 (X05)
+          <span class="dot" style="background: #34d399"></span> 立体电子围栏 & 监控视场锥 (S4·X05)
         </label>
         <label class="layer-item">
           <input type="checkbox" :checked="layers.planned" @change="toggleLayer('planned')" />
           <span class="dot" style="background: #38bdf8"></span> 缓建规划仓体 (F-D02)
         </label>
+        <div class="v6-dock-summary" title="S2/S3/S4 真实数据直连接口契约已就绪，上游接入后自动切换 LIVE 实测态">
+          <span>接口直连:</span>
+          <b :class="{ live: liveStorageCount > 0 }">S2 {{ liveStorageCount > 0 ? `LIVE(${liveStorageCount})` : '预留就绪' }}</b>
+          <b :class="{ live: feedStatus.quality === 'GOOD' }">S3 {{ feedStatus.quality === 'GOOD' ? '已聚合' : '预留就绪' }}</b>
+          <b :class="{ live: liveSafetyCount > 0 }">S4 {{ liveSafetyCount > 0 ? `LIVE(${liveSafetyCount})` : '预留就绪' }}</b>
+        </div>
         <div class="panel-divider"></div>
         <div class="camera-title">施工图 V4 镜头预设</div>
         <div class="camera-grid">
@@ -1312,6 +1449,74 @@ onBeforeUnmount(() => {
         </div>
       </section>
       </transition>
+
+      <!-- V6 S4-SCS 监控摄像机视频核查弹窗（原生预留 HLS/MP4/MJPEG/SNAPSHOT/IFRAME 实流直连接口） -->
+      <div v-if="activeCamera" class="camera-modal-backdrop" @click.self="activeCamera = null">
+        <div class="camera-modal-card">
+          <div class="cam-modal-head">
+            <div>
+              <strong>{{ activeCamera.cameraId }} · {{ activeCamera.name }}</strong>
+              <span class="cam-proto-tag" :class="formatProvenanceBadge(activeCamera.dataSource).tone">
+                {{ formatProvenanceBadge(activeCamera.dataSource).label }} · {{ activeCamera.streamProtocol }}
+              </span>
+            </div>
+            <button type="button" class="collapse-chip" @click="activeCamera = null">✕ 关闭</button>
+          </div>
+          <div class="cam-switcher-row">
+            <button
+              v-for="cam in allSurveillanceCameras"
+              :key="cam.cameraId"
+              type="button"
+              class="cam-chip"
+              :class="{ active: cam.cameraId === activeCamera.cameraId, alert: cam.status === 'ALERT' }"
+              @click="openCameraModal(cam)"
+            >
+              {{ cam.cameraId }}
+            </button>
+          </div>
+          <div class="cam-viewport">
+            <video
+              v-if="activeCamera.streamUrl && (activeCamera.streamProtocol === 'HLS' || activeCamera.streamProtocol === 'MP4')"
+              :src="activeCamera.streamUrl"
+              controls
+              autoplay
+              muted
+              playsinline
+              class="cam-media"
+            />
+            <img
+              v-else-if="activeCamera.streamUrl && (activeCamera.streamProtocol === 'MJPEG' || activeCamera.streamProtocol === 'SNAPSHOT')"
+              :src="activeCamera.streamUrl"
+              :alt="activeCamera.name"
+              class="cam-media"
+            />
+            <iframe
+              v-else-if="activeCamera.streamUrl && activeCamera.streamProtocol === 'IFRAME'"
+              :src="activeCamera.streamUrl"
+              class="cam-media"
+              title="S4 监控视频流"
+            />
+            <div v-else class="cam-unbound-placeholder">
+              <div class="cam-placeholder-icon">📹</div>
+              <div class="cam-placeholder-title">已预留 S4-SCS 实时视频流直连接口（当前状态：{{ activeCamera.streamProtocol }}）</div>
+              <div class="cam-placeholder-sub">
+                CAD 点位：({{ activeCamera.cadX.toFixed(1) }}, {{ activeCamera.cadY.toFixed(1) }}, H={{ activeCamera.cadZ }}m) · 视场角 {{ activeCamera.fovDeg }}° / 覆盖 {{ activeCamera.rangeM }}m
+              </div>
+              <div class="cam-placeholder-hint">
+                待 S4 负责人接入 <code>GET /api/v1/cameras</code> 返回 <code>streamUrl</code>（支持 HLS / MP4 / MJPEG / IFRAME）后自动播放实况画面
+              </div>
+            </div>
+          </div>
+          <div v-if="activeCamera.latestAiEvent" class="cam-ai-bar">
+            <span>AI 识别事件：<b>{{ activeCamera.latestAiEvent.type }}</b></span>
+            <span>置信度 {{ activeCamera.latestAiEvent.confidence.toFixed(1) }}% · 风险 {{ activeCamera.latestAiEvent.riskCode }}</span>
+          </div>
+          <div class="cam-modal-foot">
+            <span>所属联锁区：{{ activeCamera.zoneCode || '场站全域' }}</span>
+            <a :href="selectedScsUrl" target="_blank" rel="noopener noreferrer" class="cam-scs-link">跳转 S4 安全监控系统 →</a>
+          </div>
+        </div>
+      </div>
     </main>
 
     <footer class="home-footer">
@@ -1366,6 +1571,11 @@ onBeforeUnmount(() => {
           &:hover { background: rgba(14, 116, 144, 0.45); color: #ffffff; }
           &.clean { border-color: rgba(52, 211, 153, 0.65); color: #6ee7b7; background: rgba(16, 185, 129, 0.16); }
         }
+        &.tour-btn {
+          border-color: rgba(245, 184, 76, 0.62); color: #fde68a; font-weight: 600;
+          background: rgba(180, 83, 9, 0.24);
+          &.active { border-color: #ef4444; color: #fecaca; background: rgba(185, 28, 28, 0.36); }
+        }
       }
       .module-tag { font-size: 11px; color: var(--text-secondary); }
       .sys-jump {
@@ -1395,7 +1605,7 @@ onBeforeUnmount(() => {
       border: 1px solid rgba(0, 229, 255, 0.36); border-radius: 6px;
       overflow: hidden;
       transition: left 0.24s cubic-bezier(0.22, 1, 0.36, 1), right 0.24s cubic-bezier(0.22, 1, 0.36, 1);
-      &.left-open { left: 222px; }
+      &.left-open { left: 238px; }
       &.right-open { right: 334px; }
       .proc-chain-switch {
         display: flex; align-items: center; gap: 3px; flex: none; padding-right: 5px; border-right: 1px solid rgba(0, 229, 255, 0.3);
@@ -1698,6 +1908,83 @@ onBeforeUnmount(() => {
     }
 
     .diag-panel { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); background: rgba(7, 18, 40, 0.9); padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; z-index: 12; font-size: 11px; }
+
+    .v6-dock-summary {
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      margin-top: 6px; padding: 4px 6px; border-radius: 5px;
+      background: rgba(8, 30, 56, 0.72); border: 1px solid rgba(56, 189, 248, 0.25);
+      font-size: 10px; color: var(--text-secondary);
+      b {
+        padding: 1px 5px; border-radius: 99px; font-weight: 600;
+        background: rgba(56, 189, 248, 0.14); color: #7dd3fc;
+        &.live { background: rgba(16, 185, 129, 0.24); color: #6ee7b7; }
+      }
+    }
+
+    .cinema-tour-banner {
+      position: absolute; top: 62px; left: 50%; transform: translateX(-50%);
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 99px; z-index: 14;
+      background: rgba(7, 22, 46, 0.90); border: 1px solid rgba(245, 184, 76, 0.65);
+      color: #fef3c7; font-size: 12px; font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+      .tour-dot { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+      .tour-stop-chip {
+        padding: 2px 8px; border-radius: 99px; border: 1px solid rgba(254, 202, 202, 0.55);
+        background: rgba(185, 28, 28, 0.35); color: #fecaca; font-size: 11px; cursor: pointer;
+      }
+    }
+
+    .camera-modal-backdrop {
+      position: absolute; inset: 0; background: rgba(2, 8, 20, 0.62); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; z-index: 30;
+    }
+    .camera-modal-card {
+      width: min(640px, 92%); background: rgba(7, 20, 42, 0.96);
+      border: 1px solid rgba(56, 189, 248, 0.55); border-radius: 10px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.65); overflow: hidden;
+      .cam-modal-head {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        padding: 10px 14px; border-bottom: 1px solid var(--border-color);
+        strong { font-size: 14px; color: #f0f9ff; margin-right: 8px; }
+        .cam-proto-tag {
+          padding: 2px 7px; border-radius: 99px; font-size: 10px; font-weight: 600;
+          &.live { background: rgba(16, 185, 129, 0.25); color: #6ee7b7; }
+          &.sim { background: rgba(56, 189, 248, 0.20); color: #7dd3fc; }
+          &.isolated { background: rgba(100, 116, 139, 0.30); color: #cbd5e1; }
+        }
+      }
+      .cam-switcher-row {
+        display: flex; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap;
+        .cam-chip {
+          padding: 3px 9px; border-radius: 99px; border: 1px solid var(--border-color);
+          background: var(--bg-panel-alt); color: var(--text-secondary); font-size: 11px; cursor: pointer;
+          &.active { border-color: #38bdf8; color: #e0f2fe; background: rgba(14, 116, 144, 0.38); font-weight: 600; }
+          &.alert { border-color: #ef4444; color: #fecaca; }
+        }
+      }
+      .cam-viewport {
+        height: 290px; background: #030916; display: flex; align-items: center; justify-content: center;
+        .cam-media { width: 100%; height: 100%; object-fit: cover; border: 0; }
+        .cam-unbound-placeholder {
+          text-align: center; padding: 20px; color: #94a3b8; max-width: 520px;
+          .cam-placeholder-icon { font-size: 36px; margin-bottom: 8px; }
+          .cam-placeholder-title { font-size: 13px; color: #e0f2fe; font-weight: 600; margin-bottom: 6px; }
+          .cam-placeholder-sub { font-size: 11px; color: #7dd3fc; margin-bottom: 8px; }
+          .cam-placeholder-hint { font-size: 11px; line-height: 1.5; code { color: #fde68a; background: rgba(255, 255, 255, 0.08); padding: 1px 4px; border-radius: 3px; } }
+        }
+      }
+      .cam-ai-bar {
+        display: flex; justify-content: space-between; padding: 7px 14px;
+        background: rgba(185, 28, 28, 0.22); border-top: 1px solid rgba(239, 68, 68, 0.45);
+        font-size: 12px; color: #fecaca;
+      }
+      .cam-modal-foot {
+        display: flex; justify-content: space-between; align-items: center; padding: 9px 14px;
+        border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-secondary);
+        .cam-scs-link { color: #38bdf8; text-decoration: none; font-weight: 600; &:hover { text-decoration: underline; } }
+      }
+    }
   }
 
   .home-footer {

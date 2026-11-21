@@ -2,10 +2,14 @@
 import json
 import math
 import shutil
+import sys
 from pathlib import Path
 import bpy
 import bmesh
 from mathutils import Matrix, Vector
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from v6_blender_utils import add_signboard, attach_pbr_textures, export_merged_draco_glb, make_sign_material
 
 PROJECT = Path(r"D:\智慧仓储项目\dt-system")
 LAYOUT = json.loads((PROJECT / "apps/admin/src/twin3d/siteLayoutV4.json").read_text(encoding="utf-8"))
@@ -129,64 +133,15 @@ def local(cad_x, cad_y):
 
 
 def export_group(objects, filename, anchor=(0.0, 0.0, 0.0)):
-    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
-    temp = bpy.data.collections.new(f"EXP-{filename}")
-    bpy.context.scene.collection.children.link(temp)
-    offset_mat = Matrix.Translation(-Vector(anchor))
-    by_mat = {}
-    for src in objects:
-        if src is None or src.type != "MESH" or not src.data:
-            continue
-        mat_slot = src.data.materials[0] if src.data.materials else None
-        key = mat_slot.name if mat_slot else "default"
-        by_mat.setdefault(key, (mat_slot, []))[1].append(src)
-    if not by_mat:
-        bpy.data.collections.remove(temp)
-        raise RuntimeError(f"Empty export group: {filename}")
-    merged_objs = []
-    for key, (mat_slot, src_list) in by_mat.items():
-        bm = bmesh.new()
-        for src in src_list:
-            if src.rotation_mode == "QUATERNION":
-                rot_mat = src.rotation_quaternion.to_matrix().to_4x4()
-            else:
-                rot_mat = src.rotation_euler.to_matrix().to_4x4()
-            scale_mat = Matrix.Diagonal((src.scale.x, src.scale.y, src.scale.z, 1.0))
-            xform = offset_mat @ Matrix.Translation(src.location) @ rot_mat @ scale_mat
-            me_tmp = src.data.copy()
-            me_tmp.transform(xform)
-            bm.from_mesh(me_tmp)
-            bpy.data.meshes.remove(me_tmp)
-        me_out = bpy.data.meshes.new(f"{filename}-{key}")
-        bm.to_mesh(me_out)
-        bm.free()
-        if mat_slot:
-            me_out.materials.append(mat_slot)
-        obj_out = bpy.data.objects.new(f"{filename}-{key}", me_out)
-        temp.objects.link(obj_out)
-        merged_objs.append(obj_out)
-    bpy.ops.object.select_all(action="DESELECT")
-    for cp in merged_objs:
-        cp.select_set(True)
-    bpy.context.view_layer.objects.active = merged_objs[0]
-    bpy.ops.export_scene.gltf(
-        filepath=str(EXPORT_DIR / filename),
-        export_format="GLB",
-        use_selection=True,
-        export_materials="EXPORT",
-        export_lights=False,
-        export_cameras=False,
-        export_apply=True,
+    export_merged_draco_glb(
+        objects,
+        EXPORT_DIR / filename,
+        anchor=anchor,
+        large_scene=("ash-core" in filename),
     )
-    for cp in merged_objs:
-        me = cp.data
-        bpy.data.objects.remove(cp, do_unlink=True)
-        if me and me.users == 0:
-            bpy.data.meshes.remove(me)
-    bpy.data.collections.remove(temp)
 
 
-def add_rail_track(target, track_id, cad_y, x_min, x_max, rail_mat, tie_mat, ballast_mat):
+def add_rail_track(target, track_id, cad_y, x_min, x_max, rail_mat, tie_mat, ballast_mat, buffer_mat=None):
     lx0, ly = local(x_min, cad_y)
     lx1, _ = local(x_max, cad_y)
     length = lx1 - lx0
@@ -200,6 +155,63 @@ def add_rail_track(target, track_id, cad_y, x_min, x_max, rail_mat, tie_mat, bal
     for i in range(tie_count):
         tx = lx0 + i * length / (tie_count - 1)
         cube(target, f"{track_id}-tie", (0.26, 2.55, 0.16), (tx, ly, 0.16), tie_mat, 0.02)
+    if buffer_mat is not None:
+        bx = lx1 - 1.2
+        cube(target, f"{track_id}-buffer-beam", (0.35, 2.45, 0.42), (bx, ly, 1.25), buffer_mat, 0.03)
+        for dy in (-0.72, 0.72):
+            beam(target, f"{track_id}-buffer-leg-f-{dy:.2f}", (bx - 1.35, ly + dy, 0.32), (bx, ly + dy, 1.25), 0.16, buffer_mat)
+            beam(target, f"{track_id}-buffer-leg-b-{dy:.2f}", (bx + 1.05, ly + dy, 0.32), (bx, ly + dy, 1.25), 0.16, buffer_mat)
+
+
+def build_df7g_locomotive_actor(target, body_mat, cream_mat, yellow_mat, dark_mat, glass_mat, silver_mat, headlight_mat):
+    """Build standalone dynamic DF7G industrial diesel-electric shunting locomotive centered at local (0,0,0), heading +X."""
+    objs = [
+        # Main heavy steel underframe, side steps & yellow safety stripe
+        cube(target, "df7g-deck", (17.2, 3.28, 0.48), (0.0, 0.0, 1.32), dark_mat, 0.05),
+        cube(target, "df7g-stripe-s", (17.25, 0.09, 0.24), (0.0, -1.64, 1.34), yellow_mat),
+        cube(target, "df7g-stripe-n", (17.25, 0.09, 0.24), (0.0, 1.64, 1.34), yellow_mat),
+        cube(target, "df7g-fuel-tank", (4.9, 2.55, 0.84), (0.35, 0.0, 0.78), dark_mat, 0.06),
+        # Front (+X) long engine hood with cream railway waist band, radiator roof & exhaust stack
+        cube(target, "df7g-long-hood", (9.8, 2.18, 2.28), (2.45, 0.0, 2.68), body_mat, 0.08),
+        cube(target, "df7g-hood-band", (9.84, 2.22, 0.36), (2.45, 0.0, 2.55), cream_mat),
+        cube(target, "df7g-hood-trim", (9.86, 2.24, 0.12), (2.45, 0.0, 2.34), yellow_mat),
+        cube(target, "df7g-rad-top", (4.0, 1.68, 0.20), (4.85, 0.0, 3.90), dark_mat, 0.03),
+        cyl(target, "df7g-exhaust", 0.24, 0.58, (1.25, 0.0, 4.04), dark_mat, 18),
+        # Elevated panoramic cab + cream roof fascia + 4-side glazing + rear short hood
+        cube(target, "df7g-cab", (3.3, 2.98, 2.62), (-3.65, 0.0, 2.88), body_mat, 0.08),
+        cube(target, "df7g-cab-band", (3.34, 3.02, 0.34), (-3.65, 0.0, 2.55), cream_mat),
+        cube(target, "df7g-cab-roof", (3.55, 3.12, 0.24), (-3.65, 0.0, 4.24), silver_mat, 0.04),
+        cube(target, "df7g-cab-win-f", (0.14, 2.58, 0.88), (-1.99, 0.0, 3.48), glass_mat),
+        cube(target, "df7g-cab-win-b", (0.14, 2.58, 0.88), (-5.31, 0.0, 3.48), glass_mat),
+        cube(target, "df7g-cab-win-s", (2.25, 0.14, 0.86), (-3.65, -1.50, 3.48), glass_mat),
+        cube(target, "df7g-cab-win-n", (2.25, 0.14, 0.86), (-3.65, 1.50, 3.48), glass_mat),
+        cube(target, "df7g-short-hood", (2.7, 2.18, 1.90), (-6.65, 0.0, 2.48), body_mat, 0.08),
+        cube(target, "df7g-short-band", (2.74, 2.22, 0.34), (-6.65, 0.0, 2.48), cream_mat),
+        # Twin glowing LED headlights front (+X) & rear (-X) + roof beacon
+        cube(target, "df7g-headlight-f-top", (0.16, 0.52, 0.32), (7.40, 0.0, 3.42), headlight_mat),
+        cube(target, "df7g-headlight-f-l", (0.16, 0.32, 0.24), (8.64, -0.95, 1.56), headlight_mat),
+        cube(target, "df7g-headlight-f-r", (0.16, 0.32, 0.24), (8.64, 0.95, 1.56), headlight_mat),
+        cube(target, "df7g-headlight-b-top", (0.16, 0.48, 0.28), (-8.04, 0.0, 3.12), headlight_mat),
+        cyl(target, "df7g-roof-beacon", 0.18, 0.34, (-3.65, 0.0, 4.52), yellow_mat, 14),
+    ]
+    # Cowcatchers & heavy couplers at both ends
+    for ex in (-8.75, 8.75):
+        objs.append(cube(target, f"df7g-plow-{ex:.0f}", (0.48, 2.98, 0.68), (ex, 0.0, 0.78), yellow_mat, 0.04))
+        objs.append(cube(target, f"df7g-coupler-{ex:.0f}", (0.78, 0.46, 0.36), (ex * 1.045, 0.0, 1.05), dark_mat, 0.03))
+    # Dual 3-axle Co-Co bogies & steel wheels
+    for bx in (-5.1, 5.1):
+        objs.append(cube(target, f"df7g-bogie-{bx:.0f}", (4.5, 2.78, 0.54), (bx, 0.0, 0.78), dark_mat, 0.04))
+        for wx in (-1.58, 0.0, 1.58):
+            for wy in (-0.82, 0.82):
+                w = cyl(target, f"df7g-wheel-{bx:.0f}-{wx:.1f}-{wy:.1f}", 0.52, 0.18, (bx + wx, wy, 0.52), silver_mat, 22)
+                w.rotation_euler.x = math.radians(90)
+                objs.append(w)
+    # Full walkway safety handrails
+    for wy in (-1.54, 1.54):
+        objs.append(cube(target, f"df7g-rail-top-{wy:.1f}", (16.2, 0.06, 0.06), (0.0, wy, 2.52), yellow_mat))
+        for hx in (-7.8, -5.2, -2.0, 0.6, 3.2, 5.6, 7.8):
+            objs.append(cube(target, f"df7g-rail-post-{wy:.1f}-{hx:.1f}", (0.06, 0.06, 0.96), (hx, wy, 2.04), yellow_mat))
+    return objs
 
 
 def add_shunting_locomotive(target, cad_x, cad_y, body_mat, yellow_mat, dark_mat, glass_mat, silver_mat):
@@ -950,6 +962,20 @@ def build_all():
     bellows_canvas_mat = mat("v5_bellows_canvas", (0.722, 0.722, 0.690), metallic=0.08, roughness=0.68, emission=(0.12, 0.12, 0.11), strength=0.20) # #B8B8B0
     white_mark_mat = mat("v5_cr20_white_mark", (0.94, 0.96, 0.98), metallic=0.10, roughness=0.30, emission=(0.25, 0.26, 0.28), strength=0.35)
     led_red_glow = mat("v5_tilter_led_red", (1.0, 0.12, 0.08), metallic=0.15, roughness=0.20, emission=(1.0, 0.10, 0.05), strength=3.6)
+    loco_orange = mat("v6_df7g_orange", (0.88, 0.24, 0.10), metallic=0.34, roughness=0.32, emission=(0.24, 0.05, 0.01), strength=0.32)
+    loco_cream = mat("v6_df7g_cream", (0.94, 0.91, 0.82), metallic=0.18, roughness=0.34)
+    headlight_glow = mat("v6_df7g_headlight", (1.0, 0.96, 0.82), emission=(1.0, 0.94, 0.76), strength=5.5)
+    hazard_mat = mat("v6_bulk_hazard", (0.95, 0.74, 0.08), metallic=0.18, roughness=0.40)
+
+    # V6 Procedural PBR Texture Binding
+    attach_pbr_textures(apron_mat, albedo_file="concrete_albedo.png", rough_file="concrete_rough.png", uv_tile_m=14.0)
+    attach_pbr_textures(ballast_mat, albedo_file="ballast_albedo.png", uv_tile_m=5.0)
+    attach_pbr_textures(cement_shell_mat, albedo_file="silo_cement_albedo.png", normal_file="silo_steel_normal.png", normal_strength=0.42, uv_tile_m=10.0)
+    attach_pbr_textures(flyash_shell_mat, albedo_file="silo_flyash_albedo.png", normal_file="silo_steel_normal.png", normal_strength=0.42, uv_tile_m=10.0)
+    attach_pbr_textures(room_mat, albedo_file="corrugated_blue_albedo.png", rough_file="corrugated_rough.png", normal_file="corrugated_normal.png", normal_strength=0.46, uv_tile_m=6.0)
+    attach_pbr_textures(hazard_mat, albedo_file="hazard_stripe_albedo.png", uv_tile_m=2.2)
+    sign_cem_mat = make_sign_material("v6_sign_silo_cem", "sign_silo_cement.png", emission_strength=0.42)
+    sign_ash_mat = make_sign_material("v6_sign_silo_ash", "sign_silo_flyash.png", emission_strength=0.42)
 
     env_col = col("V5-BULK-ENV")
     # Engineered concrete floor slab strictly bounded inside Bulk Rail + Silo Yard (Y: 1503.6..1608.0, top=-0.04m — ZERO road overlap!)
@@ -969,10 +995,20 @@ def build_all():
         cube(env_col, f"bulk-gantry-rail-{key}", (rlen, 0.22, 0.24), (rcx, rly, 0.48), crane_yellow, 0.02)
 
     for t in BULK["tracks"]:
-        add_rail_track(env_col, t["id"], t["cadY"], BULK["trackRangeX"][0], BULK["trackRangeX"][1], rail_mat, tie_mat, ballast_mat)
-    # Add DF7G shunting locomotive at the west head of H1 bulk unloading track
-    add_shunting_locomotive(env_col, 3504.0, BULK["tracks"][0]["cadY"], loco_blue, crane_yellow, dark_mat, glass_mat, silver_mat)
+        add_rail_track(env_col, t["id"], t["cadY"], BULK["trackRangeX"][0], BULK["trackRangeX"][1], rail_mat, tie_mat, ballast_mat, buffer_mat=hazard_mat)
+    # Note: Track H1 active train is now pulled dynamically by standalone `df7g-locomotive-v6-medium.glb` in CesiumJS!
     add_40_silos(env_col, cement_shell_mat, flyash_shell_mat, leg_steel_mat, dark_mat, cyan_glow, emerald_mat_global, crane_yellow, silver_mat)
+    # V6 Silo Zone Physical Rooftop Fascia Signs facing South (-Y) cleanly centered BETWEEN elevator towers (ZERO obstruction!)
+    silo_south_y = min(BULK["siloRowCentersY"]) - 4.8
+    cem_sx, cem_sy = local(3815.0, silo_south_y)
+    ash_sx, ash_sy = local(3970.0, silo_south_y)
+    for tag_s, sx_s, sy_s, w_s, h_s, mat_s in (
+        ("CEMENT", cem_sx, cem_sy, 22.0, 5.4, sign_cem_mat),
+        ("FLYASH", ash_sx, ash_sy, 26.0, 5.8, sign_ash_mat),
+    ):
+        add_signboard(env_col, f"SIGN-SILO-{tag_s}", width=w_s, height=h_s, loc=(sx_s, sy_s, 37.4), sign_mat=mat_s, facing="-Y", thickness=0.26)
+        for post_dx in (-w_s * 0.34, w_s * 0.34):
+            cube(env_col, f"SIGN-SILO-{tag_s}-post-{post_dx:.0f}", (0.34, 0.34, 5.8), (sx_s + post_dx, sy_s + 0.25, 33.6), leg_steel_mat)
     add_reserved_silo_rings(env_col, reserved_mat, crane_orange)
     add_unloading_rooms_and_elevators(env_col, room_mat, leg_steel_mat, dark_mat, cyan_glow, crane_orange, crane_yellow, silver_mat, glass_mat)
 
@@ -1006,6 +1042,10 @@ def build_all():
         silver_mat,
         glass_mat,
     )
+    df7g_col = col("V6-DF7G-LOCO")
+    df7g_objs = build_df7g_locomotive_actor(
+        df7g_col, loco_orange, loco_cream, crane_yellow, dark_mat, glass_mat, silver_mat, headlight_glow
+    )
 
     assets = {
         "ash-core-v4": (list(env_col.objects), (0.0, 0.0, 0.0)),
@@ -1018,15 +1058,13 @@ def build_all():
         "tipper-bellows-chute-v5": (b_bellows, (0.0, 0.0, 0.0)),
         "silo-loader-head-v4": (l_head, (0.0, 0.0, 0.0)),
         "tank-truck-v4": (t_truck, (0.0, 0.0, 0.0)),
+        "df7g-locomotive-v6": (df7g_objs, (0.0, 0.0, 0.0)),
     }
     for key, (objs, anchor) in assets.items():
-        high_name = f"{key}-high.glb"
-        export_group(objs, high_name, anchor)
-        for lod in ("medium", "low"):
-            shutil.copy2(EXPORT_DIR / high_name, EXPORT_DIR / f"{key}-{lod}.glb")
+        export_group(objs, f"{key}-medium.glb", anchor)
 
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
-    print("BULK_V5_HIGH_DETAIL_ASSETS_EXPORTED")
+    print("BULK_V6_DRACO_PBR_ASSETS_EXPORTED")
 
 
 if __name__ == "__main__":

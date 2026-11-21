@@ -16,6 +16,14 @@ import { GltfModelProvider, type StaticSiteAsset } from './models/gltfModelProvi
 import { VehicleRouteAnimator, type VehiclePose } from './vehicleAnimator'
 import { VEHICLE_ROUTES } from './vehicleRoutes'
 import type { ProcessHighlightState } from './processTypes'
+import { DataDrivenOverlayController } from './dataDrivenOverlay'
+import {
+  formatProvenanceBadge,
+  type DeviceHealthOverlayItemV6,
+  type SafetyTwinSnapshotV6,
+  type StorageLocationStateV6,
+  type SurveillanceCameraStateV6,
+} from '@/services/twinIntegrationContracts'
 
 export interface SelectedInfo {
   id: string
@@ -27,6 +35,7 @@ export interface SelectedInfo {
 
 export interface Twin3dControllerOptions {
   onSelect?: (info: SelectedInfo | null) => void
+  onSelectCamera?: (camera: SurveillanceCameraStateV6) => void
   useProceduralFallback?: boolean
 }
 
@@ -41,6 +50,10 @@ export class Twin3dController {
   private readonly staticAssetMap = new Map<string, StaticSiteAsset>()
   private vehicleAnimator: VehicleRouteAnimator | null = null
   private gltfProvider: GltfModelProvider | null = null
+  private overlayController: DataDrivenOverlayController
+  private latestStorageMap = new Map<string, StorageLocationStateV6>()
+  private latestSafetySnapshot: SafetyTwinSnapshotV6 | null = null
+  private dustPuffEntities: Cesium.Entity[] = []
 
   // Dynamic process visualizers (overhead suction duct, workroom belt conveyor, elevator, air-slide stream, silo spout stream, laser safety beam, electronic fences, weighbridge, active vehicle beacon & bay alerts)
   private suctionFlowEntity: Cesium.Entity | null = null
@@ -61,6 +74,8 @@ export class Twin3dController {
   private siloHighlightEntity: Cesium.Entity | null = null
   private renderPumpRaf: number | null = null
   private renderPumpTimers: Array<ReturnType<typeof setTimeout>> = []
+  private startupPumpTimer: ReturnType<typeof setTimeout> | null = null
+  private startupPumpActive = false
   private lastLabelTexts = {
     gap: '',
     gapColor: '',
@@ -108,13 +123,17 @@ export class Twin3dController {
 
     if (!this.useProceduralFallback) {
       this.gltfProvider = new GltfModelProvider(this.dataSource)
+    }
+
+    this.loadAll()
+    if (!this.useProceduralFallback && this.gltfProvider) {
       for (const staticAsset of this.gltfProvider.loadEnvironment()) {
         this.staticAssetMap.set(staticAsset.placement.id, staticAsset)
       }
     }
-
-    this.loadAll()
+    this.overlayController = new DataDrivenOverlayController(viewer)
     this.initProcessVisualizers()
+    this.startStartupDracoPump()
     this.vehicleAnimator = new VehicleRouteAnimator(
       VEHICLE_ROUTES,
       (vehicleId, pose) => this.setVehiclePose(vehicleId, pose),
@@ -301,6 +320,30 @@ export class Twin3dController {
         }),
       },
     })
+
+    // 2b. V6 Lightweight Animated Bulk Powder / Dust Suppression Mist Puffs (tipper extraction & under-silo spout loading)
+    for (let i = 0; i < 4; i++) {
+      const idx = i
+      const puff = this.dataSource.entities.add({
+        id: `BULK-DUST-PUFF-${idx}`,
+        show: false,
+        position: new Cesium.CallbackPositionProperty(() => {
+          const t = ((performance.now() * 0.0012 + idx * 0.25) % 1)
+          const isSpout = this.processHighlight.spoutActive
+          const bx = isSpout ? this.processHighlight.spoutX : suctionX
+          const by = isSpout ? this.processHighlight.spoutY : southY
+          const bz = isSpout ? 4.8 - t * 1.15 : 6.1 + t * 2.1
+          const spread = Math.sin(t * Math.PI) * 0.55
+          const ang = idx * 1.57 + t * 2.4
+          return cadToCartesian3(bx + Math.cos(ang) * spread, by + Math.sin(ang) * spread, bz)
+        }, false) as unknown as Cesium.PositionProperty,
+        ellipsoid: {
+          radii: new Cesium.Cartesian3(0.48, 0.48, 0.36),
+          material: new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#E2E8F0').withAlpha(0.32)),
+        },
+      })
+      this.dustPuffEntities.push(puff)
+    }
 
     // 3. Anti-Collision Safety Distance Indicator (SCS Interlock)
     this.gapIndicatorEntity = this.dataSource.entities.add({
@@ -573,7 +616,8 @@ export class Twin3dController {
           '采集除尘收卸阀关趋纯心平穿驶往北服通放行沿向端等待轨位架垂直提横避让建压抬头竖立掀开插销微缝排气' +
           '抱臂蓝爪早严禁波纹旋风料斗接力退回平车单闭完毕复原重型满载前往一外弯' +
           '变电所沉淀池给水场坪堆放维修箱加工司机之家轮胎起重公共卫生间机电停车货运综合楼单身宿舍污水处汽车衡制卫雨棚规划缓建' +
-          '最高净空让外伸横梁月台缓缓稳脱钩先升切室接顺越垛推拉远筒务路支重出厂验通过',
+          '最高净空让外伸横梁月台缓缓稳脱钩先升切室接顺越垛推拉远筒务路支重出厂验通过' +
+          '剖视越界布防实流待接测兜底隔离钢卷机车巡游监控摄像告警旁检修实',
       ),
     ].join('')
     const prewarmPos = cadToCartesian3(SITE_LAYOUT_V4.siteShellCenter.cadX, 1625, 2.0)
@@ -625,6 +669,42 @@ export class Twin3dController {
       if (Cesium.defined(picked) && picked.id) {
         const entity = picked.id as Cesium.Entity
         const id = this.resolveRootId(entity)
+        const entType = entity.properties?.type?.getValue?.()
+        if (entType === 'scs_camera') {
+          const cam = this.overlayController.getCameraById(id)
+          if (cam) {
+            this.options.onSelectCamera?.(cam)
+            return
+          }
+        }
+        if (entType === 'silo_level_overlay' && id.startsWith('SILO-')) {
+          this.selectSilo(id)
+          return
+        }
+        if (entType === 'rebar_stock_overlay' && id.startsWith('REBAR-BAY-')) {
+          this.selectRebarBay(id)
+          return
+        }
+        if (entType === 'scs_fence_wall') {
+          const fence = this.latestSafetySnapshot?.fences.find((f) => f.fenceId === id)
+          if (fence) {
+            const badge = formatProvenanceBadge(fence.dataSource).label
+            this.options.onSelect?.({
+              id: fence.fenceId,
+              name: fence.name,
+              type: 'scs_fence',
+              statusName: fence.status === 'BREACHED' ? '越界告警' : fence.status === 'WARN' ? '防撞预警' : '电子围栏布防中',
+              params: {
+                数据溯源: `${badge} (${fence.dataSource})`,
+                缓冲安全距: `${fence.bufferDistanceM} m`,
+                围栏状态: fence.status,
+                触发对象: fence.breachTarget || '无异常闯入',
+                更新时间: fence.updatedAt,
+              },
+            })
+            return
+          }
+        }
         if (this.equipmentMap.has(id)) {
           this.selectEquipment(id)
           return
@@ -864,24 +944,27 @@ export class Twin3dController {
     if (this.siloHighlightEntity) this.siloHighlightEntity.show = true
     const idx = SITE_LAYOUT_V4.ash.silos.indexOf(silo)
     const isCement = silo.material === 'cement'
-    const fillPct = 62 + ((idx * 7) % 29)
-    const currentTons = Math.round((silo.capacityT * fillPct) / 100)
-    const levelM = ((silo.totalHeightM - 4.5) * (fillPct / 100)).toFixed(1)
-    const highLevelInterlock = fillPct >= 86 ? '高料位预警（备切相邻仓）' : '正常（联锁使能）'
+    const live = this.latestStorageMap.get(silo.id)
+    const fillPct = live ? Math.round(live.fillRatio * 100) : 62 + ((idx * 7) % 29)
+    const currentTons = live ? Math.round(live.availableTon) : Math.round((silo.capacityT * fillPct) / 100)
+    const levelM = live ? live.levelMeters.toFixed(1) : ((silo.totalHeightM - 4.5) * (fillPct / 100)).toFixed(1)
+    const highWarn = live ? live.highLevelWarning : fillPct >= 86
+    const highLevelInterlock = highWarn ? '高料位预警（备切相邻仓）' : '正常（联锁使能）'
+    const provenanceLabel = live ? `${formatProvenanceBadge(live.dataSource).label} (${live.sourceSystem})` : 'S2-WMS 预留直连'
     const info: SelectedInfo = {
       id: silo.id,
       name: `${silo.code} 3000T ${isCement ? '散装水泥筒仓' : '粉煤灰筒仓'}`,
       type: 'silo',
-      statusName: fillPct >= 86 ? '高料位预警' : '正常运行',
+      statusName: highWarn ? '高料位预警' : live?.dataSource === 'REGION_ISOLATED' ? '区域隔离' : '正常运行',
       params: {
+        数据溯源: provenanceLabel,
         仓位编码: `${silo.id}（${silo.row}排-${String(silo.col).padStart(2, '0')}列）`,
-        存储物料: isCement ? '散装水泥（堆积密度 1.3 t/m³）' : 'I级粉煤灰（堆积密度 1.1 t/m³）',
+        存储物料: live?.materialName || (isCement ? '散装水泥（堆积密度 1.3 t/m³）' : 'I级粉煤灰（堆积密度 1.1 t/m³）'),
+        批次号: live?.batchNo || '待 S2 同步',
         结构尺寸: `Φ${silo.diameterM}m × 高 ${silo.totalHeightM}m（单仓 3,000 t）`,
         实时库存: `${currentTons.toLocaleString()} t（料位 ${levelM}m / ${fillPct}%）`,
         仓顶除尘压差: `${(1.15 + (idx % 5) * 0.08).toFixed(2)} kPa（脉冲反吹正常）`,
-        流化气源压力: `${92 + (idx % 6)} kPa（罗茨风机供气）`,
         料位联锁状态: highLevelInterlock,
-        控制子系统: '散料智能入库/库底定量装车控制系统',
       },
     }
     this.options.onSelect?.(info)
@@ -893,19 +976,24 @@ export class Twin3dController {
     const bay = SITE_LAYOUT_V4.rebar.bays.find((b) => b.id === bayId)
     if (!bay) return null
     if (this.siloHighlightEntity) this.siloHighlightEntity.show = false
-    const stockTons = 1420 + bay.bayIndex * 165
+    const live = this.latestStorageMap.get(bay.id)
+    const stockTons = live ? Math.round(live.availableTon) : 1420 + bay.bayIndex * 165
+    const fillPct = live ? Math.round(live.fillRatio * 100) : Math.round((stockTons / 1800) * 100)
     const bayAreaM2 = Math.round((bay.maxX - bay.minX) * (bay.maxY - bay.minY))
+    const provenanceLabel = live ? `${formatProvenanceBadge(live.dataSource).label} (${live.sourceSystem})` : 'S2-WMS 预留直连'
     const info: SelectedInfo = {
       id: bay.id,
       name: `钢筋仓库第 ${bay.bayIndex} 跨（配属 ${bay.bridgeCraneId}）`,
       type: 'rebar_bay',
-      statusName: '在用库跨',
+      statusName: live?.highLevelWarning ? '高库存预警' : live?.dataSource === 'REGION_ISOLATED' ? '区域隔离' : '在用库跨',
       params: {
+        数据溯源: provenanceLabel,
         跨位编号: `第 ${bay.bayIndex} 跨（图纸设备号 ${bay.cadEquipmentCode}）`,
         单跨面积: `${bayAreaM2.toLocaleString()} m²（跨度 ${bay.craneSpanM}m）`,
         配属桥吊: `${bay.bridgeCraneId}（Q=${bay.craneCapacityT}t ${bay.bridgeType === 'chook_32t' ? 'C型卷材吊具' : '电磁吸盘吊具'}）`,
-        当前库存: `${stockTons.toLocaleString()} t（S2 WMS 账实同步）`,
-        主存品类: bay.bridgeType === 'chook_32t' ? '盘螺 / 热轧卷板（HRB400E）' : '定尺螺纹钢 / 型钢（Φ16~Φ32）',
+        当前库存: `${stockTons.toLocaleString()} t（${fillPct}%${live?.stackLayers != null ? ` · ${live.stackLayers} 层` : ''}）`,
+        批次号: live?.batchNo || '待 S2 同步',
+        主存品类: live?.materialName || (bay.bridgeType === 'chook_32t' ? '盘螺 / 热轧卷板（HRB400E）' : '定尺螺纹钢 / 型钢（Φ16~Φ32）'),
         安全联锁: '跨间光电防撞 + 库位电子围栏正常',
       },
     }
@@ -983,6 +1071,42 @@ export class Twin3dController {
       }
     }
     return this.selectEquipment(id)
+  }
+
+  setLightingAccentMode(preset: 'daylight' | 'dusk' | 'night') {
+    this.gltfProvider?.setLightingAccentMode(preset)
+    this.scheduleRenderPump()
+  }
+
+  setStorageOverlayVisible(visible: boolean) {
+    this.overlayController.setStorageVisible(visible)
+  }
+
+  setHealthOverlayVisible(visible: boolean) {
+    this.overlayController.setHealthVisible(visible)
+  }
+
+  setSafetyOverlayVisible(visible: boolean) {
+    this.overlayController.setSafetyVisible(visible)
+  }
+
+  syncStorageOverlay(items: StorageLocationStateV6[]) {
+    this.latestStorageMap.clear()
+    for (const item of items) this.latestStorageMap.set(item.locationId, item)
+    this.overlayController.syncStorage(items)
+  }
+
+  syncHealthOverlay(items: DeviceHealthOverlayItemV6[]) {
+    this.overlayController.syncDeviceHealth(items)
+  }
+
+  syncSafetyOverlay(snapshot: SafetyTwinSnapshotV6) {
+    this.latestSafetySnapshot = snapshot
+    this.overlayController.syncSafety(snapshot)
+  }
+
+  getSurveillanceCameras(): SurveillanceCameraStateV6[] {
+    return this.overlayController.getAllCameras()
   }
 
   setPlannedZonesVisible(visible: boolean) {
@@ -1066,6 +1190,81 @@ export class Twin3dController {
     this.gltfProvider?.setStaticVisible(id, visible)
   }
 
+  private finishStartupDracoPump() {
+    this.startupPumpActive = false
+    if (this.startupPumpTimer) {
+      clearTimeout(this.startupPumpTimer)
+      this.startupPumpTimer = null
+    }
+    if (!this.viewer.isDestroyed()) {
+      this.viewer.scene.requestRender()
+    }
+  }
+
+  private startStartupDracoPump() {
+    // Under requestRenderMode=true, CesiumJS advances async Draco WASM + WebP texture uploads during render ticks.
+    // Use a self-paced post-frame loop (requestRender -> wait for frame + 55ms worker breathing room) so Draco workers
+    // never starve on CPU software WebGL while still converging in ~1.5-3s on hardware GPUs, then stops automatically.
+    this.finishStartupDracoPump()
+    if (this.viewer.isDestroyed()) return
+    this.startupPumpActive = true
+
+    let ticks = 0
+    let readySettleTicks = 0
+
+    const inspectVisibleModels = (col: unknown): { total: number; pending: number } => {
+      let total = 0
+      let pending = 0
+      const c = col as { length?: number; get?: (i: number) => unknown } | null | undefined
+      if (!c || typeof c.length !== 'number' || typeof c.get !== 'function') return { total, pending }
+      for (let i = 0; i < c.length; i += 1) {
+        const item = c.get(i) as { ready?: unknown; show?: unknown; length?: number; get?: (j: number) => unknown } | null | undefined
+        if (!item) continue
+        if (typeof item.ready === 'boolean') {
+          if (item.show === false) continue
+          total += 1
+          if (!item.ready) pending += 1
+        } else if (typeof item.length === 'number' && typeof item.get === 'function') {
+          const sub = inspectVisibleModels(item)
+          total += sub.total
+          pending += sub.pending
+        }
+      }
+      return { total, pending }
+    }
+
+    const step = () => {
+      if (!this.startupPumpActive || this.viewer.isDestroyed()) {
+        this.finishStartupDracoPump()
+        return
+      }
+      ticks += 1
+      this.viewer.scene.requestRender()
+
+      if (ticks >= 6) {
+        const { total, pending } = inspectVisibleModels(this.viewer.scene.primitives)
+        if (total >= 15 && pending === 0) {
+          readySettleTicks += 1
+        } else {
+          readySettleTicks = 0
+        }
+      }
+
+      if (readySettleTicks >= 3 || ticks >= 220) {
+        this.finishStartupDracoPump()
+        return
+      }
+
+      // Wait for next animation frame (ensuring the requested render completes) + 55ms worker breathing slice
+      requestAnimationFrame(() => {
+        if (!this.startupPumpActive) return
+        this.startupPumpTimer = setTimeout(step, 55)
+      })
+    }
+
+    this.startupPumpTimer = setTimeout(step, 40)
+  }
+
   private scheduleRenderPump() {
     this.viewer.scene.requestRender()
     if (this.renderPumpRaf === null) {
@@ -1101,6 +1300,8 @@ export class Twin3dController {
     if (this.elevFlowEntity) this.elevFlowEntity.show = this.processHighlight.elevatorActive
     if (this.slideFlowEntity) this.slideFlowEntity.show = this.processHighlight.airSlideActive
     if (this.spoutStreamEntity) this.spoutStreamEntity.show = this.processHighlight.spoutActive
+    const dustActive = this.processHighlight.suctionPipeActive || this.processHighlight.spoutActive
+    for (const puff of this.dustPuffEntities) puff.show = dustActive
     if (this.gapIndicatorEntity) {
       const nextShow = this.processHighlight.antiCollisionActive
       if (this.gapIndicatorEntity.show !== nextShow) labelUpdated = true
@@ -1236,10 +1437,12 @@ export class Twin3dController {
 
   destroy() {
     this.stopMockSimulation()
+    this.finishStartupDracoPump()
     if (this.renderPumpRaf !== null) cancelAnimationFrame(this.renderPumpRaf)
     for (const timer of this.renderPumpTimers) clearTimeout(timer)
     this.renderPumpTimers = []
     this.vehicleAnimator?.stop()
+    this.overlayController.destroy()
     this.viewer.dataSources.remove(this.dataSource)
   }
 }

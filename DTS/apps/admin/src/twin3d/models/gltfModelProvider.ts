@@ -115,6 +115,7 @@ const MODEL_KEY_BY_TYPE: Partial<Record<PlacementType, string>> = {
 export class GltfModelProvider {
   private readonly dataSource: Cesium.CustomDataSource
   private readonly staticAssets = new Map<string, StaticSiteAsset>()
+  private readonly nightAccentEntities: Array<{ entity: Cesium.Entity; baseRadius: number; nightRadius: number; isNightPool?: boolean }> = []
   private activeContainerDoors = { leftDoorDeg: 0, rightDoorDeg: 0 }
 
   constructor(dataSource: Cesium.CustomDataSource) {
@@ -129,9 +130,6 @@ export class GltfModelProvider {
     }
     const result: StaticSiteAsset[] = []
     const siteShell = getPlacement('ENV-SITE-SHELL-01')
-    if (siteShell) result.push(this.registerStatic(siteShell, 'site-shell'))
-    result.push(this.registerStatic(rebarEnvironment, 'core-environment'))
-    result.push(this.registerStatic(ashEnvironment, 'ash-environment'))
 
     for (const placement of CORE_PLACEMENTS.filter(
       (item) =>
@@ -185,6 +183,70 @@ export class GltfModelProvider {
       ),
     )
 
+    // V6 Dedicated 32t Hot-Rolled Steel Coil Actor (`steel-coil-v6`, auto-swapped when switching to 03跨 C型卷材钩!)
+    result.push(
+      this.registerStatic(
+        {
+          id: 'CARGO-COIL-ACTIVE',
+          name: '32t 热轧钢卷（03跨 C型钩专用）',
+          type: 'bulk_container',
+          zone: 'rebar_corridor',
+          state: 'existing',
+          cadX: SITE_LAYOUT_V4.rebar.bays[2].cadX,
+          cadY: SITE_LAYOUT_V4.rebar.tracks[0].cadY,
+          height: 2.02,
+          headingDeg: 0,
+          source: 'simulation-route',
+          confidence: 'confirmed',
+          notes: '32t 卧式热轧钢卷与 V 型防滑鞍座，专供 03 跨 C 型吊具联合吊装演示',
+        },
+        'steel-coil',
+      ),
+    )
+    this.setStaticVisible('CARGO-COIL-ACTIVE', false)
+
+    // V6 Dynamic DF7G Diesel-Electric Shunting Locomotives pulling both Steel (货4) and Bulk (货2) trains!
+    const steelTrackY = SITE_LAYOUT_V4.rebar.tracks[0].cadY
+    const bulkTrackY = SITE_LAYOUT_V4.ash.tracks[1]?.cadY ?? SITE_LAYOUT_V4.ash.tracks[0].cadY
+    result.push(
+      this.registerStatic(
+        {
+          id: 'LOCO-STEEL-01',
+          name: 'DF7G 内燃调车机车（钢材专列牵引）',
+          type: 'wagon',
+          zone: 'rebar_corridor',
+          state: 'existing',
+          cadX: SITE_LAYOUT_V4.rebar.bays[6].cadX + 31.6,
+          cadY: steelTrackY,
+          height: 0.25,
+          headingDeg: 0,
+          source: 'simulation-route',
+          confidence: 'confirmed',
+          notes: '牵引货4线露天钢材平车编组进站调车机车',
+        },
+        'df7g-locomotive',
+      ),
+    )
+    result.push(
+      this.registerStatic(
+        {
+          id: 'LOCO-BULK-01',
+          name: 'DF7G 内燃调车机车（散料专列牵引）',
+          type: 'wagon',
+          zone: 'ash_corridor',
+          state: 'existing',
+          cadX: (SITE_LAYOUT_V4.ash.unloadingComplexes[0].tipperParkX ?? 3799.2) + 33.2,
+          cadY: bulkTrackY,
+          height: 0.25,
+          headingDeg: 0,
+          source: 'simulation-route',
+          confidence: 'confirmed',
+          notes: '牵引散料 20 英尺集装箱专列进站调车机车',
+        },
+        'df7g-locomotive',
+      ),
+    )
+
     this.addNightSceneAccents()
     this.addSiteBuildingLabels()
     for (const planned of STATION_PLACEMENTS.filter((item) => item.state === 'planned')) {
@@ -197,6 +259,13 @@ export class GltfModelProvider {
       this.staticAssets.set(planned.id, asset)
       result.push(asset)
     }
+
+    // Register the 3 primary site environment GLBs LAST so CesiumJS's LIFO Draco/WebP queue
+    // decodes & displays the full station shell, 40 silos, and 13-bay rebar warehouse FIRST!
+    result.push(this.registerStatic(ashEnvironment, 'ash-environment'))
+    result.push(this.registerStatic(rebarEnvironment, 'core-environment'))
+    if (siteShell) result.push(this.registerStatic(siteShell, 'site-shell'))
+
     return result
   }
 
@@ -751,31 +820,78 @@ export class GltfModelProvider {
   private addNightSceneAccents(): void {
     const warmLight = Cesium.Color.fromCssColorString('#FFB45C')
     const coolLight = Cesium.Color.fromCssColorString('#78D7FF')
-    const accents: Array<{ id: string; cadX: number; cadY: number; height: number; color: Cesium.Color; size?: number }> = [
-      { id: 'NIGHT-REBAR-01', cadX: 3560, cadY: 1632, height: 14, color: warmLight },
-      { id: 'NIGHT-REBAR-02', cadX: 3680, cadY: 1632, height: 14, color: warmLight },
-      { id: 'NIGHT-REBAR-03', cadX: 3751, cadY: 1632, height: 14, color: warmLight },
-      { id: 'NIGHT-REBAR-04', cadX: 3860, cadY: 1632, height: 14, color: warmLight },
-      { id: 'NIGHT-REBAR-05', cadX: 3940, cadY: 1632, height: 14, color: warmLight },
-      { id: 'NIGHT-WH-01', cadX: 3600, cadY: 1704, height: 16, color: coolLight, size: 0.36 },
-      { id: 'NIGHT-WH-02', cadX: 3720, cadY: 1704, height: 16, color: coolLight, size: 0.36 },
-      { id: 'NIGHT-WH-03', cadX: 3840, cadY: 1704, height: 16, color: coolLight, size: 0.36 },
-      { id: 'NIGHT-ASH-01', cadX: 3781, cadY: 1510, height: 12, color: warmLight },
-      { id: 'NIGHT-ASH-02', cadX: 3851, cadY: 1510, height: 12, color: warmLight },
-      { id: 'NIGHT-ASH-03', cadX: 3935, cadY: 1510, height: 12, color: warmLight },
-      { id: 'NIGHT-ASH-04', cadX: 4005, cadY: 1510, height: 12, color: warmLight },
+    const mastLight = Cesium.Color.fromCssColorString('#FFE6A3')
+    const accents: Array<{ id: string; cadX: number; cadY: number; height: number; color: Cesium.Color; size?: number; nightSize?: number; pool?: boolean }> = [
+      { id: 'NIGHT-REBAR-01', cadX: 3560, cadY: 1632, height: 14, color: warmLight, size: 0.42, nightSize: 1.45 },
+      { id: 'NIGHT-REBAR-02', cadX: 3680, cadY: 1632, height: 14, color: warmLight, size: 0.42, nightSize: 1.45 },
+      { id: 'NIGHT-REBAR-03', cadX: 3751, cadY: 1632, height: 14, color: warmLight, size: 0.42, nightSize: 1.45 },
+      { id: 'NIGHT-REBAR-04', cadX: 3860, cadY: 1632, height: 14, color: warmLight, size: 0.42, nightSize: 1.45 },
+      { id: 'NIGHT-REBAR-05', cadX: 3940, cadY: 1632, height: 14, color: warmLight, size: 0.42, nightSize: 1.45 },
+      { id: 'NIGHT-WH-01', cadX: 3600, cadY: 1704, height: 16, color: coolLight, size: 0.36, nightSize: 1.85 },
+      { id: 'NIGHT-WH-02', cadX: 3720, cadY: 1704, height: 16, color: coolLight, size: 0.36, nightSize: 1.85 },
+      { id: 'NIGHT-WH-03', cadX: 3840, cadY: 1704, height: 16, color: coolLight, size: 0.36, nightSize: 1.85 },
+      { id: 'NIGHT-ASH-01', cadX: 3781, cadY: 1510, height: 12, color: warmLight, size: 0.42, nightSize: 1.45 },
+      { id: 'NIGHT-ASH-02', cadX: 3851, cadY: 1510, height: 12, color: warmLight, size: 0.42, nightSize: 1.45 },
+      { id: 'NIGHT-ASH-03', cadX: 3935, cadY: 1510, height: 12, color: warmLight, size: 0.42, nightSize: 1.45 },
+      { id: 'NIGHT-ASH-04', cadX: 4005, cadY: 1510, height: 12, color: warmLight, size: 0.42, nightSize: 1.45 },
+      // 8 × 25m High-Mast Floodlight Towers (aligned 1:1 with build_site_shell_v4.py tower_coords)
+      { id: 'NIGHT-MAST-01', cadX: 3515, cadY: 1604, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
+      { id: 'NIGHT-MAST-02', cadX: 3760, cadY: 1604, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
+      { id: 'NIGHT-MAST-03', cadX: 4020, cadY: 1604, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
+      { id: 'NIGHT-MAST-04', cadX: 4280, cadY: 1604, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
+      { id: 'NIGHT-MAST-05', cadX: 3515, cadY: 1736, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
+      { id: 'NIGHT-MAST-06', cadX: 3780, cadY: 1736, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
+      { id: 'NIGHT-MAST-07', cadX: 3985, cadY: 1768, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
+      { id: 'NIGHT-MAST-08', cadX: 4345, cadY: 1604, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
     ]
 
     for (const accent of accents) {
-      this.dataSource.entities.add({
+      const baseR = accent.size ?? 0.44
+      const nightR = accent.nightSize ?? baseR * 2.5
+      const entity = this.dataSource.entities.add({
         id: accent.id,
         position: cadToCartesian3(accent.cadX, accent.cadY, accent.height),
         ellipsoid: {
-          radii: new Cesium.Cartesian3(accent.size ?? 0.44, accent.size ?? 0.44, accent.size ?? 0.44),
+          radii: new Cesium.Cartesian3(baseR, baseR, baseR),
           material: new Cesium.ColorMaterialProperty(accent.color.withAlpha(0.92)),
         },
         properties: { type: 'night_light', parent: 'ENV-CORE-01', state: 'existing' },
       })
+      this.nightAccentEntities.push({ entity, baseRadius: baseR, nightRadius: nightR })
+
+      if (accent.pool) {
+        const poolEntity = this.dataSource.entities.add({
+          id: `${accent.id}-POOL`,
+          show: false,
+          position: cadToCartesian3(accent.cadX, accent.cadY, 0.06),
+          cylinder: {
+            length: 0.08,
+            topRadius: 14,
+            bottomRadius: 18,
+            material: new Cesium.ColorMaterialProperty(mastLight.withAlpha(0.06)),
+          },
+          properties: { type: 'night_light_pool', parent: 'ENV-CORE-01', state: 'existing' },
+        })
+        this.nightAccentEntities.push({ entity: poolEntity, baseRadius: 14, nightRadius: 18, isNightPool: true })
+      }
+    }
+  }
+
+  setLightingAccentMode(preset: 'daylight' | 'dusk' | 'night'): void {
+    const isNight = preset === 'night'
+    const isDusk = preset === 'dusk'
+    for (const item of this.nightAccentEntities) {
+      if (item.isNightPool) {
+        item.entity.show = isNight || isDusk
+        if (item.entity.cylinder) {
+          item.entity.cylinder.material = new Cesium.ColorMaterialProperty(
+            Cesium.Color.fromCssColorString(isNight ? '#FFE08A' : '#FFB86C').withAlpha(isNight ? 0.075 : 0.04),
+          )
+        }
+      } else if (item.entity.ellipsoid) {
+        const r = isNight ? item.nightRadius : isDusk ? (item.baseRadius + item.nightRadius) * 0.52 : item.baseRadius
+        item.entity.ellipsoid.radii = new Cesium.ConstantProperty(new Cesium.Cartesian3(r, r, r))
+      }
     }
   }
 

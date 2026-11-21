@@ -5,10 +5,14 @@ strictly surveyed from D:\\智慧仓储项目\\给大连大.dwg (dalian.dxf) in 
 import json
 import math
 import shutil
+import sys
 from pathlib import Path
 import bpy
 import bmesh
 from mathutils import Matrix, Vector
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from v6_blender_utils import add_signboard, attach_pbr_textures, export_merged_draco_glb, make_sign_material
 
 PROJECT = Path(r"D:\智慧仓储项目\dt-system")
 LAYOUT = json.loads((PROJECT / "apps/admin/src/twin3d/siteLayoutV4.json").read_text(encoding="utf-8"))
@@ -401,59 +405,13 @@ def add_angled_weighbridge(target, wb, dark_mat, silver_mat, yellow_mat, curb_ma
 
 
 def export_collection_merged(source_col, filename_base, anchor_local=(0.0, 0.0, 0.0)):
-    """Merge objects by material, translate by -anchor_local, and export high/medium/low GLBs."""
-    temp = bpy.data.collections.new(f"EXP-{filename_base}")
-    bpy.context.scene.collection.children.link(temp)
-    by_mat = {}
-    for src in list(source_col.objects):
-        if src is None or src.type != "MESH" or not src.data:
-            continue
-        mat_slot = src.data.materials[0] if src.data.materials else None
-        key = mat_slot.name if mat_slot else "default"
-        by_mat.setdefault(key, (mat_slot, []))[1].append(src)
-    ax, ay, az = anchor_local
-    shift = Matrix.Translation((-ax, -ay, -az))
-    merged_objs = []
-    for key, (mat_slot, src_list) in by_mat.items():
-        bm = bmesh.new()
-        for src in src_list:
-            rot_mat = src.rotation_quaternion.to_matrix().to_4x4() if src.rotation_mode == "QUATERNION" else src.rotation_euler.to_matrix().to_4x4()
-            scale_mat = Matrix.Diagonal((src.scale.x, src.scale.y, src.scale.z, 1.0))
-            xform = shift @ Matrix.Translation(src.location) @ rot_mat @ scale_mat
-            me_tmp = src.data.copy()
-            me_tmp.transform(xform)
-            bm.from_mesh(me_tmp)
-            bpy.data.meshes.remove(me_tmp)
-        me_out = bpy.data.meshes.new(f"{filename_base}-{key}")
-        bm.to_mesh(me_out)
-        bm.free()
-        if mat_slot:
-            me_out.materials.append(mat_slot)
-        obj_out = bpy.data.objects.new(f"{filename_base}-{key}", me_out)
-        temp.objects.link(obj_out)
-        merged_objs.append(obj_out)
-    bpy.ops.object.select_all(action="DESELECT")
-    for cp in merged_objs:
-        cp.select_set(True)
-    bpy.context.view_layer.objects.active = merged_objs[0]
-    high_path = EXPORT_DIR / f"{filename_base}-high.glb"
-    bpy.ops.export_scene.gltf(
-        filepath=str(high_path),
-        export_format="GLB",
-        use_selection=True,
-        export_materials="EXPORT",
-        export_lights=False,
-        export_cameras=False,
-        export_apply=True,
+    """Merge objects by material, project V6 box-UVs, and export Draco-compressed GLB (-medium.glb)."""
+    export_merged_draco_glb(
+        list(source_col.objects),
+        EXPORT_DIR / f"{filename_base}-medium.glb",
+        anchor=anchor_local,
+        large_scene=(filename_base == "site-shell-v4"),
     )
-    for cp in merged_objs:
-        me = cp.data
-        bpy.data.objects.remove(cp, do_unlink=True)
-        if me and me.users == 0:
-            bpy.data.meshes.remove(me)
-    bpy.data.collections.remove(temp)
-    for lod in ("medium", "low"):
-        shutil.copy2(high_path, EXPORT_DIR / f"{filename_base}-{lod}.glb")
 
 
 def build_planned_warehouse_mesh(target_col, tag, w, d, cx, cy, wall_mat, roof_mat, trim_mat, glass_mat, silver_mat, dark_mat):
@@ -522,18 +480,36 @@ def build_all():
     car_navy = mat("v5_car_navy", (0.16, 0.26, 0.42), metallic=0.35, roughness=0.32)
     car_red = mat("v5_car_red", (0.68, 0.18, 0.18), metallic=0.30, roughness=0.34)
     lamp_mat = mat("v5_highmast_lamp", (1.0, 0.92, 0.72), emission=(1.0, 0.88, 0.62), strength=5.0)
+    horizon_inner_mat = mat("v6_horizon_inner", (0.075, 0.105, 0.155), metallic=0.02, roughness=0.94)
+    horizon_outer_mat = mat("v6_horizon_outer", (0.048, 0.072, 0.118), metallic=0.01, roughness=0.98)
+    gate_sign_mat = make_sign_material("v6_sign_east_gate", "sign_east_gate.png", emission_strength=0.48)
+
+    # V6 Procedural PBR Texture Binding (Box-UV projected automatically during Draco export!)
+    attach_pbr_textures(road_mat, albedo_file="asphalt_albedo.png", rough_file="asphalt_rough.png", uv_tile_m=10.0)
+    attach_pbr_textures(silo_road_mat, albedo_file="asphalt_albedo.png", rough_file="asphalt_rough.png", uv_tile_m=10.0)
+    attach_pbr_textures(apron_mat, albedo_file="concrete_albedo.png", rough_file="concrete_rough.png", uv_tile_m=16.0)
+    attach_pbr_textures(plaza_mat, albedo_file="concrete_albedo.png", rough_file="concrete_rough.png", uv_tile_m=12.0)
+    attach_pbr_textures(bldg_wall, albedo_file="corrugated_blue_albedo.png", rough_file="corrugated_rough.png", normal_file="corrugated_normal.png", normal_strength=0.45, uv_tile_m=6.0)
+    attach_pbr_textures(shed_blue, albedo_file="corrugated_blue_albedo.png", rough_file="corrugated_rough.png", normal_file="corrugated_normal.png", normal_strength=0.50, uv_tile_m=6.0)
+    attach_pbr_textures(bldg_roof, albedo_file="corrugated_roof_albedo.png", rough_file="corrugated_rough.png", normal_file="corrugated_normal.png", normal_strength=0.45, uv_tile_m=6.0)
+    attach_pbr_textures(planned_roof, albedo_file="corrugated_roof_albedo.png", rough_file="corrugated_rough.png", normal_file="corrugated_normal.png", normal_strength=0.40, uv_tile_m=6.0)
 
     shell = col("V5-SITE-SHELL")
 
     # =========================================================================
-    # 1. STRICT LAYERED GROUND HIERARCHY (PRESERVED 100% FROM V5.3 — ZERO Z-FIGHTING!)
+    # 1. STRICT LAYERED GROUND HIERARCHY + SOFT HORIZON CONTEXT APRON (ZERO Z-FIGHTING!)
     # =========================================================================
+    cube(shell, "site-horizon-skirt-outer", (3600.0, 2200.0, 0.30), (18.0, 4.0, -1.24), horizon_outer_mat)
+    cube(shell, "site-horizon-skirt-inner", (2150.0, 1180.0, 0.30), (18.0, 4.0, -0.92), horizon_inner_mat)
     cube(shell, "site-ground-base", (1420.0, 460.0, 0.40), (18.0, 4.0, -0.56), ground_mat, 0.04)
     cube(shell, "site-apron-main", (1280.0, 385.0, 0.18), (15.0, 5.0, -0.35), apron_mat, 0.03)
     cube(shell, "site-perimeter-n", (1260.0, 0.45, 1.8), (15.0, 198.0, 0.58), bldg_wall)
     cube(shell, "site-perimeter-s", (1260.0, 0.45, 1.8), (15.0, -195.0, 0.58), bldg_wall)
     cube(shell, "site-perimeter-cap-n", (1260.0, 0.55, 0.18), (15.0, 198.0, 1.53), cyan_mat)
     cube(shell, "site-perimeter-cap-s", (1260.0, 0.55, 0.18), (15.0, -195.0, 1.53), cyan_mat)
+    for fx_p in range(-600, 631, 35):
+        cube(shell, f"site-fence-post-n-{fx_p}", (0.28, 0.58, 2.25), (15.0 + fx_p, 198.0, 0.80), silver_mat)
+        cube(shell, f"site-fence-post-s-{fx_p}", (0.28, 0.58, 2.25), (15.0 + fx_p, -195.0, 0.80), silver_mat)
 
     # =========================================================================
     # 2. TRUE CAD ROAD NETWORK (PRESERVED 100% UNCHANGED FROM V5.3!)
@@ -946,6 +922,19 @@ def build_all():
     # 40m Sweeping East Main Gate Canopy (`A-ROOF`) elevated cleanly at Z=7.25..8.40m (ZERO interference with trucks!)
     extrude_cad_poly(shell, "GATE-CANOPY-roof", gd["canopyPolygon"], 7.25, 8.25, office_wall)
     extrude_cad_poly(shell, "GATE-CANOPY-fascia", gd["canopyPolygon"], 8.25, 8.58, cyan_mat)
+    # Physical Station Nameplate mounted cleanly on the East Gate Canopy fascia (`川藏铁路智慧货运示范场站`)
+    gate_sign_x, gate_sign_y = local(4579.6, 1628.2)
+    add_signboard(
+        shell,
+        "GATE-STATION-SIGN",
+        width=22.0,
+        height=3.4,
+        loc=(gate_sign_x, gate_sign_y, 9.65),
+        sign_mat=gate_sign_mat,
+        facing="+X",
+        rot_z=math.radians(10.95),
+        thickness=0.22,
+    )
     # Clear-span steel portal piers placed strictly OFF the entry/exit asphalt roadway (North pier at guardhouse, South pier on triangular green island)!
     gate_ang = math.radians(10.95)
     for pi, (px_c, py_c) in enumerate((

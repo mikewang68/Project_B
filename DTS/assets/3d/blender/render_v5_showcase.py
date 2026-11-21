@@ -55,52 +55,70 @@ def import_glb_at(glb_name, loc=(0, 0, 0), rot_deg=(0, 0, 0), scale=(1, 1, 1)):
 
 SITE_CX = (3310.68 + 4584.14) / 2.0
 SITE_CY = (1487.79 + 1873.79) / 2.0
-import_glb_at("site-shell-v4-high.glb", cad_to_scene(SITE_CX, SITE_CY, 0.0))
-import_glb_at("rebar-core-v4-high.glb", cad_to_scene(REF_X, REF_Y, 0.0))
+import_glb_at("site-shell-v4-medium.glb", cad_to_scene(SITE_CX, SITE_CY, 0.0))
+import_glb_at("rebar-core-v4-medium.glb", cad_to_scene(REF_X, REF_Y, 0.0))
 ASH_OX, ASH_OY = LAYOUT["ash"]["origin"]
-import_glb_at("ash-core-v4-high.glb", cad_to_scene(ASH_OX, ASH_OY, 0.0))
+import_glb_at("ash-core-v4-medium.glb", cad_to_scene(ASH_OX, ASH_OY, 0.0))
 
 for g in LAYOUT["rebar"]["gantries"]:
     gx, gy = g["cadX"], g["cadY"]
-    import_glb_at("rebar-gantry-frame-v4-high.glb", cad_to_scene(gx, gy, 0.0))
-    import_glb_at("rebar-gantry-trolley-v4-high.glb", cad_to_scene(gx, gy + 4.0, 24.1))
-    import_glb_at("rebar-gantry-hoist-v4-high.glb", cad_to_scene(gx, gy + 4.0, 10.5))
-    import_glb_at("steel-cargo-v4-high.glb", cad_to_scene(gx, gy + 4.0, 9.2))
+    import_glb_at("rebar-gantry-frame-v4-medium.glb", cad_to_scene(gx, gy, 0.0))
+    import_glb_at("rebar-gantry-trolley-v4-medium.glb", cad_to_scene(gx, gy + 4.0, 24.1))
+    import_glb_at("rebar-gantry-hoist-v4-medium.glb", cad_to_scene(gx, gy + 4.0, 14.5))
+    import_glb_at("steel-cargo-v4-medium.glb", cad_to_scene(gx, gy + 4.0, 13.0))
 
 for g in LAYOUT["ash"]["bulkGantries"]:
     gx, gy = g["cadX"], g["cadY"]
-    import_glb_at("rebar-gantry-frame-v4-high.glb", cad_to_scene(gx, gy, 0.0))
-    import_glb_at("rebar-gantry-trolley-v4-high.glb", cad_to_scene(gx, gy - 2.0, 24.1))
-    import_glb_at("rebar-gantry-hoist-v4-high.glb", cad_to_scene(gx, gy - 2.0, 11.0))
-    import_glb_at("bulk-container-v4-high.glb", cad_to_scene(gx, gy - 2.0, 8.2))
+    import_glb_at("rebar-gantry-frame-v4-medium.glb", cad_to_scene(gx, gy, 0.0))
+    import_glb_at("rebar-gantry-trolley-v4-medium.glb", cad_to_scene(gx, gy - 2.0, 24.1))
+    import_glb_at("rebar-gantry-hoist-v4-medium.glb", cad_to_scene(gx, gy - 2.0, 12.0))
+    import_glb_at("bulk-container-v4-medium.glb", cad_to_scene(gx, gy - 2.0, 9.2))
 
 for idx, u in enumerate(LAYOUT["ash"]["unloadingComplexes"]):
-    tx, ty = u["tipperUnloadX"], u["tipperRailY"]
-    import_glb_at("mobile-tipper-frame-v4-high.glb", cad_to_scene(tx, ty, 0.0))
-    tilt = -35.0 if idx in (0, 1) else 0.0
-    import_glb_at("mobile-tipper-cradle-v4-high.glb", cad_to_scene(tx, ty + 1.85, 3.2), rot_deg=(tilt, 0, 0))
-    import_glb_at("bulk-container-v4-high.glb", cad_to_scene(tx, ty + 0.2, 3.1 if tilt == 0 else 4.2), rot_deg=(tilt, 0, 0))
+    tx = u["tipperUnloadX"]
+    for bay_idx, ty in enumerate((u["tipperRailY"], u.get("tipperNorthRailY", 1529.55))):
+        import_glb_at("mobile-tipper-frame-v4-medium.glb", cad_to_scene(tx, ty, 0.0))
+        if idx == 0 and bay_idx == 0:
+            import_glb_at("mobile-tipper-cradle-v4-medium.glb", cad_to_scene(tx - 0.43, ty, 3.20), rot_deg=(0, -90, 0))
+            import_glb_at("mobile-tipper-claws-v5-medium.glb", cad_to_scene(tx - 0.43, ty, 3.38), rot_deg=(0, -90, 0))
+            import_glb_at("bulk-container-v4-medium.glb", cad_to_scene(tx + 0.97, ty, 3.63), rot_deg=(0, -90, 0))
+            import_glb_at("bulk-container-door-l-v5-medium.glb", cad_to_scene(tx + 0.97, ty - 1.219, 6.659), rot_deg=(-92, -90, 0))
+            import_glb_at("bulk-container-door-r-v5-medium.glb", cad_to_scene(tx + 0.97, ty + 1.219, 6.659), rot_deg=(92, -90, 0))
+            import_glb_at("tipper-bellows-chute-v5-medium.glb", cad_to_scene(tx - 0.33, ty, 6.35))
+        else:
+            px = u["tipperParkX"] if bay_idx == 1 and idx > 0 else tx
+            import_glb_at("mobile-tipper-cradle-v4-medium.glb", cad_to_scene(px - 0.43, ty, 3.20), rot_deg=(0, 0, 0))
+            import_glb_at("mobile-tipper-claws-v5-medium.glb", cad_to_scene(px - 0.43, ty, 3.20), rot_deg=(0, 0, 0))
+            import_glb_at("bulk-container-v4-medium.glb", cad_to_scene(px, ty, 1.80), rot_deg=(0, 0, 0))
+            import_glb_at("bulk-container-door-l-v5-medium.glb", cad_to_scene(px + 3.029, ty - 1.219, 1.80), rot_deg=(0, 0, 0))
+            import_glb_at("bulk-container-door-r-v5-medium.glb", cad_to_scene(px + 3.029, ty + 1.219, 1.80), rot_deg=(0, 0, -6 if idx == 0 else 0))
+            import_glb_at("tipper-bellows-chute-v5-medium.glb", cad_to_scene(tx - 0.33, ty, 7.25))
 
 for b in LAYOUT["rebar"]["bays"][::2]:
     bx, by = b["cadX"], b["bridgeParkY"]
     rz = b["railHeightM"]
-    import_glb_at("bridge-crane-frame-v4-high.glb", cad_to_scene(bx, by, rz))
-    import_glb_at("bridge-crane-trolley-v4-high.glb", cad_to_scene(bx, by, rz + 2.2))
-    hoist_glb = "bridge-crane-chook-hoist-v4-high.glb" if b["bridgeType"] == "chook_32t" else "bridge-crane-magnet-hoist-v4-high.glb"
+    import_glb_at("bridge-crane-frame-v4-medium.glb", cad_to_scene(bx, by, rz))
+    import_glb_at("bridge-crane-trolley-v4-medium.glb", cad_to_scene(bx, by, rz + 2.2))
+    hoist_glb = "bridge-crane-chook-hoist-v4-medium.glb" if b["bridgeType"] == "chook_32t" else "bridge-crane-magnet-hoist-v4-medium.glb"
     import_glb_at(hoist_glb, cad_to_scene(bx, by, rz - 3.2))
+    if b["bridgeType"] == "chook_32t":
+        import_glb_at("steel-coil-v6-medium.glb", cad_to_scene(bx, by, rz - 5.5))
 
 h4_y = LAYOUT["rebar"]["tracks"][0]["cadY"]
 h1_y = LAYOUT["ash"]["tracks"][0]["cadY"]
+# V6 Standalone DF7G Shunting Locomotives pulling both bulk & steel trains!
+import_glb_at("df7g-locomotive-v6-medium.glb", cad_to_scene(3504.0, h1_y, 0.25))
+import_glb_at("df7g-locomotive-v6-medium.glb", cad_to_scene(3504.0, h4_y, 0.25))
 for i in range(10):
-    import_glb_at("rebar-wagon-v4-high.glb", cad_to_scene(3524.0 + i * 15.2, h4_y, 0.25))
-    import_glb_at("rebar-wagon-v4-high.glb", cad_to_scene(3524.0 + i * 15.2, h1_y, 0.25))
-    import_glb_at("bulk-container-v4-high.glb", cad_to_scene(3524.0 + i * 15.2, h1_y, 1.65))
+    import_glb_at("rebar-wagon-v4-medium.glb", cad_to_scene(3524.0 + i * 15.2, h4_y, 0.25))
+    import_glb_at("rebar-wagon-empty-v5-medium.glb", cad_to_scene(3524.0 + i * 15.2, h1_y, 0.25))
+    import_glb_at("bulk-container-v4-medium.glb", cad_to_scene(3524.0 + i * 15.2, h1_y, 1.65))
 
 for tx_cad in (3764.0, 3820.0, 3890.0, 3960.0):
-    import_glb_at("tank-truck-v4-high.glb", cad_to_scene(tx_cad, LAYOUT["ash"]["tankerUnderSiloY"], 0.1))
-    import_glb_at("silo-loader-head-v4-high.glb", cad_to_scene(tx_cad, LAYOUT["ash"]["tankerUnderSiloY"], 4.2))
+    import_glb_at("tank-truck-v4-medium.glb", cad_to_scene(tx_cad, LAYOUT["ash"]["tankerUnderSiloY"], 0.1))
+    import_glb_at("silo-loader-head-v4-medium.glb", cad_to_scene(tx_cad, LAYOUT["ash"]["tankerUnderSiloY"], 4.2))
 for rx_cad in (3620.0, 3740.0, 3860.0):
-    import_glb_at("road-truck-v4-high.glb", cad_to_scene(rx_cad, 1666.5, 0.1))
+    import_glb_at("road-truck-v4-medium.glb", cad_to_scene(rx_cad, 1725.0, 0.1))
 
 # 3. Studio 3-Point Sun + Sky Lighting in Blender 5.2 EEVEE
 scene = bpy.context.scene
@@ -154,6 +172,7 @@ shots = [
     ("render-02-silos-tipper.png", (3715.0, 1455.0, 36.0), (3865.0, 1548.0, 18.0), 35.0),
     ("render-03-rebar-warehouse.png", (3590.0, 1575.0, 34.0), (3755.0, 1682.0, 14.0), 32.0),
     ("render-04-train-tanker.png", (3465.0, 1485.0, 16.0), (3555.0, 1530.0, 6.0), 36.0),
+    ("render-05-tilter-1to1.png", (3795.8, 1515.6, 3.8), (3785.2, 1524.2, 4.1), 26.0),
 ]
 
 for fname, eye_c, tgt_c, flens in shots:
