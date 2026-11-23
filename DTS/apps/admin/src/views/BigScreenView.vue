@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import * as Cesium from 'cesium'
 import CesiumViewer from '@/components/cesium/CesiumViewer.vue'
+import VideoStreamModal from '@/components/VideoStreamModal.vue'
 import { setupCameraInteraction } from '@/components/cesium/cameraControl'
 import { filterByCategory } from '@/components/cesium/layerManager'
 import { CAD_GEOJSON_URL } from '@/config/runtime'
@@ -21,6 +22,7 @@ import {
   getCrossSystemLinks,
   getPortalUrl,
   getStorageSummaryForTarget,
+  resolveDeviceIdFromAssetCode,
   type DataSourceMode,
   type DtsFeedStatus,
   type LiveTaskNodeItem,
@@ -28,6 +30,14 @@ import {
   type RegionCode,
   type RequirementFunctionItem,
 } from '@/services/dtsDataService'
+import {
+  buildDefaultSafetySnapshotV6,
+  buildDefaultStorageSnapshotV6,
+  formatPhysicalLevelText,
+  type DataProvenance,
+  type DeviceHealthOverlayItemV6,
+  type SurveillanceCameraStateV6,
+} from '@/services/twinIntegrationContracts'
 import { useAlertStore, type AlertItem } from '@/stores/alert'
 import { buildDefaultDeviceSnapshot, useDeviceStore } from '@/stores/device'
 import { Twin3dController, type SelectedInfo } from '@/twin3d'
@@ -67,60 +77,60 @@ interface ThemeMeta {
 }
 
 const THEMES: ThemeMeta[] = [
-  { id: 'overview', label: '全站总览', title: '中沙坝转运站数字孪生综合指挥大屏', note: '给大连大.dwg V4 实测基准 · 40座3000T筒仓 + 13跨钢筋库双线协同', camera: 'overview', chartTitle: '全站装卸吞吐小时趋势（吨/小时）' },
-  { id: 'bulk', label: '散料入仓与定量装车', title: '水泥/粉煤灰翻箱入仓与库底定量装车态势', note: '货1/货2 → 集装箱门吊 → 平行东西轨移动翻箱机(90°) → 顶部抽灰→工作室皮带 → 40m提升机 → 40筒仓', camera: 'tipper', chartTitle: '散料入仓与定量装车小时流量（t/h）' },
-  { id: 'steel', label: '钢材联合吊装', title: '钢材 40t 门吊 + 13 跨室内桥吊联合吊装态势', note: '货3/货4 → CR-01~03 40t门吊 → 转接区B → 9×20t磁吸 + 4×32t C型桥吊', camera: 'gantry', chartTitle: '钢材入库与货车装车作业效率（%）' },
+  { id: 'overview', label: '全站总览', title: '中沙坝转运站数字孪生综合指挥大屏', note: '冻结版给大连大.dwg 局部米制平面基准 · 40座现建筒仓 + 13跨钢筋库（68座二期仓已预留空点位）', camera: 'overview', chartTitle: '全站装卸吞吐小时趋势（吨/小时）' },
+  { id: 'bulk', label: '散料入仓与定量装车', title: '水泥/粉煤灰翻箱入仓与库底定量装车态势', note: '货1/货2 → 集装箱门吊 → 平行东西轨移动翻箱机(示意) → 40m提升机 → 40座现建筒仓', camera: 'tipper', chartTitle: '散料入仓与定量装车小时流量（t/h）' },
+  { id: 'steel', label: '钢材联合吊装', title: '钢材 40t 门吊 + 13 跨室内桥吊联合吊装态势', note: '货3/货4 → CR-01~03 40t门吊 → 转接区B → 9×20t磁吸 + 4×32t C型桥吊(03/06/09/13跨)', camera: 'gantry', chartTitle: '钢材入库与货车装车作业效率（%）' },
   { id: 'safety', label: '安全防撞 (SCS)', title: '安全防碰撞监测与四步联锁监控态势（S4）', note: '门吊/翻箱机动态测距预警(15m)/停机(6m) + 库底电子围栏 + 静电接地联锁', camera: 'loader', chartTitle: '防碰撞预警与联锁处置响应分布' },
-  { id: 'ehms', label: '设备健康 (EHMS)', title: '核心装卸装备 EHMS 健康评分与 BOM 风险（S3）', note: 'CR-01~03 / TIPPER-01~04 / BC-01~13 / ELV-01~04 机构级预测性维护上屏', camera: 'steel', chartTitle: '核心装卸装备群组健康指数（EHMS 分值）' },
+  { id: 'ehms', label: '设备健康 (EHMS)', title: '核心装卸装备 EHMS 健康评分与 BOM 风险（S3）', note: 'CR-01~03 / TIPPER-01~08 / BC-01~13 / ELV-01~04 机构级健康态势环同步上屏', camera: 'steel', chartTitle: '核心装卸装备群组健康指数（EHMS 分值）' },
   { id: 'weigh', label: '地磅计量与车流', title: '100t 汽车衡/轨道衡计量与场内车流态势', note: 'WB-TRUCK-01/02 空车初检与满车复磅 · 轨道衡自动采集', camera: 'weighbridge', chartTitle: '公路/铁路计量过磅车次统计' },
 ]
 
 interface VideoChannelMeta {
   id: string
+  cameraId: string
   title: string
   camera: CameraPresetId
   status: string
   controlSystemId: 'CTRL-BULK' | 'CTRL-CRANE' | 'CTRL-TIPPER'
   targetDeviceId: string
-  aiOverlayTag: string
 }
 
 const VIDEO_CHANNELS: VideoChannelMeta[] = [
   {
-    id: 'CAM-01',
-    title: '1# 卸料室与翻箱机监控',
+    id: 'CAM-02',
+    cameraId: 'CAM-02',
+    title: '1# 移动翻箱卸料室 AI 监控',
     camera: 'tipper',
-    status: '在线 · 1080P · PLC联锁',
+    status: 'S4 预留直连 · PLC联锁',
     controlSystemId: 'CTRL-TIPPER',
     targetDeviceId: 'TIPPER-01',
-    aiOverlayTag: 'AI 识别：集装箱四角旋锁闭锁 · 倾角 0~135° 轨行净空正常',
   },
   {
-    id: 'CAM-02',
-    title: '2# 门吊-钢筋库跨间转接区',
+    id: 'CAM-05',
+    cameraId: 'CAM-05',
+    title: '货4线轨道衡与钢材门吊高位球机',
     camera: 'gantry',
-    status: '在线 · AI防撞 · 交接复核',
+    status: 'S4 预留直连 · AI防撞',
     controlSystemId: 'CTRL-CRANE',
     targetDeviceId: 'CR-02',
-    aiOverlayTag: 'AI 识别：转接区B交接等待复核 · 门吊撤离净空 >18.5m',
-  },
-  {
-    id: 'CAM-03',
-    title: '钢筋库 07/03 跨室内桥吊',
-    camera: 'rebar',
-    status: '在线 · 1080P · 光电测距',
-    controlSystemId: 'CTRL-CRANE',
-    targetDeviceId: 'BC-07',
-    aiOverlayTag: 'AI 识别：室内跨间光电防撞正常 · 20t磁吸/32t C型吊具稳钩',
   },
   {
     id: 'CAM-04',
-    title: 'SILO-01 库底定量散装车道',
+    cameraId: 'CAM-04',
+    title: '钢筋库 07 跨装车通道高清监控',
+    camera: 'rebar',
+    status: 'S4 预留直连 · 光电测距',
+    controlSystemId: 'CTRL-CRANE',
+    targetDeviceId: 'BC-07',
+  },
+  {
+    id: 'CAM-03',
+    cameraId: 'CAM-03',
+    title: '水泥筒仓库底散装通道枪机',
     camera: 'loader',
-    status: '在线 · 电子围栏 · 接地',
+    status: 'S4 预留直连 · 电子围栏',
     controlSystemId: 'CTRL-BULK',
     targetDeviceId: 'LOADER-01',
-    aiOverlayTag: 'AI 识别：罐车青B·88219 静电接地闭锁 · 伸缩散装头对接密封',
   },
 ]
 
@@ -141,7 +151,7 @@ const activeRegion = ref<RegionCode>('SHEN_TIE')
 const vendorModalOpen = ref(false)
 const reqMatrixOpen = ref(false)
 const activeVideoChannel = ref<VideoChannelMeta | null>(null)
-const videoSnapshotDataUrl = ref('')
+const activeCamera = ref<SurveillanceCameraStateV6 | null>(null)
 const dataMode = ref<DataSourceMode>(DEFAULT_DATA_MODE)
 const feedStatus = reactive<DtsFeedStatus>({
   mode: DEFAULT_DATA_MODE,
@@ -226,7 +236,7 @@ const selectedPsmsUrl = computed(() =>
 )
 const selectedWmsUrl = computed(() => {
   const base = crossLinks.find((c) => c.key === 'S2')?.url ?? 'https://wms.bproject.de5.net/'
-  return buildWmsLocationUrl(base, selectedInfo.value?.id || undefined, selectedStorageSummary.value?.batchNo)
+  return buildWmsLocationUrl(base, selectedInfo.value?.id || undefined, selectedStorageSummary.value?.batchNo ?? undefined)
 })
 const ehmsUrlForSelected = computed(() => {
   const base = crossLinks.find((c) => c.key === 'S3')?.url ?? 'https://ehms.bproject.de5.net/ehm/'
@@ -272,9 +282,9 @@ const materialFlowNodes = computed(() =>
 
 const kpis = computed(() => [
   {
-    label: '40座×3000T 散料总储 (F-D04)',
+    label: '40座×3000T 散料总储 (F-D09)',
     value: `${bulkTotalTons.value.toLocaleString()} t`,
-    delta: `总仓容 120,000t · ${Math.round((bulkTotalTons.value / 120000) * 100)}%`,
+    delta: `一期总仓容 120,000t · 二期68仓空点位预留`,
     tone: 'cyan',
   },
   {
@@ -440,14 +450,16 @@ function selectLiveTaskNode(task: LiveTaskNodeItem) {
   if (task.processKind === 'steel') {
     steelSubMode.value = task.steelSubMode
   }
+  const stepIdx0 = task.stepIndex0 ?? Math.max(0, task.currentStepIndex - 1)
+  const totalSteps = task.totalSteps ?? 5
   rebuildController(activeProcess.value)
   demoController?.setSingleStep(true)
-  demoController?.jumpToStep(task.currentStepIndex, false)
+  demoController?.jumpToStep(stepIdx0, false)
   demoState.title = `[F-D07 真实任务节点 · ${task.qualityCode}] ${task.planNo}`
   demoState.narration = task.handoverWaitReason
     ? `⚠️ 交接等待：${task.handoverWaitReason}`
     : `${task.cargoName}（${task.tonnage}t）· 关联装备：${task.assignedDevices.join(' / ')}`
-  demoState.progress = Math.min(100, Math.round(((task.currentStepIndex + 1) / 5) * 100))
+  demoState.progress = Math.min(100, Math.round(((stepIdx0 + 1) / totalSteps) * 100))
   const info = twin3d?.focusEquipment(task.focusDeviceId)
   if (info) selectedInfo.value = info
 }
@@ -461,7 +473,7 @@ function triggerRequirementFunction(item: RequirementFunctionItem) {
   } else if (item.fnId === 'F-D03') {
     const info = twin3d?.focusEquipment('CR-02')
     if (info) selectedInfo.value = info
-  } else if (item.fnId === 'F-D04') {
+  } else if (item.fnId === 'F-D09') {
     const info = twin3d?.focusEquipment('SILO-01')
     if (info) selectedInfo.value = info
   } else if (item.fnId === 'F-D05') {
@@ -483,7 +495,14 @@ function applyUrlDeepLinkParams() {
   const processParam = sp.get('process')
   const subParam = sp.get('sub')
   const stepParam = sp.get('step')
-  const devParam = sp.get('deviceId') || sp.get('siloId') || sp.get('focus')
+  const assetParam = sp.get('assetCode')
+  const alertParam = sp.get('alertId')
+  const devParam =
+    sp.get('deviceId') ||
+    (assetParam ? resolveDeviceIdFromAssetCode(assetParam) : '') ||
+    sp.get('siloId') ||
+    sp.get('locationCode') ||
+    sp.get('focus')
   const taskParam = sp.get('taskId') || sp.get('planNo')
   const fnParam = sp.get('fn')
 
@@ -503,6 +522,17 @@ function applyUrlDeepLinkParams() {
   if (taskParam) {
     const matched = liveTaskList.value.find((t) => t.taskId === taskParam || t.planNo === taskParam)
     if (matched) selectLiveTaskNode(matched)
+  }
+  if (alertParam) {
+    setTimeout(() => {
+      const matchedAlert = alertStore.alerts.find((a) => a.id === alertParam || a.id.includes(alertParam))
+      if (matchedAlert) {
+        activeModalAlert.value = matchedAlert
+        alertOverlay.value = true
+        const info = twin3d?.focusEquipment(matchedAlert.targetId)
+        if (info) selectedInfo.value = info
+      }
+    }, 500)
   }
   if (devParam) {
     setTimeout(() => {
@@ -588,20 +618,52 @@ function onRegionChange(nextRegion: RegionCode) {
   dataService?.setRegionId(nextRegion)
 }
 
+function syncDeviceHealthOverlay() {
+  if (!twin3d) return
+  const items: DeviceHealthOverlayItemV6[] = Object.values(deviceStore.devices).map((d) => {
+    const score = d.ehms?.healthScore ?? 92
+    const level =
+      d.ehms?.healthLevel ??
+      (d.status === 'fault' || score < 65 ? 'critical' : score < 76 ? 'risk' : score < 86 ? 'attention' : 'healthy')
+    const provenance: DataProvenance =
+      (d.ehms?.dataSource as DataProvenance | undefined) ??
+      (activeRegion.value !== 'SHEN_TIE'
+        ? 'REGION_ISOLATED'
+        : dataMode.value === 'realtime_readonly' && feedStatus.quality === 'GOOD'
+          ? 'LIVE_S3_EHMS'
+          : 'FALLBACK_SIM')
+    return {
+      deviceId: d.id,
+      deviceName: d.name,
+      status: d.status,
+      healthScore: score,
+      healthLevel: level,
+      activeAlarmCount: d.ehms?.activeAlarmCount ?? (d.status === 'fault' ? 1 : 0),
+      dataSource: provenance,
+    }
+  })
+  twin3d.syncHealthOverlay(items)
+}
+
 function openVideoChannel(cam: VideoChannelMeta) {
   setCamera(cam.camera)
   twin3d?.focusEquipment(cam.targetDeviceId)
   activeVideoChannel.value = cam
-  setTimeout(() => {
-    try {
-      if (viewer) {
-        viewer.scene.render()
-        videoSnapshotDataUrl.value = viewer.scene.canvas.toDataURL('image/jpeg', 0.82)
-      }
-    } catch {
-      videoSnapshotDataUrl.value = ''
-    }
-  }, 450)
+  const snapshotCams = feedStatus.safetySnapshot?.cameras ?? buildDefaultSafetySnapshotV6(activeRegion.value).cameras
+  const matched = snapshotCams.find((c) => c.cameraId === cam.cameraId) ?? snapshotCams[0] ?? null
+  activeCamera.value = matched
+}
+
+function focusSurveillanceCamera(cam: SurveillanceCameraStateV6) {
+  if (!viewer) return
+  focusCadPoint(viewer, {
+    cadX: cam.cadX,
+    cadY: cam.cadY,
+    cadZ: cam.cadZ,
+    headingDeg: cam.headingDeg,
+    pitchDeg: cam.pitchDeg,
+    range: 42,
+  })
 }
 
 function inspectAlertWorkstation(alert?: AlertItem | null) {
@@ -860,9 +922,20 @@ function onViewerReady(nextViewer: Cesium.Viewer) {
     })
     .finally(() => {
       seedDevices()
-      twin3d = new Twin3dController(nextViewer, { onSelect: (info) => { selectedInfo.value = info } })
+      twin3d = new Twin3dController(nextViewer, {
+        onSelect: (info) => {
+          selectedInfo.value = info
+        },
+        onSelectCamera: (cam) => {
+          activeCamera.value = cam
+          activeVideoChannel.value = VIDEO_CHANNELS.find((v) => v.cameraId === cam.cameraId) ?? null
+        },
+      })
       twin3d.setVehicleRouteAnimation(true)
       twin3d.setHealthOverlayVisible(true)
+      twin3d.syncStorageOverlay(feedStatus.storageLocations?.length ? feedStatus.storageLocations : buildDefaultStorageSnapshotV6(activeRegion.value))
+      twin3d.syncSafetyOverlay(feedStatus.safetySnapshot ?? buildDefaultSafetySnapshotV6(activeRegion.value))
+      syncDeviceHealthOverlay()
       phase6Layers = new Phase6LayerController(nextViewer)
       syncOperationalLayers()
       rebuildController(activeProcess.value)
@@ -873,6 +946,7 @@ function onViewerReady(nextViewer: Cesium.Viewer) {
           Object.assign(feedStatus, s)
           if (s.storageLocations) twin3d?.syncStorageOverlay(s.storageLocations)
           if (s.safetySnapshot) twin3d?.syncSafetyOverlay(s.safetySnapshot)
+          syncDeviceHealthOverlay()
         },
         activeRegion.value,
       )
@@ -892,6 +966,7 @@ watch(
   () => deviceStore.devices,
   (devices) => {
     for (const [id, device] of Object.entries(devices)) twin3d?.setStatus(id, device.status)
+    syncDeviceHealthOverlay()
   },
   { deep: true },
 )
@@ -952,7 +1027,7 @@ void SITE_LAYOUT_V4.version
   <main class="bigscreen" @pointerenter="pauseOnPointerEnter" @pointerleave="resumeAfterPointerLeave">
     <header class="screen-header">
       <div>
-        <p class="eyebrow">ZHONGSHABA RAIL TRANSFER HUB · S5 DIGITAL TWIN · R-D01~R-D05 · F-D01~F-D08 · 只监不控安全边界</p>
+        <p class="eyebrow">ZHONGSHABA RAIL TRANSFER HUB · S5 DIGITAL TWIN · R-D01~R-D05 · F-D01~F-D09 · 只监不控安全边界</p>
         <h1>{{ activeThemeInfo.title }}</h1>
       </div>
       <div class="header-meta">
@@ -964,7 +1039,7 @@ void SITE_LAYOUT_V4.version
           <em class="quality-pill" :class="feedStatus.quality.toLowerCase()">{{ feedStatus.quality }}</em>
         </button>
         <button class="mode-switch req-pill" @click="reqMatrixOpen = !reqMatrixOpen">
-          需求与跨系统矩阵 (F-D01~08)
+          需求与跨系统矩阵 (F-D01~09)
         </button>
         <button class="mode-switch vendor-pill" @click="vendorModalOpen = !vendorModalOpen">
           1+5+2 厂家控制系统 (3套)
@@ -1096,7 +1171,7 @@ void SITE_LAYOUT_V4.version
           <button class="scene-action" @click="setCamera(activeThemeInfo.camera)">复位镜头</button>
         </div>
 
-        <!-- Slide 41: 设备空间选取 + F-D03(EHMS) + F-D04(WMS库位) + F-D05(跨系统联查) HUD 卡 -->
+        <!-- Slide 41: 设备空间选取 + F-D03(EHMS) + F-D09(WMS库位/料位分拆) + F-D05(跨系统联查) HUD 卡 -->
         <div v-if="selectedInfo" class="selection-hud">
           <div class="hud-head">
             <div>
@@ -1117,14 +1192,17 @@ void SITE_LAYOUT_V4.version
             <span>[F-D03·X03] EHMS 健康 <b>{{ selectedDeviceState.ehms.healthScore }}</b> · {{ selectedDeviceState.ehms.riskSubsystem }}</span>
             <a :href="ehmsUrlForSelected" target="_blank" rel="noopener noreferrer">S3 BOM →</a>
           </div>
-          <!-- F-D04 (协作 X08): S2 WMS 仓位与料位联查 -->
+          <!-- F-D09 (协作 X08/X09): S2 WMS 账面库存与物理料位来源严格分拆 -->
           <div v-if="selectedStorageSummary" class="hud-wms">
             <div class="hud-wms-top">
-              <span>[F-D04·X08] 仓位 <b>{{ selectedStorageSummary.locationId }}</b> ({{ selectedStorageSummary.materialName }})</span>
+              <span>[F-D09·X08/X09] 仓位 <b>{{ selectedStorageSummary.locationId }}</b> ({{ selectedStorageSummary.materialName }})</span>
               <a :href="selectedWmsUrl" target="_blank" rel="noopener noreferrer">S2台账 →</a>
             </div>
             <div class="hud-wms-sub">
-              库存 {{ selectedStorageSummary.availableTon }}t / {{ selectedStorageSummary.capacityTon }}t · 料位 {{ selectedStorageSummary.levelMeters }}m · {{ selectedStorageSummary.batchNo }}
+              S2账面(X08)：{{ selectedStorageSummary.availableTon }}t / {{ selectedStorageSummary.capacityTon }}t（{{ Math.round(selectedStorageSummary.fillRatio * 100) }}%）· {{ selectedStorageSummary.batchNo ?? '—' }}
+            </div>
+            <div class="hud-wms-sub">
+              物理料位(X09)：{{ formatPhysicalLevelText(selectedStorageSummary) }}
             </div>
           </div>
           <div v-if="Object.keys(selectedInfo.params ?? {}).length" class="hud-params">
@@ -1140,12 +1218,12 @@ void SITE_LAYOUT_V4.version
           </div>
         </div>
 
-        <!-- 组长工作簿对齐：R-D01~R-D05 ↔ F-D01~F-D08 与跨系统协作 (X03~X11) 核验弹窗 -->
+        <!-- 组长工作簿对齐：R-D01~R-D05 ↔ F-D01~F-D09 与跨系统协作 (X03~X11) 核验弹窗 -->
         <div v-if="reqMatrixOpen" class="req-matrix-modal" role="dialog" aria-label="S5需求功能与跨系统协作核验矩阵">
           <div class="vim-head">
             <div>
-              <b>S5 数字孪生需求功能（R-D01~D05 ↔ F-D01~D08）与跨系统协作（X03~X11）实时核验矩阵</b>
-              <small>100% 对齐组长《系统需求功能工作簿 v2.0/v2.1》· 点击右侧“▶ 场景核验”直接在指挥大屏验证该功能</small>
+              <b>S5 数字孪生需求功能（R-D01~D05 ↔ F-D01/02/03/05/06/07/08/09）与跨系统协作核验矩阵</b>
+              <small>对齐《系统需求功能工作簿 v3.1》与 2026-11-22 需求规格书 · 点击右侧“▶ 场景核验”直接在指挥大屏验证该功能</small>
             </div>
             <button class="vim-close" @click="reqMatrixOpen = false">✕</button>
           </div>
@@ -1187,47 +1265,18 @@ void SITE_LAYOUT_V4.version
           </div>
         </div>
 
-        <!-- Slide 40: 工位关联视频与厂家控制系统 PLC 状态核查浮窗 -->
-        <div v-if="activeVideoChannel" class="video-inspect-modal">
-          <div class="vim-head">
-            <div>
-              <b>{{ activeVideoChannel.id }} · {{ activeVideoChannel.title }}（工位关联视频 & 厂家控制系统核查）</b>
-              <small>{{ activeVideoChannel.status }} · 严守 S5 只监不控安全边界</small>
-            </div>
-            <button class="vim-close" @click="activeVideoChannel = null">✕</button>
-          </div>
-          <div class="vim-body">
-            <div class="vim-viewport">
-              <img v-if="videoSnapshotDataUrl" :src="videoSnapshotDataUrl" alt="工位实时视频镜像" class="vim-canvas-img" />
-              <div class="vim-osd-top">
-                <span>REC ● {{ activeVideoChannel.id }} · 中沙坝场站专网 RTSP/WebRTC</span>
-                <span>防碰撞测距: {{ demoState.safetyDistanceM.toFixed(1) }} m</span>
-              </div>
-              <div class="vim-ai-box">
-                <span>{{ activeVideoChannel.aiOverlayTag }}</span>
-              </div>
-            </div>
-            <div v-if="activeVideoControlSystem" class="vim-plc">
-              <div class="vim-plc-title">
-                <b>{{ activeVideoControlSystem.name }}</b>
-                <em>{{ activeVideoControlSystem.category }}</em>
-              </div>
-              <p class="vim-plc-sub">{{ activeVideoControlSystem.interlockSummary }}</p>
-              <div class="vim-sig-list">
-                <div v-for="sig in activeVideoControlSystem.plcSignals" :key="sig.tag" class="vim-sig-row">
-                  <span>{{ sig.label }}</span>
-                  <b>{{ sig.value }}</b>
-                </div>
-              </div>
-              <div class="vim-actions">
-                <button @click="setCamera(activeVideoChannel.camera)">复位工位镜头</button>
-                <a :href="selectedPsmsUrl" target="_blank" rel="noopener noreferrer" class="s1-jump-btn">
-                  进入 S1 装卸工艺管理系统处置 →
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- Slide 40: 共享多协议 S4 监控视频与厂家 PLC 只读核查浮窗（彻底禁用画布截帧冒充） -->
+        <VideoStreamModal
+          :camera="activeCamera"
+          :cameras="feedStatus.safetySnapshot?.cameras ?? []"
+          :control-system="activeVideoControlSystem"
+          :scs-url="selectedScsUrl"
+          :psms-url="selectedPsmsUrl"
+          :safety-distance-m="demoState.safetyDistanceM"
+          @close="activeCamera = null; activeVideoChannel = null"
+          @select-camera="(cam) => { activeCamera = cam; focusSurveillanceCamera(cam) }"
+          @focus-camera="focusSurveillanceCamera"
+        />
 
         <!-- 1+5+2 底层控制系统只读状态总览弹窗 -->
         <div v-if="vendorModalOpen" class="vendor-overview-modal">
@@ -1357,8 +1406,9 @@ void SITE_LAYOUT_V4.version
 .bigscreen {
   --panel-bg: rgba(8, 25, 45, 0.9);
   --panel-border: rgba(45, 138, 178, 0.45);
-  min-width: 1180px;
-  min-height: 740px;
+  min-width: 0;
+  width: 100%;
+  min-height: 620px;
   height: 100%;
   box-sizing: border-box;
   overflow: hidden;
@@ -1366,11 +1416,18 @@ void SITE_LAYOUT_V4.version
   background:
     radial-gradient(circle at 48% 30%, rgba(10, 74, 110, 0.24), transparent 38%),
     linear-gradient(135deg, #020918 0%, #061427 48%, #020a17 100%);
-  padding: 10px 18px 10px;
+  padding: 10px 16px 10px;
   display: grid;
-  grid-template-rows: auto auto auto minmax(340px, 1fr) 122px auto;
+  grid-template-rows: auto auto auto minmax(300px, 1fr) 122px auto;
   gap: 8px;
   position: relative;
+}
+
+@media (max-width: 1280px) {
+  .bigscreen {
+    padding: 8px 10px;
+    grid-template-rows: auto auto auto minmax(280px, 1fr) 108px auto;
+  }
 }
 
 .screen-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }

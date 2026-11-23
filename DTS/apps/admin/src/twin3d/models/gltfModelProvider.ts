@@ -108,8 +108,8 @@ const MODEL_KEY_BY_TYPE: Partial<Record<PlacementType, string>> = {
 }
 
 /**
- * V4 GLB 模型供给器（给大连大.dwg + Blender 5.2 MCP 全套高精度离线资产）：
- * 支持 40t/30m 门吊、室内桥吊（20t磁吸/32t C型）、移动翻箱机（0~135°翻转）、库底伸缩散装机、
+ * V4 GLB 模型供给器（给大连大.dwg + Blender 5.2 MCP 全套轻量化离线资产）：
+ * 支持 40t/30m 门吊、室内桥吊（20t磁吸/32t C型[03/06/09/13跨]）、移动翻箱机（90°工艺示意）、库底伸缩散装机、
  * 35t 散料箱体与罐车/货车联动姿态及 Slide 41 三维空间 Billboard 标签。
  */
 export class GltfModelProvider {
@@ -142,25 +142,8 @@ export class GltfModelProvider {
       if (modelKey) result.push(this.registerStatic(placement, modelKey))
     }
 
-    // Build the paired North-rail mobile container tilters (TIPPER-05..08) so all 4 groups × 4 East-West rails = 8 tilters render in 3D
-    for (const northTipper of CORE_PLACEMENTS.filter(
-      (item) => item.type === 'mobile_tipper' && item.id.startsWith('TIPPER-0') && Number(item.id.slice(-2)) >= 5,
-    )) {
-      const built = this.buildMobileTipper(
-        {
-          id: northTipper.id,
-          name: northTipper.name,
-          type: 'mobile_tipper',
-          cadX: northTipper.cadX,
-          cadY: northTipper.cadY,
-          status: 'standby',
-          height: 5.5,
-          params: { tiltAngle: '0°', cycleRate: '30 t/h' },
-        },
-        northTipper,
-      )
-      result.push({ placement: northTipper, entities: built.entities })
-    }
+    // North-rail mobile container tilters (TIPPER-05..08) are now first-class active equipment in MOCK_EQUIPMENT
+    // (built by Twin3dController with full picking, status sync, and EHMS health halos — no duplicate static build here).
 
     // Dynamic detached steel cargo actor (open flatbed railcar -> handover apron -> Bay 07 empty slot -> road truck)
     result.push(

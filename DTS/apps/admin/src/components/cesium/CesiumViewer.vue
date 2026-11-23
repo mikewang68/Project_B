@@ -18,8 +18,8 @@ const activeRenderIdx = ref(0)
 const SHOWCASE_RENDERS = [
   {
     id: 'tilter-1to1',
-    title: '① 集装箱移动式翻箱机 1:1 实景还原特写（90°垂直翻转+14道底梁+顶门掀开+波纹管对接）',
-    desc: '严格对照现场实拍图与工艺规范：工业红橙门架、右侧A字斜撑与蓝色液压站、中国铁路20英尺深墨绿散货箱（底面14道横向槽钢加强筋）、顶部黄色拱形护栏、蓝色压门爪、双扇端门向上掀开92°及上方灰白波纹伸缩溜管下放对接（每组4轨2台、全场4组8台）。',
+    title: '① 集装箱移动式翻箱机工艺示意特写（90°翻转示意+14道底梁+顶门掀开+波纹管对接）',
+    desc: '对照工艺评审方案示意构建：工业红橙门架、右侧A字斜撑与蓝色液压站、中国铁路20英尺深墨绿散货箱（底面14道横向槽钢加强筋）、顶部黄色拱形护栏、蓝色压门爪、双扇端门向上掀开及上方灰白波纹伸缩溜管对接（每组4轨2台、全场4组8台，倾翻定型角待甲方最终裁决）。',
     url: withBase('renders/render-05-tilter-1to1.png?v=20261121-v6'),
   },
   {
@@ -37,7 +37,7 @@ const SHOWCASE_RENDERS = [
   {
     id: 'rebar-warehouse',
     title: '④ 23,882m² 钢筋仓库（01~13跨实体标牌 + 南侧月台外伸桥吊轨道梁 + 32t 热轧钢卷）',
-    desc: '14轴H型钢排架柱、南侧月台外伸桥吊轨道梁、01跨~13跨门头标牌、压型彩钢 PBR 墙面、北侧内部贯通式汽车装车通道（Y=1725.0m）、螺纹钢垛与03/04跨热轧钢卷。',
+    desc: '14轴H型钢排架柱、南侧月台外伸桥吊轨道梁、01跨~13跨门头标牌、压型彩钢 PBR 墙面、北侧内部贯通式汽车装车通道（Y=1725.0m）、螺纹钢垛与 03/06/09/13 跨 32t C型钩热轧钢卷。',
     url: withBase('renders/render-03-rebar-warehouse.png?v=20261121-v6'),
   },
   {
@@ -197,6 +197,7 @@ async function loadGeoJsonLayer(viewer: Cesium.Viewer, layer: LayerConfig) {
         if (ent.polyline) ent.polyline.material = new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString(matColor).withAlpha(0.9))
       } else if (cat === 'silo_reserved') {
         if (ent.polyline) ent.polyline.material = new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#F59E0B').withAlpha(0.55))
+        ent.show = false
       } else if (cat === 'crane_rail' || cat === 'bridge_girder') {
         if (ent.polyline) ent.polyline.material = new Cesium.ColorMaterialProperty(Cesium.Color.fromCssColorString('#FBBF24').withAlpha(0.92))
       } else if (cat === 'rebar_bay') {

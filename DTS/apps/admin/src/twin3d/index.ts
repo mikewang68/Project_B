@@ -18,6 +18,7 @@ import { VEHICLE_ROUTES } from './vehicleRoutes'
 import type { ProcessHighlightState } from './processTypes'
 import { DataDrivenOverlayController } from './dataDrivenOverlay'
 import {
+  formatPhysicalLevelText,
   formatProvenanceBadge,
   type DeviceHealthOverlayItemV6,
   type SafetyTwinSnapshotV6,
@@ -947,7 +948,7 @@ export class Twin3dController {
     const live = this.latestStorageMap.get(silo.id)
     const fillPct = live ? Math.round(live.fillRatio * 100) : 62 + ((idx * 7) % 29)
     const currentTons = live ? Math.round(live.availableTon) : Math.round((silo.capacityT * fillPct) / 100)
-    const levelM = live ? live.levelMeters.toFixed(1) : ((silo.totalHeightM - 4.5) * (fillPct / 100)).toFixed(1)
+    const physicalLevelText = live ? formatPhysicalLevelText(live) : '未接入物理料位计（X09）'
     const highWarn = live ? live.highLevelWarning : fillPct >= 86
     const highLevelInterlock = highWarn ? '高料位预警（备切相邻仓）' : '正常（联锁使能）'
     const provenanceLabel = live ? `${formatProvenanceBadge(live.dataSource).label} (${live.sourceSystem})` : 'S2-WMS 预留直连'
@@ -962,7 +963,8 @@ export class Twin3dController {
         存储物料: live?.materialName || (isCement ? '散装水泥（堆积密度 1.3 t/m³）' : 'I级粉煤灰（堆积密度 1.1 t/m³）'),
         批次号: live?.batchNo || '待 S2 同步',
         结构尺寸: `Φ${silo.diameterM}m × 高 ${silo.totalHeightM}m（单仓 3,000 t）`,
-        实时库存: `${currentTons.toLocaleString()} t（料位 ${levelM}m / ${fillPct}%）`,
+        'S2账面库存(X08)': `${currentTons.toLocaleString()} t（账面满仓比 ${fillPct}%）`,
+        '物理料位(X09)': physicalLevelText,
         仓顶除尘压差: `${(1.15 + (idx % 5) * 0.08).toFixed(2)} kPa（脉冲反吹正常）`,
         料位联锁状态: highLevelInterlock,
       },

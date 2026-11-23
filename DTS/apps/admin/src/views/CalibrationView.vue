@@ -13,6 +13,7 @@ import {
   CALIBRATION_ZONES,
   type CadPoint,
 } from '@/twin3d/siteCalibration'
+import { getPlacement } from '@/twin3d/placements'
 import { SITE_FACTS, SITE_FACT_STATUS_LABEL } from '@/twin3d/siteFacts'
 import { SITE_LAYOUT_V4 } from '@/twin3d/siteLayoutV4'
 
@@ -23,10 +24,15 @@ export interface CalibrationAuditRow {
   categoryLabel: string
   cadX: number
   cadY: number
+  placedX: number
+  placedY: number
+  residualM: number
+  deltaLabel: string
   spec: string
   basisType: 'cad_surveyed' | 'process_eddx' | 'planned_schematic'
   basisLabel: string
-  deltaM: string
+  pendingDecision?: boolean
+  decisionNote?: string
   crossRef: string
 }
 
@@ -35,8 +41,9 @@ let cadDataSource: Cesium.GeoJsonDataSource | null = null
 let calibrationSource: Cesium.CustomDataSource | null = null
 let twin3d: Twin3dController | null = null
 
-const status = ref('正在加载《给大连大.dwg》V4 实测 CAD 校准底图与 76 项三维工业对象台账…')
+const status = ref('正在加载冻结版《给大连大.dwg》局部米制平面基准与 80 项三维对象落位校核台账…')
 const selectedCategory = ref<'all' | CalibrationAuditRow['category']>('all')
+const onlyPendingDecision = ref(false)
 const searchKeyword = ref('')
 const activeRowId = ref('CR-02')
 const pickedInfo = ref<SelectedInfo | null>(null)
@@ -48,10 +55,24 @@ const overlayFlags = ref({
   plannedZone: true,
 })
 
+function measurePlacement(id: string, cadX: number, cadY: number, instanceFallback?: { cadX: number; cadY: number }) {
+  const placed = getPlacement(id)
+  const placedX = placed?.cadX ?? instanceFallback?.cadX ?? cadX
+  const placedY = placed?.cadY ?? instanceFallback?.cadY ?? cadY
+  const residualM = Math.hypot(placedX - cadX, placedY - cadY)
+  return {
+    placedX: Number(placedX.toFixed(2)),
+    placedY: Number(placedY.toFixed(2)),
+    residualM,
+    deltaLabel: `${residualM.toFixed(2)} m`,
+  }
+}
+
 function buildAuditRows(): CalibrationAuditRow[] {
   const rows: CalibrationAuditRow[] = []
 
   for (const g of SITE_LAYOUT_V4.rebar.gantries) {
+    const m = measurePlacement(g.id, g.cadX, g.cadY)
     rows.push({
       id: g.id,
       name: g.name,
@@ -59,14 +80,15 @@ function buildAuditRows(): CalibrationAuditRow[] {
       categoryLabel: '室外门吊',
       cadX: g.cadX,
       cadY: g.cadY,
+      ...m,
       spec: `${g.capacityT}t / 跨度${g.spanM}m`,
       basisType: 'cad_surveyed',
-      basisLabel: '给大连大.dwg 实测坐标',
-      deltaM: '0.00 m',
+      basisLabel: '给大连大.dwg 局部平面坐标',
       crossRef: 'F-D02 / F-D03 · X03(EHMS) / X10(门吊控制)',
     })
   }
   for (const g of SITE_LAYOUT_V4.ash.bulkGantries) {
+    const m = measurePlacement(g.id, g.cadX, g.cadY)
     rows.push({
       id: g.id,
       name: g.name,
@@ -74,35 +96,37 @@ function buildAuditRows(): CalibrationAuditRow[] {
       categoryLabel: '室外门吊',
       cadX: g.cadX,
       cadY: g.cadY,
+      ...m,
       spec: `${g.capacityT}t / 跨度${g.spanM}m`,
       basisType: 'cad_surveyed',
-      basisLabel: '给大连大.dwg 实测坐标',
-      deltaM: '0.00 m',
+      basisLabel: '给大连大.dwg 局部平面坐标',
       crossRef: 'F-D02 / F-D03 · X03(EHMS) / X10(门吊控制)',
     })
   }
   for (const bay of SITE_LAYOUT_V4.rebar.bays) {
     const bcId = `BC-${String(bay.bayIndex).padStart(2, '0')}`
     const isChook = bay.bridgeType === 'chook_32t'
+    const m = measurePlacement(bcId, bay.cadX, bay.bridgeParkY)
     rows.push({
       id: bcId,
       name: `钢筋库 ${String(bay.bayIndex).padStart(2, '0')}# 跨室内桥吊`,
       category: 'bridge',
       categoryLabel: '室内/机电桥吊',
       cadX: bay.cadX,
-      cadY: bay.cadY,
-      spec: isChook ? '32t C型卷材钩 / S=28.5m' : '20t 电磁吸盘 / S=28.5m',
+      cadY: bay.bridgeParkY,
+      ...m,
+      spec: isChook ? '32t C型卷材钩（03/06/09/13跨）/ S=28.5m' : '20t 电磁吸盘 / S=28.5m',
       basisType: 'cad_surveyed',
-      basisLabel: '给大连大.dwg 13跨实测 + .eddx吊具细化',
-      deltaM: '0.00 m',
-      crossRef: 'F-D02 / F-D04 · X08(WMS REBAR-BAY) / X10',
+      basisLabel: '给大连大.dwg 13跨平面 + .eddx吊具细化',
+      crossRef: 'F-D02 / F-D09 · X08(WMS REBAR-BAY) / X10',
     })
   }
   const mechCranes = [
-    { id: 'BC-MECH-01', name: '机电设备库1#桥式起重机（50t）', cadX: 4322.0, cadY: 1650.0, capacityT: 50, spanM: 24.0 },
-    { id: 'BC-MECH-02', name: '机电设备库2#桥式起重机（50t）', cadX: 4368.0, cadY: 1650.0, capacityT: 50, spanM: 24.0 },
+    { id: 'BC-MECH-01', name: '机电仓库 1# 50t 桥式起重机（非核心配景）', cadX: 4390.0, cadY: 1532.3, capacityT: 50, spanM: 16.5 },
+    { id: 'BC-MECH-02', name: '机电仓库 2# 50t 桥式起重机（非核心配景）', cadX: 4435.0, cadY: 1532.3, capacityT: 50, spanM: 16.5 },
   ]
   for (const c of mechCranes) {
+    const m = measurePlacement(c.id, c.cadX, c.cadY)
     rows.push({
       id: c.id,
       name: c.name,
@@ -110,28 +134,52 @@ function buildAuditRows(): CalibrationAuditRow[] {
       categoryLabel: '室内/机电桥吊',
       cadX: c.cadX,
       cadY: c.cadY,
+      ...m,
       spec: `${c.capacityT}t / 跨度${c.spanM}m`,
-      basisType: 'cad_surveyed',
-      basisLabel: '给大连大.dwg 机电库实测',
-      deltaM: '0.00 m',
-      crossRef: 'F-D02 / F-D03 · X10(桥吊控制)',
+      basisType: 'planned_schematic',
+      basisLabel: '机电库配景（待裁决是否移出台账）',
+      pendingDecision: true,
+      decisionNote: '11-18 建模评审纪要暂不考虑机电库，待甲方书面裁决是否移出装卸区纳管台账',
+      crossRef: 'F-D02 · 非核心配景参考',
     })
   }
-  for (const u of SITE_LAYOUT_V4.ash.unloadingComplexes) {
+  SITE_LAYOUT_V4.ash.unloadingComplexes.forEach((u, idx) => {
     const matLabel = u.material === 'cement' ? '水泥' : '粉煤灰'
+    const southX = u.tipperWaitX ?? u.tipperParkX
+    const southY = u.tipperSouthY ?? u.tipperRailY
+    const mSouth = measurePlacement(u.tipperId, southX, southY)
     rows.push({
       id: u.tipperId,
-      name: `${u.id} ${matLabel}移动式翻箱机`,
+      name: `${idx + 1}# 组南轨${matLabel}移动式翻箱机`,
       category: 'bulk_equip',
       categoryLabel: '散料翻箱/输送',
-      cadX: u.cadX,
-      cadY: u.cadY,
-      spec: '0~135°液压倾翻 + 42m³卸料斗',
+      cadX: southX,
+      cadY: southY,
+      ...mSouth,
+      spec: '倾翻角待定型(70°/90°研发中，90°示意) + 42m³料斗',
       basisType: 'process_eddx',
       basisLabel: '给大连大.dwg卸料室 + 11.14散料.eddx',
-      deltaM: '0.00 m',
       crossRef: 'F-D02 / F-D06 · X09(翻箱机PLC)',
     })
+    const northId = `TIPPER-0${idx + 5}`
+    const northY = u.tipperNorthY ?? u.tipperNorthRailY ?? 1529.55
+    const mNorth = measurePlacement(northId, southX, northY)
+    rows.push({
+      id: northId,
+      name: `${idx + 1}# 组北轨${matLabel}移动式翻箱机`,
+      category: 'bulk_equip',
+      categoryLabel: '散料翻箱/输送',
+      cadX: southX,
+      cadY: northY,
+      ...mNorth,
+      spec: '倾翻角待定型(70°/90°研发中，90°示意) · 北轨',
+      basisType: 'planned_schematic',
+      basisLabel: '图纸8台 vs 旧表4台（待裁决）',
+      pendingDecision: true,
+      decisionNote: '《给大连大.dwg》及 11-19 纪要为 8 台，旧台账为 4 台，待甲方书面确认一期纳管台数',
+      crossRef: 'F-D02 / F-D03 · 待甲方确认台账',
+    })
+    const mElv = measurePlacement(u.elevatorId, u.elevatorCadX, u.elevatorCadY)
     rows.push({
       id: u.elevatorId,
       name: `${u.id} ${matLabel}40m斗式提升机`,
@@ -139,31 +187,34 @@ function buildAuditRows(): CalibrationAuditRow[] {
       categoryLabel: '散料翻箱/输送',
       cadX: u.elevatorCadX,
       cadY: u.elevatorCadY,
+      ...mElv,
       spec: 'H=40m 斗提机 + 仓顶空气斜槽',
       basisType: 'cad_surveyed',
-      basisLabel: '给大连大.dwg 实测坐标',
-      deltaM: '0.00 m',
+      basisLabel: '给大连大.dwg 局部平面坐标',
       crossRef: 'F-D02 / F-D03 · X03(EHMS) / X09(智能入库)',
     })
-  }
-  const loaderCols = [1, 5, 9, 13]
-  loaderCols.forEach((col, i) => {
-    const targetSilo = SITE_LAYOUT_V4.ash.silos.find((s) => s.row === 'A' && s.col === col) ?? SITE_LAYOUT_V4.ash.silos[0]
+  })
+  const loaderSiloIndices = [0, 8, 16, 24]
+  loaderSiloIndices.forEach((siloIdx, i) => {
+    const targetSilo = SITE_LAYOUT_V4.ash.silos[siloIdx] ?? SITE_LAYOUT_V4.ash.silos[0]
+    const loaderId = `LOADER-0${i + 1}`
+    const mLoader = measurePlacement(loaderId, targetSilo.cadX, targetSilo.cadY)
     rows.push({
-      id: `LOADER-0${i + 1}`,
+      id: loaderId,
       name: `${i + 1}# 库底定量散装机（对准${targetSilo.id}）`,
       category: 'bulk_equip',
       categoryLabel: '散料翻箱/输送',
       cadX: targetSilo.cadX,
       cadY: targetSilo.cadY,
+      ...mLoader,
       spec: '库底伸缩散装头 + 定量装车联锁',
       basisType: 'process_eddx',
-      basisLabel: '筒仓圆心实测 + 11.14散料.eddx库底装车',
-      deltaM: '0.00 m',
-      crossRef: 'F-D02 / F-D04 · X07/X08(WMS) / X09',
+      basisLabel: '筒仓圆心坐标 + 11.14散料.eddx库底装车',
+      crossRef: 'F-D02 / F-D09 · X07/X08(WMS) / X09',
     })
   })
   for (const wb of SITE_LAYOUT_V4.weighbridges) {
+    const mWb = measurePlacement(wb.id, wb.cadX, wb.cadY)
     rows.push({
       id: wb.id,
       name: wb.name,
@@ -171,14 +222,15 @@ function buildAuditRows(): CalibrationAuditRow[] {
       categoryLabel: '100t计量衡',
       cadX: wb.cadX,
       cadY: wb.cadY,
+      ...mWb,
       spec: `${wb.capacityT}t (${wb.kind === 'rail_scale' ? '静态轨道衡' : '进出厂汽车衡'})`,
       basisType: 'cad_surveyed',
-      basisLabel: '给大连大.dwg 实测坐标',
-      deltaM: '0.00 m',
-      crossRef: 'F-D02 / F-D04 · X08(WMS计量复核)',
+      basisLabel: '给大连大.dwg 局部平面坐标',
+      crossRef: 'F-D02 / F-D09 · X08(WMS计量复核)',
     })
   }
   for (const s of SITE_LAYOUT_V4.ash.silos) {
+    const mSilo = measurePlacement(s.id, s.cadX, s.cadY, { cadX: s.cadX, cadY: s.cadY })
     rows.push({
       id: s.id,
       name: `${s.code} ${s.material === 'cement' ? '3000T水泥筒仓' : '3000T粉煤灰筒仓'}`,
@@ -186,28 +238,35 @@ function buildAuditRows(): CalibrationAuditRow[] {
       categoryLabel: '3000T散料筒仓',
       cadX: s.cadX,
       cadY: s.cadY,
+      ...mSilo,
       spec: `Φ${s.diameterM}m × H${s.totalHeightM}m (${s.capacityT}t)`,
       basisType: 'cad_surveyed',
-      basisLabel: '给大连大.dwg 40仓圆心实测',
-      deltaM: '0.00 m',
-      crossRef: 'F-D02 / F-D04 · X08(S2 WMS料位/库存)',
+      basisLabel: '给大连大.dwg 40座现建筒仓圆心',
+      crossRef: 'F-D02 / F-D09 · X08(S2账面)/X09(物理料位)',
     })
   }
   return rows
 }
 
 const allAuditRows = buildAuditRows()
+const pendingDecisionCount = computed(() => allAuditRows.filter((r) => r.pendingDecision).length)
+const maxResidualM = computed(() => Math.max(0, ...allAuditRows.map((r) => r.residualM)))
+const avgResidualM = computed(() =>
+  allAuditRows.length ? allAuditRows.reduce((acc, r) => acc + r.residualM, 0) / allAuditRows.length : 0,
+)
 
 const filteredRows = computed(() => {
   const kw = searchKeyword.value.trim().toLowerCase()
   return allAuditRows.filter((r) => {
+    if (onlyPendingDecision.value && !r.pendingDecision) return false
     if (selectedCategory.value !== 'all' && r.category !== selectedCategory.value) return false
     if (!kw) return true
     return (
       r.id.toLowerCase().includes(kw) ||
       r.name.toLowerCase().includes(kw) ||
       r.spec.toLowerCase().includes(kw) ||
-      r.crossRef.toLowerCase().includes(kw)
+      r.crossRef.toLowerCase().includes(kw) ||
+      (r.decisionNote ?? '').toLowerCase().includes(kw)
     )
   })
 })
@@ -410,18 +469,31 @@ function toggleOverlay(key: keyof typeof overlayFlags.value) {
 }
 
 function exportCalibrationCsv() {
-  const header = ['对象编号', '对象名称', '类别', 'CAD_X(m)', 'CAD_Y(m)', '规格参数', '落位偏差', '依据来源', '支撑功能与跨系统协作']
+  const header = ['对象编号', '对象名称', '类别', 'DWG_X(m)', 'DWG_Y(m)', '3D落位_X(m)', '3D落位_Y(m)', '实算平面残差(m)', '待裁决状态', '规格参数', '依据来源', '支撑功能与跨系统协作']
   const lines = [
     header.join(','),
     ...allAuditRows.map((r) =>
-      [r.id, `"${r.name}"`, r.categoryLabel, r.cadX, r.cadY, `"${r.spec}"`, r.deltaM, `"${r.basisLabel}"`, `"${r.crossRef}"`].join(','),
+      [
+        r.id,
+        `"${r.name}"`,
+        r.categoryLabel,
+        r.cadX,
+        r.cadY,
+        r.placedX,
+        r.placedY,
+        r.deltaLabel,
+        r.pendingDecision ? `"待甲方裁决: ${r.decisionNote ?? ''}"` : '已核基准',
+        `"${r.spec}"`,
+        `"${r.basisLabel}"`,
+        `"${r.crossRef}"`,
+      ].join(','),
     ),
   ]
   const blob = new Blob([`﻿${lines.join('\n')}`], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'B项目-S5数字孪生-F-D02-CAD与三维模型落位校核台账-76项.csv'
+  a.download = `B项目-S5数字孪生-F-D02-CAD局部平面落位校核台账-${allAuditRows.length}项.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -455,7 +527,7 @@ function onViewerReady(nextViewer: Cesium.Viewer) {
       addCalibrationOverlay()
       focusCalibrationView('all')
       status.value =
-        '【R-D01 / F-D02 已核验】《给大连大.dwg》实测 V4 坐标基准：36 台主动装卸/输送/计量设备 + 40 座 Φ12m×33.38m 3000T 筒仓（共 76 项三维对象）与施工图 1:1 叠合，偏差 0.00m。'
+        `【R-D01 / F-D02 实算完成】基于冻结版《给大连大.dwg》纯二维局部米制平面坐标（无国家大地投影与 DEM 高程）：实算 ${allAuditRows.length} 项对象（40 台设备含 ${pendingDecisionCount.value} 项待甲方裁决差异 + 40 座现建筒仓；另预留 68 座二期空点位），平均平面残差 ${avgResidualM.value.toFixed(2)} m、最大残差 ${maxResidualM.value.toFixed(2)} m。`
       nextViewer.scene.requestRender()
     })
     .catch((error: unknown) => {
@@ -478,11 +550,11 @@ onBeforeUnmount(() => {
   <main class="calibration-page">
     <header>
       <div>
-        <p>R-D01 / F-D02 · SURVEYED CAD V4 · 《给大连大.dwg》实测基准与三维模型 1:1 落位校核工作台</p>
-        <h1>CAD 与设备模型落位校核（76 项工业对象台账）</h1>
+        <p>R-D01 / F-D02 · LOCAL METRIC CAD V6.1 · 冻结版《给大连大.dwg》局部米制平面自洽校核工作台（非大地绝对测绘）</p>
+        <h1>CAD 与设备模型落位校核（{{ allAuditRows.length }} 项实算台账 · 含 {{ pendingDecisionCount }} 项待裁决）</h1>
       </div>
       <div class="header-links">
-        <button type="button" class="export-btn" @click="exportCalibrationCsv">⬇ 导出 76 项校核台账 (CSV)</button>
+        <button type="button" class="export-btn" @click="exportCalibrationCsv">⬇ 导出 {{ allAuditRows.length }} 项实算台账 (CSV)</button>
         <RouterLink to="/" class="nav-link">← 返回三维作业台</RouterLink>
         <RouterLink to="/bigscreen" class="nav-link">→ 综合指挥大屏</RouterLink>
       </div>
@@ -509,10 +581,10 @@ onBeforeUnmount(() => {
         <button type="button" @click="focusCalibrationView('ash')">散料双轨 + 40筒仓/卸料室（俯视）</button>
       </div>
       <div class="layer-switches">
-        <label><input type="checkbox" :checked="overlayFlags.cadBase" @change="toggleOverlay('cadBase')" /> CAD原始底图(287)</label>
-        <label><input type="checkbox" :checked="overlayFlags.models3d" @change="toggleOverlay('models3d')" /> V4三维装备模型(76)</label>
-        <label><input type="checkbox" :checked="overlayFlags.wireframe" @change="toggleOverlay('wireframe')" /> 实测校准线框</label>
-        <label><input type="checkbox" :checked="overlayFlags.plannedZone" @change="toggleOverlay('plannedZone')" /> 远期缓建示意区</label>
+        <label><input type="checkbox" :checked="overlayFlags.cadBase" @change="toggleOverlay('cadBase')" /> CAD平面底图(405)</label>
+        <label><input type="checkbox" :checked="overlayFlags.models3d" @change="toggleOverlay('models3d')" /> 三维装备模型({{ allAuditRows.length }})</label>
+        <label><input type="checkbox" :checked="overlayFlags.wireframe" @change="toggleOverlay('wireframe')" /> 局部平面校准线框</label>
+        <label><input type="checkbox" :checked="overlayFlags.plannedZone" @change="toggleOverlay('plannedZone')" /> 2座缓建仓示意区</label>
       </div>
     </nav>
 
@@ -525,22 +597,25 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <aside class="ledger-panel" aria-label="F-D02 76项设备与筒仓CAD落位校核台账">
+      <aside class="ledger-panel" aria-label="F-D02 CAD与三维模型落位实算校核台账">
         <div class="ledger-head">
           <div class="ledger-title-row">
             <b>F-D02 落位校核明细台账（点击行三维飞跃核查）</b>
-            <span>共 {{ filteredRows.length }} / {{ allAuditRows.length }} 项</span>
+            <span>共 {{ filteredRows.length }} / {{ allAuditRows.length }} 项 · 最大残差 {{ maxResidualM.toFixed(2) }}m</span>
           </div>
           <div class="ledger-filters">
             <select v-model="selectedCategory" class="cat-select">
-              <option value="all">全部类别 (76项)</option>
+              <option value="all">全部类别 ({{ allAuditRows.length }}项)</option>
               <option value="gantry">室外门吊 (6台)</option>
               <option value="bridge">室内/机电桥吊 (15台)</option>
-              <option value="bulk_equip">翻箱/提升/散装 (12台)</option>
+              <option value="bulk_equip">翻箱8/提升4/散装4 (16台)</option>
               <option value="weigh">100t计量衡 (3台)</option>
-              <option value="silo">3000T散料筒仓 (40座)</option>
+              <option value="silo">3000T现建筒仓 (40座)</option>
             </select>
-            <input v-model="searchKeyword" type="search" class="kw-input" placeholder="搜索编号/名称/跨系统号(如 BC-03, SILO-01)..." />
+            <label class="pending-filter">
+              <input v-model="onlyPendingDecision" type="checkbox" /> 仅看待裁决({{ pendingDecisionCount }})
+            </label>
+            <input v-model="searchKeyword" type="search" class="kw-input" placeholder="搜索编号/名称/跨系统号(如 BC-03, TIPPER-05, SILO-01)..." />
           </div>
         </div>
         <div class="ledger-table-wrap">
@@ -549,16 +624,16 @@ onBeforeUnmount(() => {
               <tr>
                 <th>编号</th>
                 <th>名称与规格</th>
-                <th>CAD实测坐标 (X, Y)</th>
-                <th>偏差</th>
-                <th>图纸依据与跨系统复用</th>
+                <th>DWG vs 3D 坐标</th>
+                <th>实算残差</th>
+                <th>图纸依据与待裁决说明</th>
               </tr>
             </thead>
             <tbody>
               <tr
                 v-for="row in filteredRows"
                 :key="row.id"
-                :class="{ active: activeRowId === row.id }"
+                :class="{ active: activeRowId === row.id, pending: row.pendingDecision }"
                 @click="focusAuditRow(row)"
               >
                 <td class="code-col">{{ row.id }}</td>
@@ -566,10 +641,14 @@ onBeforeUnmount(() => {
                   <div class="r-name">{{ row.name }}</div>
                   <small class="r-spec">{{ row.spec }}</small>
                 </td>
-                <td class="coord-col">({{ row.cadX }}, {{ row.cadY }})</td>
-                <td class="delta-col">{{ row.deltaM }}</td>
+                <td class="coord-col">
+                  <div>DWG({{ row.cadX.toFixed(1) }}, {{ row.cadY.toFixed(1) }})</div>
+                  <small class="r-spec">3D({{ row.placedX.toFixed(1) }}, {{ row.placedY.toFixed(1) }})</small>
+                </td>
+                <td class="delta-col" :class="{ warn: row.residualM > 0.15 }">{{ row.deltaLabel }}</td>
                 <td>
                   <span class="basis-tag" :class="row.basisType">{{ row.basisLabel }}</span>
+                  <small v-if="row.decisionNote" class="decision-note">⚠ {{ row.decisionNote }}</small>
                   <small class="xref-note">{{ row.crossRef }}</small>
                 </td>
               </tr>
@@ -639,6 +718,10 @@ h1 { margin: 0; font-size: 20px; }
 .r-spec { display: block; color: #8ab4c9; font-size: 10px; }
 .coord-col { font-family: Consolas, monospace; color: #bae6fd; white-space: nowrap; }
 .delta-col { color: #34d399; font-weight: 700; white-space: nowrap; }
+.delta-col.warn { color: #f59e0b; }
+.pending-filter { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #fcd34d; white-space: nowrap; cursor: pointer; }
+.ledger-table tbody tr.pending { background: rgba(180, 83, 9, 0.14); }
+.decision-note { display: block; color: #fcd34d; font-size: 10px; margin-top: 2px; }
 .basis-tag { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 600; }
 .basis-tag.cad_surveyed { background: rgba(16, 185, 129, .2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, .45); }
 .basis-tag.process_eddx { background: rgba(56, 189, 248, .2); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, .45); }

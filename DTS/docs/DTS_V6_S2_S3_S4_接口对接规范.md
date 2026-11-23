@@ -1,25 +1,27 @@
-# S5 装卸区数字孪生可视化系统（DTS V6）× S2 / S3 / S4 真实数据直连接口对接规范
+# S5 装卸区数字孪生可视化系统（DTS V6.1）× S2 / S3 / S4 真实数据直连接口对接规范
 
-> **版本**：V6.0（Contract v1.0 · 2026-11-21）
+> **版本**：V6.1（Contract v1.1 · 2026-11-23，全面对齐 2026-11-22 需求规格书与 v3.1 工作簿）
 > **维护系统**：S5 数字孪生可视化系统（DTS）
 > **对接对象**：S2 仓储管理系统（WMS · 周绪敬）、S3 设备健康与维护系统（EHMS · 闫鑫钰）、S4 安全监控与联锁系统（SCS · 敬昌隆）
 > **安全与架构红线**：
 > 1. **严格只监不控**：S5 仅发起只读 `GET` 请求；S5 对外所有写方法（`POST`/`PUT`/`PATCH`/`DELETE`）一律拦截返回 `HTTP 405 READONLY_SYSTEM`。
 > 2. **零改三维代码直连**：当 S2 / S3 / S4 按本规范输出真实数据后，S5 后端只读适配网关（`dts_readonly_server.py`）自动识别并切换数据溯源标记为 `LIVE_S2_WMS` / `LIVE_S3_EHMS` / `LIVE_S4_SCS`，三维场景立即实时驱动，**无需修改 S5 前端三维渲染代码**。
 > 3. **三区域严格隔离**：`SHEN_TIE`（沈铁联调基线）、`XIZANG_TIE`（青藏铁路局）、`WUHAN_TIE`（武汉铁路局）严格按 `regionId` 隔离，绝不跨区混用测点或告警。
+> 4. **账面与物理料位严禁混算**：S2 账面吨数（X08）与散料控制侧物理雷达料位（X09）严格分拆；缺失物理料位数据时严格置 `null` 并标注 `UNBOUND_NO_SENSOR`，严禁按账面满仓比换算冒充物理料位。
 
 ---
 
-## 一、标准编码字典（对齐权威施工图《给大连大.dwg》）
+## 一、标准编码字典（对齐冻结版施工图《给大连大.dwg》）
 
 | 对象类别 | 标准编码范围 | 别名自动兼容（S5 网关内置归一化） | 数量 |
 | :--- | :--- | :--- | :---: |
-| **水泥筒仓（3000T）** | `SILO-01` ~ `SILO-08` | `A01`~`A08`、`C01`~`C08` | 8 |
-| **粉煤灰筒仓（3000T）** | `SILO-09` ~ `SILO-40` | `B01`~`E08`、`F01`~`F32` | 32 |
-| **钢筋仓库跨位** | `REBAR-BAY-01` ~ `REBAR-BAY-13` | `STEEL-BAY-01`~`13`、`BAY-01`~`13`、`01跨`~`13跨` | 13 |
+| **水泥筒仓（一期现建 3000T）** | `SILO-01` ~ `SILO-08` | `A01`~`B04`（奇数 A 排、偶数 B 排）、`C01`~`C08` | 8 |
+| **粉煤灰筒仓（一期现建 3000T）** | `SILO-09` ~ `SILO-40` | `A05`~`B20`、`F01`~`F32`（兼容旧 `D01`~`E08`） | 32 |
+| **二期预留筒仓空点位（软件预留）** | `SILO-41` ~ `SILO-108` | `P2-A21`~`P2-B54`（场地默认留白，仅保留软件空点位） | 68 |
+| **钢筋仓库跨位** | `REBAR-BAY-01` ~ `REBAR-BAY-13` | `STEEL-BAY-01`~`13`、`BAY-01`~`13`、`01跨`~`13跨`（**32t C型钩跨：03/06/09/13**） | 13 |
 | **钢材/散料门吊（40t）** | `CR-01`~`CR-03`、`CR-BULK-01`~`03` | `EQ-CRANE-01`~`06` | 6 |
-| **室内桥吊（20t/32t/50t）** | `BC-01`~`BC-13`、`BC-MECH-01`~`02` | `EQ-BRIDGE-01`~`13`、`EQ-BRIDGE-MECH-01`~`02` | 15 |
-| **移动式翻箱机** | `TIPPER-01` ~ `TIPPER-04` | `EQ-CONVEYOR-01`~`04` | 4 |
+| **室内桥吊（20t/32t）+ 机电配景(待裁决)** | `BC-01`~`BC-13`、`BC-MECH-01`~`02` | `EQ-BRIDGE-01`~`13`、`EQ-BRIDGE-MECH-01`~`02`（机电库待甲方裁决是否移出装卸区台账） | 15 |
+| **移动式翻箱机（4组双轨）** | `TIPPER-01` ~ `TIPPER-08` | `EQ-CONVEYOR-01`~`08`（`05~08` 待甲方书面确认 8 台 vs 4 台口径） | 8 |
 | **斗式提升机 / 散装机** | `ELV-01`~`04`、`LOADER-01`~`04` | `EQ-ELEVATOR-01`~`04`、`EQ-VALVE-01`~`04` | 8 |
 | **汽车衡 / 轨道衡（100t）** | `WB-TRUCK-01`、`WB-TRUCK-02`、`WB-RAIL-01` | `EQ-SCALE-01`~`02`、`EQ-SCALE-RAIL-01` | 3 |
 | **安防监控摄像机** | `CAM-01` ~ `CAM-06` | 按 `cameraId` 或 `id` 精确匹配 | 6 |
@@ -62,11 +64,11 @@
   }
 }
 ```
-> **字段容错**：吨数字段自动兼容 `availableTon` / `availableQty` / `quantity` / `weightTons`；未传 `levelMeters` 或 `stackLayers` 时 S5 按 `availableTon / capacityTon` 自动换算。
+> **字段容错与防混算红线**：吨数字段自动兼容 `availableTon` / `availableQty` / `quantity` / `weightTons`（映射至 `bookStockTons`）；**未传物理料位（`physicalLevelM` / `levelMeters`）时严格返回 `null` 并标注 `physicalLevelSource: "UNBOUND_NO_SENSOR"`，严禁按账面满仓比换算冒充物理料位**。
 
-### 2.3 S5 聚合输出与三维表现（`GET /api/v1/dts/storage?regionId=SHEN_TIE`）
-- 稳定输出 **53 个全量库位**（40 座筒仓 + 13 跨钢筋库），每项含 `fillRatio`（`0~1`）、`dataSource`（`LIVE_S2_WMS` | `FALLBACK_SIM` | `REGION_ISOLATED`）。
-- 三维效果：勾选左侧 **`筒仓料位剖视 & 钢筋跨库存体 (S2·X08)`** 后，40 座筒仓内部动态升降彩色料柱（≥85% 高料位红闪），13 跨钢筋库按实时库存渲染动态库容包络体块。
+### 2.3 S5 聚合输出与三维表现（`GET /api/v1/dts/storage?regionId=SHEN_TIE` · 对应功能 F-D09）
+- 稳定输出 **53 个一期现建库位**（`items`：40 座筒仓 + 13 跨钢筋库）与 **68 座二期预留筒仓空点位**（`reservedPhase2Silos`：`SILO-41..108`，另支持 `?includeReserved=1` 合并输出），每项清晰区分 `bookStockTons`/`bookDataSource`（X08）与 `physicalLevelM`/`physicalLevelSource`（X09）。
+- 三维效果：勾选左侧 **`筒仓料位剖视 & 钢筋跨库存体 (S2·X08)`** 后，40 座筒仓内部按账面满仓比动态渲染彩色料柱示意（≥85% 高料位红闪），二期 68 座筒仓默认场地留白且支持图层开关显隐。
 
 ---
 
@@ -76,8 +78,8 @@
 - `GET ${EHMS_BASE_URL}/api/ehm/v1/devices?projectId=PROJECT_B`
 - `GET ${EHMS_BASE_URL}/api/ehm/v1/alarms?projectId=PROJECT_B`
 
-### 3.2 S3 推荐返回 JSON 结构（支持三级设备匹配）
-S5 网关按 **`deviceId` → `assetCode` (`EQ-*`) → 兼容旧 `code` (`MQ-SIM-*`)** 三级优先级直连：
+### 3.2 S3 推荐返回 JSON 结构（支持三级设备匹配 + Spring PageResult 兼容）
+S5 网关通用解包数组、`{ data: { items } }`、Spring `PageResult` `{ data: { content } }` 及 `{ records }`，按 **`deviceId` → `assetCode` (`EQ-*`) → 兼容旧 `code` (`MQ-SIM-*`)** 三级优先级直连，字段自动兼容 `healthScore`/`health`、`predictedRulDays`/`rulDays`：
 ```json
 [
   {
@@ -109,7 +111,7 @@ S5 网关按 **`deviceId` → `assetCode` (`EQ-*`) → 兼容旧 `code` (`MQ-SIM
 - 电子围栏：`GET ${SCS_BASE_URL}/api/v1/fences`
 - AI 违规事件：`GET ${SCS_BASE_URL}/api/v1/ai-events`
 - 摄像机与视频流（预留）：`GET ${SCS_BASE_URL}/api/v1/cameras`（环境变量 `SCS_CAMERAS_API_PATH`）
-- 吊机防碰撞测距（预留）：`GET ${SCS_BASE_URL}/api/v1/interlocks`（环境变量 `SCS_INTERLOCKS_API_PATH`）
+- 吊机防碰撞测距（预留）：`GET ${SCS_BASE_URL}/api/v1/interlocks`（404 时自动回退兼容 `/api/v1/collision/records`）
 
 ### 4.2 S4 推荐返回 JSON 结构
 1. **电子围栏（`/api/v1/fences`）**：
