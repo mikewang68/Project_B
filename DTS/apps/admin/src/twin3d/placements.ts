@@ -391,7 +391,7 @@ export const CORE_PLACEMENTS: AssetPlacement[] = [
     height: 0.0,
     source: 'surveyed-cad-dxf',
     confidence: 'confirmed',
-    notes: '含围墙、CAD 1:1 真实站场道路网、斜向双汽车衡、机电仓库(2×50t)、综合楼、宿舍、变电所、预留缓建区',
+    notes: '含围墙、冻结版 CAD 局部米制站场道路网、斜向双汽车衡、机电仓库(2×50t配景)、综合楼、宿舍、变电所、2座缓建仓',
   },
   {
     id: 'ENV-REBAR-LINE-01',

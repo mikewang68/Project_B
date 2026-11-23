@@ -4,20 +4,22 @@
  *   若内网/离线不可达则自动降级到本地推演并显式标注数据质量码。
  * - 模式 2（offline_sim）：大连线下离线演示模式，按两份 .eddx 工艺逻辑确定性推演。
  *
- * 全面对齐组长《系统需求功能工作簿 v2.0/v2.1》：
- * - R-D01 ~ R-D05 业务需求 ↔ F-D01 ~ F-D08 系统功能多对多双向挂载
+ * 全面对齐组长《系统需求功能工作簿 v3.1》与 2026-11-22 需求规格书（SRS）：
+ * - R-D01 ~ R-D05 业务需求 ↔ F-D01/02/03/05/06/07/08/09 系统功能多对多双向挂载（F-D04 已停用留空）
  * - R-D03 显式拆分为 F-D06（固定工艺演示播放 SIM）与 F-D07（S1 真实任务节点接入与展示 X04）
- * - F-D04（S2 仓储库位与 40 座筒仓料位映射 X08）及 X03/X04/X05/X08~X11 跨系统带参联查
+ * - F-D09（S2 仓储库位账面库存 X08 与控制侧物理料位 X09 来源分拆映射，含 68 座二期预留空点位）
  */
 import type { AlertItem, useAlertStore } from '@/stores/alert'
 import { buildDefaultDeviceSnapshot, type DeviceStatusCode, type DeviceTelemetry, type useDeviceStore } from '@/stores/device'
-import { WS_URL } from '@/config/runtime'
+import { API_BASE_URL, WS_URL } from '@/config/runtime'
 import { MOCK_EQUIPMENT } from '@/twin3d/mock/mockData'
 import { restClient } from './restClient'
 import { wsClient } from './wsClient'
 import {
   buildDefaultSafetySnapshotV6,
   buildDefaultStorageSnapshotV6,
+  getSiloCodeForIndex,
+  is32tChookBay,
   normalizeSafetySnapshotV6,
   normalizeStorageListV6,
   type DataProvenance,
@@ -47,13 +49,16 @@ export interface LiveTaskNodeItem {
   processChain: 'BULK_CEMENT_FLYASH' | 'STEEL_REBAR_20T' | 'STEEL_COIL_32T'
   processKind: 'bulk' | 'steel'
   steelSubMode: 'rebar_magnet' | 'coil_chook'
-  currentStepIndex: number
+  currentStepIndex: number // 1-based (1..totalSteps) 对齐 SRS X-DT-01
+  stepIndex0?: number // 0-based 兼容旧演示步号
+  totalSteps?: number
+  stepSource?: 'LIVE_S1_FIELD' | 'DERIVED_FROM_PLAN_STATUS' | 'FALLBACK_SIM'
   stepStatus: 'PENDING' | 'RUNNING' | 'HANDOVER_WAIT' | 'COMPLETED' | 'EXCEPTION'
   handoverWaitReason: string
   assignedDevices: string[]
   focusDeviceId: string
   sourceSystem: string
-  qualityCode: 'GOOD' | 'FALLBACK' | 'SIM'
+  qualityCode: 'GOOD' | 'UNCERTAIN' | 'FALLBACK' | 'SIM'
   contractNote: string
   updatedAt: string
 }
@@ -61,7 +66,7 @@ export interface LiveTaskNodeItem {
 export interface StorageLocationSummary extends StorageLocationStateV6 {}
 
 export interface RequirementFunctionItem {
-  fnId: 'F-D01' | 'F-D02' | 'F-D03' | 'F-D04' | 'F-D05' | 'F-D06' | 'F-D07' | 'F-D08'
+  fnId: 'F-D01' | 'F-D02' | 'F-D03' | 'F-D05' | 'F-D06' | 'F-D07' | 'F-D08' | 'F-D09'
   fnName: string
   reqIds: string
   collabCode: string
@@ -78,10 +83,10 @@ export const REQUIREMENT_FUNCTION_MATRIX: RequirementFunctionItem[] = [
     fnName: '装卸区域场景与图层展示',
     reqIds: 'R-D01',
     collabCode: '本系统核心',
-    partnerSystem: '中铁二院《给大连大.dwg》实测底图',
-    roleInReq: '展示散料区(40座筒仓/翻箱/提升/散装)与钢材区(13跨钢筋库/门吊/桥吊)三维场景与图层开关',
+    partnerSystem: '冻结版《给大连大.dwg》局部米制平面底图',
+    roleInReq: '展示散料区(40座现建筒仓/8台翻箱机/提升/散装)与钢材区(13跨钢筋库/门吊/桥吊)，二期68仓默认留白可开关',
     reuseRelation: '支撑 R-D01 装卸工艺区场景可视化',
-    statusLabel: '已上线 (V4.2)',
+    statusLabel: '已上线 (V6.1)',
     actionLabel: '全景复位核验',
   },
   {
@@ -90,9 +95,9 @@ export const REQUIREMENT_FUNCTION_MATRIX: RequirementFunctionItem[] = [
     reqIds: 'R-D01',
     collabCode: '本系统核心',
     partnerSystem: '《给大连大.dwg》+ 两份 11.14 .eddx',
-    roleInReq: '核对 76 项三维对象(36台设备+40座筒仓)与 CAD 实测坐标 1:1 叠合，区分实测与远期缓建示意区',
+    roleInReq: '在局部米制 CAD 平面内实算三维设备与40座筒仓落位残差，并单列待甲方裁决的台账差异项',
     reuseRelation: '支撑 R-D01 图纸一致性核验（/dts/calibration）',
-    statusLabel: '已上线 (76项台账)',
+    statusLabel: '已上线 (实算残差)',
     actionLabel: '打开CAD校核页',
   },
   {
@@ -101,31 +106,31 @@ export const REQUIREMENT_FUNCTION_MATRIX: RequirementFunctionItem[] = [
     reqIds: 'R-D02 / R-D04 / R-E08',
     collabCode: '协作 X03 / X09 / X10',
     partnerSystem: 'S3 EHMS(闫鑫钰) + 厂家控制系统(董博涵)',
-    roleInReq: '单点拾取 36 台设备展示实时状态、差异化遥测、EHMS 健康分/BOM风险与厂家 PLC 只读信号',
-    reuseRelation: '跨系统共享功能；同时支撑 R-D02、R-D04、R-E08、R-B01~03、R-C01~03',
-    statusLabel: '已上线 (14/14 PASS)',
+    roleInReq: '拾取核心装卸设备展示实时状态、S3 EHMS 健康态势环/风险摘要与厂家 PLC 只读镜像信号',
+    reuseRelation: '跨系统共享功能；同时支撑 R-D02、R-D04、R-E08',
+    statusLabel: '已上线 (双端健康环)',
     actionLabel: '拾取CR-02核验',
   },
   {
-    fnId: 'F-D04',
-    fnName: '仓储库位与40座筒仓料位状态映射及联查',
+    fnId: 'F-D09',
+    fnName: '仓储库位账面库存与物理料位来源映射',
     reqIds: 'R-D01 / R-D02 / R-W01/05/06',
-    collabCode: '协作 X08 (新增补缺)',
-    partnerSystem: 'S2 装卸区仓储 WMS(周绪敬)',
-    roleInReq: '映射 40 座 3000T 筒仓(SILO-01..40)料位/吨数与 13 跨钢筋库(REBAR-BAY-01..13)批次库存并带参跳 S2',
-    reuseRelation: '跨系统共享功能；补齐组长表空缺编号 F-D04，支撑 R-D01、R-D02 与 S2 库存联查',
-    statusLabel: '已上线 (40仓+13跨)',
+    collabCode: '协作 X08 / X09',
+    partnerSystem: 'S2 装卸区仓储 WMS(周绪敬) + 散料控制侧',
+    roleInReq: '分来源展示53处一期库位(40仓+13跨)的S2账面吨数与X09物理料位(缺失置空不冒充)，预留68座二期空点位',
+    reuseRelation: '跨系统共享功能；对齐 11-22 SRS F-D09 正式编号（F-D04已停用留空）',
+    statusLabel: '已上线 (53+68预留)',
     actionLabel: '聚焦SILO-01核验',
   },
   {
     fnId: 'F-D05',
-    fnName: '异常定位与业务详情联查',
+    fnName: '异常定位与跨系统信息联查',
     reqIds: 'R-D04 / R-E08 / R-S06',
     collabCode: '协作 X03 / X04 / X05',
     partnerSystem: 'S1(李润泽) / S3(闫鑫钰) / S4(敬昌隆)',
-    roleInReq: '告警自动三维聚焦、打开 CAM-01..04 工位关联视频+厂家 PLC 核查浮窗，一键带参跳 S1~S4 处置',
+    roleInReq: '告警三维聚焦、立体电子围栏与6路多协议监控核查（支持HLS/WebRTC/未绑定诚实占位）及带参跳S1~S4',
     reuseRelation: '跨系统共享功能；同时支撑 R-D04、R-E08(EHMS)、R-S06(SCS)',
-    statusLabel: '已上线 (S1~S4 200)',
+    statusLabel: '已上线 (真流直连)',
     actionLabel: '触发视频+联查核验',
   },
   {
@@ -134,7 +139,7 @@ export const REQUIREMENT_FUNCTION_MATRIX: RequirementFunctionItem[] = [
     reqIds: 'R-D03',
     collabCode: '本系统演示',
     partnerSystem: '两份 2026-11-14 .eddx 工艺细化图',
-    roleInReq: '显式标 SIM，支持散料(135°翻箱复位+空箱回吊)与钢材(20t磁吸/32t C型钩) 1~5 步任意跳步与单步驻留',
+    roleInReq: '显式标 SIM，支持散料(移动翻箱示意+入仓/散装)与钢材(20t磁吸/32t C型钩[03/06/09/13跨])自由跳步驻留',
     reuseRelation: '支撑 R-D03 模拟演示路径（与 F-D07 真实节点严格区分）',
     statusLabel: '已上线 (自由跳步)',
     actionLabel: '切换F-D06演示轨',
@@ -145,96 +150,108 @@ export const REQUIREMENT_FUNCTION_MATRIX: RequirementFunctionItem[] = [
     reqIds: 'R-D03 / R-P05',
     collabCode: '协作 X04',
     partnerSystem: 'S1 工艺管理系统 PSMS(李润泽)',
-    roleInReq: '只读接入 S1 /api/plans 真实计划主账，映射 1~5 工序节点与交接等待原因，点击工单联动三维设备并跳 S1',
+    roleInReq: '只读接入 S1 /api/plans 计划主账，1-based 工序节点与交接等待展示（缺失时显标 FALLBACK），带参跳 S1',
     reuseRelation: '跨系统共享功能；同时支撑 R-D03 与 PSMS R-P05(F-P13)',
-    statusLabel: '已接通S1 (40条计划)',
+    statusLabel: '已上线 (契约透传)',
     actionLabel: '切换F-D07真实轨',
   },
   {
     fnId: 'F-D08',
-    fnName: '总体看板无框内嵌、多区域隔离与只读安全网关',
+    fnName: '门户/总体看板只读接入与多区域隔离',
     reqIds: 'R-D05 / R-PUB01',
     collabCode: '协作 X11 (PPT第39页)',
     partnerSystem: '上位信息专业总体看板 + 统一门户(雷文)',
-    roleInReq: '支持 ?embed=1 无框内嵌与 ?deviceId=/taskId= URL 定位，沈铁/西藏/武汉区域隔离，非GET写请求 405 拦截',
+    roleInReq: '支持新窗口/无框内嵌(?embed=1)及?deviceId/assetCode/alertId/taskId定位，三区域零泄漏与写请求405拦截',
     reuseRelation: '支撑 R-D05 统一入口与全系统只监不控红线',
     statusLabel: '已上线 (405硬拦截)',
-    actionLabel: '查看PLC/只读网关',
+    actionLabel: '打开只读韧性自检',
   },
 ]
 
 export const DEFAULT_LIVE_TASKS: LiveTaskNodeItem[] = [
   {
-    taskId: 'PSMS-20261117-01',
-    planNo: 'PLN-ASH-20261117-001',
-    cargoName: '散装粉煤灰专列（货1线 20t集装箱×16）',
+    taskId: 'PSMS-SIM-01',
+    planNo: 'PLN-ASH-SIM-001',
+    cargoName: '散装粉煤灰专列（货1/货2线 20t集装箱×16 · 兜底演示）',
     tonnage: 512.0,
     processChain: 'BULK_CEMENT_FLYASH',
     processKind: 'bulk',
     steelSubMode: 'rebar_magnet',
-    currentStepIndex: 1,
+    currentStepIndex: 2,
+    stepIndex0: 1,
+    totalSteps: 5,
+    stepSource: 'FALLBACK_SIM',
     stepStatus: 'RUNNING',
     handoverWaitReason: '',
     assignedDevices: ['CR-BULK-01', 'TIPPER-01', 'ELV-01', 'SILO-09', 'LOADER-02'],
     focusDeviceId: 'TIPPER-01',
-    sourceSystem: 'S1-PSMS (/api/plans)',
-    qualityCode: 'GOOD',
-    contractNote: '计划主账来自S1；当前处于第2步[135°翻箱倾卸与振动清箱]',
-    updatedAt: '10:42:15',
+    sourceSystem: 'S1-PSMS 离线兜底演示',
+    qualityCode: 'FALLBACK',
+    contractNote: '【兜底演示数据】待接入 S1 真实 /api/plans 与工序回执；翻箱倾角待甲方定型（当前 90° 示意）',
+    updatedAt: '离线推演',
   },
   {
-    taskId: 'PSMS-20261117-02',
-    planNo: 'PLN-REB-20261117-002',
-    cargoName: 'HRB400E 螺纹钢专列（货3线 07跨入库）',
+    taskId: 'PSMS-SIM-02',
+    planNo: 'PLN-REB-SIM-002',
+    cargoName: 'HRB400E 螺纹钢专列（货3/货4线 07跨入库 · 兜底演示）',
     tonnage: 240.0,
     processChain: 'STEEL_REBAR_20T',
     processKind: 'steel',
     steelSubMode: 'rebar_magnet',
-    currentStepIndex: 1,
+    currentStepIndex: 2,
+    stepIndex0: 1,
+    totalSteps: 5,
+    stepSource: 'FALLBACK_SIM',
     stepStatus: 'HANDOVER_WAIT',
-    handoverWaitReason: '跨间转接区B：CR-02 门吊与 BC-07 室内桥吊防撞安全净空复核（待S1调度确认放行）',
+    handoverWaitReason: '【演示样例】跨间转接区：CR-02 门吊与 BC-07 室内桥吊防撞安全净空复核（待 S1 调度放行）',
     assignedDevices: ['CR-02', 'BC-07', 'WB-TRUCK-01'],
     focusDeviceId: 'CR-02',
-    sourceSystem: 'S1-PSMS (/api/plans)',
-    qualityCode: 'GOOD',
-    contractNote: '对应 PPT 第40页“交接等待”典型工单；可一键跳 S1 处置',
-    updatedAt: '10:43:02',
+    sourceSystem: 'S1-PSMS 离线兜底演示',
+    qualityCode: 'FALLBACK',
+    contractNote: '【兜底演示数据】展示 PPT 第40页“交接等待”交互路径；可一键带参跳 S1',
+    updatedAt: '离线推演',
   },
   {
-    taskId: 'PSMS-20261117-03',
-    planNo: 'PLN-COIL-20261117-003',
-    cargoName: '盘螺/卷材入库工单（货4线 03跨32t C型钩）',
+    taskId: 'PSMS-SIM-03',
+    planNo: 'PLN-COIL-SIM-003',
+    cargoName: '盘螺/卷材入库工单（03跨 32t C型钩 · 兜底演示）',
     tonnage: 192.0,
     processChain: 'STEEL_COIL_32T',
     processKind: 'steel',
     steelSubMode: 'coil_chook',
-    currentStepIndex: 2,
+    currentStepIndex: 3,
+    stepIndex0: 2,
+    totalSteps: 5,
+    stepSource: 'FALLBACK_SIM',
     stepStatus: 'RUNNING',
     handoverWaitReason: '',
     assignedDevices: ['CR-01', 'BC-03', 'WB-TRUCK-02'],
     focusDeviceId: 'BC-03',
-    sourceSystem: 'S1-PSMS (/api/plans)',
-    qualityCode: 'GOOD',
-    contractNote: '32t C型卷材钩桥吊 BC-03 跨内转运落位中',
-    updatedAt: '10:41:50',
+    sourceSystem: 'S1-PSMS 离线兜底演示',
+    qualityCode: 'FALLBACK',
+    contractNote: '【兜底演示数据】32t C型卷材钩桥吊（03/06/09/13跨）跨内转运落位示意',
+    updatedAt: '离线推演',
   },
   {
-    taskId: 'PSMS-20261117-04',
-    planNo: 'PLN-CEM-20261117-004',
-    cargoName: 'P·O 42.5 水泥库底定量装车（SILO-01→青B·88219）',
+    taskId: 'PSMS-SIM-04',
+    planNo: 'PLN-CEM-SIM-004',
+    cargoName: 'P·O 42.5 水泥库底定量装车（SILO-01 · 兜底演示）',
     tonnage: 48.5,
     processChain: 'BULK_CEMENT_FLYASH',
     processKind: 'bulk',
     steelSubMode: 'rebar_magnet',
-    currentStepIndex: 3,
+    currentStepIndex: 4,
+    stepIndex0: 3,
+    totalSteps: 5,
+    stepSource: 'FALLBACK_SIM',
     stepStatus: 'RUNNING',
     handoverWaitReason: '',
     assignedDevices: ['SILO-01', 'LOADER-01', 'WB-TRUCK-01'],
     focusDeviceId: 'LOADER-01',
-    sourceSystem: 'S1-PSMS + S2-WMS',
-    qualityCode: 'GOOD',
-    contractNote: '关联 X07/X08 库底定量装车与 100t 地磅复核',
-    updatedAt: '10:43:18',
+    sourceSystem: 'S1-PSMS + S2-WMS 离线兜底演示',
+    qualityCode: 'FALLBACK',
+    contractNote: '【兜底演示数据】关联 X07/X08 库底定量装车与 100t 汽车衡复核',
+    updatedAt: '离线推演',
   },
 ]
 
@@ -291,7 +308,7 @@ export const VENDOR_CONTROL_SYSTEMS: VendorControlSystem[] = [
     name: '门式起重机 / 室内桥式起重机控制系统',
     category: '外购厂家控制系统',
     protocol: 'Modbus TCP / 工业以太网只读采集',
-    boundDevices: ['CR-01~03', 'CR-BULK-01~03', 'BC-01~13', 'BC-MECH-01~02'],
+    boundDevices: ['CR-01~03', 'CR-BULK-01~03', 'BC-01~13'],
     interlockSummary: '同轨激光防撞测距 (预警15m/停机6m) + 大风防爬铁鞋联锁 + 跨间转接区防撞驻车',
     plcSignals: [
       { tag: 'PLC_CR02.GANTRY_X', label: 'CR-02 钢材门吊大车绝对编码器', value: 'X = 3737.0 m (转接位)', status: 'ok' },
@@ -307,11 +324,11 @@ export const VENDOR_CONTROL_SYSTEMS: VendorControlSystem[] = [
     name: '移动式集装箱翻箱机控制系统',
     category: '合研装备控制系统',
     protocol: 'S7-1500 Profinet 只读数据块',
-    boundDevices: ['TIPPER-01~04', 'CONT-BULK-01'],
-    interlockSummary: '门吊吊具离空闭锁 + 四角旋锁锁紧 + 0°~135°双液压缸同步倾角 + 卸料口关闭复核',
+    boundDevices: ['TIPPER-01~08', 'CONT-BULK-01'],
+    interlockSummary: '门吊吊具离空闭锁 + 四角旋锁锁紧 + 双液压缸同步倾角（70°/90°定型中，当前90°示意）+ 卸料口关闭复核',
     plcSignals: [
       { tag: 'TIP01.TWIST_LOCK', label: '集装箱四角液压旋锁状态', value: '4/4 锁紧闭锁 (允许翻转)', status: 'ok' },
-      { tag: 'TIP01.TILT_ANGLE', label: '翻转架双缸同步倾角传感器', value: '0.0° ~ 135.0° (同步误差 <0.15°)', status: 'ok' },
+      { tag: 'TIP01.TILT_ANGLE', label: '翻转架双缸同步倾角传感器', value: '0.0° ~ 90.0° 示意 (定型角待裁决)', status: 'ok' },
       { tag: 'TIP01.HYD_PRESS', label: '主液压站系统压力 / 油温', value: '16.8 MPa / 41.5 ℃', status: 'ok' },
       { tag: 'TIP01.VIBRATOR', label: '高频附着式振动拍打清箱电机', value: '间歇拍打模式 · 达交箱标准', status: 'ok' },
       { tag: 'TIP01.HATCH_CHECK', label: '集装箱尾门/卸料口关闭光电复核', value: '已关闭确认 · 允许翻转架回0°', status: 'ok' },
@@ -351,7 +368,7 @@ interface RemoteAlertRow {
 
 const VALID_STATUSES = new Set<DeviceStatusCode>(['ok', 'standby', 'fault', 'offline', 'maintenance'])
 
-const V4_TO_EHMS_ASSET_CODE: Record<string, string> = {
+export const V4_TO_EHMS_ASSET_CODE: Record<string, string> = {
   'CR-01': 'EQ-CRANE-01',
   'CR-02': 'EQ-CRANE-02',
   'CR-03': 'EQ-CRANE-03',
@@ -362,6 +379,10 @@ const V4_TO_EHMS_ASSET_CODE: Record<string, string> = {
   'TIPPER-02': 'EQ-CONVEYOR-02',
   'TIPPER-03': 'EQ-CONVEYOR-03',
   'TIPPER-04': 'EQ-CONVEYOR-04',
+  'TIPPER-05': 'EQ-CONVEYOR-05',
+  'TIPPER-06': 'EQ-CONVEYOR-06',
+  'TIPPER-07': 'EQ-CONVEYOR-07',
+  'TIPPER-08': 'EQ-CONVEYOR-08',
   'ELV-01': 'EQ-ELEVATOR-01',
   'ELV-02': 'EQ-ELEVATOR-02',
   'ELV-03': 'EQ-ELEVATOR-03',
@@ -370,6 +391,72 @@ const V4_TO_EHMS_ASSET_CODE: Record<string, string> = {
   'LOADER-02': 'EQ-VALVE-02',
   'LOADER-03': 'EQ-VALVE-03',
   'LOADER-04': 'EQ-VALVE-04',
+  'BC-01': 'EQ-BRIDGE-01',
+  'BC-02': 'EQ-BRIDGE-02',
+  'BC-03': 'EQ-BRIDGE-03',
+  'BC-04': 'EQ-BRIDGE-04',
+  'BC-05': 'EQ-BRIDGE-05',
+  'BC-06': 'EQ-BRIDGE-06',
+  'BC-07': 'EQ-BRIDGE-07',
+  'BC-08': 'EQ-BRIDGE-08',
+  'BC-09': 'EQ-BRIDGE-09',
+  'BC-10': 'EQ-BRIDGE-10',
+  'BC-11': 'EQ-BRIDGE-11',
+  'BC-12': 'EQ-BRIDGE-12',
+  'BC-13': 'EQ-BRIDGE-13',
+  'BC-MECH-01': 'EQ-BRIDGE-MECH-01',
+  'BC-MECH-02': 'EQ-BRIDGE-MECH-02',
+  'WB-TRUCK-01': 'EQ-SCALE-01',
+  'WB-TRUCK-02': 'EQ-SCALE-02',
+  'WB-RAIL-01': 'EQ-SCALE-RAIL-01',
+}
+
+const EHMS_ASSET_TO_V4_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(V4_TO_EHMS_ASSET_CODE).map(([devId, assetCode]) => [assetCode.toUpperCase(), devId]),
+)
+
+/** 将 S3 EHMS 入站 ?assetCode= 或设备编码反向解析为三维对象 ID */
+export function resolveDeviceIdFromAssetCode(code?: string | null): string {
+  const raw = (code ?? '').trim()
+  if (!raw) return ''
+  const upper = raw.toUpperCase()
+  return EHMS_ASSET_TO_V4_ID[upper] ?? raw
+}
+
+/** 韧性自检辅助：向只读网关发送 POST 验证服务端 HTTP 405 READONLY_SYSTEM 拦截 */
+export async function probeReadonly405Guard(): Promise<{
+  ok: boolean
+  status: number
+  code: string
+  message: string
+}> {
+  const url = `${API_BASE_URL}/dts/devices`
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ probe: 'dts_readonly_405_check' }),
+    })
+    let data: { code?: string; message?: string } = {}
+    try {
+      data = (await resp.json()) as { code?: string; message?: string }
+    } catch {
+      /* non-json body */
+    }
+    return {
+      ok: resp.status === 405,
+      status: resp.status,
+      code: data.code ?? (resp.status === 405 ? 'READONLY_SYSTEM' : `HTTP_${resp.status}`),
+      message: data.message ?? (resp.status === 405 ? '服务端强制拦截写操作（只监不控生效）' : '未返回预期 405 状态码'),
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      status: 0,
+      code: 'GATEWAY_OFFLINE',
+      message: err instanceof Error ? err.message : '只读网关未启动或不可达',
+    }
+  }
 }
 
 export function getPortalUrl(): string {
@@ -501,14 +588,19 @@ export function getStorageSummaryForTarget(
     const ratio = Number((tons / 3000).toFixed(4))
     return {
       locationId: normalizedId,
-      locationCode: isCement ? `A${String(num).padStart(2, '0')}` : `F${String(num - 8).padStart(2, '0')}`,
-      category: isCement ? 'CEMENT_SILO' : 'FLYASH_SILO',
+      locationCode: getSiloCodeForIndex(num),
+      phase: num <= 40 ? 'PHASE1_ACTIVE' : 'PHASE2_RESERVED',
+      category: num <= 40 ? (isCement ? 'CEMENT_SILO' : 'FLYASH_SILO') : 'PHASE2_RESERVED_SILO',
       materialName: isCement ? 'P·O 42.5 散装水泥' : 'Ⅰ级散装粉煤灰',
-      batchNo: 'SIM-IDENTITY-20260928',
+      batchNo: 'SIM-IDENTITY-20261123',
       availableTon: tons,
+      bookStockTons: tons,
       capacityTon: 3000,
       fillRatio: ratio,
-      levelMeters: Number((ratio * 31.5).toFixed(1)),
+      levelMeters: null,
+      physicalLevelM: null,
+      bookDataSource: 'FALLBACK_SIM',
+      physicalLevelSource: 'UNBOUND_NO_SENSOR',
       highLevelWarning: ratio >= 0.85,
       lowLevelWarning: ratio <= 0.15,
       sourceSystem: 'S2-WMS (协作X08)',
@@ -520,19 +612,24 @@ export function getStorageSummaryForTarget(
 
   if (normalizedId.startsWith('REBAR-BAY-')) {
     const num = Number.parseInt(normalizedId.replace('REBAR-BAY-', ''), 10) || 1
-    const isChook = [3, 4, 9, 12].includes(num)
+    const isChook = is32tChookBay(num)
     const tons = 920 + (num * 110) % 760
     const ratio = Number((tons / 1800).toFixed(4))
     return {
       locationId: normalizedId,
       locationCode: `STEEL-BAY-${String(num).padStart(2, '0')}`,
+      phase: 'PHASE1_ACTIVE',
       category: 'STEEL_BAY',
       materialName: isChook ? '盘螺/热轧卷钢 (32t C型钩跨)' : 'HRB400E 螺纹钢 (20t电磁吸盘跨)',
-      batchNo: `SIM-IDENTITY-20260928-B${String(num).padStart(2, '0')}`,
+      batchNo: `SIM-IDENTITY-20261123-B${String(num).padStart(2, '0')}`,
       availableTon: tons,
+      bookStockTons: tons,
       capacityTon: 1800,
       fillRatio: ratio,
-      levelMeters: Number((1.2 + ratio * 3.4).toFixed(2)),
+      levelMeters: null,
+      physicalLevelM: null,
+      bookDataSource: 'FALLBACK_SIM',
+      physicalLevelSource: 'UNBOUND_NO_SENSOR',
       stackLayers: Math.max(1, Math.round(ratio * 6)),
       highLevelWarning: ratio >= 0.85,
       lowLevelWarning: ratio <= 0.15,
@@ -695,7 +792,17 @@ export class DtsDataService {
                     ? {
                         ...base.ehms!,
                         healthScore: r.health_score,
-                        healthLevel: r.health_score < 75 ? 'risk' : r.health_score < 86 ? 'attention' : 'healthy',
+                        healthLevel:
+                          r.health_level ??
+                          (r.health_score < 65
+                            ? 'critical'
+                            : r.health_score < 76
+                              ? 'risk'
+                              : r.health_score < 86
+                                ? 'attention'
+                                : 'healthy'),
+                        activeAlarmCount: r.active_alarm_count ?? base.ehms!.activeAlarmCount ?? 0,
+                        dataSource: r.data_source ?? base.ehms!.dataSource,
                         riskSubsystem: r.risk_subsystem ?? base.ehms!.riskSubsystem,
                         predictedRulDays: r.predicted_rul_days ?? base.ehms!.predictedRulDays,
                         riskReason: r.risk_reason ?? base.ehms!.riskReason,

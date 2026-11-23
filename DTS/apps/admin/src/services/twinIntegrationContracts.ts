@@ -18,23 +18,49 @@ export type DataProvenance =
   | 'PUBLIC_INBOX_SIM'
   | 'FALLBACK_SIM'
   | 'REGION_ISOLATED'
+  | 'PHASE2_RESERVED_EMPTY'
+
+export type PhysicalLevelSource =
+  | 'LIVE_X09_RADAR'
+  | 'UNBOUND_NO_SENSOR'
+  | 'UNBOUND_PHASE2_RESERVED'
+  | 'REGION_ISOLATED'
+
+/** 冻结版《给大连大.dwg》实测 32t C型卷材钩桥吊跨位：03 / 06 / 09 / 13 跨 */
+export const CHOOK_32T_BAY_INDICES = [3, 6, 9, 13] as const
+
+export function is32tChookBay(bayIndex: number): boolean {
+  return (CHOOK_32T_BAY_INDICES as readonly number[]).includes(bayIndex)
+}
+
+/** 100% 对齐 siteLayoutV4.json 2排×20列编码：SILO-01=A01, SILO-02=B01 ... SILO-40=B20 */
+export function getSiloCodeForIndex(idx: number): string {
+  const rowLetter = idx % 2 === 1 ? 'A' : 'B'
+  const colNum = String(Math.ceil(idx / 2)).padStart(2, '0')
+  return `${rowLetter}${colNum}`
+}
 
 export interface StorageLocationStateV6 {
-  locationId: string // 'SILO-01'..'SILO-40' | 'REBAR-BAY-01'..'REBAR-BAY-13'
-  locationCode: string // 'A01'..'E08' | 'STEEL-BAY-01'..'STEEL-BAY-13'
-  category: 'CEMENT_SILO' | 'FLYASH_SILO' | 'STEEL_BAY'
+  locationId: string // 'SILO-01'..'SILO-40' | 'REBAR-BAY-01'..'REBAR-BAY-13' | 'SILO-41'..'SILO-108'
+  locationCode: string // 'A01'..'B20' | 'STEEL-BAY-01'..'STEEL-BAY-13' | 'P2-A21'..'P2-B54'
+  phase?: 'PHASE1_ACTIVE' | 'PHASE2_RESERVED'
+  category: 'CEMENT_SILO' | 'FLYASH_SILO' | 'STEEL_BAY' | 'PHASE2_RESERVED_SILO'
   materialName: string
-  batchNo: string
+  batchNo: string | null
   availableTon: number
+  bookStockTons?: number | null
   capacityTon: number
-  fillRatio: number // 0..1
-  levelMeters: number
+  fillRatio: number // 0..1 (账面满仓比)
+  levelMeters: number | null // 严禁无传感器时按满仓比冒充，缺失置 null
+  physicalLevelM?: number | null
+  bookDataSource?: DataProvenance
+  physicalLevelSource?: PhysicalLevelSource
   stackLayers?: number
   highLevelWarning: boolean
   lowLevelWarning?: boolean
   sourceSystem: string
   dataSource: DataProvenance
-  qualityCode: 'GOOD' | 'UNCERTAIN' | 'FALLBACK' | 'SIM' | 'ISOLATED'
+  qualityCode: 'GOOD' | 'UNCERTAIN' | 'FALLBACK' | 'SIM' | 'ISOLATED' | 'RESERVED'
   updatedAt: string
 }
 
@@ -121,9 +147,54 @@ export function formatProvenanceBadge(source?: DataProvenance | string): { label
       return { label: '公共接收箱', tone: 'sim' }
     case 'REGION_ISOLATED':
       return { label: '区域隔离', tone: 'isolated' }
+    case 'PHASE2_RESERVED_EMPTY':
+      return { label: '二期预留', tone: 'isolated' }
     default:
       return { label: '兜底推演', tone: 'sim' }
   }
+}
+
+export function formatPhysicalLevelText(item?: Pick<StorageLocationStateV6, 'physicalLevelM' | 'levelMeters' | 'physicalLevelSource'> | null): string {
+  if (!item) return '—'
+  const val = item.physicalLevelM ?? item.levelMeters
+  if (typeof val === 'number' && Number.isFinite(val)) {
+    return `${val.toFixed(1)} m（X09 实测）`
+  }
+  if (item.physicalLevelSource === 'REGION_ISOLATED') return '—（区域隔离）'
+  if (item.physicalLevelSource === 'UNBOUND_PHASE2_RESERVED') return '—（二期预留空点位）'
+  return '未接入物理料位计（X09）'
+}
+
+export function buildPhase2ReservedSilosV6(regionId = 'SHEN_TIE'): StorageLocationStateV6[] {
+  const now = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  const isolated = regionId !== 'SHEN_TIE'
+  const slots: StorageLocationStateV6[] = []
+  for (let i = 41; i <= 108; i++) {
+    const code = `P2-${getSiloCodeForIndex(i)}`
+    slots.push({
+      locationId: `SILO-${String(i).padStart(2, '0')}`,
+      locationCode: code,
+      phase: 'PHASE2_RESERVED',
+      category: 'PHASE2_RESERVED_SILO',
+      materialName: '二期预留散料筒仓（场地留白/空点位）',
+      batchNo: null,
+      availableTon: 0,
+      bookStockTons: null,
+      capacityTon: 3000,
+      fillRatio: 0,
+      levelMeters: null,
+      physicalLevelM: null,
+      bookDataSource: isolated ? 'REGION_ISOLATED' : 'PHASE2_RESERVED_EMPTY',
+      physicalLevelSource: isolated ? 'REGION_ISOLATED' : 'UNBOUND_PHASE2_RESERVED',
+      highLevelWarning: false,
+      lowLevelWarning: false,
+      sourceSystem: 'DTS_PHASE2_RESERVED_SLOT',
+      dataSource: isolated ? 'REGION_ISOLATED' : 'PHASE2_RESERVED_EMPTY',
+      qualityCode: isolated ? 'ISOLATED' : 'RESERVED',
+      updatedAt: now,
+    })
+  }
+  return slots
 }
 
 export function buildDefaultStorageSnapshotV6(regionId = 'SHEN_TIE'): StorageLocationStateV6[] {
@@ -133,21 +204,24 @@ export function buildDefaultStorageSnapshotV6(regionId = 'SHEN_TIE'): StorageLoc
 
   for (let i = 1; i <= 40; i++) {
     const isCement = i <= 8
-    const rowLetter = String.fromCharCode(65 + Math.floor((i - 1) / 8))
-    const colNum = String(((i - 1) % 8) + 1).padStart(2, '0')
-    const code = `${rowLetter}${colNum}`
+    const code = getSiloCodeForIndex(i)
     const tons = isolated ? 0 : isCement ? 2120 + ((i * 95) % 720) : 1680 + ((i * 89) % 1080)
     const ratio = Number((tons / 3000).toFixed(4))
     items.push({
       locationId: `SILO-${String(i).padStart(2, '0')}`,
       locationCode: code,
+      phase: 'PHASE1_ACTIVE',
       category: isCement ? 'CEMENT_SILO' : 'FLYASH_SILO',
       materialName: isCement ? 'P·O 42.5 散装水泥' : 'Ⅰ级散装粉煤灰',
-      batchNo: isolated ? `${regionId}-ISOLATED` : `SIM-20261121-${code}`,
+      batchNo: isolated ? `${regionId}-ISOLATED` : `SIM-20261123-${code}`,
       availableTon: tons,
+      bookStockTons: tons,
       capacityTon: 3000,
       fillRatio: ratio,
-      levelMeters: Number((ratio * 31.5).toFixed(1)),
+      levelMeters: null,
+      physicalLevelM: null,
+      bookDataSource: isolated ? 'REGION_ISOLATED' : 'FALLBACK_SIM',
+      physicalLevelSource: isolated ? 'REGION_ISOLATED' : 'UNBOUND_NO_SENSOR',
       highLevelWarning: !isolated && ratio >= 0.85,
       lowLevelWarning: !isolated && ratio <= 0.15,
       sourceSystem: isolated ? `REGION_ISOLATED_${regionId}` : 'S2-WMS (预留直连)',
@@ -158,19 +232,24 @@ export function buildDefaultStorageSnapshotV6(regionId = 'SHEN_TIE'): StorageLoc
   }
 
   for (let b = 1; b <= 13; b++) {
-    const isChook = [3, 4, 9, 12].includes(b)
+    const isChook = is32tChookBay(b)
     const tons = isolated ? 0 : 920 + ((b * 110) % 760)
     const ratio = Number((tons / 1800).toFixed(4))
     items.push({
       locationId: `REBAR-BAY-${String(b).padStart(2, '0')}`,
       locationCode: `STEEL-BAY-${String(b).padStart(2, '0')}`,
+      phase: 'PHASE1_ACTIVE',
       category: 'STEEL_BAY',
       materialName: isChook ? '盘螺/热轧卷钢 (32t C型钩跨)' : 'HRB400E 螺纹钢 (20t电磁吸盘跨)',
-      batchNo: isolated ? `${regionId}-ISOLATED` : `SIM-20261121-B${String(b).padStart(2, '0')}`,
+      batchNo: isolated ? `${regionId}-ISOLATED` : `SIM-20261123-B${String(b).padStart(2, '0')}`,
       availableTon: tons,
+      bookStockTons: tons,
       capacityTon: 1800,
       fillRatio: ratio,
-      levelMeters: Number((isolated ? 0 : 1.2 + ratio * 3.4).toFixed(2)),
+      levelMeters: null,
+      physicalLevelM: null,
+      bookDataSource: isolated ? 'REGION_ISOLATED' : 'FALLBACK_SIM',
+      physicalLevelSource: isolated ? 'REGION_ISOLATED' : 'UNBOUND_NO_SENSOR',
       stackLayers: isolated ? 0 : Math.max(1, Math.round(ratio * 6)),
       highLevelWarning: !isolated && ratio >= 0.85,
       lowLevelWarning: !isolated && ratio <= 0.15,
@@ -298,16 +377,26 @@ export function normalizeStorageListV6(raw: unknown, regionId = 'SHEN_TIE'): Sto
       obj.fillRatio != null
         ? Math.max(0, Math.min(1, Number(obj.fillRatio)))
         : Math.max(0, Math.min(1, avail / Math.max(1, cap)))
+    const rawPhys = obj.physicalLevelM !== undefined ? obj.physicalLevelM : obj.levelMeters
+    const parsedPhys = typeof rawPhys === 'number' && Number.isFinite(rawPhys) ? rawPhys : null
+    const physSource =
+      (obj.physicalLevelSource as PhysicalLevelSource | undefined) ??
+      (parsedPhys != null ? 'LIVE_X09_RADAR' : base?.physicalLevelSource ?? 'UNBOUND_NO_SENSOR')
     byId.set(locId, {
       locationId: locId,
       locationCode: String(obj.locationCode ?? base?.locationCode ?? locId),
+      phase: (obj.phase as StorageLocationStateV6['phase']) ?? base?.phase ?? 'PHASE1_ACTIVE',
       category: (obj.category as StorageLocationStateV6['category']) ?? base?.category ?? 'CEMENT_SILO',
       materialName: String(obj.materialName ?? base?.materialName ?? ''),
-      batchNo: String(obj.batchNo ?? base?.batchNo ?? ''),
+      batchNo: obj.batchNo === null ? null : String(obj.batchNo ?? base?.batchNo ?? ''),
       availableTon: avail,
+      bookStockTons: typeof obj.bookStockTons === 'number' ? obj.bookStockTons : avail,
       capacityTon: cap,
       fillRatio: Number(ratio.toFixed(4)),
-      levelMeters: Number(obj.levelMeters ?? base?.levelMeters ?? 0),
+      levelMeters: parsedPhys,
+      physicalLevelM: parsedPhys,
+      bookDataSource: (obj.bookDataSource as DataProvenance) ?? (obj.dataSource as DataProvenance) ?? base?.bookDataSource ?? 'FALLBACK_SIM',
+      physicalLevelSource: physSource,
       stackLayers: obj.stackLayers != null ? Number(obj.stackLayers) : base?.stackLayers,
       highLevelWarning: Boolean(obj.highLevelWarning ?? ratio >= 0.85),
       lowLevelWarning: Boolean(obj.lowLevelWarning ?? ratio <= 0.15),

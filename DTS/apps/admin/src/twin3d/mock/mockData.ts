@@ -2,9 +2,10 @@ import type { EquipmentDef } from '../constants'
 import { SITE_LAYOUT_V4 } from '../siteLayoutV4'
 
 /**
- * 给大连大.dwg（siteLayoutV4）实测权威装备台账：
- * 含钢材区 3 台 40t/30m 门吊、散料区 3 台集装箱门吊、4 套移动翻箱机+提升机、
- * 室内代表性桥吊（9×20t磁吸 + 4×32t C型）、库底定量散装机及 100t 计量秤。
+ * 给大连大.dwg（siteLayoutV4）局部米制平面装备台账（对齐 2026-11-22 需求规格书）：
+ * 含钢材区 3 台 40t/30m 门吊、散料区 3 台集装箱门吊、8 台移动翻箱机（4组双轨；一期纳管 8 vs 4 待甲方书面确认）、
+ * 4 台 40m 斗式提升机、13 跨室内桥吊（9×20t磁吸 + 4×32t C型[03/06/09/13跨]）、4 套库底定量散装机、3 台 100t 计量衡，
+ * 以及 2 台机电仓库 50t 桥吊（配景参考，待甲方裁决是否移出装卸区台账）。
  */
 export const MOCK_EQUIPMENT: EquipmentDef[] = [
   ...SITE_LAYOUT_V4.rebar.gantries.map((g, idx): EquipmentDef => ({
@@ -39,17 +40,32 @@ export const MOCK_EQUIPMENT: EquipmentDef[] = [
   })),
   ...SITE_LAYOUT_V4.ash.unloadingComplexes.map((u, idx): EquipmentDef => ({
     id: u.tipperId,
-    name: `${idx + 1}# 移动式翻箱机`,
+    name: `${idx + 1}# 组南轨移动式翻箱机`,
     type: 'mobile_tipper',
-    cadX: u.tipperParkX,
-    cadY: u.tipperRailY,
+    cadX: u.tipperWaitX ?? u.tipperParkX,
+    cadY: u.tipperSouthY ?? u.tipperRailY,
     height: 6.5,
     status: idx === 0 ? 'ok' : 'standby',
     params: {
       卸料室料斗: `${u.hopperCapacityM3} m³ 半封闭`,
-      翻转角度: '0° ~ 135°（含振动拍打）',
+      翻转角度: '定型研发中（70°/90°待裁决，当前 90° 示意）',
       物料种类: u.material === 'cement' ? '水泥 (1.3t/m³)' : '粉煤灰 (1.1t/m³)',
-      控制子系统: '翻箱机控制系统',
+      控制子系统: '翻箱机控制系统（合研）',
+    },
+  })),
+  ...SITE_LAYOUT_V4.ash.unloadingComplexes.map((u, idx): EquipmentDef => ({
+    id: `TIPPER-0${idx + 5}`,
+    name: `${idx + 1}# 组北轨移动式翻箱机`,
+    type: 'mobile_tipper',
+    cadX: u.tipperWaitX ?? u.tipperParkX,
+    cadY: u.tipperNorthY ?? u.tipperNorthRailY ?? 1529.55,
+    height: 6.5,
+    status: 'standby',
+    params: {
+      卸料室料斗: `${u.hopperCapacityM3} m³ 半封闭`,
+      翻转角度: '定型研发中（70°/90°待裁决，当前 90° 示意）',
+      台账状态: '一期纳管台数待甲方确认（图纸8台 vs 旧表4台）',
+      控制子系统: '翻箱机控制系统（合研）',
     },
   })),
   ...SITE_LAYOUT_V4.ash.unloadingComplexes.map((u, idx): EquipmentDef => ({
@@ -84,22 +100,22 @@ export const MOCK_EQUIPMENT: EquipmentDef[] = [
   })),
   {
     id: 'BC-MECH-01',
-    name: '机电仓库 1# 50t 桥式起重机',
+    name: '机电仓库 1# 50t 桥式起重机（配景待裁决）',
     type: 'bridge_crane',
     cadX: 4390.0,
     cadY: 1532.3,
     height: 10.5,
-    status: 'ok',
+    status: 'standby',
     params: {
       型号: 'Q=50t, S=16.5m',
       额定功率: '110 kW / 380V',
-      所属线别: '机电设备仓库（5,036 m²）',
-      控制子系统: '门吊/桥吊控制系统',
+      所属线别: '机电设备仓库（5,036 m² · 非核心配景）',
+      台账状态: '待甲方裁决是否移出装卸区台账（11-18纪要暂不考虑机电）',
     },
   },
   {
     id: 'BC-MECH-02',
-    name: '机电仓库 2# 50t 桥式起重机',
+    name: '机电仓库 2# 50t 桥式起重机（配景待裁决）',
     type: 'bridge_crane',
     cadX: 4435.0,
     cadY: 1532.3,
@@ -108,8 +124,8 @@ export const MOCK_EQUIPMENT: EquipmentDef[] = [
     params: {
       型号: 'Q=50t, S=16.5m',
       额定功率: '110 kW / 380V',
-      所属线别: '机电设备仓库（5,036 m²）',
-      控制子系统: '门吊/桥吊控制系统',
+      所属线别: '机电设备仓库（5,036 m² · 非核心配景）',
+      台账状态: '待甲方裁决是否移出装卸区台账（11-18纪要暂不考虑机电）',
     },
   },
   ...[

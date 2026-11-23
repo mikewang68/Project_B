@@ -19,10 +19,12 @@ export interface DeviceTelemetry {
 
 export interface EhmsHealthSnapshot {
   healthScore: number
-  healthLevel: 'healthy' | 'attention' | 'risk'
+  healthLevel: 'healthy' | 'attention' | 'risk' | 'critical'
   riskSubsystem: string
   riskReason: string
   predictedRulDays: number
+  activeAlarmCount?: number
+  dataSource?: string
 }
 
 export interface DeviceState {
@@ -67,10 +69,12 @@ export function buildDefaultDeviceSnapshot(id: string, name: string, status: Dev
     },
     ehms: {
       healthScore: healthBase,
-      healthLevel: healthBase < 75 ? 'risk' : healthBase < 86 ? 'attention' : 'healthy',
+      healthLevel: healthBase < 65 ? 'critical' : healthBase < 76 ? 'risk' : healthBase < 86 ? 'attention' : 'healthy',
       riskSubsystem,
       riskReason: healthBase < 86 ? `${riskSubsystem}温升波动（建议计划维保复检）` : '运行平稳 · 机构BOM状态良好',
       predictedRulDays: healthBase < 75 ? 12 : healthBase < 86 ? 38 : 110 + (hash % 60),
+      activeAlarmCount: status === 'fault' ? 1 : 0,
+      dataSource: 'FALLBACK_SIM',
     },
   }
 }

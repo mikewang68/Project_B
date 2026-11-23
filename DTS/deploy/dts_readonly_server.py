@@ -95,7 +95,14 @@ def cookie_header(jar: dict) -> str:
     return "; ".join(f"{k}={v}" for k, v in jar.items())
 
 
-# 34 台 V4 数字孪生装备与公共模拟设备/EHMS 编码的基准映射
+# 40 台 V6.1 数字孪生装备与公共模拟设备/EHMS 编码的基准映射
+# 注：32t C型卷材钩桥吊对齐《给大连大.dwg》实测跨位 03/06/09/13；
+# TIPPER-05..08 为图纸及3D北轨4台翻箱机（一期纳管8 vs 4待甲方书面确认）；
+# BC-MECH-01/02 归属机电仓库（待裁决是否移出装卸区台账）。
+CHOOK_32T_BAYS = (3, 6, 9, 13)
+PENDING_CONFIRM_TIPPER_IDS = {"TIPPER-05", "TIPPER-06", "TIPPER-07", "TIPPER-08"}
+NON_CORE_PENDING_IDS = {"BC-MECH-01", "BC-MECH-02"}
+
 SIM_TO_V4_DEVICES = {
     "CR-01": ("1# 40t/30m 钢材门吊", "SIM-aed34d3f7bb84082a061bf7a", "MQ-SIM-AED34D3F7BB84082A061BF7A", "standby"),
     "CR-02": ("2# 40t/30m 钢材门吊", "SIM-aed34d3f7bb84082a061bf7a", "MQ-SIM-AED34D3F7BB84082A061BF7A", "ok"),
@@ -103,29 +110,33 @@ SIM_TO_V4_DEVICES = {
     "CR-BULK-01": ("散料集装箱门吊 #01", "SIM-3ac2448ef9894942a4d92d6a", "MQ-SIM-3AC2448EF9894942A4D92D6A", "ok"),
     "CR-BULK-02": ("散料集装箱门吊 #02", "SIM-3ac2448ef9894942a4d92d6a", "MQ-SIM-3AC2448EF9894942A4D92D6A", "standby"),
     "CR-BULK-03": ("散料集装箱门吊 #03", "SIM-3ac2448ef9894942a4d92d6a", "MQ-SIM-3AC2448EF9894942A4D92D6A", "standby"),
-    "TIPPER-01": ("1# 移动式翻箱机", "SIM-471ece2b2ec742939729173d", "MQ-SIM-471ECE2B2EC742939729173D", "ok"),
-    "TIPPER-02": ("2# 移动式翻箱机", "SIM-c124fb966c404618a7c8e2eb", "MQ-SIM-C124FB966C404618A7C8E2EB", "standby"),
-    "TIPPER-03": ("3# 移动式翻箱机", "SIM-471ece2b2ec742939729173d", "MQ-SIM-471ECE2B2EC742939729173D", "standby"),
-    "TIPPER-04": ("4# 移动式翻箱机", "SIM-c124fb966c404618a7c8e2eb", "MQ-SIM-C124FB966C404618A7C8E2EB", "standby"),
+    "TIPPER-01": ("1# 组南轨移动式翻箱机", "SIM-471ece2b2ec742939729173d", "MQ-SIM-471ECE2B2EC742939729173D", "ok"),
+    "TIPPER-02": ("2# 组南轨移动式翻箱机", "SIM-c124fb966c404618a7c8e2eb", "MQ-SIM-C124FB966C404618A7C8E2EB", "standby"),
+    "TIPPER-03": ("3# 组南轨移动式翻箱机", "SIM-471ece2b2ec742939729173d", "MQ-SIM-471ECE2B2EC742939729173D", "standby"),
+    "TIPPER-04": ("4# 组南轨移动式翻箱机", "SIM-c124fb966c404618a7c8e2eb", "MQ-SIM-C124FB966C404618A7C8E2EB", "standby"),
+    "TIPPER-05": ("1# 组北轨移动式翻箱机", "SIM-471ece2b2ec742939729173d", "MQ-SIM-471ECE2B2EC742939729173D", "standby"),
+    "TIPPER-06": ("2# 组北轨移动式翻箱机", "SIM-c124fb966c404618a7c8e2eb", "MQ-SIM-C124FB966C404618A7C8E2EB", "standby"),
+    "TIPPER-07": ("3# 组北轨移动式翻箱机", "SIM-471ece2b2ec742939729173d", "MQ-SIM-471ECE2B2EC742939729173D", "standby"),
+    "TIPPER-08": ("4# 组北轨移动式翻箱机", "SIM-c124fb966c404618a7c8e2eb", "MQ-SIM-C124FB966C404618A7C8E2EB", "standby"),
     "ELV-01": ("1# 高原斗式提升机", "SIM-3360ddd3ba1440718843f7cd", "MQ-SIM-3360DDD3BA1440718843F7CD", "ok"),
     "ELV-02": ("2# 高原斗式提升机", "SIM-3360ddd3ba1440718843f7cd", "MQ-SIM-3360DDD3BA1440718843F7CD", "standby"),
     "ELV-03": ("3# 高原斗式提升机", "SIM-3360ddd3ba1440718843f7cd", "MQ-SIM-3360DDD3BA1440718843F7CD", "standby"),
     "ELV-04": ("4# 高原斗式提升机", "SIM-3360ddd3ba1440718843f7cd", "MQ-SIM-3360DDD3BA1440718843F7CD", "standby"),
     "BC-01": ("1# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "ok"),
     "BC-02": ("2# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "standby"),
-    "BC-03": ("3# 跨室内桥吊（32t）", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "ok"),
-    "BC-04": ("4# 跨室内桥吊（32t）", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "standby"),
+    "BC-03": ("3# 跨室内桥吊（32t C型）", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "ok"),
+    "BC-04": ("4# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "standby"),
     "BC-05": ("5# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "standby"),
-    "BC-06": ("6# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "standby"),
+    "BC-06": ("6# 跨室内桥吊（32t C型）", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "standby"),
     "BC-07": ("7# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "ok"),
     "BC-08": ("8# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "standby"),
-    "BC-09": ("9# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "standby"),
-    "BC-10": ("10# 跨室内桥吊（32t）", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "standby"),
+    "BC-09": ("9# 跨室内桥吊（32t C型）", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "standby"),
+    "BC-10": ("10# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "standby"),
     "BC-11": ("11# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "standby"),
     "BC-12": ("12# 跨室内桥吊（20t）", "SIM-950e9353d3d54529b1ea8dd4", "MQ-SIM-950E9353D3D54529B1EA8DD4", "standby"),
-    "BC-13": ("13# 跨室内桥吊（32t）", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "standby"),
-    "BC-MECH-01": ("机电仓库 1# 50t 桥式起重机", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "ok"),
-    "BC-MECH-02": ("机电仓库 2# 50t 桥式起重机", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "standby"),
+    "BC-13": ("13# 跨室内桥吊（32t C型）", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "standby"),
+    "BC-MECH-01": ("机电仓库 1# 50t 桥式起重机（配景待裁决）", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "standby"),
+    "BC-MECH-02": ("机电仓库 2# 50t 桥式起重机（配景待裁决）", "SIM-496f687299664319b4c79a82", "MQ-SIM-496F687299664319B4C79A82", "standby"),
     "LOADER-01": ("水泥仓库底定量散装机 #01", "SIM-a0d5f687b5e04dddb7eb03cf", "MQ-SIM-EBAC3CD67B814726B0817A85", "ok"),
     "LOADER-02": ("粉煤灰一区库底散装机 #09", "SIM-ebac3cd67b814726b0817a85", "MQ-SIM-EBAC3CD67B814726B0817A85", "standby"),
     "LOADER-03": ("粉煤灰二区库底散装机 #17", "SIM-ebac3cd67b814726b0817a85", "MQ-SIM-EBAC3CD67B814726B0817A85", "standby"),
@@ -135,11 +146,11 @@ SIM_TO_V4_DEVICES = {
     "WB-RAIL-01": ("铁路专用线 100t 轨道衡", "SIM-9a897e68c068414ab3491fd3", "MQ-SIM-9A897E68C068414AB3491FD3", "ok"),
 }
 
-# V6 Standard S3-EHMS Official Asset Code Mapping (supports direct S3 docking by device_id OR assetCode)
+# V6.1 Standard S3-EHMS Official Asset Code Mapping (supports direct S3 docking by device_id OR assetCode)
 V4_TO_EHMS_ASSET_CODE = {
     "CR-01": "EQ-CRANE-01", "CR-02": "EQ-CRANE-02", "CR-03": "EQ-CRANE-03",
     "CR-BULK-01": "EQ-CRANE-04", "CR-BULK-02": "EQ-CRANE-05", "CR-BULK-03": "EQ-CRANE-06",
-    "TIPPER-01": "EQ-CONVEYOR-01", "TIPPER-02": "EQ-CONVEYOR-02", "TIPPER-03": "EQ-CONVEYOR-03", "TIPPER-04": "EQ-CONVEYOR-04",
+    **{f"TIPPER-{i:02d}": f"EQ-CONVEYOR-{i:02d}" for i in range(1, 9)},
     "ELV-01": "EQ-ELEVATOR-01", "ELV-02": "EQ-ELEVATOR-02", "ELV-03": "EQ-ELEVATOR-03", "ELV-04": "EQ-ELEVATOR-04",
     "LOADER-01": "EQ-VALVE-01", "LOADER-02": "EQ-VALVE-02", "LOADER-03": "EQ-VALVE-03", "LOADER-04": "EQ-VALVE-04",
     **{f"BC-{i:02d}": f"EQ-BRIDGE-{i:02d}" for i in range(1, 14)},
@@ -204,8 +215,29 @@ DEFAULT_INTERLOCKS = [
 ]
 
 
+def _extract_list(payload) -> list:
+    """Universal unpacker supporting list, {items}, {list}, Spring PageResult {content}, {records}, and nested {data:...}."""
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        return []
+    for key in ("items", "list", "content", "records"):
+        val = payload.get(key)
+        if isinstance(val, list):
+            return val
+    data = payload.get("data")
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        for key in ("items", "list", "content", "records"):
+            val = data.get(key)
+            if isinstance(val, list):
+                return val
+    return []
+
+
 def _normalize_storage_location_id(raw_code: str) -> str:
-    """Map S2 WMS heterogeneous location codes (`A01`, `C01`, `F01`, `SILO-09`, `07跨`, `STEEL-BAY-07`) -> canonical V6 ID."""
+    """Map S2 WMS heterogeneous location codes (`A01..B20`, `C01..C08`, `F01..F32`, `SILO-01..40`, `07跨`, `STEEL-BAY-07`) -> canonical V6.1 ID."""
     txt = (raw_code or "").strip().upper()
     if not txt:
         return ""
@@ -216,11 +248,7 @@ def _normalize_storage_location_id(raw_code: str) -> str:
                 return f"SILO-{n:02d}"
         except ValueError:
             pass
-    if len(txt) in (2, 3) and txt[0] in ("A", "B", "C", "D", "E") and txt[1:].isdigit():
-        row_idx = ord(txt[0]) - ord("A")
-        col_idx = int(txt[1:])
-        if 1 <= col_idx <= 8:
-            return f"SILO-{row_idx * 8 + col_idx:02d}"
+    # 1) Explicit material-prefix codes first (fixes unreachable C01..C08 dead code)
     if txt.startswith("C") and txt[1:].isdigit():
         n = int(txt[1:])
         if 1 <= n <= 8:
@@ -229,6 +257,18 @@ def _normalize_storage_location_id(raw_code: str) -> str:
         n = int(txt[1:])
         if 1 <= n <= 32:
             return f"SILO-{n + 8:02d}"
+    # 2) Surveyed siteLayoutV4 2-row × 20-col codes: A01..A20 -> odd SILO-01..39, B01..B20 -> even SILO-02..40
+    if len(txt) in (2, 3) and txt[0] in ("A", "B") and txt[1:].isdigit():
+        col_idx = int(txt[1:])
+        if 1 <= col_idx <= 20:
+            silo_num = (col_idx * 2 - 1) if txt[0] == "A" else (col_idx * 2)
+            return f"SILO-{silo_num:02d}"
+    # 3) Legacy D01..E08 5×8 fallback compatibility
+    if len(txt) in (2, 3) and txt[0] in ("D", "E") and txt[1:].isdigit():
+        row_idx = ord(txt[0]) - ord("A")
+        col_idx = int(txt[1:])
+        if 1 <= col_idx <= 8:
+            return f"SILO-{row_idx * 8 + col_idx:02d}"
     for prefix in ("REBAR-BAY-", "STEEL-BAY-", "BAY-"):
         if txt.startswith(prefix) and txt[len(prefix):].isdigit():
             n = int(txt[len(prefix):])
@@ -244,9 +284,41 @@ def _normalize_storage_location_id(raw_code: str) -> str:
 
 
 def _silo_code_for_index(idx: int) -> str:
-    row_letter = chr(ord("A") + (idx - 1) // 8)
-    col_num = ((idx - 1) % 8) + 1
+    """Align 100% with siteLayoutV4.json: SILO-01=A01, SILO-02=B01, ..., SILO-39=A20, SILO-40=B20."""
+    row_letter = "A" if (idx % 2 == 1) else "B"
+    col_num = (idx + 1) // 2
     return f"{row_letter}{col_num:02d}"
+
+
+def _build_phase2_reserved_silos(norm_region: str, sync_time: str) -> list:
+    """11-19 modeling review requirement: 68 Phase-2 reserved silos (SILO-41..108) empty software slots, site left blank by default."""
+    slots = []
+    for n in range(41, 109):
+        row_letter = "A" if (n % 2 == 1) else "B"
+        col_num = (n + 1) // 2
+        slots.append({
+            "locationId": f"SILO-{n:02d}",
+            "locationCode": f"P2-{row_letter}{col_num:02d}",
+            "phase": "PHASE2_RESERVED",
+            "category": "PHASE2_RESERVED_SILO",
+            "materialName": "二期预留散料筒仓（待建设）",
+            "batchNo": None,
+            "availableTon": None,
+            "bookStockTons": None,
+            "capacityTon": 3000.0,
+            "fillRatio": 0.0,
+            "levelMeters": None,
+            "physicalLevelM": None,
+            "physicalLevelSource": "UNBOUND_PHASE2_RESERVED",
+            "bookDataSource": "PHASE2_RESERVED_EMPTY",
+            "highLevelWarning": False,
+            "lowLevelWarning": False,
+            "sourceSystem": "DTS_PHASE2_RESERVED_SLOT",
+            "dataSource": "REGION_ISOLATED" if norm_region != "SHEN_TIE" else "PHASE2_RESERVED_EMPTY",
+            "qualityCode": "ISOLATED" if norm_region != "SHEN_TIE" else "RESERVED",
+            "updatedAt": sync_time,
+        })
+    return slots
 
 
 class ReadonlyAggregator:
@@ -444,46 +516,34 @@ class ReadonlyAggregator:
             scs_ai, scs_a_st = self._get_json("scs", f"{SCS_BASE_URL}/api/v1/ai-events")
             scs_cams, scs_c_st = self._get_json("scs", f"{SCS_BASE_URL}{SCS_CAMERAS_API_PATH}")
             scs_interlocks, scs_i_st = self._get_json("scs", f"{SCS_BASE_URL}{SCS_INTERLOCKS_API_PATH}")
+            if scs_interlocks is None and scs_i_st == "HTTP_404":
+                scs_interlocks, scs_i_st = self._get_json("scs", f"{SCS_BASE_URL}/api/v1/collision/records")
 
-            # 3-Tier S3 EHMS lookup table: direct device_id -> assetCode (EQ-*) -> MQ-SIM-*
+            # 3-Tier S3 EHMS lookup table: supports list, data.items, Spring PageResult data.content, records
             ehms_by_code = {}
-            ehms_rows = ehms_devs if isinstance(ehms_devs, list) else (((ehms_devs or {}).get("data") or {}).get("items") if isinstance(ehms_devs, dict) else [])
-            if isinstance(ehms_rows, list):
-                for row in ehms_rows:
-                    if not isinstance(row, dict):
-                        continue
-                    for k_field in ("deviceId", "device_id", "v4DeviceId", "assetCode", "code"):
-                        val = row.get(k_field)
-                        if val:
-                            ehms_by_code[str(val).strip().upper()] = row
+            ehms_rows = _extract_list(ehms_devs)
+            for row in ehms_rows:
+                if not isinstance(row, dict):
+                    continue
+                for k_field in ("deviceId", "device_id", "v4DeviceId", "assetCode", "deviceCode", "code"):
+                    val = row.get(k_field)
+                    if val:
+                        ehms_by_code[str(val).strip().upper()] = row
 
-            ehms_alarm_rows = ehms_alms if isinstance(ehms_alms, list) else (((ehms_alms or {}).get("data") or {}).get("items") if isinstance(ehms_alms, dict) else [])
+            ehms_alarm_rows = _extract_list(ehms_alms)
             ehms_alarms_by_dev = {}
-            if isinstance(ehms_alarm_rows, list):
-                for al in ehms_alarm_rows:
-                    if not isinstance(al, dict):
-                        continue
-                    for k_field in ("deviceId", "device_id", "assetCode", "deviceCode"):
-                        val = al.get(k_field)
-                        if val:
-                            ehms_alarms_by_dev.setdefault(str(val).strip().upper(), []).append(al)
+            for al in ehms_alarm_rows:
+                if not isinstance(al, dict):
+                    continue
+                for k_field in ("deviceId", "device_id", "assetCode", "deviceCode", "code"):
+                    val = al.get(k_field)
+                    if val:
+                        ehms_alarms_by_dev.setdefault(str(val).strip().upper(), []).append(al)
 
-            plans_items = (((psms_plans or {}).get("data") or {}).get("items")) or []
+            plans_items = _extract_list(psms_plans)
             wms_data = (wms_sum or {}).get("data") or {}
-            wms_bal_raw = (wms_bal or {}).get("data") if isinstance(wms_bal, dict) else wms_bal
-            if isinstance(wms_bal_raw, list):
-                wms_bal_items = wms_bal_raw
-            elif isinstance(wms_bal_raw, dict):
-                wms_bal_items = wms_bal_raw.get("items") or []
-            else:
-                wms_bal_items = []
-            wms_silo_raw = (wms_silos_ext or {}).get("data") if isinstance(wms_silos_ext, dict) else wms_silos_ext
-            if isinstance(wms_silo_raw, dict):
-                wms_silo_list = wms_silo_raw.get("items") or wms_silo_raw.get("list") or []
-            elif isinstance(wms_silo_raw, list):
-                wms_silo_list = wms_silo_raw
-            else:
-                wms_silo_list = []
+            wms_bal_items = _extract_list(wms_bal)
+            wms_silo_list = _extract_list(wms_silos_ext)
 
             # Index live S2 WMS rows by normalized V6 locationId (`SILO-01..40` / `REBAR-BAY-01..13`)
             live_wms_by_loc = {}
@@ -569,8 +629,9 @@ class ReadonlyAggregator:
                 if eh:
                     dev_data_source = "LIVE_S3_EHMS"
                     rc = str(eh.get("riskClass") or eh.get("healthLevel") or "").lower()
-                    if isinstance(eh.get("healthScore"), (int, float)):
-                        health_score = int(round(float(eh["healthScore"])))
+                    raw_hs = eh.get("healthScore") if eh.get("healthScore") is not None else eh.get("health")
+                    if isinstance(raw_hs, (int, float)):
+                        health_score = int(round(float(raw_hs)))
                     elif rc == "critical":
                         status = "fault" if default_status == "ok" else "standby"
                         health_score = max(62, 70 + instance_offset)
@@ -583,8 +644,9 @@ class ReadonlyAggregator:
                         health_score = 89 + instance_offset
                     if rc == "critical" or health_score < 65:
                         status = "fault"
-                    if isinstance(eh.get("predictedRulDays"), (int, float)):
-                        rul_days = int(round(float(eh["predictedRulDays"])))
+                    raw_rul = eh.get("predictedRulDays") if eh.get("predictedRulDays") is not None else eh.get("rulDays")
+                    if isinstance(raw_rul, (int, float)):
+                        rul_days = int(round(float(raw_rul)))
                     elif rc == "critical":
                         rul_days = max(10, 16 + instance_offset)
                     elif rc == "attention":
@@ -615,10 +677,23 @@ class ReadonlyAggregator:
                 run_hours = 680 + idx * 37
                 today_cycles = max(6, len(plans_items) * 2 + (idx % 9))
 
+                scope_tag = (
+                    "NON_CORE_PENDING_DECISION"
+                    if v4_id in NON_CORE_PENDING_IDS
+                    else ("PENDING_CONFIRM_8_VS_4" if v4_id in PENDING_CONFIRM_TIPPER_IDS else "CORE_ACTIVE")
+                )
+                ledger_note = (
+                    "机电仓库设备，待甲方裁决是否移出装卸区台账"
+                    if v4_id in NON_CORE_PENDING_IDS
+                    else ("图纸与3D北轨实建，一期纳管8台 vs 4台待甲方书面确认" if v4_id in PENDING_CONFIRM_TIPPER_IDS else "")
+                )
+
                 device_items.append({
                     "device_id": v4_id,
                     "device_name": v4_name,
                     "ehms_asset_code": ehms_asset_code,
+                    "scope_tag": scope_tag,
+                    "ledger_note": ledger_note,
                     "status": status,
                     "health_score": health_score,
                     "health_level": health_level,
@@ -689,7 +764,7 @@ class ReadonlyAggregator:
                                 "source_system": "S3-EHMS",
                             })
 
-            # F-D07 (协作 X04): 将 S1 PSMS /api/plans 真实计划映射为可追踪的 5 步工序节点列表
+            # F-D07 (协作 X04): 将 S1 PSMS /api/plans 真实计划映射为可追踪的 1-based 工序节点列表
             task_node_items = []
             if is_active_region:
                 for p_idx, p in enumerate(plans_items[:8]):
@@ -699,24 +774,46 @@ class ReadonlyAggregator:
                     cargo_txt = str(p.get("cargoName") or p.get("materialName") or p.get("title") or ("散装水泥/粉煤灰" if p_idx % 2 == 0 else "HRB400E螺纹钢/盘螺"))
                     is_bulk = any(k in cargo_txt for k in ("水泥", "粉煤灰", "散", "箱")) or (p_idx % 2 == 0)
                     is_coil = any(k in cargo_txt for k in ("卷", "盘螺", "C型"))
-                    chain = "BULK_CEMENT_FLYASH" if is_bulk else ("STEEL_COIL_32T" if is_coil else "STEEL_REBAR_20T")
+                    chain = str(p.get("processChain") or ("BULK_CEMENT_FLYASH" if is_bulk else ("STEEL_COIL_32T" if is_coil else "STEEL_REBAR_20T")))
                     raw_status = str(p.get("status") or p.get("state") or "RUNNING").upper()
-                    step_idx = p_idx % 5
+                    total_steps = 5
+                    raw_step = p.get("currentStepIndex") if p.get("currentStepIndex") is not None else p.get("stepIndex")
+                    raw_wait = str(p.get("handoverWaitReason") or p.get("waitReason") or "").strip()
+                    if isinstance(raw_step, (int, float)):
+                        step_1based = max(1, min(total_steps, int(raw_step) if int(raw_step) >= 1 else int(raw_step) + 1))
+                        step_source = "LIVE_S1_FIELD"
+                    else:
+                        step_source = "DERIVED_FROM_PLAN_STATUS"
+                        if "DONE" in raw_status or "COMPLET" in raw_status or "已完成" in raw_status:
+                            step_1based = total_steps
+                        elif "PEND" in raw_status or "DRAFT" in raw_status or "待" in raw_status:
+                            step_1based = 1
+                        else:
+                            step_1based = (p_idx % total_steps) + 1
+                    step_idx0 = step_1based - 1
                     if "DONE" in raw_status or "COMPLET" in raw_status or "已完成" in raw_status:
-                        step_idx = 4
                         step_status = "COMPLETED"
                         wait_reason = ""
-                    elif p_idx == 1:
-                        step_idx = 2
+                    elif "WAIT" in raw_status or "HOLD" in raw_status or bool(raw_wait):
                         step_status = "HANDOVER_WAIT"
-                        wait_reason = "跨间转接区B门吊与室内桥吊防撞安全净空复核（待S1调度放行）"
+                        wait_reason = raw_wait or "S1 标注交接等待（具体等待原因待 S1 补齐字段）"
+                    elif "EXCEP" in raw_status or "FAIL" in raw_status or "FAULT" in raw_status:
+                        step_status = "EXCEPTION"
+                        wait_reason = raw_wait
+                    elif "PEND" in raw_status or "DRAFT" in raw_status:
+                        step_status = "PENDING"
+                        wait_reason = ""
                     else:
                         step_status = "RUNNING"
                         wait_reason = ""
                     assigned_devs = (
-                        ["CR-BULK-01", "TIPPER-01", "ELV-01", "SILO-01", "LOADER-01"]
-                        if is_bulk
-                        else (["CR-02", "BC-03", "WB-TRUCK-01"] if is_coil else ["CR-02", "BC-07", "WB-TRUCK-01"])
+                        p.get("assignedDevices")
+                        if isinstance(p.get("assignedDevices"), list) and len(p.get("assignedDevices")) > 0
+                        else (
+                            ["CR-BULK-01", "TIPPER-01", "ELV-01", "SILO-01", "LOADER-01"]
+                            if is_bulk
+                            else (["CR-02", "BC-03", "WB-TRUCK-01"] if is_coil else ["CR-02", "BC-07", "WB-TRUCK-01"])
+                        )
                     )
                     task_node_items.append({
                         "taskId": str(p.get("id") or f"T-{p_idx+1:02d}"),
@@ -726,18 +823,22 @@ class ReadonlyAggregator:
                         "processChain": chain,
                         "processKind": "bulk" if is_bulk else "steel",
                         "steelSubMode": "coil_chook" if is_coil else "rebar_magnet",
-                        "currentStepIndex": step_idx,
+                        "currentStepIndex": step_1based,
+                        "stepIndex0": step_idx0,
+                        "totalSteps": total_steps,
+                        "stepSource": step_source,
                         "stepStatus": step_status,
                         "handoverWaitReason": wait_reason,
                         "assignedDevices": assigned_devs,
-                        "focusDeviceId": assigned_devs[min(step_idx, len(assigned_devs) - 1)],
+                        "focusDeviceId": assigned_devs[min(step_idx0, len(assigned_devs) - 1)],
                         "sourceSystem": "S1-PSMS",
-                        "qualityCode": "GOOD" if psms_st == "OK" else "FALLBACK",
-                        "contractNote": "计划主账来自S1(/api/plans)；子工序序号待F-P13细化回执",
+                        "qualityCode": "GOOD" if (psms_st == "OK" and step_source == "LIVE_S1_FIELD") else ("UNCERTAIN" if psms_st == "OK" else "FALLBACK"),
+                        "contractNote": "计划主账来自S1(/api/plans)" if step_source == "LIVE_S1_FIELD" else "计划主账来自S1；子工序步号由计划状态推导（待S1补齐currentStepIndex）",
                         "updatedAt": str(p.get("updatedAt") or p.get("createdAt") or sync_time),
                     })
 
-            # F-D04 (协作 X08): S2 WMS 全量 53 库位（40 座 3000T 筒仓 SILO-01..40 + 13 跨钢筋库 REBAR-BAY-01..13）
+            # F-D09 (协作 X08/X09): 一期 53 库位（40 筒仓 SILO-01..40 + 13 跨钢筋库 REBAR-BAY-01..13）+ 68 座二期预留空点位
+            # 严格遵守 SRS 红线：账面库存(S2 WMS X08)与物理料位(控制侧雷达料位计 X09)严格分拆；缺失物理料位时严禁按满仓比换算冒充！
             storage_items = []
             for s_idx in range(1, 41):
                 silo_id = f"SILO-{s_idx:02d}"
@@ -748,13 +849,18 @@ class ReadonlyAggregator:
                     storage_items.append({
                         "locationId": silo_id,
                         "locationCode": silo_code,
+                        "phase": "PHASE1_ACTIVE",
                         "category": "CEMENT_SILO" if is_cement else "FLYASH_SILO",
                         "materialName": "P·O 42.5 散装水泥" if is_cement else "Ⅰ级散装粉煤灰",
                         "batchNo": f"{norm_region}-ISOLATED",
                         "availableTon": 0.0,
+                        "bookStockTons": 0.0,
                         "capacityTon": 3000.0,
                         "fillRatio": 0.0,
-                        "levelMeters": 0.0,
+                        "levelMeters": None,
+                        "physicalLevelM": None,
+                        "bookDataSource": "REGION_ISOLATED",
+                        "physicalLevelSource": "REGION_ISOLATED",
                         "highLevelWarning": False,
                         "lowLevelWarning": False,
                         "sourceSystem": f"REGION_ISOLATED_{norm_region}",
@@ -770,20 +876,27 @@ class ReadonlyAggregator:
                         else (live_row.get("availableQty") or live_row.get("quantity") or live_row.get("weightTons") or 0.0)
                     )
                     ratio = round(max(0.0, min(1.0, tons / max(1.0, cap))), 4)
-                    lvl_m = float(live_row.get("levelMeters") if live_row.get("levelMeters") is not None else round(ratio * 31.5, 1))
+                    raw_phys = live_row.get("physicalLevelM") if live_row.get("physicalLevelM") is not None else live_row.get("levelMeters")
+                    phys_m = round(float(raw_phys), 2) if isinstance(raw_phys, (int, float)) else None
+                    phys_src = "LIVE_X09_RADAR" if phys_m is not None else "UNBOUND_NO_SENSOR"
                     storage_items.append({
                         "locationId": silo_id,
                         "locationCode": str(live_row.get("locationCode") or silo_code),
+                        "phase": "PHASE1_ACTIVE",
                         "category": "CEMENT_SILO" if is_cement else "FLYASH_SILO",
                         "materialName": str(live_row.get("materialName") or ("P·O 42.5 散装水泥" if is_cement else "Ⅰ级散装粉煤灰")),
                         "batchNo": str(live_row.get("batchNo") or live_row.get("lotNo") or "WMS-LIVE"),
                         "availableTon": round(tons, 1),
+                        "bookStockTons": round(tons, 1),
                         "capacityTon": round(cap, 1),
                         "fillRatio": ratio,
-                        "levelMeters": round(lvl_m, 2),
+                        "levelMeters": phys_m,
+                        "physicalLevelM": phys_m,
+                        "bookDataSource": "LIVE_S2_WMS",
+                        "physicalLevelSource": phys_src,
                         "highLevelWarning": bool(live_row.get("highLevelWarning")) if live_row.get("highLevelWarning") is not None else (ratio >= 0.85),
                         "lowLevelWarning": ratio <= 0.15,
-                        "sourceSystem": "S2-WMS",
+                        "sourceSystem": "S2-WMS" + (" + X09" if phys_m is not None else ""),
                         "dataSource": "LIVE_S2_WMS",
                         "qualityCode": "GOOD",
                         "updatedAt": str(live_row.get("updatedAt") or sync_time),
@@ -794,13 +907,18 @@ class ReadonlyAggregator:
                     storage_items.append({
                         "locationId": silo_id,
                         "locationCode": silo_code,
+                        "phase": "PHASE1_ACTIVE",
                         "category": "CEMENT_SILO" if is_cement else "FLYASH_SILO",
                         "materialName": "P·O 42.5 散装水泥" if is_cement else "Ⅰ级散装粉煤灰",
-                        "batchNo": f"SIM-20261120-{silo_code}",
+                        "batchNo": f"SIM-20261123-{silo_code}",
                         "availableTon": float(tons),
+                        "bookStockTons": float(tons),
                         "capacityTon": 3000.0,
                         "fillRatio": ratio,
-                        "levelMeters": round(ratio * 31.5, 1),
+                        "levelMeters": None,
+                        "physicalLevelM": None,
+                        "bookDataSource": "FALLBACK_SIM",
+                        "physicalLevelSource": "UNBOUND_NO_SENSOR",
                         "highLevelWarning": ratio >= 0.85,
                         "lowLevelWarning": ratio <= 0.15,
                         "sourceSystem": f"S2-WMS({wms_b_st})",
@@ -811,19 +929,24 @@ class ReadonlyAggregator:
 
             for b_idx in range(1, 14):
                 bay_id = f"REBAR-BAY-{b_idx:02d}"
-                is_chook_bay = b_idx in (3, 4, 9, 12)
+                is_chook_bay = b_idx in CHOOK_32T_BAYS
                 live_row = live_wms_by_loc.get(bay_id) if is_active_region else None
                 if not is_active_region:
                     storage_items.append({
                         "locationId": bay_id,
                         "locationCode": f"STEEL-BAY-{b_idx:02d}",
+                        "phase": "PHASE1_ACTIVE",
                         "category": "STEEL_BAY",
                         "materialName": "盘螺/热轧卷钢 (32t C型钩跨)" if is_chook_bay else "HRB400E 螺纹钢 (20t电磁吸盘跨)",
                         "batchNo": f"{norm_region}-ISOLATED",
                         "availableTon": 0.0,
+                        "bookStockTons": 0.0,
                         "capacityTon": 1800.0,
                         "fillRatio": 0.0,
-                        "levelMeters": 0.0,
+                        "levelMeters": None,
+                        "physicalLevelM": None,
+                        "bookDataSource": "REGION_ISOLATED",
+                        "physicalLevelSource": "REGION_ISOLATED",
                         "stackLayers": 0,
                         "highLevelWarning": False,
                         "lowLevelWarning": False,
@@ -841,16 +964,23 @@ class ReadonlyAggregator:
                     )
                     ratio = round(max(0.0, min(1.0, tons / max(1.0, cap))), 4)
                     layers = int(live_row.get("stackLayers") if live_row.get("stackLayers") is not None else max(1, round(ratio * 6)))
+                    raw_phys = live_row.get("physicalLevelM") if live_row.get("physicalLevelM") is not None else live_row.get("levelMeters")
+                    phys_m = round(float(raw_phys), 2) if isinstance(raw_phys, (int, float)) else None
                     storage_items.append({
                         "locationId": bay_id,
                         "locationCode": str(live_row.get("locationCode") or f"STEEL-BAY-{b_idx:02d}"),
+                        "phase": "PHASE1_ACTIVE",
                         "category": "STEEL_BAY",
                         "materialName": str(live_row.get("materialName") or ("盘螺/热轧卷钢 (32t C型钩跨)" if is_chook_bay else "HRB400E 螺纹钢 (20t电磁吸盘跨)")),
                         "batchNo": str(live_row.get("batchNo") or live_row.get("lotNo") or f"WMS-B{b_idx:02d}"),
                         "availableTon": round(tons, 1),
+                        "bookStockTons": round(tons, 1),
                         "capacityTon": round(cap, 1),
                         "fillRatio": ratio,
-                        "levelMeters": round(float(live_row.get("levelMeters") if live_row.get("levelMeters") is not None else (0.8 + ratio * 3.8)), 2),
+                        "levelMeters": phys_m,
+                        "physicalLevelM": phys_m,
+                        "bookDataSource": "LIVE_S2_WMS",
+                        "physicalLevelSource": "LIVE_X09_RADAR" if phys_m is not None else "UNBOUND_NO_SENSOR",
                         "stackLayers": layers,
                         "highLevelWarning": bool(live_row.get("highLevelWarning")) if live_row.get("highLevelWarning") is not None else (ratio >= 0.85),
                         "lowLevelWarning": ratio <= 0.15,
@@ -865,13 +995,18 @@ class ReadonlyAggregator:
                     storage_items.append({
                         "locationId": bay_id,
                         "locationCode": f"STEEL-BAY-{b_idx:02d}",
+                        "phase": "PHASE1_ACTIVE",
                         "category": "STEEL_BAY",
                         "materialName": "盘螺/热轧卷钢 (32t C型钩跨)" if is_chook_bay else "HRB400E 螺纹钢 (20t电磁吸盘跨)",
-                        "batchNo": f"SIM-20261120-B{b_idx:02d}",
+                        "batchNo": f"SIM-20261123-B{b_idx:02d}",
                         "availableTon": float(tons),
+                        "bookStockTons": float(tons),
                         "capacityTon": 1800.0,
                         "fillRatio": ratio,
-                        "levelMeters": round(1.2 + ratio * 3.4, 2),
+                        "levelMeters": None,
+                        "physicalLevelM": None,
+                        "bookDataSource": "FALLBACK_SIM",
+                        "physicalLevelSource": "UNBOUND_NO_SENSOR",
                         "stackLayers": max(1, round(ratio * 6)),
                         "highLevelWarning": ratio >= 0.85,
                         "lowLevelWarning": ratio <= 0.15,
@@ -880,6 +1015,8 @@ class ReadonlyAggregator:
                         "qualityCode": "FALLBACK",
                         "updatedAt": sync_time,
                     })
+
+            reserved_phase2_silos = _build_phase2_reserved_silos(norm_region, sync_time)
 
             # V6 S4-SCS Standardized Safety Snapshot (`GET /api/v1/dts/safety` + `overview.safety`)
             live_scs_fences = ((scs_fences or {}).get("list") or (scs_fences or {}).get("items") or ((scs_fences or {}).get("data") or {}).get("items") or []) if isinstance(scs_fences, dict) else (scs_fences if isinstance(scs_fences, list) else [])
@@ -1066,10 +1203,14 @@ class ReadonlyAggregator:
                 "storageResponse": {
                     "regionId": norm_region,
                     "regionIsolated": True,
-                    "requirementCode": "R-D01 & R-D02 / F-D04 (协作 X08)",
+                    "requirementCode": "R-D01 & R-D02 / F-D09 (协作 X08/X09)",
                     "wmsSummary": wms_data if is_active_region else {},
                     "liveMatchedCount": sum(1 for item in storage_items if item.get("dataSource") == "LIVE_S2_WMS"),
+                    "physicalSensorMatchedCount": sum(1 for item in storage_items if item.get("physicalLevelSource") == "LIVE_X09_RADAR"),
+                    "phase1Count": len(storage_items),
+                    "reservedPhase2Count": len(reserved_phase2_silos),
                     "items": storage_items,
+                    "reservedPhase2Silos": reserved_phase2_silos,
                 },
                 "safetyResponse": safety_response,
                 "devicesResponse": {
@@ -1189,7 +1330,10 @@ class DtsReadonlyHandler(http.server.BaseHTTPRequestHandler):
             return
         if path == "/api/v1/dts/storage":
             snap = AGGREGATOR.build_snapshot(region_id)
-            self._reply_json(200, snap["storageResponse"])
+            resp = dict(snap["storageResponse"])
+            if (qs.get("includeReserved") or ["0"])[0] in ("1", "true", "TRUE"):
+                resp["allItemsWithReserved"] = list(resp["items"]) + list(resp["reservedPhase2Silos"])
+            self._reply_json(200, resp)
             return
         if path == "/api/v1/dts/safety":
             snap = AGGREGATOR.build_snapshot(region_id)
@@ -1207,6 +1351,7 @@ class DtsReadonlyHandler(http.server.BaseHTTPRequestHandler):
                 "alertsCount": len(snap["alertsResponse"]["items"]),
                 "tasksCount": len(snap["tasksResponse"]["items"]),
                 "storageCount": len(snap["storageResponse"]["items"]),
+                "reservedPhase2SilosCount": snap["storageResponse"]["reservedPhase2Count"],
                 "fencesCount": len(snap["safetyResponse"]["fences"]),
                 "camerasCount": len(snap["safetyResponse"]["cameras"]),
                 "inboxEventCount": snap["inboxEventCount"],

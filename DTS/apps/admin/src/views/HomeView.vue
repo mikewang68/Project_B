@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as Cesium from 'cesium'
 import CesiumViewer from '@/components/cesium/CesiumViewer.vue'
+import VideoStreamModal from '@/components/VideoStreamModal.vue'
 import type { LightingPreset } from '@/components/cesium/cesiumInit'
 import { setupCameraInteraction } from '@/components/cesium/cameraControl'
 import { filterByCategory } from '@/components/cesium/layerManager'
@@ -10,7 +11,8 @@ import { CAD_GEOJSON_URL } from '@/config/runtime'
 import {
   buildDefaultSafetySnapshotV6,
   buildDefaultStorageSnapshotV6,
-  formatProvenanceBadge,
+  formatPhysicalLevelText,
+  type DataProvenance,
   type DeviceHealthOverlayItemV6,
   type SurveillanceCameraStateV6,
 } from '@/services/twinIntegrationContracts'
@@ -27,6 +29,8 @@ import {
   buildWmsLocationUrl,
   getCrossSystemLinks,
   getStorageSummaryForTarget,
+  probeReadonly405Guard,
+  resolveDeviceIdFromAssetCode,
   type DataSourceMode,
   type DtsFeedStatus,
   type LiveTaskNodeItem,
@@ -85,11 +89,37 @@ let smoothedTrackState: (Required<Pick<CameraTrackTarget, 'cadX' | 'cadY' | 'cad
 }) | null = null
 let removeCanvasInteractionListeners: (() => void) | null = null
 
-const layers = ref({ track: true, area: true, cargo: false, health: true, personnel: false, planned: true })
+const layers = ref({ track: true, area: true, cargo: false, health: true, personnel: false, planned: true, reservedSilos: false })
 const detailVisible = ref(false)
 const vendorDrawerOpen = ref(false)
 const reqMatrixOpen = ref(false)
 const activeCamera = ref<SurveillanceCameraStateV6 | null>(null)
+const readonlyProbeState = reactive<{
+  running: boolean
+  checkedAt: string
+  ok: boolean | null
+  status: number
+  code: string
+  message: string
+}>({
+  running: false,
+  checkedAt: '',
+  ok: null,
+  status: 0,
+  code: '',
+  message: '',
+})
+
+async function runReadonly405Probe() {
+  readonlyProbeState.running = true
+  const res = await probeReadonly405Guard()
+  readonlyProbeState.running = false
+  readonlyProbeState.checkedAt = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+  readonlyProbeState.ok = res.ok
+  readonlyProbeState.status = res.status
+  readonlyProbeState.code = res.code
+  readonlyProbeState.message = res.message
+}
 const cinemaTourRunning = ref(false)
 let cinemaTourTimer: ReturnType<typeof setInterval> | null = null
 let cinemaTourIdx = 0
@@ -201,7 +231,7 @@ const selectedPsmsUrl = computed(() => {
 })
 const selectedWmsUrl = computed(() => {
   const base = crossLinks.find((c) => c.key === 'S2')?.url ?? 'https://wms.bproject.de5.net/'
-  return buildWmsLocationUrl(base, selectedInfo.id || undefined, selectedStorageSummary.value?.batchNo)
+  return buildWmsLocationUrl(base, selectedInfo.id || undefined, selectedStorageSummary.value?.batchNo ?? undefined)
 })
 const selectedEhmsUrl = computed(() => {
   const base = crossLinks.find((c) => c.key === 'S3')?.url ?? 'https://ehms.bproject.de5.net/ehm/'
@@ -228,15 +258,23 @@ function syncDeviceHealthOverlay() {
   const items: DeviceHealthOverlayItemV6[] = Object.values(deviceStore.devices).map((d) => {
     const score = d.ehms?.healthScore ?? 92
     const level: DeviceHealthOverlayItemV6['healthLevel'] =
-      d.status === 'fault' || score < 65 ? 'critical' : score < 76 ? 'risk' : score < 86 ? 'attention' : 'healthy'
+      d.ehms?.healthLevel ??
+      (d.status === 'fault' || score < 65 ? 'critical' : score < 76 ? 'risk' : score < 86 ? 'attention' : 'healthy')
+    const provenance: DataProvenance =
+      (d.ehms?.dataSource as DataProvenance | undefined) ??
+      (activeRegion.value !== 'SHEN_TIE'
+        ? 'REGION_ISOLATED'
+        : feedStatus.quality === 'GOOD'
+          ? 'LIVE_S3_EHMS'
+          : 'FALLBACK_SIM')
     return {
       deviceId: d.id,
       deviceName: d.name,
       status: d.status,
       healthScore: score,
       healthLevel: level,
-      activeAlarmCount: alertStore.alerts.filter((a) => !a.handled && a.targetId === d.id).length,
-      dataSource: feedStatus.quality === 'GOOD' ? 'LIVE_S3_EHMS' : 'FALLBACK_SIM',
+      activeAlarmCount: d.ehms?.activeAlarmCount ?? alertStore.alerts.filter((a) => !a.handled && a.targetId === d.id).length,
+      dataSource: provenance,
     }
   })
   twin3d.syncHealthOverlay(items)
@@ -292,7 +330,13 @@ function applyUrlDeepLinkParams() {
   const processParam = sp.get('process')
   const subParam = sp.get('sub')
   const stepParam = sp.get('step')
-  const devParam = sp.get('deviceId') || sp.get('siloId') || sp.get('locationCode')
+  const assetParam = sp.get('assetCode')
+  const alertParam = sp.get('alertId')
+  const devParam =
+    sp.get('deviceId') ||
+    (assetParam ? resolveDeviceIdFromAssetCode(assetParam) : '') ||
+    sp.get('siloId') ||
+    sp.get('locationCode')
   const taskParam = sp.get('taskId') || sp.get('planNo')
   const fnParam = sp.get('fn')
 
@@ -312,6 +356,14 @@ function applyUrlDeepLinkParams() {
   if (taskParam) {
     const matched = liveTaskList.value.find((t) => t.taskId === taskParam || t.planNo === taskParam)
     if (matched) selectLiveTaskNode(matched)
+  }
+  if (alertParam) {
+    setTimeout(() => {
+      const matchedAlert = alertStore.alerts.find((a) => a.id === alertParam || a.id.includes(alertParam))
+      if (matchedAlert) {
+        selectDeviceFromList(matchedAlert.targetId)
+      }
+    }, 480)
   }
   if (devParam) {
     setTimeout(() => selectDeviceFromList(devParam), 350)
@@ -351,6 +403,8 @@ function onViewerReady(v: Cesium.Viewer) {
   const hasDeepLinkFocus = Boolean(
     sp.get('step') ||
       sp.get('deviceId') ||
+      sp.get('assetCode') ||
+      sp.get('alertId') ||
       sp.get('siloId') ||
       sp.get('locationCode') ||
       sp.get('taskId') ||
@@ -378,6 +432,7 @@ function onViewerReady(v: Cesium.Viewer) {
       diag.cadEntities = ds.entities.values.length
       setCategoryVisible('track', layers.value.track)
       setCategoryVisible('area', layers.value.area)
+      setCategoryVisible('silo_reserved', layers.value.reservedSilos)
       diag.cadStatus = `已加载 ${diag.cadEntities} 个 CAD 实体`
       if (!hasDeepLinkFocus && !demoState.running && demoState.progress === 0) {
         focusCadExtent(v)
@@ -578,14 +633,16 @@ function selectLiveTaskNode(task: LiveTaskNodeItem) {
   if (task.processKind === 'steel') {
     steelSubMode.value = task.steelSubMode
   }
+  const stepIdx0 = task.stepIndex0 ?? Math.max(0, task.currentStepIndex - 1)
+  const totalSteps = task.totalSteps ?? 5
   rebuildDemoController(activeProcess.value)
   demoController?.setSingleStep(true)
-  demoController?.jumpToStep(task.currentStepIndex, false)
+  demoController?.jumpToStep(stepIdx0, false)
   demoState.title = `[F-D07 真实任务节点 · ${task.qualityCode}] ${task.planNo}`
   demoState.narration = task.handoverWaitReason
     ? `⚠️ 交接等待：${task.handoverWaitReason}`
     : `${task.cargoName}（${task.tonnage}t）· 关联装备：${task.assignedDevices.join(' / ')}`
-  demoState.progress = Math.min(100, Math.round(((task.currentStepIndex + 1) / 5) * 100))
+  demoState.progress = Math.min(100, Math.round(((stepIdx0 + 1) / totalSteps) * 100))
   selectDeviceFromList(task.focusDeviceId)
 }
 
@@ -597,12 +654,13 @@ function triggerRequirementFunction(item: RequirementFunctionItem) {
     void router.push('/calibration')
   } else if (item.fnId === 'F-D03') {
     selectDeviceFromList('CR-02')
-  } else if (item.fnId === 'F-D04') {
+  } else if (item.fnId === 'F-D09') {
     quickSiloId.value = 'SILO-01'
     selectDeviceFromList('SILO-01')
   } else if (item.fnId === 'F-D05') {
     selectDeviceFromList('TIPPER-01')
-    vendorDrawerOpen.value = true
+    const cam = allSurveillanceCameras.value[1] ?? allSurveillanceCameras.value[0]
+    if (cam) openCameraModal(cam)
   } else if (item.fnId === 'F-D06') {
     processTrackMode.value = 'f_d06_sim'
     singleStepMode.value = true
@@ -612,6 +670,7 @@ function triggerRequirementFunction(item: RequirementFunctionItem) {
     if (waitTask) selectLiveTaskNode(waitTask)
   } else if (item.fnId === 'F-D08') {
     vendorDrawerOpen.value = true
+    void runReadonly405Probe()
   }
 }
 
@@ -765,12 +824,13 @@ function startPhase6Simulation() {
   }, 4500)
 }
 
-function toggleLayer(category: 'track' | 'area' | 'cargo' | 'health' | 'personnel' | 'planned') {
+function toggleLayer(category: 'track' | 'area' | 'cargo' | 'health' | 'personnel' | 'planned' | 'reservedSilos') {
   layers.value[category] = !layers.value[category]
   if (category === 'cargo') twin3d?.setStorageOverlayVisible(layers.value.cargo)
   else if (category === 'health') twin3d?.setHealthOverlayVisible(layers.value.health)
   else if (category === 'personnel') twin3d?.setSafetyOverlayVisible(layers.value.personnel)
   else if (category === 'planned') twin3d?.setPlannedZonesVisible(layers.value.planned)
+  else if (category === 'reservedSilos') setCategoryVisible('silo_reserved', layers.value.reservedSilos)
   else setCategoryVisible(category, layers.value[category])
 }
 
@@ -902,7 +962,7 @@ onBeforeUnmount(() => {
           {{ anySidePanelOpen ? '👁 收起全部面板' : '🗂 展开全部面板' }}
         </button>
         <button class="mode-pill req-btn" @click="reqMatrixOpen = !reqMatrixOpen">
-          需求与跨系统矩阵 (F-D01~08)
+          需求与跨系统矩阵 (F-D01~09)
         </button>
         <button class="mode-pill vendor-btn" @click="vendorDrawerOpen = !vendorDrawerOpen">
           1+5+2 厂家控制系统 (3套)
@@ -1093,7 +1153,11 @@ onBeforeUnmount(() => {
         </label>
         <label class="layer-item">
           <input type="checkbox" :checked="layers.planned" @change="toggleLayer('planned')" />
-          <span class="dot" style="background: #38bdf8"></span> 缓建规划仓体 (F-D02)
+          <span class="dot" style="background: #38bdf8"></span> 2座缓建规划仓体 (F-D02)
+        </label>
+        <label class="layer-item">
+          <input type="checkbox" :checked="layers.reservedSilos" @change="toggleLayer('reservedSilos')" />
+          <span class="dot" style="background: #f59e0b"></span> 二期68座筒仓规划线 (默认留白)
         </label>
         <div class="v6-dock-summary" title="S2/S3/S4 真实数据直连接口契约已就绪，上游接入后自动切换 LIVE 实测态">
           <span>接口直连:</span>
@@ -1185,7 +1249,7 @@ onBeforeUnmount(() => {
                 <div class="lt-top">
                   <b>{{ t.planNo }}</b>
                   <em :class="t.stepStatus.toLowerCase()">
-                    {{ t.stepStatus === 'HANDOVER_WAIT' ? '交接等待' : t.stepStatus === 'COMPLETED' ? '已完成' : `工序${t.currentStepIndex + 1}/5` }}
+                    {{ t.stepStatus === 'HANDOVER_WAIT' ? '交接等待' : t.stepStatus === 'COMPLETED' ? '已完成' : `工序${t.currentStepIndex}/${t.totalSteps ?? 5}` }}
                   </em>
                 </div>
                 <div class="lt-sub">{{ t.cargoName }} ({{ t.tonnage }}t)</div>
@@ -1212,7 +1276,7 @@ onBeforeUnmount(() => {
       </div>
       </transition>
 
-      <!-- Slide 41: 设备运行参数 + F-D03(EHMS) + F-D04(WMS库位) + F-D05(四系统联查) HUD 浮窗 -->
+      <!-- Slide 41: 设备运行参数 + F-D03(EHMS) + F-D09(WMS库位/料位分拆) + F-D05(四系统联查) HUD 浮窗 -->
       <div v-if="detailVisible" class="detail-card" :class="{ 'left-open': panelOpen.left }">
         <div class="detail-header">
           <div>
@@ -1241,17 +1305,21 @@ onBeforeUnmount(() => {
             </div>
             <small>{{ selectedDeviceState.ehms.riskReason }}</small>
           </div>
-          <!-- F-D04 (协作 X08): S2 WMS 仓储库位与筒仓料位联查卡 -->
+          <!-- F-D09 (协作 X08/X09): S2 WMS 账面库存与控制侧物理料位来源严格分拆 -->
           <div v-if="selectedStorageSummary" class="wms-box">
             <div class="ehms-head">
-              <span>[F-D04·X08] S2 仓位: <b>{{ selectedStorageSummary.locationId }}</b></span>
+              <span>[F-D09·X08/X09] 仓位: <b>{{ selectedStorageSummary.locationId }}</b></span>
               <a :href="selectedWmsUrl" target="_blank" rel="noopener noreferrer">S2台账 →</a>
             </div>
             <div class="wms-meta">
               <span>{{ selectedStorageSummary.materialName }}</span>
-              <b>{{ selectedStorageSummary.availableTon }}t / {{ selectedStorageSummary.capacityTon }}t (料位 {{ selectedStorageSummary.levelMeters }}m)</b>
+              <b>S2账面(X08)：{{ selectedStorageSummary.availableTon }}t / {{ selectedStorageSummary.capacityTon }}t（{{ Math.round(selectedStorageSummary.fillRatio * 100) }}%）</b>
             </div>
-            <small>批次: {{ selectedStorageSummary.batchNo }} · {{ selectedStorageSummary.highLevelWarning ? '⚠️ 高料位预警' : '仓容正常' }}</small>
+            <div class="wms-meta">
+              <span>物理料位(X09)</span>
+              <b>{{ formatPhysicalLevelText(selectedStorageSummary) }}</b>
+            </div>
+            <small>批次: {{ selectedStorageSummary.batchNo ?? '—' }} · {{ selectedStorageSummary.highLevelWarning ? '⚠️ 高料位预警' : '仓容正常' }}</small>
           </div>
           <template v-for="(val, key) in selectedInfo.params" :key="key">
             <div class="detail-row"><span class="label">{{ key }}</span><span>{{ val }}</span></div>
@@ -1266,12 +1334,12 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- 组长工作簿对齐：R-D01~R-D05 ↔ F-D01~F-D08 与跨系统协作 (X03~X11) 核验抽屉 -->
+      <!-- 组长工作簿对齐：R-D01~R-D05 ↔ F-D01~F-D09 与跨系统协作 (X03~X11) 核验抽屉 -->
       <div v-if="reqMatrixOpen" class="req-matrix-drawer" :class="{ 'left-open': panelOpen.left, 'right-open': panelOpen.device }" role="dialog" aria-label="S5需求功能与跨系统协作核验矩阵">
         <div class="vendor-header">
           <div>
-            <b>S5 数字孪生需求功能（R-D01~D05 ↔ F-D01~D08）与跨系统协作（X03~X11）实时核验矩阵</b>
-            <small>100% 对齐组长《系统需求功能工作簿 v2.0/v2.1》· 点击右侧“▶ 场景核验”直接在三维场景验证该功能</small>
+            <b>S5 数字孪生需求功能（R-D01~D05 ↔ F-D01/02/03/05/06/07/08/09）与跨系统协作核验矩阵</b>
+            <small>对齐《系统需求功能工作簿 v3.1》与 2026-11-22 需求规格书 · 点击右侧“▶ 场景核验”直接在三维场景验证该功能</small>
           </div>
           <button class="close-btn" @click="reqMatrixOpen = false">✕</button>
         </div>
@@ -1313,14 +1381,43 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- 1+5+2 底层控制系统只读监控抽屉（2套外购厂家系统 + 1套合研移动翻箱机系统） -->
+      <!-- 1+5+2 底层控制系统只读监控抽屉（含只读405与区域隔离韧性自检） -->
       <div v-if="vendorDrawerOpen" class="vendor-drawer" :class="{ 'left-open': panelOpen.left, 'right-open': panelOpen.device }">
         <div class="vendor-header">
           <div>
-            <b>1+5+2 底层控制系统只读监控（协作 X09 / X10 · S5 只监不控）</b>
-            <small>2套外购厂家控制系统 + 1套合研移动翻箱机控制系统 PLC 实时镜像（非GET请求 405 硬拦截）</small>
+            <b>1+5+2 底层控制系统只读监控 &amp; 韧性自检（协作 X09 / X10 · S5 只监不控）</b>
+            <small>2套外购厂家控制系统 + 1套合研移动翻箱机控制系统 PLC 只读镜像（非GET请求强制 405 拦截）</small>
           </div>
           <button class="close-btn" @click="vendorDrawerOpen = false">✕</button>
+        </div>
+        <div class="resilience-bar">
+          <div class="res-left">
+            <button type="button" class="res-probe-btn" :disabled="readonlyProbeState.running" @click="runReadonly405Probe">
+              {{ readonlyProbeState.running ? '正在检测 POST 405…' : '🛡 一键测试只读 405 拦截' }}
+            </button>
+            <span v-if="readonlyProbeState.ok === true" class="res-result pass">
+              ✅ HTTP {{ readonlyProbeState.status }} ({{ readonlyProbeState.code }}) · {{ readonlyProbeState.message }} [{{ readonlyProbeState.checkedAt }}]
+            </span>
+            <span v-else-if="readonlyProbeState.ok === false" class="res-result fail">
+              ⚠ 状态 {{ readonlyProbeState.status }} ({{ readonlyProbeState.code }}) · {{ readonlyProbeState.message }}
+            </span>
+            <span v-else class="res-result idle">
+              点击测试发送 POST /api/v1/dts/devices 现场自证只监不控（PPT Slide 46 验收项）
+            </span>
+          </div>
+          <div class="res-right">
+            <span>区域隔离演练：</span>
+            <button
+              v-for="r in REGION_OPTIONS"
+              :key="r.id"
+              type="button"
+              class="res-region-btn"
+              :class="{ active: activeRegion === r.id }"
+              @click="onRegionChange(r.id)"
+            >
+              {{ r.id }}
+            </button>
+          </div>
         </div>
         <div class="vendor-grid">
           <article v-for="sys in VENDOR_CONTROL_SYSTEMS" :key="sys.id" class="vendor-card">
@@ -1370,7 +1467,7 @@ onBeforeUnmount(() => {
             <select
               class="silo-quick-select"
               :value="quickSiloId"
-              title="F-D04：快速检视40座筒仓单仓台账(协作X08)"
+              title="F-D09：快速检视40座现建筒仓单仓台账(协作X08/X09)"
               @change="quickSiloId = ($event.target as HTMLSelectElement).value; selectDeviceFromList(quickSiloId)"
             >
               <option v-for="s in SITE_LAYOUT_V4.ash.silos" :key="s.id" :value="s.id">
@@ -1414,7 +1511,7 @@ onBeforeUnmount(() => {
         v-if="!panelOpen.stock"
         type="button"
         class="dock-pill dock-right-bottom"
-        title="展开 F-D04 仓容态势与 F-D06/F-D07 作业进度联锁栏"
+        title="展开 F-D09 仓容态势与 F-D06/F-D07 作业进度联锁栏"
         @click="panelOpen.stock = true"
       >
         <span class="dock-arrow">◂</span>
@@ -1426,7 +1523,7 @@ onBeforeUnmount(() => {
       <section v-if="panelOpen.stock" class="phase6-panel" aria-label="双线库容与联锁监控">
         <div class="phase6-section">
           <div class="panel-header-row">
-            <span class="data-title">F-D04 仓容与库存态势（协作 X08 · S2）</span>
+            <span class="data-title">F-D09 仓容与库位态势（X08账面/X09料位）</span>
             <button type="button" class="collapse-chip" title="收起仓容与进度栏" @click="panelOpen.stock = false">收起 »</button>
           </div>
           <div v-for="cargo in cargoItems" :key="cargo.id" class="phase6-row">
@@ -1436,6 +1533,7 @@ onBeforeUnmount(() => {
               {{ cargo.quantity.toLocaleString() }}t / {{ cargo.capacity.toLocaleString() }}t
             </span>
           </div>
+          <div class="phase2-silo-note">二期预留 68 座筒仓（SILO-41..108）：场地默认留白，软件空点位已预留</div>
         </div>
         <div class="phase6-section">
           <div class="data-title">F-D06/F-D07 作业进度与联锁校验</div>
@@ -1450,73 +1548,17 @@ onBeforeUnmount(() => {
       </section>
       </transition>
 
-      <!-- V6 S4-SCS 监控摄像机视频核查弹窗（原生预留 HLS/MP4/MJPEG/SNAPSHOT/IFRAME 实流直连接口） -->
-      <div v-if="activeCamera" class="camera-modal-backdrop" @click.self="activeCamera = null">
-        <div class="camera-modal-card">
-          <div class="cam-modal-head">
-            <div>
-              <strong>{{ activeCamera.cameraId }} · {{ activeCamera.name }}</strong>
-              <span class="cam-proto-tag" :class="formatProvenanceBadge(activeCamera.dataSource).tone">
-                {{ formatProvenanceBadge(activeCamera.dataSource).label }} · {{ activeCamera.streamProtocol }}
-              </span>
-            </div>
-            <button type="button" class="collapse-chip" @click="activeCamera = null">✕ 关闭</button>
-          </div>
-          <div class="cam-switcher-row">
-            <button
-              v-for="cam in allSurveillanceCameras"
-              :key="cam.cameraId"
-              type="button"
-              class="cam-chip"
-              :class="{ active: cam.cameraId === activeCamera.cameraId, alert: cam.status === 'ALERT' }"
-              @click="openCameraModal(cam)"
-            >
-              {{ cam.cameraId }}
-            </button>
-          </div>
-          <div class="cam-viewport">
-            <video
-              v-if="activeCamera.streamUrl && (activeCamera.streamProtocol === 'HLS' || activeCamera.streamProtocol === 'MP4')"
-              :src="activeCamera.streamUrl"
-              controls
-              autoplay
-              muted
-              playsinline
-              class="cam-media"
-            />
-            <img
-              v-else-if="activeCamera.streamUrl && (activeCamera.streamProtocol === 'MJPEG' || activeCamera.streamProtocol === 'SNAPSHOT')"
-              :src="activeCamera.streamUrl"
-              :alt="activeCamera.name"
-              class="cam-media"
-            />
-            <iframe
-              v-else-if="activeCamera.streamUrl && activeCamera.streamProtocol === 'IFRAME'"
-              :src="activeCamera.streamUrl"
-              class="cam-media"
-              title="S4 监控视频流"
-            />
-            <div v-else class="cam-unbound-placeholder">
-              <div class="cam-placeholder-icon">📹</div>
-              <div class="cam-placeholder-title">已预留 S4-SCS 实时视频流直连接口（当前状态：{{ activeCamera.streamProtocol }}）</div>
-              <div class="cam-placeholder-sub">
-                CAD 点位：({{ activeCamera.cadX.toFixed(1) }}, {{ activeCamera.cadY.toFixed(1) }}, H={{ activeCamera.cadZ }}m) · 视场角 {{ activeCamera.fovDeg }}° / 覆盖 {{ activeCamera.rangeM }}m
-              </div>
-              <div class="cam-placeholder-hint">
-                待 S4 负责人接入 <code>GET /api/v1/cameras</code> 返回 <code>streamUrl</code>（支持 HLS / MP4 / MJPEG / IFRAME）后自动播放实况画面
-              </div>
-            </div>
-          </div>
-          <div v-if="activeCamera.latestAiEvent" class="cam-ai-bar">
-            <span>AI 识别事件：<b>{{ activeCamera.latestAiEvent.type }}</b></span>
-            <span>置信度 {{ activeCamera.latestAiEvent.confidence.toFixed(1) }}% · 风险 {{ activeCamera.latestAiEvent.riskCode }}</span>
-          </div>
-          <div class="cam-modal-foot">
-            <span>所属联锁区：{{ activeCamera.zoneCode || '场站全域' }}</span>
-            <a :href="selectedScsUrl" target="_blank" rel="noopener noreferrer" class="cam-scs-link">跳转 S4 安全监控系统 →</a>
-          </div>
-        </div>
-      </div>
+      <!-- V6.1 共享 S4-SCS 多协议监控视频核查弹窗（hls.js 真流支持 + 未绑定诚实占位） -->
+      <VideoStreamModal
+        :camera="activeCamera"
+        :cameras="allSurveillanceCameras"
+        :scs-url="selectedScsUrl"
+        :psms-url="selectedPsmsUrl"
+        :safety-distance-m="demoState.safetyDistanceM"
+        @close="activeCamera = null"
+        @select-camera="openCameraModal"
+        @focus-camera="openCameraModal"
+      />
     </main>
 
     <footer class="home-footer">
@@ -1935,55 +1977,33 @@ onBeforeUnmount(() => {
       }
     }
 
-    .camera-modal-backdrop {
-      position: absolute; inset: 0; background: rgba(2, 8, 20, 0.62); backdrop-filter: blur(4px);
-      display: flex; align-items: center; justify-content: center; z-index: 30;
+    .resilience-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+      padding: 8px 12px; margin-bottom: 10px; border-radius: 6px;
+      background: rgba(6, 32, 54, 0.85); border: 1px solid rgba(56, 189, 248, 0.35);
+      .res-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+      .res-probe-btn {
+        padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer;
+        border: 1px solid #38bdf8; background: rgba(2, 132, 199, 0.85); color: #fff;
+        &:disabled { opacity: 0.6; cursor: wait; }
+      }
+      .res-result {
+        font-size: 11px;
+        &.pass { color: #6ee7b7; font-weight: 600; }
+        &.fail { color: #fca5a5; }
+        &.idle { color: #94a3b8; }
+      }
+      .res-right { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #9fbcd0; }
+      .res-region-btn {
+        padding: 2px 7px; border-radius: 4px; font-size: 10px; cursor: pointer;
+        border: 1px solid var(--border-color); background: rgba(8, 28, 48, 0.9); color: #bae6fd;
+        &.active { border-color: #34d399; color: #ecfdf5; background: rgba(16, 185, 129, 0.3); font-weight: 700; }
+      }
     }
-    .camera-modal-card {
-      width: min(640px, 92%); background: rgba(7, 20, 42, 0.96);
-      border: 1px solid rgba(56, 189, 248, 0.55); border-radius: 10px;
-      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.65); overflow: hidden;
-      .cam-modal-head {
-        display: flex; align-items: center; justify-content: space-between; gap: 10px;
-        padding: 10px 14px; border-bottom: 1px solid var(--border-color);
-        strong { font-size: 14px; color: #f0f9ff; margin-right: 8px; }
-        .cam-proto-tag {
-          padding: 2px 7px; border-radius: 99px; font-size: 10px; font-weight: 600;
-          &.live { background: rgba(16, 185, 129, 0.25); color: #6ee7b7; }
-          &.sim { background: rgba(56, 189, 248, 0.20); color: #7dd3fc; }
-          &.isolated { background: rgba(100, 116, 139, 0.30); color: #cbd5e1; }
-        }
-      }
-      .cam-switcher-row {
-        display: flex; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap;
-        .cam-chip {
-          padding: 3px 9px; border-radius: 99px; border: 1px solid var(--border-color);
-          background: var(--bg-panel-alt); color: var(--text-secondary); font-size: 11px; cursor: pointer;
-          &.active { border-color: #38bdf8; color: #e0f2fe; background: rgba(14, 116, 144, 0.38); font-weight: 600; }
-          &.alert { border-color: #ef4444; color: #fecaca; }
-        }
-      }
-      .cam-viewport {
-        height: 290px; background: #030916; display: flex; align-items: center; justify-content: center;
-        .cam-media { width: 100%; height: 100%; object-fit: cover; border: 0; }
-        .cam-unbound-placeholder {
-          text-align: center; padding: 20px; color: #94a3b8; max-width: 520px;
-          .cam-placeholder-icon { font-size: 36px; margin-bottom: 8px; }
-          .cam-placeholder-title { font-size: 13px; color: #e0f2fe; font-weight: 600; margin-bottom: 6px; }
-          .cam-placeholder-sub { font-size: 11px; color: #7dd3fc; margin-bottom: 8px; }
-          .cam-placeholder-hint { font-size: 11px; line-height: 1.5; code { color: #fde68a; background: rgba(255, 255, 255, 0.08); padding: 1px 4px; border-radius: 3px; } }
-        }
-      }
-      .cam-ai-bar {
-        display: flex; justify-content: space-between; padding: 7px 14px;
-        background: rgba(185, 28, 28, 0.22); border-top: 1px solid rgba(239, 68, 68, 0.45);
-        font-size: 12px; color: #fecaca;
-      }
-      .cam-modal-foot {
-        display: flex; justify-content: space-between; align-items: center; padding: 9px 14px;
-        border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-secondary);
-        .cam-scs-link { color: #38bdf8; text-decoration: none; font-weight: 600; &:hover { text-decoration: underline; } }
-      }
+
+    .phase2-silo-note {
+      margin-top: 6px; padding: 4px 7px; border-radius: 4px; font-size: 10.5px; line-height: 1.4;
+      color: #fde68a; background: rgba(180, 83, 9, 0.16); border: 1px dashed rgba(245, 158, 11, 0.45);
     }
   }
 

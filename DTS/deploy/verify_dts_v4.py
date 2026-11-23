@@ -30,6 +30,7 @@ EXPECTED_V4_DEVICE_IDS = {
     "CR-01", "CR-02", "CR-03",
     "CR-BULK-01", "CR-BULK-02", "CR-BULK-03",
     "TIPPER-01", "TIPPER-02", "TIPPER-03", "TIPPER-04",
+    "TIPPER-05", "TIPPER-06", "TIPPER-07", "TIPPER-08",
     "ELV-01", "ELV-02", "ELV-03", "ELV-04",
     "LOADER-01", "LOADER-02", "LOADER-03", "LOADER-04",
     "BC-01", "BC-02", "BC-03", "BC-04", "BC-05", "BC-06", "BC-07",
@@ -37,6 +38,7 @@ EXPECTED_V4_DEVICE_IDS = {
     "BC-MECH-01", "BC-MECH-02",
     "WB-TRUCK-01", "WB-TRUCK-02", "WB-RAIL-01",
 }
+EXPECTED_CHOOK_32T_BAYS = {3, 6, 9, 13}
 
 
 def http_req(url: str, method: str = "GET", timeout: float = 15.0) -> tuple[int, dict]:
@@ -77,7 +79,7 @@ def verify_api(base_url: str, check_v6: bool = True) -> list[dict]:
     )
 
     # 2. Write methods blocked (405 READONLY_SYSTEM)
-    for method in ("POST", "PUT", "DELETE"):
+    for method in ("POST", "PUT", "PATCH", "DELETE"):
         w_code, w_body = http_req(f"{base_url}/api/v1/dts/devices", method=method)
         record(
             f"{method} /api/v1/dts/devices -> 405",
@@ -93,11 +95,12 @@ def verify_api(base_url: str, check_v6: bool = True) -> list[dict]:
         code == 200
         and ov_data.get("regionId") == "SHEN_TIE"
         and ov_data.get("regionIsolated") is True
-        and ov_data.get("devicesCount") == 36,
-        f"status={code}, regionId={ov_data.get('regionId')}, devicesCount={ov_data.get('devicesCount')}",
+        and ov_data.get("devicesCount") == 40
+        and ov_data.get("reservedPhase2SilosCount") == 68,
+        f"status={code}, regionId={ov_data.get('regionId')}, devicesCount={ov_data.get('devicesCount')}, reserved68={ov_data.get('reservedPhase2SilosCount')}",
     )
 
-    # 4. Devices for SHEN_TIE (36 items + telemetry + V6 S3 health fields)
+    # 4. Devices for SHEN_TIE (40 items + telemetry + 32t C-hook bays 03/06/09/13)
     code, dev_resp = http_req(f"{base_url}/api/v1/dts/devices?regionId=SHEN_TIE")
     dev_data = dev_resp.get("data") or dev_resp
     items = dev_data.get("items") or []
@@ -110,10 +113,17 @@ def verify_api(base_url: str, check_v6: bool = True) -> list[dict]:
         and "cyclesToday" in item["telemetry"]
         for item in items
     )
+    chook_dev_bays = {
+        int(str(item["device_id"]).replace("BC-", ""))
+        for item in items
+        if str(item.get("device_id", "")).startswith("BC-")
+        and not str(item.get("device_id", "")).startswith("BC-MECH")
+        and "32t" in str(item.get("device_name", ""))
+    }
     record(
-        "GET /api/v1/dts/devices?regionId=SHEN_TIE (36 devices + telemetry)",
-        code == 200 and len(items) == 36 and not missing_ids and has_telemetry,
-        f"status={code}, count={len(items)}, missing={sorted(missing_ids)}, hasTelemetry={has_telemetry}",
+        "GET /api/v1/dts/devices?regionId=SHEN_TIE (40 devices + telemetry + 32t bays 03/06/09/13)",
+        code == 200 and len(items) == 40 and not missing_ids and has_telemetry and chook_dev_bays == EXPECTED_CHOOK_32T_BAYS,
+        f"status={code}, count={len(items)}, missing={sorted(missing_ids)}, chookBays={sorted(chook_dev_bays)}",
     )
 
     # 5. Alerts for SHEN_TIE
@@ -131,7 +141,7 @@ def verify_api(base_url: str, check_v6: bool = True) -> list[dict]:
         r_code, r_dev = http_req(f"{base_url}/api/v1/dts/devices?regionId={region_id}")
         r_data = r_dev.get("data") or r_dev
         r_items = r_data.get("items") or []
-        all_isolated = len(r_items) == 36 and all(
+        all_isolated = len(r_items) == 40 and all(
             item.get("quality_code") == "ISOLATED"
             and item.get("public_device_id") is None
             and item.get("event_id") is None
@@ -161,16 +171,40 @@ def verify_api(base_url: str, check_v6: bool = True) -> list[dict]:
         )
 
     if check_v6:
-        # 7. V6 Full 53-location S2 Storage Contract (`SILO-01..40` + `REBAR-BAY-01..13`)
+        # 7. V6.1 Full 53-location S2 Storage + 68 Phase-2 Reserved Empty Slots + X08/X09 Split
         s_code, st_resp = http_req(f"{base_url}/api/v1/dts/storage?regionId=SHEN_TIE")
-        st_items = (st_resp.get("data") or st_resp).get("items") or []
+        st_body = st_resp.get("data") or st_resp
+        st_items = st_body.get("items") or []
+        st_reserved = st_body.get("reservedPhase2Silos") or []
         silo_cnt = sum(1 for x in st_items if str(x.get("locationId", "")).startswith("SILO-"))
         bay_cnt = sum(1 for x in st_items if str(x.get("locationId", "")).startswith("REBAR-BAY-"))
-        has_ratio = all("fillRatio" in x and "dataSource" in x for x in st_items)
+        has_ratio = all("fillRatio" in x and "dataSource" in x and "bookStockTons" in x and "physicalLevelSource" in x for x in st_items)
+        no_fake_phys = all(
+            (x.get("physicalLevelM") is None and x.get("levelMeters") is None)
+            for x in st_items
+            if x.get("physicalLevelSource") == "UNBOUND_NO_SENSOR"
+        )
+        silo01_code = next((x.get("locationCode") for x in st_items if x.get("locationId") == "SILO-01"), "")
+        silo02_code = next((x.get("locationCode") for x in st_items if x.get("locationId") == "SILO-02"), "")
+        silo40_code = next((x.get("locationCode") for x in st_items if x.get("locationId") == "SILO-40"), "")
+        chook_st_bays = {
+            int(str(x["locationId"]).replace("REBAR-BAY-", ""))
+            for x in st_items
+            if str(x.get("locationId", "")).startswith("REBAR-BAY-") and "32t" in str(x.get("materialName", ""))
+        }
         record(
-            "V6 GET /api/v1/dts/storage (40 silos + 13 rebar bays = 53 locations)",
-            s_code == 200 and len(st_items) == 53 and silo_cnt == 40 and bay_cnt == 13 and has_ratio,
-            f"status={s_code}, total={len(st_items)}, silos={silo_cnt}, bays={bay_cnt}, hasRatio={has_ratio}",
+            "V6.1 GET /api/v1/dts/storage (F-D09, 53 Phase-1 + 68 Phase-2 reserved, no fake physical level, A01..B20)",
+            s_code == 200
+            and "F-D09" in str(st_body.get("requirementCode", ""))
+            and len(st_items) == 53
+            and len(st_reserved) == 68
+            and silo_cnt == 40
+            and bay_cnt == 13
+            and has_ratio
+            and no_fake_phys
+            and (silo01_code, silo02_code, silo40_code) == ("A01", "B01", "B20")
+            and chook_st_bays == EXPECTED_CHOOK_32T_BAYS,
+            f"status={s_code}, req={st_body.get('requirementCode')}, p1={len(st_items)}, p2={len(st_reserved)}, codes={(silo01_code, silo02_code, silo40_code)}, noFakePhys={no_fake_phys}, chookBays={sorted(chook_st_bays)}",
         )
 
         # 8. V6 S4 Safety Contract (`fences` + `cameras` + `interlocks` + write 405)
@@ -224,24 +258,30 @@ def verify_live_s2_s3_s4_docking(server_script: Path, test_port: int) -> dict:
                 payload = {
                     "data": {
                         "items": [
-                            {"locationCode": "A01", "availableTon": 2760.0, "capacityTon": 3000.0, "batchNo": "LIVE-WMS-A01"},
+                            {"locationCode": "C01", "availableTon": 2760.0, "capacityTon": 3000.0, "batchNo": "LIVE-WMS-C01"},
+                            {"locationCode": "B02", "availableTon": 1950.0, "capacityTon": 3000.0, "physicalLevelM": 18.4, "batchNo": "LIVE-WMS-B02"},
                             {"locationCode": "07跨", "availableTon": 1620.0, "capacityTon": 1800.0, "stackLayers": 5, "batchNo": "LIVE-WMS-B07"},
                         ]
                     }
                 }
             elif p == "/api/ehm/v1/devices":
-                payload = [
-                    {
-                        "deviceId": "CR-02",
-                        "assetCode": "EQ-CRANE-02",
-                        "healthScore": 68,
-                        "riskClass": "attention",
-                        "riskSubsystem": "主起升钢丝绳监测",
-                        "condition": "偏磨关注",
-                        "predictedRulDays": 24,
-                        "sensorMetrics": {"motorCurrentA": 188.2, "bearingTempC": 69.5},
+                # Test Spring PageResult {data: {content: [...]}} compatibility
+                payload = {
+                    "data": {
+                        "content": [
+                            {
+                                "deviceId": "CR-02",
+                                "assetCode": "EQ-CRANE-02",
+                                "health": 62,
+                                "riskClass": "critical",
+                                "riskSubsystem": "主起升钢丝绳监测",
+                                "condition": "断丝预警",
+                                "rulDays": 14,
+                                "sensorMetrics": {"motorCurrentA": 188.2, "bearingTempC": 69.5},
+                            }
+                        ]
                     }
-                ]
+                }
             elif p == "/api/ehm/v1/alarms":
                 payload = [{"alarmNo": "ALM-LIVE-01", "deviceId": "CR-02", "deviceName": "2# 钢材门吊", "summary": "起升电流偏高", "status": "待处置"}]
             elif p == "/api/v1/fences":
@@ -286,6 +326,7 @@ def verify_live_s2_s3_s4_docking(server_script: Path, test_port: int) -> dict:
         _, sf = http_req(f"{base}/api/v1/dts/safety?regionId=SHEN_TIE")
 
         silo01 = next((x for x in st.get("items", []) if x.get("locationId") == "SILO-01"), {})
+        silo04 = next((x for x in st.get("items", []) if x.get("locationId") == "SILO-04"), {})
         bay07 = next((x for x in st.get("items", []) if x.get("locationId") == "REBAR-BAY-07"), {})
         cr02 = next((x for x in dv.get("items", []) if x.get("device_id") == "CR-02"), {})
         fence07 = next((x for x in sf.get("fences", []) if x.get("fenceId") == "FENCE-REBAR-HANDOVER"), {})
@@ -295,10 +336,17 @@ def verify_live_s2_s3_s4_docking(server_script: Path, test_port: int) -> dict:
         passed = (
             silo01.get("dataSource") == "LIVE_S2_WMS"
             and silo01.get("availableTon") == 2760.0
+            and silo01.get("physicalLevelM") is None
+            and silo01.get("physicalLevelSource") == "UNBOUND_NO_SENSOR"
+            and silo04.get("dataSource") == "LIVE_S2_WMS"
+            and silo04.get("physicalLevelM") == 18.4
+            and silo04.get("physicalLevelSource") == "LIVE_X09_RADAR"
             and bay07.get("dataSource") == "LIVE_S2_WMS"
             and bay07.get("stackLayers") == 5
             and cr02.get("data_source") == "LIVE_S3_EHMS"
-            and cr02.get("health_score") == 68
+            and cr02.get("health_score") == 62
+            and cr02.get("health_level") == "critical"
+            and cr02.get("predicted_rul_days") == 14
             and cr02.get("active_alarm_count") == 1
             and fence07.get("dataSource") == "LIVE_S4_SCS"
             and fence07.get("status") == "BREACHED"
@@ -308,8 +356,9 @@ def verify_live_s2_s3_s4_docking(server_script: Path, test_port: int) -> dict:
             and ilk07.get("distanceM") == 11.2
         )
         detail = (
-            f"S2(SILO-01={silo01.get('dataSource')}/{silo01.get('availableTon')}t, BAY07={bay07.get('dataSource')}), "
-            f"S3(CR-02={cr02.get('data_source')}/score={cr02.get('health_score')}), "
+            f"S2(C01->SILO-01={silo01.get('availableTon')}t/phys={silo01.get('physicalLevelM')}, "
+            f"B02->SILO-04=phys:{silo04.get('physicalLevelM')}m/{silo04.get('physicalLevelSource')}, BAY07={bay07.get('dataSource')}), "
+            f"S3(PageResult CR-02={cr02.get('data_source')}/score={cr02.get('health_score')}/lvl={cr02.get('health_level')}), "
             f"S4(fence={fence07.get('status')}, cam04={cam04.get('streamProtocol')}, ilk={ilk07.get('distanceM')}m)"
         )
         if not passed:
