@@ -168,7 +168,17 @@ public class PlatformIdentityFilter extends OncePerRequestFilter {
       Security.failure(response, 503, "身份接入配置不可用");
       return;
     }
-    chain.doFilter(request, response);
+    if (request.getAttribute("TRUST_SERVICE") instanceof IntegrationSettings.Service service) {
+      try (var sourceScope = TrustCentralScope.bindSource(service.scope())) {
+        chain.doFilter(request, response);
+      } catch (IOException | ServletException failure) {
+        throw failure;
+      } catch (Exception failure) {
+        throw new ServletException(failure);
+      }
+    } else {
+      chain.doFilter(request, response);
+    }
   }
 
   public static String requiredPermission(String path, String method) {

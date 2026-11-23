@@ -45,7 +45,26 @@ public class IntegrationSettings {
       String sourceSystem,
       String companyCode,
       String warehouseCode,
-      String ownerCode) {}
+      String ownerCode,
+      String projectId,
+      String regionId,
+      String subsystemCode) {
+    public Service(String id, String tokenSha256, String orgId, String sourceSystem,
+        String companyCode, String warehouseCode, String ownerCode) {
+      this(id, tokenSha256, orgId, sourceSystem, companyCode, warehouseCode, ownerCode,
+          null, null, null);
+    }
+
+    public Service {
+      if (projectId != null || regionId != null || subsystemCode != null)
+        new com.bproject.iam.context.ScopeTriple(projectId, regionId, subsystemCode);
+    }
+
+    public com.bproject.iam.context.ScopeTriple scope() {
+      return projectId == null ? null
+          : new com.bproject.iam.context.ScopeTriple(projectId, regionId, subsystemCode);
+    }
+  }
 
   public record Settings(
       String iamUrl,
