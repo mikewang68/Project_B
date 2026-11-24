@@ -359,7 +359,6 @@ export class GltfModelProvider {
     const trolleyZ = craneHeight + 2.0
     const trolley = modelEntity(this.dataSource, `${def.id}-trolley`, 'gantry-trolley', placement, trolleyZ, def.id)
     const hoist = modelEntity(this.dataSource, `${def.id}-hoist`, 'gantry-hoist', placement, 14, def.id)
-    const beacon = this.addStatusBeacon(def, placement, trolleyZ + 2.8)
     let pose: CranePose = { gantryX: placement.cadX, gantryY: placement.cadY, trolleyOffset: 0, hoistHeight: 14 }
     const billboard = this.addStatusBillboard(
       def,
@@ -403,15 +402,13 @@ export class GltfModelProvider {
       updateEntityPosition(frame, placement, pose.gantryX, pose.gantryY, 0)
       updateEntityPosition(trolley, placement, pose.gantryX, pose.gantryY + pose.trolleyOffset, trolleyZ)
       updateEntityPosition(hoist, placement, pose.gantryX, pose.gantryY + pose.trolleyOffset, pose.hoistHeight)
-      updateEntityPosition(beacon, placement, pose.gantryX, pose.gantryY - 12, trolleyZ + 2.5)
     }
 
     return {
       def,
-      entities: [frame, trolley, hoist, ...cables, beacon, billboard.entity],
+      entities: [frame, trolley, hoist, ...cables, billboard.entity],
       setStatus: (status) => {
         def.status = status
-        beacon.ellipsoid!.material = new Cesium.ColorMaterialProperty(statusColor(status))
       },
       setLabelText: (text) => billboard.setOverride(text),
       updatePose,
@@ -424,7 +421,6 @@ export class GltfModelProvider {
     const frame = modelEntity(this.dataSource, `${def.id}-frame`, 'bridge-frame', placement, railZ, def.id)
     const trolley = modelEntity(this.dataSource, `${def.id}-trolley`, 'bridge-trolley', placement, railZ + 2.2, def.id)
     const hoist = modelEntity(this.dataSource, `${def.id}-hoist`, hoistKey, placement, 7.5, def.id)
-    const beacon = this.addStatusBeacon(def, placement, railZ + 3.2)
 
     let pose: BridgeCranePose = {
       cadX: placement.cadX,
@@ -486,15 +482,13 @@ export class GltfModelProvider {
       updateEntityPosition(frame, placement, pose.cadX, pose.bridgeY, railZ)
       updateEntityPosition(trolley, placement, pose.cadX + pose.trolleyOffsetX, pose.bridgeY, railZ + 2.2)
       updateEntityPosition(hoist, placement, pose.cadX + pose.trolleyOffsetX, pose.bridgeY, pose.hoistHeight)
-      updateEntityPosition(beacon, placement, pose.cadX - 10, pose.bridgeY, railZ + 3.2)
     }
 
     return {
       def,
-      entities: [frame, trolley, hoist, ...cables, beacon, billboard.entity],
+      entities: [frame, trolley, hoist, ...cables, billboard.entity],
       setStatus: (status) => {
         def.status = status
-        beacon.ellipsoid!.material = new Cesium.ColorMaterialProperty(statusColor(status))
       },
       setLabelText: (text) => billboard.setOverride(text),
       updateBridgePose,
@@ -551,7 +545,6 @@ export class GltfModelProvider {
       },
       properties: { parent: def.id, type: def.type, name: `${def.name}·顶部波纹伸缩吸料管` },
     })
-    const beacon = this.addStatusBeacon(def, placement, 5.6)
 
     let pose: TipperPose = {
       cadX: placement.cadX,
@@ -606,7 +599,6 @@ export class GltfModelProvider {
       // Overhead corrugated telescopic suction chute stays anchored over the West Unloading Berth (unloadStationX) while tilter rides East-West rails!
       const chuteDrop = pose.bellowsDropM ?? 0
       updateEntityPosition(bellows, placement, unloadStationX - 0.33, placement.cadY, 7.35 - chuteDrop, placement.headingDeg, 0, 0)
-      updateEntityPosition(beacon, placement, pose.cadX - 1.45, pose.cadY - 1.75, 5.75)
 
       if (def.id === 'TIPPER-01') {
         this.activeContainerDoors = {
@@ -618,10 +610,9 @@ export class GltfModelProvider {
 
     return {
       def,
-      entities: [frame, cradle, claws, bellows, beacon, billboard.entity],
+      entities: [frame, cradle, claws, bellows, billboard.entity],
       setStatus: (status) => {
         def.status = status
-        beacon.ellipsoid!.material = new Cesium.ColorMaterialProperty(statusColor(status))
       },
       setLabelText: (text) => billboard.setOverride(text),
       updateTipperPose,
@@ -631,7 +622,6 @@ export class GltfModelProvider {
   private buildSiloLoader(def: EquipmentDef, placement: AssetPlacement): BuiltEquipment {
     const spoutZ = placement.height ?? 5.5
     const head = modelEntity(this.dataSource, `${def.id}-head`, 'silo-loader-head', placement, spoutZ, def.id)
-    const beacon = this.addStatusBeacon(def, placement, 11.5)
     let pose: SiloLoaderPose = { cadX: placement.cadX, cadY: placement.cadY, spoutHeight: spoutZ, active: false }
     const billboard = this.addStatusBillboard(
       def,
@@ -650,15 +640,13 @@ export class GltfModelProvider {
     const updateLoaderPose = (nextPose: SiloLoaderPose) => {
       pose = nextPose
       updateEntityPosition(head, placement, pose.cadX, pose.cadY, pose.spoutHeight)
-      updateEntityPosition(beacon, placement, pose.cadX, pose.cadY, 11.5)
     }
 
     return {
       def,
-      entities: [head, beacon, billboard.entity],
+      entities: [head, billboard.entity],
       setStatus: (status) => {
         def.status = status
-        beacon.ellipsoid!.material = new Cesium.ColorMaterialProperty(statusColor(status))
       },
       setLabelText: (text) => billboard.setOverride(text),
       updateLoaderPose,
@@ -666,7 +654,6 @@ export class GltfModelProvider {
   }
 
   private buildBeaconOnlyEquipment(def: EquipmentDef, placement: AssetPlacement, height: number): BuiltEquipment {
-    const beacon = this.addStatusBeacon(def, placement, height)
     const isElevator = placement.type === 'elevator'
     const boxDims = isElevator ? new Cesium.Cartesian3(4.2, 4.2, height) : new Cesium.Cartesian3(18.0, 4.4, 1.4)
     const boxCenterZ = isElevator ? height / 2 : 0.7
@@ -696,30 +683,14 @@ export class GltfModelProvider {
     )
     return {
       def,
-      entities: [pickVolume, beacon, billboard.entity],
+      entities: [pickVolume, billboard.entity],
       setStatus: (status) => {
         def.status = status
-        beacon.ellipsoid!.material = new Cesium.ColorMaterialProperty(statusColor(status))
         pickVolume.box!.material = new Cesium.ColorMaterialProperty(statusColor(status).withAlpha(0.14))
         pickVolume.box!.outlineColor = new Cesium.ConstantProperty(statusColor(status).withAlpha(0.65))
       },
       setLabelText: (text) => billboard.setOverride(text),
     }
-  }
-
-  private addStatusBeacon(def: EquipmentDef, placement: AssetPlacement, height: number): Cesium.Entity {
-    const position = cadToCartesian3(placement.cadX, placement.cadY, height)
-    return this.dataSource.entities.add({
-      id: `${def.id}-status`,
-      position,
-      ellipsoid: {
-        radii: new Cesium.Cartesian3(0.62, 0.62, 0.62),
-        material: new Cesium.ColorMaterialProperty(statusColor(def.status)),
-        outline: true,
-        outlineColor: Cesium.Color.WHITE.withAlpha(0.72),
-      },
-      properties: { parent: def.id, type: def.type },
-    })
   }
 
   private addStatusBillboard(
@@ -801,23 +772,9 @@ export class GltfModelProvider {
   }
 
   private addNightSceneAccents(): void {
-    const warmLight = Cesium.Color.fromCssColorString('#FFB45C')
-    const coolLight = Cesium.Color.fromCssColorString('#78D7FF')
     const mastLight = Cesium.Color.fromCssColorString('#FFE6A3')
+    // Only mount light halos on the 8 physical 25m High-Mast Floodlight Towers (hidden in daylight, illuminated in dusk/night)
     const accents: Array<{ id: string; cadX: number; cadY: number; height: number; color: Cesium.Color; size?: number; nightSize?: number; pool?: boolean }> = [
-      { id: 'NIGHT-REBAR-01', cadX: 3560, cadY: 1632, height: 14, color: warmLight, size: 0.42, nightSize: 1.45 },
-      { id: 'NIGHT-REBAR-02', cadX: 3680, cadY: 1632, height: 14, color: warmLight, size: 0.42, nightSize: 1.45 },
-      { id: 'NIGHT-REBAR-03', cadX: 3751, cadY: 1632, height: 14, color: warmLight, size: 0.42, nightSize: 1.45 },
-      { id: 'NIGHT-REBAR-04', cadX: 3860, cadY: 1632, height: 14, color: warmLight, size: 0.42, nightSize: 1.45 },
-      { id: 'NIGHT-REBAR-05', cadX: 3940, cadY: 1632, height: 14, color: warmLight, size: 0.42, nightSize: 1.45 },
-      { id: 'NIGHT-WH-01', cadX: 3600, cadY: 1704, height: 16, color: coolLight, size: 0.36, nightSize: 1.85 },
-      { id: 'NIGHT-WH-02', cadX: 3720, cadY: 1704, height: 16, color: coolLight, size: 0.36, nightSize: 1.85 },
-      { id: 'NIGHT-WH-03', cadX: 3840, cadY: 1704, height: 16, color: coolLight, size: 0.36, nightSize: 1.85 },
-      { id: 'NIGHT-ASH-01', cadX: 3781, cadY: 1510, height: 12, color: warmLight, size: 0.42, nightSize: 1.45 },
-      { id: 'NIGHT-ASH-02', cadX: 3851, cadY: 1510, height: 12, color: warmLight, size: 0.42, nightSize: 1.45 },
-      { id: 'NIGHT-ASH-03', cadX: 3935, cadY: 1510, height: 12, color: warmLight, size: 0.42, nightSize: 1.45 },
-      { id: 'NIGHT-ASH-04', cadX: 4005, cadY: 1510, height: 12, color: warmLight, size: 0.42, nightSize: 1.45 },
-      // 8 × 25m High-Mast Floodlight Towers (aligned 1:1 with build_site_shell_v4.py tower_coords)
       { id: 'NIGHT-MAST-01', cadX: 3515, cadY: 1604, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
       { id: 'NIGHT-MAST-02', cadX: 3760, cadY: 1604, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
       { id: 'NIGHT-MAST-03', cadX: 4020, cadY: 1604, height: 24.4, color: mastLight, size: 0.9, nightSize: 2.8, pool: true },
@@ -833,6 +790,7 @@ export class GltfModelProvider {
       const nightR = accent.nightSize ?? baseR * 2.5
       const entity = this.dataSource.entities.add({
         id: accent.id,
+        show: false,
         position: cadToCartesian3(accent.cadX, accent.cadY, accent.height),
         ellipsoid: {
           radii: new Cesium.Cartesian3(baseR, baseR, baseR),
@@ -872,6 +830,7 @@ export class GltfModelProvider {
           )
         }
       } else if (item.entity.ellipsoid) {
+        item.entity.show = isNight || isDusk
         const r = isNight ? item.nightRadius : isDusk ? (item.baseRadius + item.nightRadius) * 0.52 : item.baseRadius
         item.entity.ellipsoid.radii = new Cesium.ConstantProperty(new Cesium.Cartesian3(r, r, r))
       }
